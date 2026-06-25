@@ -6,7 +6,11 @@ compatibility_flags = ["nodejs_compat"]
 [vars]
 WORKER_ENV = "production"
 
-# Set secrets with: wrangler secret put ANTHROPIC_API_KEY
-# Set secrets with: wrangler secret put TELEGRAM_BOT_TOKEN
-# Set secrets with: wrangler secret put TELEGRAM_CHAT_ID
-# Set secrets with: wrangler secret put GOOGLE_SHEETS_WEBHOOK_URL
+# Cloudflare Workers AI binding — Llama runs natively on the edge, no API key needed
+[ai]
+binding = "AI"
+
+# Secrets (run these in terminal):
+# wrangler secret put TELEGRAM_BOT_TOKEN
+# wrangler secret put TELEGRAM_CHAT_ID
+# wrangler secret put GOOGLE_SHEETS_WEBHOOK_URL

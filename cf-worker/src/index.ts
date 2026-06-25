@@ -1,5 +1,5 @@
 export interface Env {
-  ANTHROPIC_API_KEY: string;
+  AI: Ai;
   TELEGRAM_BOT_TOKEN: string;
   TELEGRAM_CHAT_ID: string;
   GOOGLE_SHEETS_WEBHOOK_URL: string;
@@ -12,47 +12,48 @@ const CORS_HEADERS = {
   "Access-Control-Allow-Headers": "Content-Type",
 };
 
+// Llama model — fast 8B for chat, swap to llama-3.3-70b for higher quality
+const LLAMA_MODEL = "@cf/meta/llama-3.1-8b-instruct";
+
 const SYSTEM_PROMPT = `You are Solia, the AI assistant for Servolia — an agency that builds AI-powered websites, booking systems, and lead systems for service businesses in Europe and the US.
 
-Your job: have a natural conversation, understand the visitor's business, collect their contact info, and book them for a free audit.
+Your job: have a warm natural conversation, understand the visitor's business, and collect their contact info to book a free audit.
 
 PERSONALITY:
-- Warm, confident, expert — like a smart business consultant
+- Warm, confident, expert — like a smart business consultant friend
 - Speak French if the visitor writes in French, English otherwise
-- Never robotic, never corporate — conversational and direct
-- Short messages (2-4 sentences max per reply)
+- Short replies only — 2-3 sentences max per message
+- Never robotic or corporate
 
-CONVERSATION GOAL:
-Naturally guide the conversation to collect:
+CONVERSATION GOAL — collect in this order (naturally, not like a form):
 1. Their business type / industry
-2. Their main problem (no online bookings, no leads, bad website, etc.)
+2. Their main problem (no bookings, no leads, bad website, etc.)
 3. Their first name
 4. Their email address
 
-Once you have their email, tell them:
-"Perfect! I've sent your details to our team. You'll receive your free audit within 24 hours at [email]. In the meantime, feel free to ask me anything about our services."
+Once you have their email, say:
+"Perfect [name]! I've sent your details to our team. You'll receive your free audit at [email] within 24 hours. Feel free to ask me anything in the meantime!"
 
-Then emit a special JSON block on a new line (the system uses this, users don't see it):
-LEAD_CAPTURED:{"name":"[name]","email":"[email]","business":"[business type]","problem":"[main problem]"}
+Then on a NEW LINE emit exactly this (invisible to users, parsed by system):
+LEAD_CAPTURED:{"name":"[name]","email":"[email]","business":"[business]","problem":"[problem]"}
 
-SERVICES CONTEXT:
-- Starter Website: €690, 3-day delivery — 5-page site, contact form, GDPR, Google Analytics
-- Growth Package: €1,490, 5-day delivery — website + AI chatbot + booking flow + CRM
-- Pro System: €2,900, 7-day delivery — everything + admin dashboard + automations + monthly reports
-- Monthly retainer: from €99/mo for maintenance, chatbot updates, and analytics
+SERVICES:
+- Starter Website: €690, 3 days — 5-page site, GDPR, Google Analytics
+- Growth Package: €1,490, 5 days — website + AI chatbot + booking + CRM
+- Pro System: €2,900, 7 days — everything + admin dashboard + automations
+- Monthly retainer: from €99/mo
 
-KEY DIFFERENTIATORS to mention naturally:
-- Fixed price — they know the price before they pay
-- 7-day delivery — not 7 weeks like other agencies
+KEY POINTS to mention naturally:
+- Fixed price — they know the cost before paying
+- 7-day delivery — not 7 weeks like traditional agencies
 - GDPR compliant — required for EU businesses
-- Stripe payments — secure, no bank transfer needed
-- French + English — serve clients in France, Belgium, Switzerland, US
+- French + English service
 
-NICHES WE SERVE: dental clinics, aesthetic clinics/med spas, real estate agents, HVAC/roofing/plumbing, restaurants, accountants/lawyers
+NICHES: dental clinics, aesthetic clinics, real estate, HVAC/plumbing, restaurants, accountants/lawyers
 
-GUARANTEE: "If we miss our delivery deadline, you get 10% back per day of delay. We've never triggered this."
+GUARANTEE: "If we miss the deadline, clients get 10% back per day late. We've never triggered it."
 
-Start every new conversation with: "Hi! 👋 I'm Solia, Servolia's AI assistant. What kind of business do you run?"`;
+Start each new conversation with: "Hi! 👋 I'm Solia, Servolia's AI assistant. What kind of business do you run?"`;
 
 interface Message {
   role: "user" | "assistant";
@@ -66,63 +67,47 @@ interface LeadData {
   problem: string;
 }
 
-async function callClaude(
-  messages: Message[],
-  env: Env
-): Promise<string> {
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": env.ANTHROPIC_API_KEY,
-      "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 400,
-      system: SYSTEM_PROMPT,
-      messages,
-    }),
-  });
-
-  if (!response.ok) {
-    const err = await response.text();
-    throw new Error(`Anthropic API error: ${response.status} ${err}`);
-  }
-
-  const data = (await response.json()) as {
-    content: Array<{ type: string; text: string }>;
-  };
-  return data.content[0]?.text ?? "";
+interface AiTextGenerationOutput {
+  response?: string;
 }
 
-async function sendToTelegram(lead: LeadData, env: Env): Promise<void> {
+async function runLlama(messages: Message[], env: Env): Promise<string> {
+  const result = await env.AI.run(LLAMA_MODEL, {
+    messages: [
+      { role: "system", content: SYSTEM_PROMPT },
+      ...messages,
+    ],
+    max_tokens: 350,
+    temperature: 0.7,
+  }) as AiTextGenerationOutput;
+
+  return result.response ?? "";
+}
+
+async function sendToTelegram(lead: LeadData, source: string, env: Env): Promise<void> {
   if (!env.TELEGRAM_BOT_TOKEN || !env.TELEGRAM_CHAT_ID) return;
 
-  const message =
+  const msg =
     `🔥 *New Servolia Lead!*\n\n` +
     `👤 *Name:* ${lead.name}\n` +
     `📧 *Email:* ${lead.email}\n` +
     `🏢 *Business:* ${lead.business}\n` +
     `💬 *Problem:* ${lead.problem}\n\n` +
-    `⚡ Source: AI Chatbot\n` +
-    `🕐 Time: ${new Date().toLocaleString("fr-FR", { timeZone: "Europe/Paris" })}`;
+    `⚡ Source: ${source}\n` +
+    `🕐 ${new Date().toLocaleString("fr-FR", { timeZone: "Europe/Paris" })}`;
 
-  await fetch(
-    `https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        chat_id: env.TELEGRAM_CHAT_ID,
-        text: message,
-        parse_mode: "Markdown",
-      }),
-    }
-  );
+  await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      chat_id: env.TELEGRAM_CHAT_ID,
+      text: msg,
+      parse_mode: "Markdown",
+    }),
+  });
 }
 
-async function sendToGoogleSheets(lead: LeadData, env: Env): Promise<void> {
+async function sendToSheets(lead: LeadData & { source?: string }, env: Env): Promise<void> {
   if (!env.GOOGLE_SHEETS_WEBHOOK_URL) return;
 
   await fetch(env.GOOGLE_SHEETS_WEBHOOK_URL, {
@@ -134,29 +119,27 @@ async function sendToGoogleSheets(lead: LeadData, env: Env): Promise<void> {
       email: lead.email,
       business: lead.business,
       problem: lead.problem,
-      source: "AI Chatbot",
+      source: lead.source ?? "AI Chatbot (Llama)",
     }),
   });
 }
 
 function extractLead(text: string): LeadData | null {
-  const match = text.match(/LEAD_CAPTURED:(\{[^}]+\})/);
+  const match = text.match(/LEAD_CAPTURED:\{([^}]+)\}/);
   if (!match) return null;
   try {
-    return JSON.parse(match[1]) as LeadData;
+    return JSON.parse(`{${match[1]}}`) as LeadData;
   } catch {
     return null;
   }
 }
 
-function cleanResponse(text: string): string {
-  // Remove the LEAD_CAPTURED JSON block from the visible response
+function cleanReply(text: string): string {
   return text.replace(/\nLEAD_CAPTURED:\{[^}]+\}/g, "").trim();
 }
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
-    // Handle CORS preflight
     if (request.method === "OPTIONS") {
       return new Response(null, { headers: CORS_HEADERS });
     }
@@ -165,16 +148,16 @@ export default {
 
     // Health check
     if (url.pathname === "/health") {
-      return new Response(JSON.stringify({ status: "ok", service: "servolia-chat" }), {
-        headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
-      });
+      return new Response(
+        JSON.stringify({ status: "ok", model: LLAMA_MODEL, service: "servolia-chat" }),
+        { headers: { ...CORS_HEADERS, "Content-Type": "application/json" } }
+      );
     }
 
-    // Chat endpoint
+    // Chat endpoint — Llama via Workers AI
     if (url.pathname === "/chat" && request.method === "POST") {
       try {
-        const body = (await request.json()) as { messages: Message[] };
-        const { messages } = body;
+        const { messages } = await request.json() as { messages: Message[] };
 
         if (!Array.isArray(messages) || messages.length === 0) {
           return new Response(
@@ -183,56 +166,58 @@ export default {
           );
         }
 
-        const rawReply = await callClaude(messages, env);
-        const cleanReply = cleanResponse(rawReply);
+        const raw = await runLlama(messages, env);
+        const reply = cleanReply(raw);
+        const lead = extractLead(raw);
 
-        // Check if lead was captured
-        const lead = extractLead(rawReply);
         if (lead) {
-          // Fire and forget — don't block the response
+          // Non-blocking — don't delay the response
           Promise.all([
-            sendToTelegram(lead, env),
-            sendToGoogleSheets(lead, env),
+            sendToTelegram(lead, "AI Chatbot (Llama)", env),
+            sendToSheets({ ...lead, source: "AI Chatbot (Llama)" }, env),
           ]).catch(console.error);
         }
 
         return new Response(
-          JSON.stringify({
-            reply: cleanReply,
-            leadCaptured: lead !== null,
-          }),
-          {
-            headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
-          }
+          JSON.stringify({ reply, leadCaptured: lead !== null }),
+          { headers: { ...CORS_HEADERS, "Content-Type": "application/json" } }
         );
       } catch (err) {
         console.error("Chat error:", err);
         return new Response(
-          JSON.stringify({ error: "Something went wrong. Please try again." }),
+          JSON.stringify({ error: "Something went wrong. Email us at hello@servolia.com" }),
           { status: 500, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } }
         );
       }
     }
 
-    // Contact form lead endpoint
+    // Contact form lead — fires Telegram + Sheets
     if (url.pathname === "/lead" && request.method === "POST") {
       try {
-        const lead = (await request.json()) as LeadData & { plan?: string; website?: string };
+        const body = await request.json() as LeadData & { plan?: string; source?: string };
+        const lead: LeadData = {
+          name: body.name ?? "",
+          email: body.email ?? "",
+          business: body.business ?? "",
+          problem: body.problem ?? body.plan ?? "",
+        };
+        const source = body.source ?? "Contact Form";
 
         await Promise.all([
-          sendToTelegram({ ...lead, problem: lead.problem || lead.plan || "" }, env),
-          sendToGoogleSheets({ ...lead, problem: lead.problem || lead.plan || "" }, env),
+          sendToTelegram(lead, source, env),
+          sendToSheets({ ...lead, source }, env),
         ]);
 
-        return new Response(JSON.stringify({ success: true }), {
-          headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
-        });
+        return new Response(
+          JSON.stringify({ success: true }),
+          { headers: { ...CORS_HEADERS, "Content-Type": "application/json" } }
+        );
       } catch (err) {
         console.error("Lead error:", err);
-        return new Response(JSON.stringify({ error: "Failed to submit lead" }), {
-          status: 500,
-          headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
-        });
+        return new Response(
+          JSON.stringify({ error: "Failed to submit" }),
+          { status: 500, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } }
+        );
       }
     }
 
