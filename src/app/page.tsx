@@ -9,7 +9,7 @@ import {
   Bot, BarChart3, Globe, CheckCircle, ArrowRight,
   Star, Shield, Clock, TrendingUp, MessageSquare, Phone,
   Users, Building2, Sparkles, ChevronDown, Zap, XCircle,
-  AlertTriangle, BadgeCheck, Lock, Timer,
+  AlertTriangle, BadgeCheck, Lock, Timer, Calendar, LayoutDashboard, FileText,
 } from "lucide-react";
 
 function useCounter(target: number, duration = 1800, start = false) {
@@ -202,12 +202,12 @@ export default function HomePage() {
           </div>
 
           <h1 className="text-center text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-black text-white leading-[1.05] tracking-tight mb-6 max-w-5xl mx-auto">
-            AI systems that turn{" "}
-            <span className="gradient-text">visitors into booked clients</span>
+            Turn your website into a{" "}
+            <span className="gradient-text">24/7 client acquisition system.</span>
           </h1>
 
           <p className="text-center text-lg sm:text-xl text-[#94A3B8] max-w-2xl mx-auto mb-4 leading-relaxed">
-            Servolia builds AI websites, 24/7 receptionists, booking flows, and lead tracking systems for service businesses in Europe and the US.
+            Servolia builds AI websites, receptionists, booking flows, and lead tracking systems for dentists, clinics, real estate agents, and local service businesses in Europe and the US.
           </p>
           <p className="text-center text-base font-semibold text-white max-w-xl mx-auto mb-10">
             Fixed scope · Fixed price · Delivered in 7 days
@@ -263,6 +263,57 @@ export default function HomePage() {
                 {t.icon}<span>{t.text}</span>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── JOURNEY FLOW ── */}
+      <section className="py-16 lg:py-20 bg-white">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-10">
+            <p className="text-sm font-bold text-[#4F7EF7] uppercase tracking-widest mb-3">How the system works</p>
+            <h2 className="text-2xl sm:text-3xl font-black text-[#080E1C] mb-3">
+              Servolia connects your full client journey.
+            </h2>
+            <p className="text-[#64748B] max-w-xl mx-auto text-sm">
+              From first visit to booked appointment and monthly report — all automated, all in one system.
+            </p>
+          </div>
+
+          {/* Flow steps */}
+          <div className="relative">
+            {/* Connector line — desktop only */}
+            <div className="hidden lg:block absolute top-10 left-[8%] right-[8%] h-px bg-gradient-to-r from-transparent via-[#4F7EF7]/30 to-transparent pointer-events-none" />
+
+            <div className="grid grid-cols-2 lg:grid-cols-6 gap-4 lg:gap-2">
+              {[
+                { icon: <Users className="w-5 h-5" />, label: "Visitor", sub: "Lands on your site", color: "from-[#64748B] to-[#94A3B8]" },
+                { icon: <Globe className="w-5 h-5" />, label: "AI Website", sub: "Builds trust instantly", color: "from-[#4F7EF7] to-[#6366F1]" },
+                { icon: <Bot className="w-5 h-5" />, label: "AI Receptionist", sub: "Answers 24/7", color: "from-[#818CF8] to-[#A78BFA]" },
+                { icon: <Calendar className="w-5 h-5" />, label: "Booking Request", sub: "Captured automatically", color: "from-[#10B981] to-[#34D399]" },
+                { icon: <LayoutDashboard className="w-5 h-5" />, label: "CRM Dashboard", sub: "Lead tracked & managed", color: "from-[#F59E0B] to-[#EF4444]" },
+                { icon: <FileText className="w-5 h-5" />, label: "Monthly Report", sub: "ROI tracked & optimized", color: "from-[#06B6D4] to-[#4F7EF7]" },
+              ].map((step, i) => (
+                <div key={i} className="flex flex-col items-center text-center group">
+                  <div className={`relative w-20 h-20 rounded-2xl bg-gradient-to-br ${step.color} flex items-center justify-center text-white shadow-lg mb-3 group-hover:scale-105 transition-transform duration-200`}>
+                    {step.icon}
+                    {i < 5 && (
+                      <div className="hidden lg:flex absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 items-center justify-center z-10">
+                        <ArrowRight className="w-4 h-4 text-[#CBD5E1]" />
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-xs font-black text-[#080E1C] mb-0.5">{step.label}</p>
+                  <p className="text-[10px] text-[#94A3B8] leading-tight max-w-[90px]">{step.sub}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="text-center mt-10">
+            <Link href="/contact" className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-[#4F7EF7] to-[#818CF8] text-white font-bold text-sm hover:opacity-90 transition-opacity glow-button">
+              Get a system like this for your business <ArrowRight className="w-4 h-4" />
+            </Link>
           </div>
         </div>
       </section>
@@ -359,6 +410,88 @@ export default function HomePage() {
           <div className="mt-10 text-center">
             <Link href="/contact" className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl bg-[#080E1C] text-white font-bold hover:bg-[#111827] transition-colors">
               Start with the free audit <ArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* ── NICHES ── */}
+      <section id="niches" className="py-20 lg:py-28 bg-[#080E1C]">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <p className="text-sm font-bold text-[#4F7EF7] uppercase tracking-widest mb-3">Who we build for</p>
+            <h2 className="text-3xl sm:text-4xl font-black text-white mb-4">
+              Built for service businesses,<br className="hidden sm:block" /> not tech companies.
+            </h2>
+            <p className="text-[#94A3B8] max-w-xl mx-auto">
+              We specialize in industries where every missed call or slow website costs a real client.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            {[
+              {
+                emoji: "🦷",
+                title: "Dental Clinics",
+                pain: "Missed calls = missed appointments",
+                href: "/dentists",
+              },
+              {
+                emoji: "💉",
+                title: "Aesthetic Clinics",
+                pain: "Patients choosing competitors online",
+                href: "/niches/aesthetic-clinics",
+              },
+              {
+                emoji: "🏠",
+                title: "Real Estate Agents",
+                pain: "Leads go cold before follow-up",
+                href: "#",
+              },
+              {
+                emoji: "🔧",
+                title: "Home Services",
+                pain: "No 24/7 quote or booking system",
+                href: "#",
+              },
+              {
+                emoji: "⚖️",
+                title: "Lawyers & Notaries",
+                pain: "Consultations hard to book online",
+                href: "#",
+              },
+              {
+                emoji: "📊",
+                title: "Accountants & Advisors",
+                pain: "No professional digital presence",
+                href: "#",
+              },
+            ].map((n) => (
+              <Link
+                key={n.title}
+                href={n.href}
+                className={`group relative p-5 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 hover:border-[#4F7EF7]/40 transition-all duration-200 ${n.href === "#" ? "cursor-default" : ""}`}
+                onClick={n.href === "#" ? (e) => e.preventDefault() : undefined}
+              >
+                <div className="text-3xl mb-3">{n.emoji}</div>
+                <h3 className="text-sm font-black text-white mb-1">{n.title}</h3>
+                <p className="text-xs text-[#64748B] leading-relaxed">{n.pain}</p>
+                {n.href !== "#" && (
+                  <div className="mt-3 flex items-center gap-1 text-xs text-[#4F7EF7] font-semibold opacity-0 group-hover:opacity-100 transition-opacity">
+                    See how <ArrowRight className="w-3 h-3" />
+                  </div>
+                )}
+                {n.href === "#" && (
+                  <span className="mt-3 inline-block text-[10px] text-[#475569] font-medium">Coming soon</span>
+                )}
+              </Link>
+            ))}
+          </div>
+
+          <div className="text-center mt-10">
+            <p className="text-sm text-[#64748B]">Don&apos;t see your industry?</p>
+            <Link href="/contact" className="text-sm font-bold text-[#4F7EF7] hover:underline">
+              Talk to us — we likely cover it →
             </Link>
           </div>
         </div>
