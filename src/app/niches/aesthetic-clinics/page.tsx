@@ -1,4 +1,4 @@
-import Navbar from "@/components/Navbar";
+﻿import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import Link from "next/link";
 import { CheckCircle, ArrowRight, Bot, Calendar, BarChart3, Globe, Clock, Star, TrendingUp, XCircle } from "lucide-react";
@@ -113,14 +113,14 @@ export default function AestheticClinicsPage() {
       <main>
         {/* HERO */}
         <section className="pt-28 pb-16 lg:pt-36 lg:pb-24 bg-[#080E1C] relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-[#4F7EF7]/10 via-transparent to-[#818CF8]/5 pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-br from-[#95BF47]/10 via-transparent to-[#6BA52A]/5 pointer-events-none" />
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#4F7EF7]/10 border border-[#4F7EF7]/30 text-[#4F7EF7] text-xs font-bold uppercase tracking-widest mb-6">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#95BF47]/10 border border-[#95BF47]/30 text-[#95BF47] text-xs font-bold uppercase tracking-widest mb-6">
               Aesthetic Clinics
             </div>
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-white leading-[1.05] tracking-tight mb-6">
               Your clinic deserves clients who{" "}
-              <span className="bg-gradient-to-r from-[#4F7EF7] to-[#818CF8] bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-[#95BF47] to-[#6BA52A] bg-clip-text text-transparent">
                 book while you sleep.
               </span>
             </h1>
@@ -133,7 +133,7 @@ export default function AestheticClinicsPage() {
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link
                 href="/contact"
-                className="px-8 py-4 rounded-xl bg-gradient-to-r from-[#4F7EF7] to-[#818CF8] text-white font-bold text-base hover:opacity-90 transition-opacity shadow-lg shadow-blue-500/25"
+                className="px-8 py-4 rounded-xl bg-gradient-to-r from-[#95BF47] to-[#6BA52A] text-white font-bold text-base hover:opacity-90 transition-opacity shadow-lg shadow-[#6BA52A]/25"
               >
                 Get a Free Audit →
               </Link>
@@ -183,10 +183,10 @@ export default function AestheticClinicsPage() {
         </section>
 
         {/* WHAT&apos;S INCLUDED */}
-        <section className="py-20 lg:py-28 bg-[#F8FAFF]">
+        <section className="py-20 lg:py-28 bg-[#F5F5F5]">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-12">
-              <p className="text-sm font-bold text-[#4F7EF7] uppercase tracking-widest mb-3">What we build</p>
+              <p className="text-sm font-bold text-[#95BF47] uppercase tracking-widest mb-3">What we build</p>
               <h2 className="text-3xl sm:text-4xl font-black text-[#080E1C] mb-3">Every system includes:</h2>
             </div>
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
@@ -197,7 +197,7 @@ export default function AestheticClinicsPage() {
                 { icon: <BarChart3 className="w-6 h-6" />, title: "Lead Dashboard", body: "See every enquiry, its source, and its status. Monthly performance report included." },
               ].map((f, i) => (
                 <div key={i} className="p-5 rounded-2xl bg-white border border-[#E2E8F0] shadow-sm">
-                  <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#4F7EF7] to-[#818CF8] flex items-center justify-center text-white mb-4">
+                  <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#95BF47] to-[#6BA52A] flex items-center justify-center text-white mb-4">
                     {f.icon}
                   </div>
                   <h3 className="text-sm font-black text-[#080E1C] mb-2">{f.title}</h3>
@@ -212,7 +212,7 @@ export default function AestheticClinicsPage() {
         <section className="py-20 lg:py-28 bg-[#080E1C]">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-12">
-              <p className="text-sm font-bold text-[#4F7EF7] uppercase tracking-widest mb-3">Packages</p>
+              <p className="text-sm font-bold text-[#95BF47] uppercase tracking-widest mb-3">Packages</p>
               <h2 className="text-3xl sm:text-4xl font-black text-white mb-3">Choose your system</h2>
               <p className="text-[#94A3B8]">All prices are fixed. No hourly billing. No surprises.</p>
             </div>
@@ -222,12 +222,12 @@ export default function AestheticClinicsPage() {
                   key={pkg.name}
                   className={`p-6 rounded-2xl flex flex-col ${
                     pkg.highlighted
-                      ? "bg-gradient-to-b from-[#1E293B] to-[#0F172A] border-2 border-[#4F7EF7] shadow-lg shadow-blue-500/20"
+                      ? "bg-gradient-to-b from-[#1E293B] to-[#0F172A] border-2 border-[#95BF47] shadow-lg shadow-[#6BA52A]/20"
                       : "bg-white/5 border border-white/10"
                   }`}
                 >
                   {pkg.highlighted && (
-                    <div className="text-xs font-bold text-[#4F7EF7] uppercase tracking-widest mb-3">Most popular</div>
+                    <div className="text-xs font-bold text-[#95BF47] uppercase tracking-widest mb-3">Most popular</div>
                   )}
                   <h3 className="text-lg font-black text-white mb-1">{pkg.name}</h3>
                   <div className="text-3xl font-black text-white mb-2">{pkg.price}</div>
@@ -235,7 +235,7 @@ export default function AestheticClinicsPage() {
                   <ul className="space-y-2.5 mb-6 flex-1">
                     {pkg.features.map((f, i) => (
                       <li key={i} className="flex items-start gap-2 text-sm text-[#CBD5E1]">
-                        <CheckCircle className="w-4 h-4 mt-0.5 shrink-0 text-[#4F7EF7]" /> {f}
+                        <CheckCircle className="w-4 h-4 mt-0.5 shrink-0 text-[#95BF47]" /> {f}
                       </li>
                     ))}
                   </ul>
@@ -243,7 +243,7 @@ export default function AestheticClinicsPage() {
                     href="/contact"
                     className={`block text-center py-3 rounded-xl font-bold text-sm transition-opacity ${
                       pkg.highlighted
-                        ? "bg-gradient-to-r from-[#4F7EF7] to-[#818CF8] text-white hover:opacity-90"
+                        ? "bg-gradient-to-r from-[#95BF47] to-[#6BA52A] text-white hover:opacity-90"
                         : "border border-white/20 text-white hover:bg-white/10"
                     }`}
                   >
@@ -262,7 +262,7 @@ export default function AestheticClinicsPage() {
             <h2 className="text-2xl font-black text-[#080E1C] text-center mb-10">What clinic owners say</h2>
             <div className="grid md:grid-cols-2 gap-6">
               {testimonials.map((t, i) => (
-                <div key={i} className="p-6 rounded-2xl bg-[#F8FAFF] border border-[#E2E8F0]">
+                <div key={i} className="p-6 rounded-2xl bg-[#F5F5F5] border border-[#E2E8F0]">
                   <div className="flex gap-0.5 mb-3">
                     {Array.from({ length: t.rating }).map((_, j) => (
                       <Star key={j} className="w-4 h-4 text-amber-400 fill-amber-400" />
@@ -278,7 +278,7 @@ export default function AestheticClinicsPage() {
         </section>
 
         {/* FAQ */}
-        <section className="py-20 bg-[#F8FAFF]">
+        <section className="py-20 bg-[#F5F5F5]">
           <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
             <h2 className="text-2xl font-black text-[#080E1C] text-center mb-10">Common questions</h2>
             <div className="space-y-3">
@@ -303,7 +303,7 @@ export default function AestheticClinicsPage() {
             </p>
             <Link
               href="/contact"
-              className="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-gradient-to-r from-[#4F7EF7] to-[#818CF8] text-white font-bold text-base hover:opacity-90 transition-opacity shadow-lg shadow-blue-500/25"
+              className="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-gradient-to-r from-[#95BF47] to-[#6BA52A] text-white font-bold text-base hover:opacity-90 transition-opacity shadow-lg shadow-[#6BA52A]/25"
             >
               Get My Free Audit <ArrowRight className="w-5 h-5" />
             </Link>

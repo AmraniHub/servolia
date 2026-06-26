@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
@@ -33,7 +33,7 @@ export default function Navbar() {
         <div className="flex items-center justify-between h-16 lg:h-18">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 group">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#4F7EF7] to-[#818CF8] flex items-center justify-center shadow-lg shadow-blue-500/30 group-hover:shadow-blue-500/50 transition-shadow">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#95BF47] to-[#6BA52A] flex items-center justify-center shadow-lg shadow-[#6BA52A]/30 group-hover:shadow-[#6BA52A]/50 transition-shadow">
               <Zap className="w-4 h-4 text-white fill-white" />
             </div>
             <span className="text-xl font-black tracking-tight text-white">
@@ -64,7 +64,7 @@ export default function Navbar() {
             </Link>
             <Link
               href="/contact"
-              className="px-4 py-2 rounded-lg bg-gradient-to-r from-[#4F7EF7] to-[#818CF8] text-white text-sm font-bold hover:opacity-90 transition-opacity glow-button"
+              className="px-4 py-2 rounded-lg bg-gradient-to-r from-[#95BF47] to-[#6BA52A] text-white text-sm font-bold hover:opacity-90 transition-opacity glow-button"
             >
               Get Free Audit →
             </Link>
@@ -97,7 +97,7 @@ export default function Navbar() {
           <Link
             href="/contact"
             onClick={() => setOpen(false)}
-            className="mt-2 px-4 py-3 rounded-lg bg-gradient-to-r from-[#4F7EF7] to-[#818CF8] text-white text-sm font-bold text-center"
+            className="mt-2 px-4 py-3 rounded-lg bg-gradient-to-r from-[#95BF47] to-[#6BA52A] text-white text-sm font-bold text-center"
           >
             Get Free Audit →
           </Link>

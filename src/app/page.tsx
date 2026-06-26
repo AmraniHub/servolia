@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
@@ -55,7 +55,6 @@ function StatCard({ value, suffix, label, started }: { value: number; suffix: st
 export default function HomePage() {
   const { ref: statsRef, inView: statsInView } = useInView(0.4);
   const [faqOpen, setFaqOpen] = useState<number | null>(null);
-  const [spotsLeft] = useState(3);
 
   const faqs = [
     { q: "How fast do you really deliver?", a: "3–7 business days depending on the package. The clock starts when you submit your intake form and deposit clears. We've never missed a deadline — our CGV guarantees 10% refund per day late if we do." },
@@ -76,7 +75,7 @@ export default function HomePage() {
       delivery: "3 days",
       desc: "A professional website built to convert visitors into inquiries — mobile-first, GDPR-ready, live in 72 hours.",
       features: ["5–10 conversion-focused pages", "Booking & contact CTA", "Google Analytics 4", "GDPR pages included"],
-      color: "from-[#4F7EF7] to-[#6366F1]",
+      color: "from-[#95BF47] to-[#5A8A1E]",
       highlight: false,
     },
     {
@@ -88,7 +87,7 @@ export default function HomePage() {
       delivery: "5 days",
       desc: "AI receptionist + website + full tracking. Books appointments, captures leads, answers FAQs 24/7 in French or English.",
       features: ["Everything in Website System", "AI receptionist chatbot", "Lead capture + CRM sync", "Meta Pixel + GA4"],
-      color: "from-[#818CF8] to-[#A78BFA]",
+      color: "from-[#6BA52A] to-[#8FBF3A]",
       highlight: true,
     },
     {
@@ -180,22 +179,15 @@ export default function HomePage() {
     <main className="flex flex-col bg-white">
       <Navbar />
 
-      {/* ── SCARCITY BANNER ── */}
-      <div className="fixed top-0 left-0 right-0 z-[60] bg-gradient-to-r from-[#4F7EF7] to-[#818CF8] py-2 text-center text-white text-xs font-bold tracking-wide">
-        <Timer className="w-3.5 h-3.5 inline mr-1.5 mb-0.5" />
-        Only {spotsLeft} client spots available this month —{" "}
-        <Link href="/contact" className="underline underline-offset-2">claim yours free →</Link>
-      </div>
-
       {/* ── HERO ── */}
-      <section className="relative bg-[#080E1C] overflow-hidden pt-36 pb-28 lg:pt-44 lg:pb-36">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[500px] bg-[#4F7EF7]/12 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute top-32 left-1/4 w-[320px] h-[320px] bg-[#818CF8]/8 rounded-full blur-3xl pointer-events-none" />
+      <section className="relative bg-[#080E1C] overflow-hidden pt-28 pb-24 lg:pt-36 lg:pb-32">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[500px] bg-[#95BF47]/12 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute top-32 left-1/4 w-[320px] h-[320px] bg-[#6BA52A]/8 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute top-48 right-1/4 w-[260px] h-[260px] bg-[#10B981]/6 rounded-full blur-3xl pointer-events-none" />
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-center mb-8">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[#4F7EF7]/30 bg-[#4F7EF7]/10 text-sm text-[#93C5FD] font-semibold">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[#95BF47]/30 bg-[#95BF47]/10 text-sm text-[#93C5FD] font-semibold">
               <Sparkles className="w-3.5 h-3.5" />
               Trusted by 50+ service businesses in France, Belgium & the US
             </div>
@@ -215,7 +207,7 @@ export default function HomePage() {
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">
             <Link href="/contact"
-              className="px-8 py-4 rounded-xl bg-gradient-to-r from-[#4F7EF7] to-[#818CF8] text-white font-black text-base hover:opacity-90 transition-opacity glow-button shadow-2xl flex items-center gap-2">
+              className="px-8 py-4 rounded-xl bg-gradient-to-r from-[#95BF47] to-[#6BA52A] text-white font-black text-base hover:opacity-90 transition-opacity glow-button shadow-2xl flex items-center gap-2">
               Get Your Free Audit
               <ArrowRight className="w-4 h-4" />
             </Link>
@@ -254,8 +246,8 @@ export default function HomePage() {
             {[
               { icon: <Shield className="w-4 h-4 text-[#10B981]" />, text: "GDPR Compliant" },
               { icon: <div className="w-4 h-4 rounded bg-[#635bff] flex items-center justify-center"><span className="text-white text-[7px] font-black">S</span></div>, text: "Stripe Secured" },
-              { icon: <Clock className="w-4 h-4 text-[#4F7EF7]" />, text: "7-Day Delivery Guarantee" },
-              { icon: <Globe className="w-4 h-4 text-[#818CF8]" />, text: "French & English" },
+              { icon: <Clock className="w-4 h-4 text-[#95BF47]" />, text: "7-Day Delivery Guarantee" },
+              { icon: <Globe className="w-4 h-4 text-[#6BA52A]" />, text: "French & English" },
               { icon: <Lock className="w-4 h-4 text-[#10B981]" />, text: "Fixed Price — In Writing" },
               { icon: <Users className="w-4 h-4 text-yellow-500" />, text: "50+ Clients Served" },
             ].map((t,i)=>(
@@ -271,7 +263,7 @@ export default function HomePage() {
       <section className="py-16 lg:py-20 bg-white">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-10">
-            <p className="text-sm font-bold text-[#4F7EF7] uppercase tracking-widest mb-3">How the system works</p>
+            <p className="text-sm font-bold text-[#95BF47] uppercase tracking-widest mb-3">How the system works</p>
             <h2 className="text-2xl sm:text-3xl font-black text-[#080E1C] mb-3">
               Servolia connects your full client journey.
             </h2>
@@ -283,16 +275,16 @@ export default function HomePage() {
           {/* Flow steps */}
           <div className="relative">
             {/* Connector line — desktop only */}
-            <div className="hidden lg:block absolute top-10 left-[8%] right-[8%] h-px bg-gradient-to-r from-transparent via-[#4F7EF7]/30 to-transparent pointer-events-none" />
+            <div className="hidden lg:block absolute top-10 left-[8%] right-[8%] h-px bg-gradient-to-r from-transparent via-[#95BF47]/30 to-transparent pointer-events-none" />
 
             <div className="grid grid-cols-2 lg:grid-cols-6 gap-4 lg:gap-2">
               {[
                 { icon: <Users className="w-5 h-5" />, label: "Visitor", sub: "Lands on your site", color: "from-[#64748B] to-[#94A3B8]" },
-                { icon: <Globe className="w-5 h-5" />, label: "AI Website", sub: "Builds trust instantly", color: "from-[#4F7EF7] to-[#6366F1]" },
-                { icon: <Bot className="w-5 h-5" />, label: "AI Receptionist", sub: "Answers 24/7", color: "from-[#818CF8] to-[#A78BFA]" },
+                { icon: <Globe className="w-5 h-5" />, label: "AI Website", sub: "Builds trust instantly", color: "from-[#95BF47] to-[#5A8A1E]" },
+                { icon: <Bot className="w-5 h-5" />, label: "AI Receptionist", sub: "Answers 24/7", color: "from-[#6BA52A] to-[#8FBF3A]" },
                 { icon: <Calendar className="w-5 h-5" />, label: "Booking Request", sub: "Captured automatically", color: "from-[#10B981] to-[#34D399]" },
                 { icon: <LayoutDashboard className="w-5 h-5" />, label: "CRM Dashboard", sub: "Lead tracked & managed", color: "from-[#F59E0B] to-[#EF4444]" },
-                { icon: <FileText className="w-5 h-5" />, label: "Monthly Report", sub: "ROI tracked & optimized", color: "from-[#06B6D4] to-[#4F7EF7]" },
+                { icon: <FileText className="w-5 h-5" />, label: "Monthly Report", sub: "ROI tracked & optimized", color: "from-[#06B6D4] to-[#95BF47]" },
               ].map((step, i) => (
                 <div key={i} className="flex flex-col items-center text-center group">
                   <div className={`relative w-20 h-20 rounded-2xl bg-gradient-to-br ${step.color} flex items-center justify-center text-white shadow-lg mb-3 group-hover:scale-105 transition-transform duration-200`}>
@@ -311,7 +303,7 @@ export default function HomePage() {
           </div>
 
           <div className="text-center mt-10">
-            <Link href="/contact" className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-[#4F7EF7] to-[#818CF8] text-white font-bold text-sm hover:opacity-90 transition-opacity glow-button">
+            <Link href="/contact" className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-[#95BF47] to-[#6BA52A] text-white font-bold text-sm hover:opacity-90 transition-opacity glow-button">
               Get a system like this for your business <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
@@ -319,10 +311,10 @@ export default function HomePage() {
       </section>
 
       {/* ── PROBLEM / SOLUTION ── */}
-      <section className="py-20 lg:py-28 bg-[#F8FAFF]">
+      <section className="py-20 lg:py-28 bg-[#F5F5F5]">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <p className="text-sm font-bold text-[#4F7EF7] uppercase tracking-widest mb-3">The Reality</p>
+            <p className="text-sm font-bold text-[#95BF47] uppercase tracking-widest mb-3">The Reality</p>
             <h2 className="text-3xl sm:text-4xl font-black text-[#080E1C] mb-3">
               Most service businesses are{" "}
               <span style={{background:"linear-gradient(135deg,#EF4444,#F97316)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>
@@ -380,7 +372,7 @@ export default function HomePage() {
       <section id="how-it-works" className="py-20 lg:py-28 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-14">
-            <p className="text-sm font-bold text-[#4F7EF7] uppercase tracking-widest mb-3">The Process</p>
+            <p className="text-sm font-bold text-[#95BF47] uppercase tracking-widest mb-3">The Process</p>
             <h2 className="text-3xl sm:text-4xl font-black text-[#080E1C] mb-4">
               Audit → Build → Results.{" "}
               <span style={{background:"linear-gradient(135deg,#10B981,#34D399)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>
@@ -389,15 +381,15 @@ export default function HomePage() {
             </h2>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
-            <div className="hidden md:block absolute top-9 left-[calc(16.67%+1.5rem)] right-[calc(16.67%+1.5rem)] h-px bg-gradient-to-r from-[#4F7EF7]/20 via-[#818CF8]/40 to-[#4F7EF7]/20 pointer-events-none" />
+            <div className="hidden md:block absolute top-9 left-[calc(16.67%+1.5rem)] right-[calc(16.67%+1.5rem)] h-px bg-gradient-to-r from-[#95BF47]/20 via-[#6BA52A]/40 to-[#95BF47]/20 pointer-events-none" />
             {[
               { num:"01", icon:<MessageSquare className="w-5 h-5"/>, title:"Free Business Audit", desc:"Fill our 5-question form. We send a PDF audit within 24h showing exactly what's costing you clients and what to fix. No payment, no pitch call if you don't want one." },
               { num:"02", icon:<Zap className="w-5 h-5"/>, title:"We Build Everything", desc:"Fixed scope, fixed price, fixed deadline — in writing before you pay a cent. We build using our proven 22-step checklist and send you Loom walkthroughs at every milestone." },
               { num:"03", icon:<TrendingUp className="w-5 h-5"/>, title:"Clients Start Booking", desc:"System goes live. Your AI receptionist starts answering leads. You get a monthly report: leads captured, bookings made, traffic sources, conversion rate." },
             ].map((s,i)=>(
-              <div key={i} className="relative bg-white rounded-2xl p-7 border border-[#E2E8F0] shadow-sm hover:shadow-lg hover:border-[#4F7EF7]/25 transition-all duration-300">
+              <div key={i} className="relative bg-white rounded-2xl p-7 border border-[#E2E8F0] shadow-sm hover:shadow-lg hover:border-[#95BF47]/25 transition-all duration-300">
                 <div className="flex items-center gap-4 mb-5">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#4F7EF7] to-[#818CF8] flex items-center justify-center text-white shadow-lg shadow-blue-500/20 flex-shrink-0">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#95BF47] to-[#6BA52A] flex items-center justify-center text-white shadow-lg shadow-[#6BA52A]/20 flex-shrink-0">
                     {s.icon}
                   </div>
                   <span className="text-3xl font-black text-[#E2E8F0]">{s.num}</span>
@@ -419,7 +411,7 @@ export default function HomePage() {
       <section id="niches" className="py-20 lg:py-28 bg-[#080E1C]">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <p className="text-sm font-bold text-[#4F7EF7] uppercase tracking-widest mb-3">Who we build for</p>
+            <p className="text-sm font-bold text-[#95BF47] uppercase tracking-widest mb-3">Who we build for</p>
             <h2 className="text-3xl sm:text-4xl font-black text-white mb-4">
               Built for service businesses,<br className="hidden sm:block" /> not tech companies.
             </h2>
@@ -470,14 +462,14 @@ export default function HomePage() {
               <Link
                 key={n.title}
                 href={n.href}
-                className={`group relative p-5 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 hover:border-[#4F7EF7]/40 transition-all duration-200 ${n.href === "#" ? "cursor-default" : ""}`}
+                className={`group relative p-5 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 hover:border-[#95BF47]/40 transition-all duration-200 ${n.href === "#" ? "cursor-default" : ""}`}
                 onClick={n.href === "#" ? (e) => e.preventDefault() : undefined}
               >
                 <div className="text-3xl mb-3">{n.emoji}</div>
                 <h3 className="text-sm font-black text-white mb-1">{n.title}</h3>
                 <p className="text-xs text-[#64748B] leading-relaxed">{n.pain}</p>
                 {n.href !== "#" && (
-                  <div className="mt-3 flex items-center gap-1 text-xs text-[#4F7EF7] font-semibold opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="mt-3 flex items-center gap-1 text-xs text-[#95BF47] font-semibold opacity-0 group-hover:opacity-100 transition-opacity">
                     See how <ArrowRight className="w-3 h-3" />
                   </div>
                 )}
@@ -490,7 +482,7 @@ export default function HomePage() {
 
           <div className="text-center mt-10">
             <p className="text-sm text-[#64748B]">Don&apos;t see your industry?</p>
-            <Link href="/contact" className="text-sm font-bold text-[#4F7EF7] hover:underline">
+            <Link href="/contact" className="text-sm font-bold text-[#95BF47] hover:underline">
               Talk to us — we likely cover it →
             </Link>
           </div>
@@ -498,13 +490,13 @@ export default function HomePage() {
       </section>
 
       {/* ── SYSTEMS ── */}
-      <section id="services" className="py-20 lg:py-28 bg-[#F8FAFF]">
+      <section id="services" className="py-20 lg:py-28 bg-[#F5F5F5]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-14">
-            <p className="text-sm font-bold text-[#4F7EF7] uppercase tracking-widest mb-3">Our Systems</p>
+            <p className="text-sm font-bold text-[#95BF47] uppercase tracking-widest mb-3">Our Systems</p>
             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-[#080E1C] mb-4">
               Servolia doesn't sell websites.{" "}
-              <span style={{background:"linear-gradient(135deg,#4F7EF7,#818CF8)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>
+              <span style={{background:"linear-gradient(135deg,#95BF47,#6BA52A)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>
                 We sell AI client systems.
               </span>
             </h2>
@@ -515,8 +507,8 @@ export default function HomePage() {
             {systems.map((s,i)=>(
               <div key={i} className={`rounded-2xl p-6 lg:p-7 transition-all duration-300 group hover:shadow-xl ${
                 s.highlight
-                  ? "bg-gradient-to-br from-[#4F7EF7]/8 to-[#818CF8]/5 border-2 border-[#4F7EF7]/35"
-                  : "bg-white border border-[#E2E8F0] hover:border-[#4F7EF7]/25"
+                  ? "bg-gradient-to-br from-[#95BF47]/8 to-[#6BA52A]/5 border-2 border-[#95BF47]/35"
+                  : "bg-white border border-[#E2E8F0] hover:border-[#95BF47]/25"
               }`}>
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3">
@@ -526,17 +518,17 @@ export default function HomePage() {
                     <span className="text-xs font-black text-[#94A3B8] tracking-widest uppercase">{s.num}</span>
                   </div>
                   {s.highlight && (
-                    <span className="text-xs font-black text-[#4F7EF7] bg-[#4F7EF7]/10 px-2.5 py-1 rounded-full border border-[#4F7EF7]/20">
+                    <span className="text-xs font-black text-[#95BF47] bg-[#95BF47]/10 px-2.5 py-1 rounded-full border border-[#95BF47]/20">
                       MAIN OFFER
                     </span>
                   )}
                 </div>
                 <h3 className="text-lg font-black text-[#080E1C] mb-1">{s.title}</h3>
-                <p className="text-xs font-semibold text-[#818CF8] mb-3">{s.for}</p>
+                <p className="text-xs font-semibold text-[#6BA52A] mb-3">{s.for}</p>
                 <p className="text-[#64748B] text-sm leading-relaxed mb-4">{s.desc}</p>
                 <div className="flex flex-wrap gap-2 mb-5">
                   {s.features.map((f,j)=>(
-                    <span key={j} className="px-2.5 py-1 rounded-full bg-[#F8FAFF] border border-[#E2E8F0] text-[#4F7EF7] text-xs font-semibold">{f}</span>
+                    <span key={j} className="px-2.5 py-1 rounded-full bg-[#F5F5F5] border border-[#E2E8F0] text-[#95BF47] text-xs font-semibold">{f}</span>
                   ))}
                 </div>
                 <div className="flex items-center justify-between pt-4 border-t border-[#F1F5F9]">
@@ -544,7 +536,7 @@ export default function HomePage() {
                     <span className="text-xl font-black text-[#080E1C]">{s.price}</span>
                     <span className="text-xs text-[#94A3B8] ml-2">· {s.delivery} delivery</span>
                   </div>
-                  <Link href="/pricing" className="text-sm font-bold text-[#4F7EF7] flex items-center gap-1 group-hover:gap-2 transition-all">
+                  <Link href="/pricing" className="text-sm font-bold text-[#95BF47] flex items-center gap-1 group-hover:gap-2 transition-all">
                     See details <ArrowRight className="w-3.5 h-3.5" />
                   </Link>
                 </div>
@@ -558,10 +550,10 @@ export default function HomePage() {
       <section className="py-20 lg:py-28 bg-white">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-10">
-            <p className="text-sm font-bold text-[#4F7EF7] uppercase tracking-widest mb-3">AI Booking System — What You Actually Get</p>
+            <p className="text-sm font-bold text-[#95BF47] uppercase tracking-widest mb-3">AI Booking System — What You Actually Get</p>
             <h2 className="text-3xl sm:text-4xl font-black text-[#080E1C] mb-3">
               Everything included.{" "}
-              <span style={{background:"linear-gradient(135deg,#4F7EF7,#818CF8)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>
+              <span style={{background:"linear-gradient(135deg,#95BF47,#6BA52A)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>
                 One fixed price.
               </span>
             </h2>
@@ -585,7 +577,7 @@ export default function HomePage() {
               { item: "GDPR / Privacy / CGV pages", value: "€350" },
               { item: "Free business audit PDF", value: "€200" },
             ].map((v, i) => (
-              <div key={i} className={`flex items-center justify-between px-6 py-3.5 ${i % 2 === 0 ? "bg-white" : "bg-[#F8FAFF]"} border-b border-[#F1F5F9]`}>
+              <div key={i} className={`flex items-center justify-between px-6 py-3.5 ${i % 2 === 0 ? "bg-white" : "bg-[#F5F5F5]"} border-b border-[#F1F5F9]`}>
                 <div className="flex items-center gap-3">
                   <CheckCircle className="w-4 h-4 text-[#10B981] flex-shrink-0" />
                   <span className="text-sm font-medium text-[#374151]">{v.item}</span>
@@ -593,7 +585,7 @@ export default function HomePage() {
                 <span className="text-sm font-bold text-[#64748B] line-through">{v.value}</span>
               </div>
             ))}
-            <div className="px-6 py-5 bg-gradient-to-r from-[#4F7EF7]/5 to-[#818CF8]/5 flex items-center justify-between border-t-2 border-[#4F7EF7]/20">
+            <div className="px-6 py-5 bg-gradient-to-r from-[#95BF47]/5 to-[#6BA52A]/5 flex items-center justify-between border-t-2 border-[#95BF47]/20">
               <div>
                 <p className="text-[#64748B] text-sm mb-0.5">Total market value</p>
                 <p className="text-2xl font-black text-[#080E1C] line-through opacity-40">€6,650</p>
@@ -607,7 +599,7 @@ export default function HomePage() {
 
           <div className="mt-6 text-center">
             <Link href="/contact"
-              className="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-gradient-to-r from-[#4F7EF7] to-[#818CF8] text-white font-black text-base hover:opacity-90 glow-button">
+              className="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-gradient-to-r from-[#95BF47] to-[#6BA52A] text-white font-black text-base hover:opacity-90 glow-button">
               Claim This Package — Free Audit First <ArrowRight className="w-4 h-4" />
             </Link>
             <p className="text-[#94A3B8] text-xs mt-3">No payment until you approve the scope · Stripe secured · Cancel anytime</p>
@@ -633,15 +625,15 @@ export default function HomePage() {
       </section>
 
       {/* ── TESTIMONIALS ── */}
-      <section className="py-20 lg:py-28 bg-[#F8FAFF]">
+      <section className="py-20 lg:py-28 bg-[#F5F5F5]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-14">
-            <p className="text-sm font-bold text-[#4F7EF7] uppercase tracking-widest mb-3">Results</p>
+            <p className="text-sm font-bold text-[#95BF47] uppercase tracking-widest mb-3">Results</p>
             <h2 className="text-3xl sm:text-4xl font-black text-[#080E1C] mb-4">Real clients. Real numbers.</h2>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {testimonials.map((t,i)=>(
-              <div key={i} className="bg-white rounded-2xl p-6 border border-[#E2E8F0] shadow-sm hover:shadow-lg hover:border-[#4F7EF7]/20 transition-all duration-300">
+              <div key={i} className="bg-white rounded-2xl p-6 border border-[#E2E8F0] shadow-sm hover:shadow-lg hover:border-[#95BF47]/20 transition-all duration-300">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex gap-0.5">
                     {Array.from({length:t.stars}).map((_,j)=>(
@@ -719,10 +711,10 @@ export default function HomePage() {
       </section>
 
       {/* ── GUARANTEE ── */}
-      <section className="py-16 bg-[#F8FAFF]">
+      <section className="py-16 bg-[#F5F5F5]">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="rounded-2xl border-2 border-[#4F7EF7]/25 bg-white p-8 text-center shadow-sm">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#4F7EF7] to-[#818CF8] flex items-center justify-center mx-auto mb-5 shadow-lg shadow-blue-500/25">
+          <div className="rounded-2xl border-2 border-[#95BF47]/25 bg-white p-8 text-center shadow-sm">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#95BF47] to-[#6BA52A] flex items-center justify-center mx-auto mb-5 shadow-lg shadow-[#6BA52A]/25">
               <Shield className="w-8 h-8 text-white" />
             </div>
             <h2 className="text-2xl sm:text-3xl font-black text-[#080E1C] mb-3">
@@ -735,11 +727,11 @@ export default function HomePage() {
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {[
-                { icon: <Clock className="w-5 h-5 text-[#4F7EF7]" />, title: "7-day delivery", desc: "Committed in writing before you pay" },
+                { icon: <Clock className="w-5 h-5 text-[#95BF47]" />, title: "7-day delivery", desc: "Committed in writing before you pay" },
                 { icon: <BadgeCheck className="w-5 h-5 text-[#10B981]" />, title: "Fixed price", desc: "No scope creep. No surprise invoices." },
-                { icon: <Lock className="w-5 h-5 text-[#818CF8]" />, title: "Full ownership", desc: "All files transferred on final payment" },
+                { icon: <Lock className="w-5 h-5 text-[#6BA52A]" />, title: "Full ownership", desc: "All files transferred on final payment" },
               ].map((g,i)=>(
-                <div key={i} className="bg-[#F8FAFF] rounded-xl p-4 border border-[#E2E8F0] text-left">
+                <div key={i} className="bg-[#F5F5F5] rounded-xl p-4 border border-[#E2E8F0] text-left">
                   <div className="mb-2">{g.icon}</div>
                   <p className="font-bold text-[#080E1C] text-sm mb-0.5">{g.title}</p>
                   <p className="text-xs text-[#64748B]">{g.desc}</p>
@@ -754,7 +746,7 @@ export default function HomePage() {
       <section className="py-20 lg:py-28 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-14">
-            <p className="text-sm font-bold text-[#4F7EF7] uppercase tracking-widest mb-3">Pricing</p>
+            <p className="text-sm font-bold text-[#95BF47] uppercase tracking-widest mb-3">Pricing</p>
             <h2 className="text-3xl sm:text-4xl font-black text-[#080E1C] mb-4">
               Choose the system your business needs.
             </h2>
@@ -789,9 +781,9 @@ export default function HomePage() {
                 popular: false,
               },
             ].map((p,i)=>(
-              <div key={i} className={`bg-white rounded-2xl border-2 p-6 relative ${p.popular?"border-[#4F7EF7] shadow-2xl shadow-[#4F7EF7]/12":"border-[#E2E8F0]"}`}>
+              <div key={i} className={`bg-white rounded-2xl border-2 p-6 relative ${p.popular?"border-[#95BF47] shadow-2xl shadow-[#95BF47]/12":"border-[#E2E8F0]"}`}>
                 {p.popular && (
-                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-gradient-to-r from-[#4F7EF7] to-[#818CF8] text-white text-xs font-black whitespace-nowrap">
+                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-gradient-to-r from-[#95BF47] to-[#6BA52A] text-white text-xs font-black whitespace-nowrap">
                     MAIN OFFER
                   </div>
                 )}
@@ -811,8 +803,8 @@ export default function HomePage() {
                 </ul>
                 <Link href="/contact" className={`block text-center py-3 rounded-xl font-bold text-sm transition-all ${
                   p.popular
-                    ? "bg-gradient-to-r from-[#4F7EF7] to-[#818CF8] text-white hover:opacity-90 glow-button"
-                    : "border border-[#E2E8F0] text-[#080E1C] hover:border-[#4F7EF7] hover:text-[#4F7EF7]"
+                    ? "bg-gradient-to-r from-[#95BF47] to-[#6BA52A] text-white hover:opacity-90 glow-button"
+                    : "border border-[#E2E8F0] text-[#080E1C] hover:border-[#95BF47] hover:text-[#95BF47]"
                 }`}>
                   Get started →
                 </Link>
@@ -823,7 +815,7 @@ export default function HomePage() {
             <p className="text-[#94A3B8] text-sm">
               All prices exclude VAT · 50% deposit via Stripe · Balance on delivery · Retainers from €99/mo
             </p>
-            <Link href="/pricing" className="inline-flex items-center gap-1.5 text-[#4F7EF7] font-bold text-sm hover:underline mt-1">
+            <Link href="/pricing" className="inline-flex items-center gap-1.5 text-[#95BF47] font-bold text-sm hover:underline mt-1">
               Full pricing + app development <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
@@ -831,10 +823,10 @@ export default function HomePage() {
       </section>
 
       {/* ── FAQ ── */}
-      <section className="py-20 bg-[#F8FAFF]">
+      <section className="py-20 bg-[#F5F5F5]">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <p className="text-sm font-bold text-[#4F7EF7] uppercase tracking-widest mb-3">FAQ</p>
+            <p className="text-sm font-bold text-[#95BF47] uppercase tracking-widest mb-3">FAQ</p>
             <h2 className="text-3xl font-black text-[#080E1C]">Questions we hear a lot</h2>
           </div>
           <div className="flex flex-col gap-3">
@@ -855,12 +847,12 @@ export default function HomePage() {
 
       {/* ── FINAL CTA ── */}
       <section className="py-20 lg:py-28 bg-[#080E1C] relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-[#4F7EF7]/10 via-transparent to-[#818CF8]/10 pointer-events-none" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[350px] bg-[#4F7EF7]/8 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-br from-[#95BF47]/10 via-transparent to-[#6BA52A]/10 pointer-events-none" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[350px] bg-[#95BF47]/8 rounded-full blur-3xl pointer-events-none" />
         <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#EF4444]/30 bg-[#EF4444]/10 text-sm text-[#FCA5A5] mb-6">
-            <Timer className="w-3.5 h-3.5" />
-            <span className="font-semibold">Only {spotsLeft} spots left this month</span>
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#95BF47]/30 bg-[#95BF47]/10 text-sm text-[#95BF47] mb-6">
+            <BadgeCheck className="w-3.5 h-3.5" />
+            <span className="font-semibold">Delivered in 7 days · Fixed price · No surprises</span>
           </div>
           <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black text-white mb-5 leading-tight">
             Stop losing clients to businesses{" "}
@@ -873,7 +865,7 @@ export default function HomePage() {
             The free audit takes 5 minutes. The system takes 7 days. The results last for years.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
-            <Link href="/contact" className="px-9 py-4 rounded-xl bg-gradient-to-r from-[#4F7EF7] to-[#818CF8] text-white font-black text-lg hover:opacity-90 glow-button shadow-2xl flex items-center gap-2">
+            <Link href="/contact" className="px-9 py-4 rounded-xl bg-gradient-to-r from-[#95BF47] to-[#6BA52A] text-white font-black text-lg hover:opacity-90 glow-button shadow-2xl flex items-center gap-2">
               Get My Free Audit Now <ArrowRight className="w-5 h-5" />
             </Link>
             <a href="mailto:hello@servolia.com" className="flex items-center gap-2 text-[#94A3B8] hover:text-white text-sm font-semibold transition-colors">
@@ -883,8 +875,8 @@ export default function HomePage() {
           <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-[#475569]">
             <div className="flex items-center gap-1.5"><Shield className="w-3.5 h-3.5 text-[#10B981]" /> GDPR compliant</div>
             <div className="flex items-center gap-1.5"><div className="w-3.5 h-3.5 rounded bg-[#635bff] flex items-center justify-center"><span className="text-white text-[7px] font-black">S</span></div> Stripe secured</div>
-            <div className="flex items-center gap-1.5"><BadgeCheck className="w-3.5 h-3.5 text-[#4F7EF7]" /> Fixed price in writing</div>
-            <div className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-[#818CF8]" /> 7-day delivery or 10% back/day</div>
+            <div className="flex items-center gap-1.5"><BadgeCheck className="w-3.5 h-3.5 text-[#95BF47]" /> Fixed price in writing</div>
+            <div className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-[#6BA52A]" /> 7-day delivery or 10% back/day</div>
           </div>
         </div>
       </section>

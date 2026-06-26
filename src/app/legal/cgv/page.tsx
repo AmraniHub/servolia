@@ -1,4 +1,4 @@
-import Navbar from "@/components/Navbar";
+﻿import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import type { Metadata } from "next";
 
@@ -13,7 +13,7 @@ export default function CGVPage() {
       <Navbar />
       <section className="bg-[#080E1C] pt-28 pb-12">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-          <p className="text-sm font-bold text-[#4F7EF7] uppercase tracking-widest mb-3">Legal</p>
+          <p className="text-sm font-bold text-[#95BF47] uppercase tracking-widest mb-3">Legal</p>
           <h1 className="text-4xl font-black text-white">Terms & Conditions</h1>
           <p className="text-[#94A3B8] mt-2">Conditions Générales de Vente (CGV) — Last updated: June 2025</p>
         </div>
@@ -67,7 +67,7 @@ export default function CGVPage() {
             </div>
             <div>
               <h2 className="text-lg font-black text-[#080E1C] mb-3">12. Contact</h2>
-              <p>For questions about these terms: <a href="mailto:hello@servolia.com" className="text-[#4F7EF7]">hello@servolia.com</a></p>
+              <p>For questions about these terms: <a href="mailto:hello@servolia.com" className="text-[#95BF47]">hello@servolia.com</a></p>
             </div>
           </div>
         </div>

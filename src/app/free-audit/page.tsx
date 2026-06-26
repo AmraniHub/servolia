@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import Navbar from "@/components/Navbar";
@@ -106,7 +106,7 @@ export default function FreeAuditPage() {
             </div>
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white leading-tight mb-4">
               Get a free audit of your{" "}
-              <span className="bg-gradient-to-r from-[#4F7EF7] to-[#818CF8] bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-[#95BF47] to-[#6BA52A] bg-clip-text text-transparent">
                 online client acquisition
               </span>
             </h1>
@@ -114,15 +114,15 @@ export default function FreeAuditPage() {
               Tell us about your business. We&apos;ll audit your current website, booking flow, and online presence — then send you a personalised report with exactly what&apos;s costing you clients.
             </p>
             <div className="flex flex-wrap gap-4 justify-center text-sm text-[#64748B]">
-              <span className="flex items-center gap-1.5"><Clock className="w-4 h-4 text-[#4F7EF7]" /> Delivered in 24h</span>
-              <span className="flex items-center gap-1.5"><Shield className="w-4 h-4 text-[#4F7EF7]" /> No commitment</span>
-              <span className="flex items-center gap-1.5"><TrendingUp className="w-4 h-4 text-[#4F7EF7]" /> Actionable insights</span>
+              <span className="flex items-center gap-1.5"><Clock className="w-4 h-4 text-[#95BF47]" /> Delivered in 24h</span>
+              <span className="flex items-center gap-1.5"><Shield className="w-4 h-4 text-[#95BF47]" /> No commitment</span>
+              <span className="flex items-center gap-1.5"><TrendingUp className="w-4 h-4 text-[#95BF47]" /> Actionable insights</span>
             </div>
           </div>
         </section>
 
         {/* FORM */}
-        <section className="py-12 lg:py-16 bg-[#F8FAFF]">
+        <section className="py-12 lg:py-16 bg-[#F5F5F5]">
           <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
             <form onSubmit={handleSubmit} className="bg-white rounded-3xl border border-[#E2E8F0] shadow-sm p-8 space-y-6">
 
@@ -134,7 +134,7 @@ export default function FreeAuditPage() {
                   value={form.businessName}
                   onChange={(e) => setForm((f) => ({ ...f, businessName: e.target.value }))}
                   placeholder="Dr. Martin Dental Clinic"
-                  className="w-full px-4 py-3 rounded-xl border border-[#CBD5E1] text-sm text-[#080E1C] placeholder:text-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#4F7EF7] focus:border-transparent"
+                  className="w-full px-4 py-3 rounded-xl border border-[#CBD5E1] text-sm text-[#080E1C] placeholder:text-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#95BF47] focus:border-transparent"
                 />
               </div>
 
@@ -146,7 +146,7 @@ export default function FreeAuditPage() {
                   onChange={(e) => setForm((f) => ({ ...f, websiteUrl: e.target.value }))}
                   placeholder="https://yoursite.com"
                   type="url"
-                  className="w-full px-4 py-3 rounded-xl border border-[#CBD5E1] text-sm text-[#080E1C] placeholder:text-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#4F7EF7] focus:border-transparent"
+                  className="w-full px-4 py-3 rounded-xl border border-[#CBD5E1] text-sm text-[#080E1C] placeholder:text-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#95BF47] focus:border-transparent"
                 />
               </div>
 
@@ -158,7 +158,7 @@ export default function FreeAuditPage() {
                   value={form.country}
                   onChange={(e) => setForm((f) => ({ ...f, country: e.target.value }))}
                   placeholder="France, UK, Netherlands…"
-                  className="w-full px-4 py-3 rounded-xl border border-[#CBD5E1] text-sm text-[#080E1C] placeholder:text-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#4F7EF7] focus:border-transparent"
+                  className="w-full px-4 py-3 rounded-xl border border-[#CBD5E1] text-sm text-[#080E1C] placeholder:text-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#95BF47] focus:border-transparent"
                 />
               </div>
 
@@ -173,8 +173,8 @@ export default function FreeAuditPage() {
                       onClick={() => setForm((f) => ({ ...f, niche: n }))}
                       className={`px-3 py-2.5 rounded-xl border text-sm font-medium text-left transition-all ${
                         form.niche === n
-                          ? "border-[#4F7EF7] bg-[#EEF2FF] text-[#4F7EF7] font-bold"
-                          : "border-[#E2E8F0] text-[#64748B] hover:border-[#CBD5E1] hover:bg-[#F8FAFF]"
+                          ? "border-[#95BF47] bg-[#F0F7E0] text-[#95BF47] font-bold"
+                          : "border-[#E2E8F0] text-[#64748B] hover:border-[#CBD5E1] hover:bg-[#F5F5F5]"
                       }`}
                     >
                       {n}
@@ -195,8 +195,8 @@ export default function FreeAuditPage() {
                       onClick={() => toggleProblem(p)}
                       className={`px-3 py-2.5 rounded-xl border text-sm font-medium text-left transition-all flex items-center gap-2 ${
                         form.problems.includes(p)
-                          ? "border-[#4F7EF7] bg-[#EEF2FF] text-[#4F7EF7] font-bold"
-                          : "border-[#E2E8F0] text-[#64748B] hover:border-[#CBD5E1] hover:bg-[#F8FAFF]"
+                          ? "border-[#95BF47] bg-[#F0F7E0] text-[#95BF47] font-bold"
+                          : "border-[#E2E8F0] text-[#64748B] hover:border-[#CBD5E1] hover:bg-[#F5F5F5]"
                       }`}
                     >
                       {form.problems.includes(p) && <CheckCircle className="w-3.5 h-3.5 shrink-0" />}
@@ -217,8 +217,8 @@ export default function FreeAuditPage() {
                       onClick={() => setForm((f) => ({ ...f, clientValue: v }))}
                       className={`px-3 py-2 rounded-xl border text-sm font-medium transition-all ${
                         form.clientValue === v
-                          ? "border-[#4F7EF7] bg-[#EEF2FF] text-[#4F7EF7] font-bold"
-                          : "border-[#E2E8F0] text-[#64748B] hover:border-[#CBD5E1] hover:bg-[#F8FAFF]"
+                          ? "border-[#95BF47] bg-[#F0F7E0] text-[#95BF47] font-bold"
+                          : "border-[#E2E8F0] text-[#64748B] hover:border-[#CBD5E1] hover:bg-[#F5F5F5]"
                       }`}
                     >
                       {v}
@@ -236,7 +236,7 @@ export default function FreeAuditPage() {
                   value={form.email}
                   onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
                   placeholder="you@yourclinic.com"
-                  className="w-full px-4 py-3 rounded-xl border border-[#CBD5E1] text-sm text-[#080E1C] placeholder:text-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#4F7EF7] focus:border-transparent"
+                  className="w-full px-4 py-3 rounded-xl border border-[#CBD5E1] text-sm text-[#080E1C] placeholder:text-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#95BF47] focus:border-transparent"
                 />
               </div>
 
@@ -247,7 +247,7 @@ export default function FreeAuditPage() {
                   value={form.phone}
                   onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
                   placeholder="+33 6 12 34 56 78"
-                  className="w-full px-4 py-3 rounded-xl border border-[#CBD5E1] text-sm text-[#080E1C] placeholder:text-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#4F7EF7] focus:border-transparent"
+                  className="w-full px-4 py-3 rounded-xl border border-[#CBD5E1] text-sm text-[#080E1C] placeholder:text-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#95BF47] focus:border-transparent"
                 />
               </div>
 
@@ -262,8 +262,8 @@ export default function FreeAuditPage() {
                       onClick={() => setForm((f) => ({ ...f, language: lang }))}
                       className={`px-4 py-2 rounded-xl border text-sm font-medium transition-all ${
                         form.language === lang
-                          ? "border-[#4F7EF7] bg-[#EEF2FF] text-[#4F7EF7] font-bold"
-                          : "border-[#E2E8F0] text-[#64748B] hover:border-[#CBD5E1] hover:bg-[#F8FAFF]"
+                          ? "border-[#95BF47] bg-[#F0F7E0] text-[#95BF47] font-bold"
+                          : "border-[#E2E8F0] text-[#64748B] hover:border-[#CBD5E1] hover:bg-[#F5F5F5]"
                       }`}
                     >
                       {lang}
@@ -275,7 +275,7 @@ export default function FreeAuditPage() {
               <button
                 type="submit"
                 disabled={loading || !form.businessName || !form.email || !form.country || !form.niche || !form.clientValue}
-                className="w-full py-4 rounded-xl bg-gradient-to-r from-[#4F7EF7] to-[#818CF8] text-white font-bold text-base hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full py-4 rounded-xl bg-gradient-to-r from-[#95BF47] to-[#6BA52A] text-white font-bold text-base hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {loading ? "Sending…" : (<>Send my audit request <ArrowRight className="w-5 h-5" /></>)}
               </button>

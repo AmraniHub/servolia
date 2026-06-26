@@ -1,4 +1,4 @@
-@import "tailwindcss";
+﻿@import "tailwindcss";
 
 @theme inline {
   --color-background: var(--background);
@@ -6,17 +6,17 @@
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 
-  /* Servolia brand colors */
+  /* Servolia brand colors — Shopify green palette */
   --color-space: #080E1C;
-  --color-navy: #111827;
-  --color-navy-light: #1E293B;
-  --color-blue: #4F7EF7;
-  --color-indigo: #818CF8;
-  --color-violet: #A78BFA;
+  --color-navy: #111111;
+  --color-navy-light: #1A1A1A;
+  --color-green: #95BF47;
+  --color-green-dark: #6BA52A;
+  --color-green-mid: #8FBF3A;
   --color-emerald: #10B981;
-  --color-cloud: #F8FAFF;
+  --color-cloud: #F5F5F5;
   --color-muted: #94A3B8;
-  --color-border: #1E293B;
+  --color-border: #1A1A1A;
   --color-border-light: #E2E8F0;
 }
 
@@ -39,7 +39,7 @@ body {
 
 /* Gradient text utility */
 .gradient-text {
-  background: linear-gradient(135deg, #60A5FA 0%, #818CF8 50%, #A78BFA 100%);
+  background: linear-gradient(135deg, #95BF47 0%, #8FBF3A 50%, #6BA52A 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -54,11 +54,11 @@ body {
 
 /* Glow effects */
 .glow-blue {
-  box-shadow: 0 0 40px rgba(79, 126, 247, 0.15), 0 0 80px rgba(79, 126, 247, 0.08);
+  box-shadow: 0 0 40px rgba(149, 191, 71, 0.15), 0 0 80px rgba(149, 191, 71, 0.08);
 }
 
 .glow-button {
-  box-shadow: 0 0 20px rgba(79, 126, 247, 0.4);
+  box-shadow: 0 0 20px rgba(149, 191, 71, 0.4);
 }
 
 /* Glass card */

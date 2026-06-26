@@ -1,4 +1,4 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import { Zap, Mail, MapPin } from "lucide-react";
 
 const services = [
@@ -29,7 +29,7 @@ export default function Footer() {
           {/* Brand */}
           <div className="lg:col-span-1">
             <Link href="/" className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#4F7EF7] to-[#818CF8] flex items-center justify-center">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#95BF47] to-[#6BA52A] flex items-center justify-center">
                 <Zap className="w-4 h-4 text-white fill-white" />
               </div>
               <span className="text-xl font-black tracking-tight text-white">
@@ -104,11 +104,11 @@ export default function Footer() {
                 </li>
               ))}
             </ul>
-            <div className="p-3 rounded-xl border border-[#4F7EF7]/20 bg-[#4F7EF7]/5">
+            <div className="p-3 rounded-xl border border-[#95BF47]/20 bg-[#95BF47]/5">
               <p className="text-xs text-[#94A3B8] mb-2">Ready to get started?</p>
               <Link
                 href="/contact"
-                className="block text-center px-3 py-2 rounded-lg bg-gradient-to-r from-[#4F7EF7] to-[#818CF8] text-white text-xs font-bold hover:opacity-90 transition-opacity"
+                className="block text-center px-3 py-2 rounded-lg bg-gradient-to-r from-[#95BF47] to-[#6BA52A] text-white text-xs font-bold hover:opacity-90 transition-opacity"
               >
                 Get Free Audit →
               </Link>
