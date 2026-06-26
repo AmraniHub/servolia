@@ -191,7 +191,7 @@ export default function PricingPage() {
                 t.popular ? "border-[#95BF47] shadow-2xl shadow-[#95BF47]/12" : "border-[#E2E8F0]"
               }`}>
                 {t.popular && (
-                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-gradient-to-r from-[#95BF47] to-[#6BA52A] text-white text-xs font-black whitespace-nowrap">
+                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-gradient-to-r from-[#95BF47] to-[#6BA52A] text-[#0B1800] text-xs font-black whitespace-nowrap">
                     MAIN OFFER
                   </div>
                 )}
@@ -254,7 +254,7 @@ export default function PricingPage() {
                   label={`Pay ${t.deposit} deposit →`}
                   className={`w-full py-3.5 rounded-xl font-bold text-sm transition-all disabled:opacity-60 ${
                     t.popular
-                      ? "bg-gradient-to-r from-[#95BF47] to-[#6BA52A] text-white hover:opacity-90 shadow-lg shadow-blue-500/15"
+                      ? "bg-gradient-to-r from-[#95BF47] to-[#6BA52A] text-[#0B1800] hover:opacity-90 shadow-lg shadow-blue-500/15"
                       : "border-2 border-[#E2E8F0] text-[#080E1C] hover:border-[#95BF47] hover:text-[#95BF47]"
                   }`}
                 />
@@ -425,7 +425,7 @@ export default function PricingPage() {
           <p className="text-[#94A3B8] mb-6 leading-relaxed">
             Get a free audit first. We'll recommend the right system based on your business, budget, and goals — no pressure.
           </p>
-          <Link href="/contact" className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl bg-gradient-to-r from-[#95BF47] to-[#6BA52A] text-white font-bold hover:opacity-90 transition-opacity glow-button">
+          <Link href="/contact" className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl bg-gradient-to-r from-[#95BF47] to-[#6BA52A] text-[#0B1800] font-bold hover:opacity-90 transition-opacity glow-button">
             Get Free Audit <ArrowRight className="w-4 h-4" />
           </Link>
           <p className="text-[#475569] text-xs mt-4">5 questions · 24h response · No commitment</p>

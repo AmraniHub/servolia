@@ -63,8 +63,8 @@ export default function Navbar() {
               Contact
             </Link>
             <Link
-              href="/contact"
-              className="px-4 py-2 rounded-lg bg-gradient-to-r from-[#95BF47] to-[#6BA52A] text-white text-sm font-bold hover:opacity-90 transition-opacity glow-button"
+              href="/free-audit"
+              className="px-4 py-2 rounded-lg bg-gradient-to-r from-[#95BF47] to-[#6BA52A] text-[#0B1800] text-sm font-bold hover:opacity-90 transition-opacity glow-button"
             >
               Get Free Audit →
             </Link>
@@ -95,9 +95,9 @@ export default function Navbar() {
             </Link>
           ))}
           <Link
-            href="/contact"
+            href="/free-audit"
             onClick={() => setOpen(false)}
-            className="mt-2 px-4 py-3 rounded-lg bg-gradient-to-r from-[#95BF47] to-[#6BA52A] text-white text-sm font-bold text-center"
+            className="mt-2 px-4 py-3 rounded-lg bg-gradient-to-r from-[#95BF47] to-[#6BA52A] text-[#0B1800] text-sm font-bold text-center"
           >
             Get Free Audit →
           </Link>

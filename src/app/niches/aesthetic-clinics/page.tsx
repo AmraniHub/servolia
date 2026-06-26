@@ -133,7 +133,7 @@ export default function AestheticClinicsPage() {
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link
                 href="/contact"
-                className="px-8 py-4 rounded-xl bg-gradient-to-r from-[#95BF47] to-[#6BA52A] text-white font-bold text-base hover:opacity-90 transition-opacity shadow-lg shadow-[#6BA52A]/25"
+                className="px-8 py-4 rounded-xl bg-gradient-to-r from-[#95BF47] to-[#6BA52A] text-[#0B1800] font-bold text-base hover:opacity-90 transition-opacity shadow-lg shadow-[#6BA52A]/25"
               >
                 Get a Free Audit →
               </Link>
@@ -243,7 +243,7 @@ export default function AestheticClinicsPage() {
                     href="/contact"
                     className={`block text-center py-3 rounded-xl font-bold text-sm transition-opacity ${
                       pkg.highlighted
-                        ? "bg-gradient-to-r from-[#95BF47] to-[#6BA52A] text-white hover:opacity-90"
+                        ? "bg-gradient-to-r from-[#95BF47] to-[#6BA52A] text-[#0B1800] hover:opacity-90"
                         : "border border-white/20 text-white hover:bg-white/10"
                     }`}
                   >
@@ -303,7 +303,7 @@ export default function AestheticClinicsPage() {
             </p>
             <Link
               href="/contact"
-              className="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-gradient-to-r from-[#95BF47] to-[#6BA52A] text-white font-bold text-base hover:opacity-90 transition-opacity shadow-lg shadow-[#6BA52A]/25"
+              className="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-gradient-to-r from-[#95BF47] to-[#6BA52A] text-[#0B1800] font-bold text-base hover:opacity-90 transition-opacity shadow-lg shadow-[#6BA52A]/25"
             >
               Get My Free Audit <ArrowRight className="w-5 h-5" />
             </Link>

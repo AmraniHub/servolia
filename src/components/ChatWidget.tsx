@@ -160,7 +160,7 @@ export default function ChatWidget() {
                 )}
                 <div className={`max-w-[82%] px-3 py-2 rounded-xl text-sm leading-relaxed ${
                   m.role === "user"
-                    ? "bg-gradient-to-r from-[#95BF47] to-[#6BA52A] text-white rounded-br-sm"
+                    ? "bg-gradient-to-r from-[#95BF47] to-[#6BA52A] text-[#0B1800] rounded-br-sm"
                     : "bg-[#1E293B] text-[#E2E8F0] rounded-bl-sm border border-white/5"
                 }`}>
                   {m.content}

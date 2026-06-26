@@ -98,7 +98,7 @@ export default function DentistsPage() {
             We build a fast website, AI receptionist, booking flow, and lead tracking system for dental clinics — in 7 days. Fixed price. GDPR compliant.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-10">
-            <Link href="/contact?niche=dentist" className="px-7 py-3.5 rounded-xl bg-gradient-to-r from-[#95BF47] to-[#6BA52A] text-white font-bold text-base hover:opacity-90 glow-button flex items-center gap-2">
+            <Link href="/contact?niche=dentist" className="px-7 py-3.5 rounded-xl bg-gradient-to-r from-[#95BF47] to-[#6BA52A] text-[#0B1800] font-bold text-base hover:opacity-90 glow-button flex items-center gap-2">
               Get Free Clinic Audit <ArrowRight className="w-4 h-4" />
             </Link>
             <Link href="/pricing" className="text-[#94A3B8] hover:text-white text-sm font-semibold transition-colors">
@@ -195,7 +195,7 @@ export default function DentistsPage() {
             {packages.map((p, i) => (
               <div key={i} className={`bg-white rounded-2xl border-2 p-6 relative ${p.popular ? "border-[#95BF47] shadow-2xl shadow-[#95BF47]/15" : "border-[#E2E8F0]"}`}>
                 {p.popular && (
-                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-gradient-to-r from-[#95BF47] to-[#6BA52A] text-white text-xs font-black whitespace-nowrap">
+                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-gradient-to-r from-[#95BF47] to-[#6BA52A] text-[#0B1800] text-xs font-black whitespace-nowrap">
                     RECOMMENDED
                   </div>
                 )}
@@ -215,7 +215,7 @@ export default function DentistsPage() {
                 <Link href={`/contact?niche=dentist&plan=${p.name}`}
                   className={`block text-center py-3 rounded-xl font-bold text-sm transition-all ${
                     p.popular
-                      ? "bg-gradient-to-r from-[#95BF47] to-[#6BA52A] text-white hover:opacity-90 glow-button"
+                      ? "bg-gradient-to-r from-[#95BF47] to-[#6BA52A] text-[#0B1800] hover:opacity-90 glow-button"
                       : "border border-[#E2E8F0] text-[#080E1C] hover:border-[#95BF47] hover:text-[#95BF47]"
                   }`}>
                   {p.cta} →
@@ -234,7 +234,7 @@ export default function DentistsPage() {
           </h2>
           <p className="text-[#94A3B8] mb-6">Get a free clinic audit. We'll show you exactly what's missing and how to fix it in 7 days.</p>
           <Link href="/contact?niche=dentist"
-            className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl bg-gradient-to-r from-[#95BF47] to-[#6BA52A] text-white font-bold hover:opacity-90 glow-button">
+            className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl bg-gradient-to-r from-[#95BF47] to-[#6BA52A] text-[#0B1800] font-bold hover:opacity-90 glow-button">
             Get My Free Clinic Audit <ArrowRight className="w-4 h-4" />
           </Link>
         </div>

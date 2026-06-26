@@ -5,19 +5,29 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Mail, Clock, Shield, CheckCircle, ArrowRight, Zap } from "lucide-react";
 
-const plans = ["Not sure yet — audit first", "Starter (€690)", "Growth (€1,490)", "Pro (€2,900)", "Custom / Add-on"];
+const plans = ["Not sure yet — audit first", "Website System (€790)", "Booking System (€1,490)", "Client System (€2,900)", "Custom / Add-on"];
 const industries = ["Dental Clinic", "Aesthetic / Med Spa", "Real Estate", "Home Services (HVAC, Roofing…)", "Restaurant / Food", "Legal / Accounting", "Other"];
 
 export default function ContactPage() {
   const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ name: "", email: "", business: "", industry: "", plan: "", website: "", problem: "" });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
+    try {
+      await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...form, type: "contact" }),
+      });
+    } catch {}
+    setLoading(false);
     setSubmitted(true);
   };
 
@@ -164,9 +174,9 @@ export default function ContactPage() {
                       placeholder="e.g. We have no online booking system, clients can't find us on Google, our website looks outdated..." />
                   </div>
 
-                  <button type="submit"
-                    className="w-full py-4 rounded-xl bg-gradient-to-r from-[#95BF47] to-[#6BA52A] text-white font-black text-base hover:opacity-90 transition-opacity glow-button flex items-center justify-center gap-2">
-                    Send My Free Audit Request <ArrowRight className="w-4 h-4" />
+                  <button type="submit" disabled={loading}
+                    className="w-full py-4 rounded-xl bg-gradient-to-r from-[#95BF47] to-[#6BA52A] text-[#0B1800] font-black text-base hover:opacity-90 transition-opacity glow-button flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed">
+                    {loading ? "Sending…" : (<>Send My Free Audit Request <ArrowRight className="w-4 h-4" /></>)}
                   </button>
 
                   <p className="text-center text-xs text-[#94A3B8] mt-3">

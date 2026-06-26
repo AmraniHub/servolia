@@ -9,7 +9,7 @@ import {
   Bot, BarChart3, Globe, CheckCircle, ArrowRight,
   Star, Shield, Clock, TrendingUp, MessageSquare, Phone,
   Users, Building2, Sparkles, ChevronDown, Zap, XCircle,
-  AlertTriangle, BadgeCheck, Lock, Timer, Calendar, LayoutDashboard, FileText,
+  AlertTriangle, BadgeCheck, Lock, Calendar, LayoutDashboard, FileText,
 } from "lucide-react";
 
 function useCounter(target: number, duration = 1800, start = false) {
@@ -187,7 +187,7 @@ export default function HomePage() {
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-center mb-8">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[#95BF47]/30 bg-[#95BF47]/10 text-sm text-[#93C5FD] font-semibold">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[#95BF47]/30 bg-[#95BF47]/10 text-sm text-[#95BF47] font-semibold">
               <Sparkles className="w-3.5 h-3.5" />
               Trusted by 50+ service businesses in France, Belgium & the US
             </div>
@@ -207,7 +207,7 @@ export default function HomePage() {
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">
             <Link href="/contact"
-              className="px-8 py-4 rounded-xl bg-gradient-to-r from-[#95BF47] to-[#6BA52A] text-white font-black text-base hover:opacity-90 transition-opacity glow-button shadow-2xl flex items-center gap-2">
+              className="px-8 py-4 rounded-xl bg-gradient-to-r from-[#95BF47] to-[#6BA52A] text-[#0B1800] font-black text-base hover:opacity-90 transition-opacity glow-button shadow-2xl flex items-center gap-2">
               Get Your Free Audit
               <ArrowRight className="w-4 h-4" />
             </Link>
@@ -303,7 +303,7 @@ export default function HomePage() {
           </div>
 
           <div className="text-center mt-10">
-            <Link href="/contact" className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-[#95BF47] to-[#6BA52A] text-white font-bold text-sm hover:opacity-90 transition-opacity glow-button">
+            <Link href="/contact" className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-[#95BF47] to-[#6BA52A] text-[#0B1800] font-bold text-sm hover:opacity-90 transition-opacity glow-button">
               Get a system like this for your business <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
@@ -599,7 +599,7 @@ export default function HomePage() {
 
           <div className="mt-6 text-center">
             <Link href="/contact"
-              className="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-gradient-to-r from-[#95BF47] to-[#6BA52A] text-white font-black text-base hover:opacity-90 glow-button">
+              className="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-gradient-to-r from-[#95BF47] to-[#6BA52A] text-[#0B1800] font-black text-base hover:opacity-90 glow-button">
               Claim This Package — Free Audit First <ArrowRight className="w-4 h-4" />
             </Link>
             <p className="text-[#94A3B8] text-xs mt-3">No payment until you approve the scope · Stripe secured · Cancel anytime</p>
@@ -783,7 +783,7 @@ export default function HomePage() {
             ].map((p,i)=>(
               <div key={i} className={`bg-white rounded-2xl border-2 p-6 relative ${p.popular?"border-[#95BF47] shadow-2xl shadow-[#95BF47]/12":"border-[#E2E8F0]"}`}>
                 {p.popular && (
-                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-gradient-to-r from-[#95BF47] to-[#6BA52A] text-white text-xs font-black whitespace-nowrap">
+                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-gradient-to-r from-[#95BF47] to-[#6BA52A] text-[#0B1800] text-xs font-black whitespace-nowrap">
                     MAIN OFFER
                   </div>
                 )}
@@ -803,7 +803,7 @@ export default function HomePage() {
                 </ul>
                 <Link href="/contact" className={`block text-center py-3 rounded-xl font-bold text-sm transition-all ${
                   p.popular
-                    ? "bg-gradient-to-r from-[#95BF47] to-[#6BA52A] text-white hover:opacity-90 glow-button"
+                    ? "bg-gradient-to-r from-[#95BF47] to-[#6BA52A] text-[#0B1800] hover:opacity-90 glow-button"
                     : "border border-[#E2E8F0] text-[#080E1C] hover:border-[#95BF47] hover:text-[#95BF47]"
                 }`}>
                   Get started →
@@ -865,7 +865,7 @@ export default function HomePage() {
             The free audit takes 5 minutes. The system takes 7 days. The results last for years.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
-            <Link href="/contact" className="px-9 py-4 rounded-xl bg-gradient-to-r from-[#95BF47] to-[#6BA52A] text-white font-black text-lg hover:opacity-90 glow-button shadow-2xl flex items-center gap-2">
+            <Link href="/contact" className="px-9 py-4 rounded-xl bg-gradient-to-r from-[#95BF47] to-[#6BA52A] text-[#0B1800] font-black text-lg hover:opacity-90 glow-button shadow-2xl flex items-center gap-2">
               Get My Free Audit Now <ArrowRight className="w-5 h-5" />
             </Link>
             <a href="mailto:hello@servolia.com" className="flex items-center gap-2 text-[#94A3B8] hover:text-white text-sm font-semibold transition-colors">

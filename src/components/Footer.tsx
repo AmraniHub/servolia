@@ -10,9 +10,9 @@ const services = [
 
 const niches = [
   { label: "Dental Clinics", href: "/dentists" },
-  { label: "Aesthetic Clinics", href: "/clinics" },
-  { label: "Real Estate", href: "/real-estate" },
-  { label: "Home Services", href: "/home-services" },
+  { label: "Aesthetic Clinics", href: "/niches/aesthetic-clinics" },
+  { label: "Real Estate", href: "/#niches" },
+  { label: "Home Services", href: "/#niches" },
 ];
 
 const legal = [
@@ -107,8 +107,8 @@ export default function Footer() {
             <div className="p-3 rounded-xl border border-[#95BF47]/20 bg-[#95BF47]/5">
               <p className="text-xs text-[#94A3B8] mb-2">Ready to get started?</p>
               <Link
-                href="/contact"
-                className="block text-center px-3 py-2 rounded-lg bg-gradient-to-r from-[#95BF47] to-[#6BA52A] text-white text-xs font-bold hover:opacity-90 transition-opacity"
+                href="/free-audit"
+                className="block text-center px-3 py-2 rounded-lg bg-gradient-to-r from-[#95BF47] to-[#6BA52A] text-[#0B1800] text-xs font-bold hover:opacity-90 transition-opacity"
               >
                 Get Free Audit →
               </Link>
