@@ -1,0 +1,15 @@
+name: Generate LinkedIn post
+
+on:
+  schedule:
+    - cron: "0 7 * * 1,3,5" # Mon/Wed/Fri 07:00 UTC
+  workflow_dispatch: {}
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger LinkedIn generation
+        run: |
+          curl -sf -X POST "https://servolia.com/api/cron/generate-linkedin" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"

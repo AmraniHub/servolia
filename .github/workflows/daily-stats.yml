@@ -1,0 +1,15 @@
+name: Daily traffic stats
+
+on:
+  schedule:
+    - cron: "15 7 * * *" # every day 07:15 UTC
+  workflow_dispatch: {}
+
+jobs:
+  stats:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger daily stats
+        run: |
+          curl -sf -X POST "https://servolia.com/api/cron/daily-stats" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"

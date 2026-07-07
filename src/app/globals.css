@@ -1,4 +1,4 @@
-﻿@import "tailwindcss";
+@import "tailwindcss";
 
 @theme inline {
   --color-background: var(--background);
@@ -6,23 +6,52 @@
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 
-  /* Servolia brand colors — Shopify green palette */
-  --color-space: #080E1C;
-  --color-navy: #111111;
-  --color-navy-light: #1A1A1A;
-  --color-green: #95BF47;
-  --color-green-dark: #6BA52A;
-  --color-green-mid: #8FBF3A;
-  --color-emerald: #10B981;
-  --color-cloud: #F5F5F5;
-  --color-muted: #94A3B8;
-  --color-border: #1A1A1A;
-  --color-border-light: #E2E8F0;
+  /* === SERVOLIA v2 — Premium Light Design System === */
+  /* Inspired by Anthropic, Linear, Stripe — warm, premium, conversion-focused */
+
+  /* Surfaces */
+  --color-cream: #FAFAF7;        /* main background, warm cream */
+  --color-surface: #FFFFFF;      /* cards, surface */
+  --color-raised: #F5F4EF;       /* hover, subtle sections */
+  --color-elevated: #F0EFEA;     /* dropdowns, popovers */
+
+  /* Text */
+  --color-ink: #18181B;          /* primary text, near-black */
+  --color-ink-2: #3F3F46;        /* secondary text */
+  --color-slate: #52525B;        /* body text */
+  --color-muted: #71717A;        /* muted/labels */
+  --color-faint: #A1A1AA;        /* placeholders */
+
+  /* Borders */
+  --color-line: #E8E6E0;         /* default border */
+  --color-line-strong: #D4D2CC;  /* divider, strong border */
+
+  /* Brand — Deep Forest (premium, trustworthy) */
+  --color-forest: #36671E;       /* primary action */
+  --color-forest-hover: #295115; /* hover state */
+  --color-forest-dark: #143424;  /* pressed */
+  --color-forest-light: #EEF5EA; /* very light tint backgrounds */
+  --color-forest-soft: #D6E2CF;  /* soft tint */
+
+  /* Brand — Sage (bright accent for highlights, badges) */
+  --color-sage: #0CA6E9;
+  --color-sage-dark: #6B8439;
+  --color-sage-light: #F0F5E6;
+
+  /* Status */
+  --color-success: #059669;
+  --color-success-light: #D1FAE5;
+  --color-warning: #D97706;
+  --color-warning-light: #FEF3C7;
+  --color-danger: #DC2626;
+  --color-danger-light: #FEE2E2;
+  --color-info: #2563EB;
+  --color-info-light: #DBEAFE;
 }
 
 :root {
-  --background: #ffffff;
-  --foreground: #080E1C;
+  --background: #FAFAF7;
+  --foreground: #18181B;
 }
 
 * {
@@ -35,76 +64,118 @@ body {
   font-family: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "ss01", "cv01", "cv02", "cv03";
 }
 
-/* Gradient text utility */
+/* === Premium gradient text === */
 .gradient-text {
-  background: linear-gradient(135deg, #95BF47 0%, #8FBF3A 50%, #6BA52A 100%);
+  background: linear-gradient(135deg, #36671E 0%, #295115 50%, #0CA6E9 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
-.gradient-text-green {
-  background: linear-gradient(135deg, #10B981 0%, #34D399 100%);
+.gradient-text-sage {
+  background: linear-gradient(135deg, #0CA6E9 0%, #6B8439 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
-/* Glow effects */
-.glow-blue {
-  box-shadow: 0 0 40px rgba(149, 191, 71, 0.15), 0 0 80px rgba(149, 191, 71, 0.08);
+/* === Refined shadows (warm, premium feel) === */
+.shadow-soft {
+  box-shadow: 0 1px 2px rgba(24, 24, 27, 0.04), 0 1px 3px rgba(24, 24, 27, 0.06);
 }
 
-.glow-button {
-  box-shadow: 0 0 20px rgba(149, 191, 71, 0.4);
+.shadow-card {
+  box-shadow: 0 1px 3px rgba(24, 24, 27, 0.04), 0 4px 12px rgba(24, 24, 27, 0.06);
 }
 
-/* Glass card */
+.shadow-elevated {
+  box-shadow: 0 4px 12px rgba(24, 24, 27, 0.08), 0 12px 32px rgba(24, 24, 27, 0.10);
+}
+
+.shadow-glow {
+  box-shadow: 0 0 0 1px rgba(31, 77, 46, 0.08), 0 8px 24px rgba(31, 77, 46, 0.12);
+}
+
+/* === Premium button styles === */
+.btn-primary {
+  background: #36671E;
+  color: #FAFAF7;
+  font-weight: 600;
+  transition: all 0.15s ease;
+}
+.btn-primary:hover {
+  background: #295115;
+  box-shadow: 0 4px 12px rgba(31, 77, 46, 0.15);
+}
+
+.btn-secondary {
+  background: #FFFFFF;
+  color: #18181B;
+  border: 1px solid #D4D2CC;
+  font-weight: 600;
+  transition: all 0.15s ease;
+}
+.btn-secondary:hover {
+  background: #F5F4EF;
+  border-color: #18181B;
+}
+
+/* === Subtle grain texture for hero sections === */
+.grain {
+  position: relative;
+}
+.grain::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.4'/%3E%3C/svg%3E");
+  opacity: 0.06;
+  mix-blend-mode: multiply;
+}
+
+/* === Glass card (light variant) === */
 .glass {
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(255, 255, 255, 0.7);
   backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid #E8E6E0;
 }
 
-/* Noise texture overlay for hero */
-.noise {
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
-}
-
-/* Animated gradient border */
-@keyframes border-glow {
-  0%, 100% { opacity: 0.5; }
-  50% { opacity: 1; }
-}
-
-.animate-border-glow {
-  animation: border-glow 3s ease-in-out infinite;
-}
-
-/* Fade in up animation */
+/* === Animations === */
 @keyframes fadeInUp {
   from { opacity: 0; transform: translateY(24px); }
   to { opacity: 1; transform: translateY(0); }
 }
+.animate-fade-in-up { animation: fadeInUp 0.6s ease-out forwards; }
 
-.animate-fade-in-up {
-  animation: fadeInUp 0.6s ease-out forwards;
-}
-
-/* Pulse dot */
 @keyframes pulse-dot {
   0%, 100% { opacity: 1; transform: scale(1); }
   50% { opacity: 0.7; transform: scale(1.3); }
 }
+.animate-pulse-dot { animation: pulse-dot 2s ease-in-out infinite; }
 
-.animate-pulse-dot {
-  animation: pulse-dot 2s ease-in-out infinite;
+@keyframes border-glow {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
 }
+.animate-border-glow { animation: border-glow 3s ease-in-out infinite; }
 
-/* Chat typing animation */
 @keyframes typing {
   0%, 60%, 100% { opacity: 0; }
   30% { opacity: 1; }
 }
+
+/* === Selection === */
+::selection {
+  background: #36671E;
+  color: #FAFAF7;
+}
+
+/* === Scrollbar (subtle, premium) === */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #D4D2CC; border-radius: 8px; border: 2px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background: #A1A1AA; background-clip: padding-box; border: 2px solid transparent; }

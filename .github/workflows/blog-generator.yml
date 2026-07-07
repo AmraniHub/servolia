@@ -1,0 +1,15 @@
+name: Generate blog post
+
+on:
+  schedule:
+    - cron: "0 8 * * 1,3,5" # Mon/Wed/Fri 08:00 UTC
+  workflow_dispatch: {}      # manual "Run workflow" button in GitHub
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger blog generation
+        run: |
+          curl -sf -X POST "https://servolia.com/api/cron/generate-blog" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"

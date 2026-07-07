@@ -1,7 +1,7 @@
-﻿import Navbar from "@/components/Navbar";
+import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import Link from "next/link";
-import { CheckCircle, ArrowRight, Bot, Calendar, BarChart3, Globe, Clock, Star, TrendingUp } from "lucide-react";
+import { CheckCircle, ArrowRight, Bot, Calendar, BarChart3, Globe, Clock, Lock, TrendingUp } from "lucide-react";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -29,7 +29,7 @@ export default function DentistsPage() {
   const packages = [
     {
       name: "Starter Clinic",
-      price: "€790",
+      price: "€490",
       delivery: "3 days",
       features: [
         "5-page dental website",
@@ -44,7 +44,7 @@ export default function DentistsPage() {
     },
     {
       name: "AI Clinic System",
-      price: "€1,590",
+      price: "€990",
       delivery: "5 days",
       features: [
         "10-page website",
@@ -61,7 +61,7 @@ export default function DentistsPage() {
     },
     {
       name: "Full Clinic Pro",
-      price: "€2,990",
+      price: "€1,900",
       delivery: "7 days",
       features: [
         "Everything in AI System",
@@ -82,46 +82,46 @@ export default function DentistsPage() {
       <Navbar />
 
       {/* Hero */}
-      <section className="bg-[#080E1C] pt-28 pb-16 relative overflow-hidden">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-[#95BF47]/10 rounded-full blur-3xl pointer-events-none" />
+      <section className="bg-[#FAFAF7] pt-28 pb-16 relative overflow-hidden">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-[#EEF5EA] rounded-full blur-3xl pointer-events-none" />
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 relative">
           <div className="flex justify-center mb-5">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#95BF47]/30 bg-[#95BF47]/10 text-sm text-[#93C5FD]">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#36671E]/30 bg-[#EEF5EA] text-sm text-[#36671E]">
               🦷 <span className="font-semibold">Built specifically for dental clinics</span>
             </div>
           </div>
-          <h1 className="text-center text-4xl sm:text-5xl lg:text-6xl font-black text-white leading-tight mb-5">
+          <h1 className="text-center text-4xl sm:text-5xl lg:text-6xl font-black text-[#18181B] leading-tight mb-5">
             Turn your dental website into a{" "}
             <span className="gradient-text">24/7 booking assistant</span>
           </h1>
-          <p className="text-center text-lg text-[#94A3B8] max-w-2xl mx-auto mb-8">
+          <p className="text-center text-lg text-[#52525B] max-w-2xl mx-auto mb-8">
             We build a fast website, AI receptionist, booking flow, and lead tracking system for dental clinics — in 7 days. Fixed price. GDPR compliant.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-10">
-            <Link href="/contact?niche=dentist" className="px-7 py-3.5 rounded-xl bg-gradient-to-r from-[#95BF47] to-[#6BA52A] text-[#0B1800] font-bold text-base hover:opacity-90 glow-button flex items-center gap-2">
+            <Link href="/contact?niche=dentist" className="px-7 py-3.5 rounded-xl bg-gradient-to-r from-[#36671E] to-[#295115] text-[#FAFAF7] font-bold text-base hover:opacity-90 glow-button flex items-center gap-2">
               Get Free Clinic Audit <ArrowRight className="w-4 h-4" />
             </Link>
-            <Link href="/pricing" className="text-[#94A3B8] hover:text-white text-sm font-semibold transition-colors">
+            <Link href="/pricing" className="text-[#52525B] hover:text-[#18181B] text-sm font-semibold transition-colors">
               View pricing →
             </Link>
           </div>
-          <div className="flex flex-wrap justify-center gap-6 text-sm text-[#94A3B8]">
-            <div className="flex items-center gap-1.5"><TrendingUp className="w-3.5 h-3.5 text-[#10B981]" /> Avg. +12 bookings/month</div>
-            <div className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-[#95BF47]" /> 7-day delivery</div>
-            <div className="flex items-center gap-1.5"><Star className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" /> 5.0 rating</div>
+          <div className="flex flex-wrap justify-center gap-6 text-sm text-[#52525B]">
+            <div className="flex items-center gap-1.5"><TrendingUp className="w-3.5 h-3.5 text-[#10B981]" /> Built for more bookings</div>
+            <div className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-[#36671E]" /> 7-day delivery</div>
+            <div className="flex items-center gap-1.5"><Lock className="w-3.5 h-3.5 text-[#36671E]" /> Fixed price in writing</div>
           </div>
         </div>
       </section>
 
       {/* Pain / Gain */}
-      <section className="py-16 lg:py-20 bg-[#F5F5F5]">
+      <section className="py-16 lg:py-20 bg-[#FAFAF7]">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="bg-white rounded-2xl p-6 border border-red-100">
               <p className="text-xs font-black text-red-500 uppercase tracking-widest mb-4">Without Servolia</p>
               <ul className="flex flex-col gap-3">
                 {pain.map((t, i) => (
-                  <li key={i} className="flex items-start gap-2.5 text-sm text-[#64748B]">
+                  <li key={i} className="flex items-start gap-2.5 text-sm text-[#71717A]">
                     <span className="text-red-400 flex-shrink-0 font-bold">✗</span>{t}
                   </li>
                 ))}
@@ -145,57 +145,52 @@ export default function DentistsPage() {
       <section className="py-16 bg-white">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-10">
-            <p className="text-sm font-bold text-[#95BF47] uppercase tracking-widest mb-2">What We Build</p>
+            <p className="text-sm font-bold text-[#36671E] uppercase tracking-widest mb-2">What We Build</p>
             <h2 className="text-3xl font-black text-[#080E1C]">Every piece your clinic needs</h2>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
             {[
-              { icon: <Globe className="w-5 h-5" />, title: "Professional Website", desc: "Fast, mobile-first, GDPR-compliant site that builds trust instantly.", color: "from-[#95BF47] to-[#5A8A1E]" },
-              { icon: <Bot className="w-5 h-5" />, title: "AI Receptionist", desc: "Trained on your services. Answers patients 24/7 in French or English.", color: "from-[#6BA52A] to-[#8FBF3A]" },
+              { icon: <Globe className="w-5 h-5" />, title: "Professional Website", desc: "Fast, mobile-first, GDPR-compliant site that builds trust instantly.", color: "from-[#36671E] to-[#143424]" },
+              { icon: <Bot className="w-5 h-5" />, title: "AI Receptionist", desc: "Trained on your services. Answers patients 24/7 in French or English.", color: "from-[#295115] to-[#0CA6E9]" },
               { icon: <Calendar className="w-5 h-5" />, title: "Booking System", desc: "Online appointment requests with automatic confirmation emails.", color: "from-[#10B981] to-[#34D399]" },
               { icon: <BarChart3 className="w-5 h-5" />, title: "Lead Tracking", desc: "Meta Pixel + GA4. See exactly where every patient came from.", color: "from-[#F59E0B] to-[#EF4444]" },
             ].map((item, i) => (
-              <div key={i} className="border border-[#E2E8F0] rounded-xl p-5 hover:shadow-md transition-shadow">
-                <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${item.color} flex items-center justify-center text-white mb-3`}>
+              <div key={i} className="border border-[#E8E6E0] rounded-xl p-5 hover:shadow-md transition-shadow">
+                <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${item.color} flex items-center justify-center text-[#18181B] mb-3`}>
                   {item.icon}
                 </div>
                 <h3 className="font-black text-[#080E1C] text-sm mb-1.5">{item.title}</h3>
-                <p className="text-[#64748B] text-xs leading-relaxed">{item.desc}</p>
+                <p className="text-[#71717A] text-xs leading-relaxed">{item.desc}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Testimonial */}
-      <section className="py-12 bg-[#080E1C]">
+      {/* What it's built to do */}
+      <section className="py-12 bg-[#FAFAF7]">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <div className="flex justify-center gap-1 mb-4">
-            {[1,2,3,4,5].map(i=><Star key={i} className="w-5 h-5 fill-yellow-400 text-yellow-400" />)}
-          </div>
-          <blockquote className="text-lg text-white font-medium italic leading-relaxed mb-5">
-            "Within 2 weeks of launching our Servolia website and AI chatbot, we went from 3 online bookings per month to over 15. The chatbot handles all after-hours inquiries automatically. I wish we had this 3 years ago."
+          <p className="text-xs font-black text-[#36671E] uppercase tracking-widest mb-4">What it&apos;s built to do</p>
+          <blockquote className="text-lg text-[#18181B] font-medium leading-relaxed mb-3">
+            A typical clinic running the AI Booking System is designed to move from a handful of online bookings a month to 15+ — with the chatbot handling after-hours enquiries automatically and dropping every lead into the CRM.
           </blockquote>
-          <div>
-            <p className="font-bold text-white text-sm">Dr. Sophie Laurent</p>
-            <p className="text-[#94A3B8] text-xs">Dental Clinic Owner · Brussels, Belgium 🇧🇪</p>
-          </div>
+          <p className="text-xs text-[#A1A1AA]">Illustrative target based on typical dental-practice benchmarks. Actual results vary.</p>
         </div>
       </section>
 
       {/* Packages */}
-      <section className="py-16 lg:py-20 bg-[#F5F5F5]">
+      <section className="py-16 lg:py-20 bg-[#FAFAF7]">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-10">
-            <p className="text-sm font-bold text-[#95BF47] uppercase tracking-widest mb-2">Clinic Packages</p>
+            <p className="text-sm font-bold text-[#36671E] uppercase tracking-widest mb-2">Clinic Packages</p>
             <h2 className="text-3xl font-black text-[#080E1C] mb-3">Choose your plan</h2>
-            <p className="text-[#64748B]">All prices exclude VAT. 50% deposit · Balance on delivery.</p>
+            <p className="text-[#71717A]">All prices exclude VAT. 50% deposit · Balance on delivery.</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {packages.map((p, i) => (
-              <div key={i} className={`bg-white rounded-2xl border-2 p-6 relative ${p.popular ? "border-[#95BF47] shadow-2xl shadow-[#95BF47]/15" : "border-[#E2E8F0]"}`}>
+              <div key={i} className={`bg-white rounded-2xl border-2 p-6 relative ${p.popular ? "border-[#36671E] shadow-2xl shadow-[#95BF47]/15" : "border-[#E8E6E0]"}`}>
                 {p.popular && (
-                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-gradient-to-r from-[#95BF47] to-[#6BA52A] text-[#0B1800] text-xs font-black whitespace-nowrap">
+                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-gradient-to-r from-[#36671E] to-[#295115] text-[#FAFAF7] text-xs font-black whitespace-nowrap">
                     RECOMMENDED
                   </div>
                 )}
@@ -215,8 +210,8 @@ export default function DentistsPage() {
                 <Link href={`/contact?niche=dentist&plan=${p.name}`}
                   className={`block text-center py-3 rounded-xl font-bold text-sm transition-all ${
                     p.popular
-                      ? "bg-gradient-to-r from-[#95BF47] to-[#6BA52A] text-[#0B1800] hover:opacity-90 glow-button"
-                      : "border border-[#E2E8F0] text-[#080E1C] hover:border-[#95BF47] hover:text-[#95BF47]"
+                      ? "bg-gradient-to-r from-[#36671E] to-[#295115] text-[#FAFAF7] hover:opacity-90 glow-button"
+                      : "border border-[#E8E6E0] text-[#080E1C] hover:border-[#36671E] hover:text-[#36671E]"
                   }`}>
                   {p.cta} →
                 </Link>
@@ -227,14 +222,14 @@ export default function DentistsPage() {
       </section>
 
       {/* CTA */}
-      <section className="py-16 bg-[#080E1C]">
+      <section className="py-16 bg-[#FAFAF7]">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl font-black text-white mb-4">
+          <h2 className="text-3xl font-black text-[#18181B] mb-4">
             Ready to fill your <span className="gradient-text">appointment calendar?</span>
           </h2>
-          <p className="text-[#94A3B8] mb-6">Get a free clinic audit. We'll show you exactly what's missing and how to fix it in 7 days.</p>
+          <p className="text-[#52525B] mb-6">Get a free clinic audit. We'll show you exactly what's missing and how to fix it in 7 days.</p>
           <Link href="/contact?niche=dentist"
-            className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl bg-gradient-to-r from-[#95BF47] to-[#6BA52A] text-[#0B1800] font-bold hover:opacity-90 glow-button">
+            className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl bg-gradient-to-r from-[#36671E] to-[#295115] text-[#FAFAF7] font-bold hover:opacity-90 glow-button">
             Get My Free Clinic Audit <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
