@@ -12,7 +12,7 @@ export const runtime = "nodejs";
  * Setup:
  *   1. dashboard.stripe.com → Developers → Webhooks → Add endpoint
  *   2. URL: https://servolia.com/api/webhooks/stripe
- *   3. Events: checkout.session.completed, payment_intent.succeeded
+ *   3. Events: checkout.session.completed, customer.subscription.deleted
  *   4. Copy "Signing secret" → STRIPE_WEBHOOK_SECRET env var
  */
 
@@ -42,6 +42,47 @@ export async function POST(req: NextRequest) {
   try {
     if (event.type === "checkout.session.completed") {
       const session = event.data.object as Stripe.Checkout.Session;
+
+      // ── CARE PLAN branch: recurring subscription, not a one-time deposit ──
+      if (session.mode === "subscription") {
+        const customerEmail = session.customer_details?.email ?? session.customer_email ?? null;
+        const amount = (session.amount_total ?? 0) / 100;
+        const planKey = session.metadata?.plan ?? "care";
+        const planLabel = planKey === "care_growth" ? "Growth" : planKey === "care_scale" ? "Scale" : "Care";
+
+        const { data: client } = await db.from("clients").insert({
+          business: customerEmail ?? "Unknown",
+          email: customerEmail,
+          plan: planLabel.toLowerCase(),
+          monthly_amount: amount,
+          status: "active",
+          customer_id: (session.customer as string) ?? null,
+          subscription_id: (session.subscription as string) ?? null,
+        }).select("id").single();
+
+        const tgToken = process.env.TELEGRAM_BOT_TOKEN;
+        const tgChatId = process.env.TELEGRAM_CHAT_ID;
+        if (tgToken && tgChatId) {
+          const msg = `🔁 *New ${planLabel} plan subscriber — €${amount}/mo*\n${customerEmail ?? "no email"}\n\n` +
+                      (client ? `[Open in CRM](https://servolia.com/admin/clients/${client.id})` : "");
+          fetch(`https://api.telegram.org/bot${tgToken}/sendMessage`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ chat_id: tgChatId, text: msg, parse_mode: "Markdown" }),
+          }).catch(() => {});
+        }
+
+        sendMetaCapiEvent({
+          eventName: "Purchase",
+          email: customerEmail,
+          value: amount,
+          currency: "EUR",
+          eventSourceUrl: "https://servolia.com/pricing",
+        });
+
+        return NextResponse.json({ received: true });
+      }
+
       const sessionId = session.id;
       const customerEmail = session.customer_details?.email ?? session.customer_email ?? null;
       const amountPaid = (session.amount_total ?? 0) / 100;
@@ -117,6 +158,27 @@ export async function POST(req: NextRequest) {
                     `${customerEmail ?? "no email"}\n` +
                     `Plan: ${build?.plan_name ?? session.metadata?.plan ?? "?"}\n\n` +
                     (build ? `[Open build in CRM](https://servolia.com/admin/builds/${build.id})` : "");
+        fetch(`https://api.telegram.org/bot${tgToken}/sendMessage`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chat_id: tgChatId, text: msg, parse_mode: "Markdown" }),
+        }).catch(() => {});
+      }
+    }
+
+    // ── Care plan cancelled (in Stripe or by the client) ──────────────────
+    if (event.type === "customer.subscription.deleted") {
+      const sub = event.data.object as Stripe.Subscription;
+      await db.from("clients").update({
+        status: "churned",
+        churned_at: new Date().toISOString(),
+      }).eq("subscription_id", sub.id);
+
+      const tgToken = process.env.TELEGRAM_BOT_TOKEN;
+      const tgChatId = process.env.TELEGRAM_CHAT_ID;
+      if (tgToken && tgChatId) {
+        const { data: client } = await db.from("clients").select("business, email").eq("subscription_id", sub.id).maybeSingle();
+        const msg = `⚠️ *Care plan cancelled*\n${client?.business ?? client?.email ?? "Unknown client"}`;
         fetch(`https://api.telegram.org/bot${tgToken}/sendMessage`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },

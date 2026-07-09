@@ -155,7 +155,7 @@ export default function HowItWorksPage() {
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="relative">
               {/* Vertical line */}
-              <div className="absolute left-6 top-0 bottom-0 w-px bg-gradient-to-b from-[#36671E]/50 via-[#95BF47]/20 to-transparent hidden md:block" />
+              <div className="absolute left-6 top-0 bottom-0 w-px bg-gradient-to-b from-[#36671E]/50 via-[#ABDF90]/20 to-transparent hidden md:block" />
 
               <div className="space-y-6">
                 {steps.map((s, i) => (

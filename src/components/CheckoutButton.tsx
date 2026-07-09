@@ -5,15 +5,17 @@ interface Props {
   plan: string;
   label: string;
   className?: string;
+  /** Defaults to the one-time deposit checkout; pass "/api/checkout-subscription" for recurring plans. */
+  endpoint?: string;
 }
 
-export default function CheckoutButton({ plan, label, className }: Props) {
+export default function CheckoutButton({ plan, label, className, endpoint = "/api/checkout" }: Props) {
   const [loading, setLoading] = useState(false);
 
   async function handleClick() {
     setLoading(true);
     try {
-      const res = await fetch("/api/checkout", {
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ plan }),

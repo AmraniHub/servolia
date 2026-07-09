@@ -98,6 +98,7 @@ const tiers = [
 
 const carePlans = [
   {
+    plan: "care",
     name: "Care",
     price: "€69/mo",
     desc: "Maintenance, small edits, and uptime monitoring.",
@@ -105,6 +106,7 @@ const carePlans = [
     popular: false,
   },
   {
+    plan: "care_growth",
     name: "Growth",
     price: "€149/mo",
     desc: "Analytics, chatbot updates, and monthly improvements.",
@@ -112,6 +114,7 @@ const carePlans = [
     popular: true,
   },
   {
+    plan: "care_scale",
     name: "Scale",
     price: "€299/mo",
     desc: "Full monthly optimization: A/B testing, CRM, conversion review.",
@@ -188,7 +191,7 @@ export default function PricingPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {tiers.map((t, i) => (
               <div key={i} className={`bg-white rounded-2xl border-2 p-7 relative flex flex-col ${
-                t.popular ? "border-[#36671E] shadow-2xl shadow-[#95BF47]/12" : "border-[#E8E6E0]"
+                t.popular ? "border-[#36671E] shadow-2xl shadow-[#ABDF90]/12" : "border-[#E8E6E0]"
               }`}>
                 {t.popular && (
                   <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-gradient-to-r from-[#36671E] to-[#295115] text-[#FAFAF7] text-xs font-black whitespace-nowrap">
@@ -286,7 +289,7 @@ export default function PricingPage() {
             <h2 className="text-2xl sm:text-3xl font-black text-[#080E1C]">What happens after you choose a plan</h2>
           </div>
           <div className="relative">
-            <div className="absolute left-5 top-6 bottom-6 w-px bg-gradient-to-b from-[#36671E]/30 via-[#6BA52A]/40 to-[#95BF47]/20 hidden sm:block" />
+            <div className="absolute left-5 top-6 bottom-6 w-px bg-gradient-to-b from-[#36671E]/30 via-[#6BA52A]/40 to-[#ABDF90]/20 hidden sm:block" />
             <div className="flex flex-col gap-5">
               {process.map((s, i) => (
                 <div key={i} className="flex items-start gap-5 sm:pl-12 relative">
@@ -336,13 +339,16 @@ export default function PricingPage() {
                     </li>
                   ))}
                 </ul>
-                <Link href="/contact" className={`block text-center py-3 rounded-xl font-bold text-sm transition-all ${
-                  p.popular
-                    ? "bg-gradient-to-r from-[#10B981] to-[#34D399] text-[#18181B] hover:opacity-90"
-                    : "border border-[#E8E6E0] text-[#080E1C] hover:border-[#10B981] hover:text-[#10B981]"
-                }`}>
-                  Get started →
-                </Link>
+                <CheckoutButton
+                  plan={p.plan}
+                  endpoint="/api/checkout-subscription"
+                  label="Subscribe →"
+                  className={`block w-full text-center py-3 rounded-xl font-bold text-sm transition-all disabled:opacity-60 ${
+                    p.popular
+                      ? "bg-gradient-to-r from-[#10B981] to-[#34D399] text-[#18181B] hover:opacity-90"
+                      : "border border-[#E8E6E0] text-[#080E1C] hover:border-[#10B981] hover:text-[#10B981]"
+                  }`}
+                />
               </div>
             ))}
           </div>

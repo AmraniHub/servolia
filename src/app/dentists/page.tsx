@@ -188,7 +188,7 @@ export default function DentistsPage() {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {packages.map((p, i) => (
-              <div key={i} className={`bg-white rounded-2xl border-2 p-6 relative ${p.popular ? "border-[#36671E] shadow-2xl shadow-[#95BF47]/15" : "border-[#E8E6E0]"}`}>
+              <div key={i} className={`bg-white rounded-2xl border-2 p-6 relative ${p.popular ? "border-[#36671E] shadow-2xl shadow-[#ABDF90]/15" : "border-[#E8E6E0]"}`}>
                 {p.popular && (
                   <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-gradient-to-r from-[#36671E] to-[#295115] text-[#FAFAF7] text-xs font-black whitespace-nowrap">
                     RECOMMENDED

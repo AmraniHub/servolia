@@ -117,7 +117,7 @@ function OnboardingForm() {
   return (
     <div className="min-h-screen bg-[#FAFAF7]">
       {/* Top confirmation bar */}
-      <div className="bg-[#95BF47] py-3 text-center">
+      <div className="bg-[#36671E] py-3 text-center">
         <p className="text-[#FAFAF7] text-sm font-black flex items-center justify-center gap-2">
           <CheckCircle className="w-4 h-4" />
           Payment received — {planName} deposit confirmed. Complete your intake below.
@@ -137,7 +137,7 @@ function OnboardingForm() {
           {STEPS.map((s, i) => (
             <div key={i} className="flex items-center gap-1">
               <div className={`flex items-center justify-center w-7 h-7 rounded-full text-xs font-black transition-all ${
-                i < step ? "bg-[#95BF47] text-[#FAFAF7]"
+                i < step ? "bg-[#36671E] text-[#FAFAF7]"
                 : i === step ? "bg-[#FAFAF7] text-[#18181B]"
                 : "bg-[#E2E8F0] text-[#52525B]"
               }`}>
