@@ -137,7 +137,7 @@ export default function FrenchDentistsPage() {
             <Link href="/fr/audit" className="px-7 py-3.5 rounded-xl bg-gradient-to-r from-[#36671E] to-[#295115] text-[#FAFAF7] font-bold text-base hover:opacity-90 flex items-center gap-2">
               Recevoir mon audit gratuit <ArrowRight className="w-4 h-4" />
             </Link>
-            <Link href="/pricing" className="text-[#52525B] hover:text-[#18181B] text-sm font-semibold transition-colors">
+            <Link href="/fr/tarifs" className="text-[#52525B] hover:text-[#18181B] text-sm font-semibold transition-colors">
               Voir les tarifs →
             </Link>
           </div>

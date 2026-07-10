@@ -267,7 +267,7 @@ export default function FrenchHome() {
             ))}
           </div>
           <FadeUp delay={0.3} className="text-center mt-10">
-            <Link href="/pricing" className="inline-flex items-center gap-1.5 text-[#36671E] font-bold text-sm hover:underline">Voir tous les tarifs <ArrowRight className="w-4 h-4" /></Link>
+            <Link href="/fr/tarifs" className="inline-flex items-center gap-1.5 text-[#36671E] font-bold text-sm hover:underline">Voir tous les tarifs <ArrowRight className="w-4 h-4" /></Link>
           </FadeUp>
         </div>
       </section>

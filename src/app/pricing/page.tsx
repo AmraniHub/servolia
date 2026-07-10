@@ -12,6 +12,14 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Pricing — Servolia",
   description: "Fixed pricing for AI websites, booking systems, and client management. No surprises. 50% deposit, balance on delivery.",
+  alternates: {
+    canonical: "https://servolia.com/pricing",
+    languages: {
+      "en-US": "https://servolia.com/pricing",
+      "fr-FR": "https://servolia.com/fr/tarifs",
+      "x-default": "https://servolia.com/pricing",
+    },
+  },
 };
 
 const tiers = [
