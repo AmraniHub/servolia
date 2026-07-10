@@ -35,8 +35,8 @@ function renderBlock(b: Block, i: number) {
       );
     case "quote":
       return (
-        <blockquote key={i} className="my-8 pl-5 border-l-4 border-[#0CA6E9] relative">
-          <Quote className="w-5 h-5 text-[#0CA6E9]/40 mb-2" />
+        <blockquote key={i} className="my-8 pl-5 border-l-4 border-[#36671E] relative">
+          <Quote className="w-5 h-5 text-[#36671E]/40 mb-2" />
           <p className="text-xl font-bold text-[#18181B] leading-snug italic">{b.text}</p>
         </blockquote>
       );
@@ -57,7 +57,7 @@ export default function BlogArticle({ post }: { post: Post }) {
       <Navbar />
       <main className="bg-white">
         {/* HERO */}
-        <section className="relative pt-32 pb-14 lg:pt-40 lg:pb-16 bg-[#091C20] overflow-hidden">
+        <section className="relative pt-32 pb-14 lg:pt-40 lg:pb-16 bg-[#0A1F14] overflow-hidden">
           <div className="absolute inset-0 pointer-events-none">
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[400px] bg-[#36671E] opacity-60 rounded-full blur-[120px]" />
             <div className="absolute inset-0 grain opacity-30" />
@@ -67,7 +67,7 @@ export default function BlogArticle({ post }: { post: Post }) {
               <ArrowLeft className="w-4 h-4" /> All insights
             </Link>
             <div className="flex items-center gap-3 mb-5">
-              <span className="px-3 py-1 rounded-full bg-[#0CA6E9]/15 border border-[#0CA6E9]/30 text-[#ABDF90] text-xs font-black uppercase tracking-widest">{post.category}</span>
+              <span className="px-3 py-1 rounded-full bg-[#BEF264]/15 border border-[#36671E]/30 text-[#ABDF90] text-xs font-black uppercase tracking-widest">{post.category}</span>
               <span className="flex items-center gap-1.5 text-[#FAFAF7]/50 text-xs"><Clock className="w-3.5 h-3.5" /> {post.readingMinutes} min read</span>
             </div>
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-[#FAFAF7] leading-[1.1] tracking-tight mb-6">{post.title}</h1>
@@ -94,13 +94,13 @@ export default function BlogArticle({ post }: { post: Post }) {
         {/* CTA */}
         <section className="pb-16">
           <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="rounded-3xl bg-[#091C20] p-8 lg:p-10 text-center relative overflow-hidden">
+            <div className="rounded-3xl bg-[#0A1F14] p-8 lg:p-10 text-center relative overflow-hidden">
               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[250px] bg-[#36671E] opacity-60 rounded-full blur-[90px] pointer-events-none" />
               <div className="relative">
                 <h2 className="text-2xl sm:text-3xl font-black text-[#FAFAF7] mb-3">{post.ctaHeadline}</h2>
                 <p className="text-[#FAFAF7]/60 mb-7 max-w-lg mx-auto">Get a free audit of your client journey — we'll show you exactly where you're losing enquiries and what to fix. No call required.</p>
                 <Link href="/free-audit"
-                  className="group inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-[#0CA6E9] text-[#091C20] font-black hover:bg-[#ABDF90] transition-colors shadow-lg shadow-[#0CA6E9]/20">
+                  className="group inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-[#BEF264] text-[#0A1F14] font-black hover:bg-[#D9F99D] transition-colors shadow-lg shadow-[#BEF264]/20">
                   Book a Free System Audit <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </Link>
               </div>

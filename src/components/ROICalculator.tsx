@@ -106,7 +106,7 @@ export default function ROICalculator({ lang = "en" }: { lang?: "en" | "fr" }) {
       </div>
 
       {/* Output */}
-      <div className="relative p-7 lg:p-9 bg-[#091C20] flex flex-col justify-center overflow-hidden">
+      <div className="relative p-7 lg:p-9 bg-[#0A1F14] flex flex-col justify-center overflow-hidden">
         <div className="absolute -top-10 -right-10 w-64 h-64 bg-[#36671E] opacity-50 rounded-full blur-3xl pointer-events-none" />
         <div className="relative">
           <p className="text-[#ABDF90] text-xs font-black uppercase tracking-widest mb-2">{t.potential}</p>
@@ -135,7 +135,7 @@ export default function ROICalculator({ lang = "en" }: { lang?: "en" | "fr" }) {
           </div>
 
           <Link href={lang === "fr" ? "/fr#audit" : "/free-audit"}
-            className="mt-6 inline-flex items-center justify-center gap-2 w-full py-3.5 rounded-xl bg-[#0CA6E9] text-[#091C20] font-black text-sm hover:bg-[#ABDF90] transition-colors">
+            className="mt-6 inline-flex items-center justify-center gap-2 w-full py-3.5 rounded-xl bg-[#BEF264] text-[#0A1F14] font-black text-sm hover:bg-[#D9F99D] transition-colors">
             {t.cta} <ArrowRight className="w-4 h-4" />
           </Link>
         </div>

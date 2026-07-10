@@ -11,6 +11,7 @@ const industries = ["Dental Clinic", "Aesthetic / Med Spa", "Real Estate", "Home
 export default function ContactPage() {
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(false);
   const [form, setForm] = useState({ name: "", email: "", business: "", industry: "", plan: "", website: "", problem: "" });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -20,15 +21,20 @@ export default function ContactPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setError(false);
     try {
-      await fetch("/api/contact", {
+      const res = await fetch("/api/contact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...form, type: "contact" }),
       });
-    } catch {}
-    setLoading(false);
-    setSubmitted(true);
+      if (!res.ok) throw new Error("contact API failed");
+      setSubmitted(true);
+    } catch {
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -124,7 +130,7 @@ export default function ContactPage() {
                       <label className="block text-xs font-bold text-[#374151] mb-1.5">Your name *</label>
                       <input name="name" required value={form.name} onChange={handleChange}
                         className="w-full px-3.5 py-2.5 rounded-lg border border-[#E8E6E0] text-sm text-[#080E1C] focus:outline-none focus:border-[#36671E] focus:ring-2 focus:ring-[#36671E]/20 transition-all"
-                        placeholder="Sophie Laurent" />
+                        placeholder="Your full name" />
                     </div>
                     <div>
                       <label className="block text-xs font-bold text-[#374151] mb-1.5">Email address *</label>
@@ -174,6 +180,12 @@ export default function ContactPage() {
                       placeholder="e.g. We have no online booking system, clients can't find us on Google, our website looks outdated..." />
                   </div>
 
+                  {error && (
+                    <div className="mb-4 p-4 rounded-xl bg-[#FEE2E2] border border-[#DC2626]/30 text-sm text-[#991B1B]">
+                      Something went wrong sending your request. Please try again, or email us at{" "}
+                      <a href="mailto:hello@servolia.com" className="font-bold underline">hello@servolia.com</a>.
+                    </div>
+                  )}
                   <button type="submit" disabled={loading}
                     className="w-full py-4 rounded-xl bg-gradient-to-r from-[#36671E] to-[#295115] text-[#FAFAF7] font-black text-base hover:opacity-90 transition-opacity glow-button flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed">
                     {loading ? "Sending…" : (<>Send My Free Audit Request <ArrowRight className="w-4 h-4" /></>)}

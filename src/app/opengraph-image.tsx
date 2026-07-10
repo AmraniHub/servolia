@@ -15,7 +15,7 @@ export default function OG() {
           display: "flex",
           flexDirection: "column",
           justifyContent: "space-between",
-          background: "#091C20",
+          background: "#0A1F14",
           padding: "72px",
           fontFamily: "sans-serif",
           position: "relative",
@@ -69,7 +69,7 @@ export default function OG() {
         {/* footer row */}
         <div style={{ display: "flex", alignItems: "center", gap: 28, color: "#FAFAF7", opacity: 0.75, fontSize: 24 }}>
           <span>servolia.com</span>
-          <span style={{ color: "#0CA6E9" }}>·</span>
+          <span style={{ color: "#BEF264" }}>·</span>
           <span>Europe &amp; US</span>
         </div>
       </div>

@@ -37,7 +37,7 @@ export default function Navbar() {
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 group">
             <div className="w-8 h-8 rounded-lg bg-[#36671E] flex items-center justify-center group-hover:bg-[#295115] transition-colors">
-              <Logomark className="w-4 h-4 text-[#0CA6E9]" />
+              <Logomark className="w-4 h-4 text-[#BEF264]" />
             </div>
             <span className="text-xl font-black tracking-tight text-[#18181B]">
               Serv<span className="gradient-text">olia</span>

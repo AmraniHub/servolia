@@ -176,7 +176,7 @@ export default function ChatWidget({
               <div>
                 <p className="text-[#FAFAF7] text-sm font-bold">{brandName}</p>
                 <div className="flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#0CA6E9] animate-pulse" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#BEF264] animate-pulse" />
                   <span className="text-[#FAFAF7]/80 text-xs">Online · replies instantly</span>
                 </div>
               </div>

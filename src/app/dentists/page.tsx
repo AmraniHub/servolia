@@ -151,12 +151,12 @@ export default function DentistsPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
             {[
               { icon: <Globe className="w-5 h-5" />, title: "Professional Website", desc: "Fast, mobile-first, GDPR-compliant site that builds trust instantly.", color: "from-[#36671E] to-[#143424]" },
-              { icon: <Bot className="w-5 h-5" />, title: "AI Receptionist", desc: "Trained on your services. Answers patients 24/7 in French or English.", color: "from-[#295115] to-[#0CA6E9]" },
-              { icon: <Calendar className="w-5 h-5" />, title: "Booking System", desc: "Online appointment requests with automatic confirmation emails.", color: "from-[#10B981] to-[#34D399]" },
+              { icon: <Bot className="w-5 h-5" />, title: "AI Receptionist", desc: "Trained on your services. Answers patients 24/7 in French or English.", color: "from-[#295115] to-[#6B8439]" },
+              { icon: <Calendar className="w-5 h-5" />, title: "Booking System", desc: "Online appointment requests with automatic confirmation emails.", color: "from-[#059669] to-[#10B981]" },
               { icon: <BarChart3 className="w-5 h-5" />, title: "Lead Tracking", desc: "Meta Pixel + GA4. See exactly where every patient came from.", color: "from-[#F59E0B] to-[#EF4444]" },
             ].map((item, i) => (
               <div key={i} className="border border-[#E8E6E0] rounded-xl p-5 hover:shadow-md transition-shadow">
-                <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${item.color} flex items-center justify-center text-[#18181B] mb-3`}>
+                <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${item.color} flex items-center justify-center text-[#FAFAF7] mb-3`}>
                   {item.icon}
                 </div>
                 <h3 className="font-black text-[#080E1C] text-sm mb-1.5">{item.title}</h3>

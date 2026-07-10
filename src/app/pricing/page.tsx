@@ -50,7 +50,7 @@ const tiers = [
     for: "For businesses that want leads and appointments booked automatically",
     desc: "AI receptionist + website + full tracking. Your business works for you 24/7.",
     icon: <Bot className="w-5 h-5" />,
-    color: "from-[#295115] to-[#0CA6E9]",
+    color: "from-[#295115] to-[#6B8439]",
     popular: true,
     mainFeatures: [
       "10-page professional website",
@@ -201,7 +201,7 @@ export default function PricingPage() {
 
                 {/* Header */}
                 <div className="mb-5">
-                  <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${t.color} flex items-center justify-center text-[#18181B] mb-3 shadow-md`}>
+                  <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${t.color} flex items-center justify-center text-[#FAFAF7] mb-3 shadow-md`}>
                     {t.icon}
                   </div>
                   <h2 className="text-xl font-black text-[#080E1C] mb-1">{t.name}</h2>
@@ -369,7 +369,7 @@ export default function PricingPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
             {appServices.map((a, i) => (
               <div key={i} className="bg-[#F5F4EF] border border-[#D4D2CC] rounded-2xl p-6 flex flex-col backdrop-blur">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#295115] to-[#0CA6E9] flex items-center justify-center text-[#18181B] mb-4 shadow-md">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#295115] to-[#6B8439] flex items-center justify-center text-[#FAFAF7] mb-4 shadow-md">
                   {a.icon}
                 </div>
                 <h3 className="text-lg font-black text-[#18181B] mb-1">{a.name}</h3>

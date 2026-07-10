@@ -9,6 +9,7 @@ import ChatWidget from "@/components/ChatWidget";
 import HeroProduct from "@/components/HeroProduct";
 import AIReceptionistDemo from "@/components/AIReceptionistDemo";
 import ROICalculator from "@/components/ROICalculator";
+import StickyMobileCTA from "@/components/StickyMobileCTA";
 import { FaqSchema } from "@/components/StructuredData";
 import {
   Bot, BarChart3, Globe, CheckCircle, ArrowRight,
@@ -121,7 +122,7 @@ export default function HomePage() {
       {/* ══════════════════════════════════════════════════════════════
           HERO — dark forest with grain texture
       ══════════════════════════════════════════════════════════════ */}
-      <section className="relative min-h-[92vh] flex items-center justify-center overflow-hidden bg-[#091C20] pt-20">
+      <section className="relative min-h-[92vh] flex items-center justify-center overflow-hidden bg-[#0A1F14] pt-20">
         {/* Background layers */}
         <div className="absolute inset-0 pointer-events-none">
           {/* Radial glow */}
@@ -145,9 +146,9 @@ export default function HomePage() {
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.5 }}
-            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#0CA6E9]/40 bg-[#0CA6E9]/10 text-[#ABDF90] text-sm font-semibold mb-8"
+            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#BEF264]/40 bg-[#BEF264]/10 text-[#ABDF90] text-sm font-semibold mb-8"
           >
-            <span className="w-1.5 h-1.5 rounded-full bg-[#0CA6E9] animate-pulse-dot" />
+            <span className="w-1.5 h-1.5 rounded-full bg-[#BEF264] animate-pulse-dot" />
             AI client acquisition systems · France, Belgium & the US
           </motion.div>
 
@@ -159,7 +160,7 @@ export default function HomePage() {
             className="text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-black text-[#FAFAF7] leading-[1.02] tracking-tight mb-7"
           >
             Turn your website into a{" "}
-            <span className="bg-gradient-to-r from-[#0CA6E9] via-[#ABDF90] to-[#0CA6E9] bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-[#BEF264] via-[#ABDF90] to-[#BEF264] bg-clip-text text-transparent">
               24/7 client acquisition system.
             </span>
           </motion.h1>
@@ -190,7 +191,7 @@ export default function HomePage() {
             className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12"
           >
             <Link href="/free-audit"
-              className="group px-8 py-4 rounded-xl bg-[#0CA6E9] text-[#091C20] font-black text-base hover:bg-[#ABDF90] transition-colors shadow-lg shadow-[#0CA6E9]/20 flex items-center gap-2">
+              className="group px-8 py-4 rounded-xl bg-[#BEF264] text-[#0A1F14] font-black text-base hover:bg-[#D9F99D] transition-colors shadow-lg shadow-[#BEF264]/20 flex items-center gap-2">
               Book a Free System Audit
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </Link>
@@ -208,15 +209,15 @@ export default function HomePage() {
             className="flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-sm"
           >
             <div className="flex items-center gap-1.5 text-[#FAFAF7]/70">
-              <Clock className="w-4 h-4 text-[#0CA6E9]" />
+              <Clock className="w-4 h-4 text-[#BEF264]" />
               <span className="font-medium">7-day delivery, or 10% back per day late</span>
             </div>
             <div className="flex items-center gap-1.5 text-[#FAFAF7]/70">
-              <Lock className="w-4 h-4 text-[#0CA6E9]" />
+              <Lock className="w-4 h-4 text-[#BEF264]" />
               <span className="font-medium">Fixed price, agreed in writing</span>
             </div>
             <div className="flex items-center gap-1.5 text-[#FAFAF7]/70">
-              <BadgeCheck className="w-4 h-4 text-[#0CA6E9]" />
+              <BadgeCheck className="w-4 h-4 text-[#BEF264]" />
               <span className="font-medium">No payment until you approve the scope</span>
             </div>
           </motion.div>
@@ -265,7 +266,7 @@ export default function HomePage() {
               </div>
               <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-[#18181B] mb-5 leading-tight">
                 Try the AI receptionist{" "}
-                <span className="bg-gradient-to-r from-[#36671E] to-[#0CA6E9] bg-clip-text text-transparent">
+                <span className="bg-gradient-to-r from-[#36671E] to-[#6B8439] bg-clip-text text-transparent">
                   your clients will talk to.
                 </span>
               </h2>
@@ -306,7 +307,7 @@ export default function HomePage() {
             <p className="text-xs font-black text-[#36671E] uppercase tracking-widest mb-3">How the system works</p>
             <h2 className="text-3xl sm:text-4xl font-black text-[#18181B] mb-3">
               Servolia connects your{" "}
-              <span className="bg-gradient-to-r from-[#36671E] to-[#0CA6E9] bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-[#36671E] to-[#6B8439] bg-clip-text text-transparent">
                 full client journey.
               </span>
             </h2>
@@ -326,7 +327,7 @@ export default function HomePage() {
               { icon: <Bot className="w-5 h-5" />, label: "AI Receptionist", sub: "Answers 24/7", bg: "bg-[#36671E]", fg: "text-[#FAFAF7]" },
               { icon: <Calendar className="w-5 h-5" />, label: "Booking", sub: "Captured automatically", bg: "bg-[#EEF5EA]", fg: "text-[#36671E]" },
               { icon: <LayoutDashboard className="w-5 h-5" />, label: "CRM", sub: "Lead tracked & managed", bg: "bg-[#EEF5EA]", fg: "text-[#36671E]" },
-              { icon: <FileText className="w-5 h-5" />, label: "Monthly Report", sub: "ROI optimized", bg: "bg-[#0CA6E9]", fg: "text-[#FAFAF7]" },
+              { icon: <FileText className="w-5 h-5" />, label: "Monthly Report", sub: "ROI optimized", bg: "bg-[#6B8439]", fg: "text-[#FAFAF7]" },
             ].map((step, i) => (
               <FadeUp key={i} delay={i * 0.07} className="flex flex-col items-center text-center px-2">
                 <div className={`relative z-10 w-[72px] h-[72px] rounded-2xl ${step.bg} ${step.fg} flex items-center justify-center mb-3 shadow-soft`}>
@@ -429,7 +430,7 @@ export default function HomePage() {
             <p className="text-xs font-black text-[#36671E] uppercase tracking-widest mb-3">The Process</p>
             <h2 className="text-3xl sm:text-4xl font-black text-[#18181B] mb-4">
               Audit → Build → Results.{" "}
-              <span className="bg-gradient-to-r from-[#36671E] to-[#0CA6E9] bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-[#36671E] to-[#6B8439] bg-clip-text text-transparent">
                 In 7 days.
               </span>
             </h2>
@@ -525,7 +526,7 @@ export default function HomePage() {
             <p className="text-xs font-black text-[#36671E] uppercase tracking-widest mb-3">Our Systems</p>
             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-[#18181B] mb-4">
               We don&apos;t sell websites.{" "}
-              <span className="bg-gradient-to-r from-[#36671E] to-[#0CA6E9] bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-[#36671E] to-[#6B8439] bg-clip-text text-transparent">
                 We sell AI client systems.
               </span>
             </h2>
@@ -583,7 +584,7 @@ export default function HomePage() {
             <p className="text-xs font-black text-[#36671E] uppercase tracking-widest mb-3">AI Booking System — What You Get</p>
             <h2 className="text-3xl sm:text-4xl font-black text-[#18181B] mb-3">
               Everything included.{" "}
-              <span className="bg-gradient-to-r from-[#36671E] to-[#0CA6E9] bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-[#36671E] to-[#6B8439] bg-clip-text text-transparent">
                 One fixed price.
               </span>
             </h2>
@@ -642,7 +643,7 @@ export default function HomePage() {
       {/* ══════════════════════════════════════════════════════════════
           STATS — dark forest section, high contrast
       ══════════════════════════════════════════════════════════════ */}
-      <section ref={statsRef} className="py-20 lg:py-28 bg-[#091C20] relative overflow-hidden">
+      <section ref={statsRef} className="py-20 lg:py-28 bg-[#0A1F14] relative overflow-hidden">
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-[#36671E] opacity-50 rounded-full blur-[100px]" />
           <svg className="absolute inset-0 w-full h-full opacity-[0.04]" xmlns="http://www.w3.org/2000/svg">
@@ -658,7 +659,7 @@ export default function HomePage() {
           <FadeUp className="mb-14">
             <h2 className="text-3xl sm:text-4xl font-black text-[#FAFAF7] mb-3">
               The promise,{" "}
-              <span className="bg-gradient-to-r from-[#0CA6E9] to-[#ABDF90] bg-clip-text text-transparent">in numbers</span>
+              <span className="bg-gradient-to-r from-[#BEF264] to-[#ABDF90] bg-clip-text text-transparent">in numbers</span>
             </h2>
             <p className="text-[#ABDF90]/70 text-sm max-w-md mx-auto">Every one of these is written into your contract before you pay.</p>
           </FadeUp>
@@ -677,7 +678,7 @@ export default function HomePage() {
                     <div className="text-5xl lg:text-6xl font-black text-[#FAFAF7] mb-2 tabular-nums">
                       {c}{s.suffix}
                     </div>
-                    <div className="text-sm text-[#0CA6E9] font-semibold">{s.label}</div>
+                    <div className="text-sm text-[#BEF264] font-semibold">{s.label}</div>
                   </div>
                 </FadeUp>
               );
@@ -703,7 +704,7 @@ export default function HomePage() {
             {[
               { badge: "Dental clinic", headline: "+400%", metric: "online bookings", sub: "From a few bookings/month to 15+", detail: "After-hours enquiries handled automatically", color: "bg-[#36671E]" },
               { badge: "Aesthetic clinic", headline: "×4", metric: "bookings per week", sub: "AI qualifies and books while you work", detail: "Most enquiries handled by AI", color: "bg-[#295115]" },
-              { badge: "Home services", headline: "10h", metric: "saved per week", sub: "No more phone-tag or voicemail leaks", detail: "Every lead captured and scored in the CRM", color: "bg-[#0CA6E9]" },
+              { badge: "Home services", headline: "10h", metric: "saved per week", sub: "No more phone-tag or voicemail leaks", detail: "Every lead captured and scored in the CRM", color: "bg-[#6B8439]" },
             ].map((c, i) => (
               <FadeUp key={i} delay={i * 0.1}>
                 <div className="bg-[#FAFAF7] rounded-2xl border border-[#E8E6E0] p-7 hover:shadow-card transition-shadow h-full flex flex-col">
@@ -775,7 +776,7 @@ export default function HomePage() {
             <p className="text-xs font-black text-[#36671E] uppercase tracking-widest mb-3">Monthly Care Plans</p>
             <h2 className="text-3xl sm:text-4xl font-black text-[#18181B] mb-4">
               Keep your system{" "}
-              <span className="bg-gradient-to-r from-[#36671E] to-[#0CA6E9] bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-[#36671E] to-[#6B8439] bg-clip-text text-transparent">
                 growing every month.
               </span>
             </h2>
@@ -810,7 +811,7 @@ export default function HomePage() {
                       </li>
                     ))}
                   </ul>
-                  <Link href="/contact" className={`block text-center py-3 rounded-xl font-bold text-sm transition-all ${
+                  <Link href="/pricing" className={`block text-center py-3 rounded-xl font-bold text-sm transition-all ${
                     p.popular
                       ? "bg-[#36671E] text-[#FAFAF7] hover:bg-[#295115]"
                       : "border border-[#E8E6E0] text-[#18181B] hover:border-[#36671E] hover:text-[#36671E]"
@@ -872,7 +873,7 @@ export default function HomePage() {
             <p className="text-xs font-black text-[#36671E] uppercase tracking-widest mb-3">What&apos;s it worth?</p>
             <h2 className="text-3xl sm:text-4xl font-black text-[#18181B] mb-3">
               See what missed enquiries{" "}
-              <span className="bg-gradient-to-r from-[#36671E] to-[#0CA6E9] bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-[#36671E] to-[#6B8439] bg-clip-text text-transparent">
                 are costing you.
               </span>
             </h2>
@@ -928,7 +929,7 @@ export default function HomePage() {
                       </li>
                     ))}
                   </ul>
-                  <Link href="/contact" className={`block text-center py-3 rounded-xl font-bold text-sm transition-all ${
+                  <Link href="/pricing" className={`block text-center py-3 rounded-xl font-bold text-sm transition-all ${
                     p.popular
                       ? "bg-[#36671E] text-[#FAFAF7] hover:bg-[#295115]"
                       : "border border-[#E8E6E0] text-[#18181B] hover:border-[#36671E] hover:text-[#36671E]"
@@ -987,7 +988,7 @@ export default function HomePage() {
       {/* ══════════════════════════════════════════════════════════════
           FINAL CTA — dark forest
       ══════════════════════════════════════════════════════════════ */}
-      <section className="py-24 lg:py-32 bg-[#091C20] relative overflow-hidden">
+      <section className="py-24 lg:py-32 bg-[#0A1F14] relative overflow-hidden">
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] bg-[#36671E] opacity-60 rounded-full blur-[100px]" />
           <svg className="absolute inset-0 w-full h-full opacity-[0.04]" xmlns="http://www.w3.org/2000/svg">
@@ -1002,13 +1003,13 @@ export default function HomePage() {
 
         <div className="relative max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <FadeUp>
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#0CA6E9]/40 bg-[#0CA6E9]/10 text-[#ABDF90] text-sm font-semibold mb-8">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#BEF264]/40 bg-[#BEF264]/10 text-[#ABDF90] text-sm font-semibold mb-8">
               <Sparkles className="w-3.5 h-3.5" />
               Delivered in 7 days · Fixed price · No surprises
             </div>
             <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black text-[#FAFAF7] mb-6 leading-[1.05]">
               Stop losing clients to businesses{" "}
-              <span className="bg-gradient-to-r from-[#0CA6E9] to-[#ABDF90] bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-[#BEF264] to-[#ABDF90] bg-clip-text text-transparent">
                 with better systems.
               </span>
             </h2>
@@ -1021,7 +1022,7 @@ export default function HomePage() {
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-10">
               <Link href="/contact"
-                className="group px-9 py-4 rounded-xl bg-[#0CA6E9] text-[#091C20] font-black text-lg hover:bg-[#ABDF90] transition-colors shadow-lg shadow-[#0CA6E9]/20 flex items-center gap-2">
+                className="group px-9 py-4 rounded-xl bg-[#BEF264] text-[#0A1F14] font-black text-lg hover:bg-[#D9F99D] transition-colors shadow-lg shadow-[#BEF264]/20 flex items-center gap-2">
                 Get My Free Audit Now
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </Link>
@@ -1032,14 +1033,15 @@ export default function HomePage() {
             </div>
 
             <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-[#FAFAF7]/40">
-              <span className="flex items-center gap-1.5"><Shield className="w-3.5 h-3.5 text-[#0CA6E9]" /> GDPR compliant</span>
-              <span className="flex items-center gap-1.5"><BadgeCheck className="w-3.5 h-3.5 text-[#0CA6E9]" /> Fixed price in writing</span>
-              <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-[#0CA6E9]" /> 7-day delivery or 10% back/day</span>
+              <span className="flex items-center gap-1.5"><Shield className="w-3.5 h-3.5 text-[#BEF264]" /> GDPR compliant</span>
+              <span className="flex items-center gap-1.5"><BadgeCheck className="w-3.5 h-3.5 text-[#BEF264]" /> Fixed price in writing</span>
+              <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-[#BEF264]" /> 7-day delivery or 10% back/day</span>
             </div>
           </FadeUp>
         </div>
       </section>
 
+      <StickyMobileCTA />
       <Footer />
       <ChatWidget />
     </main>

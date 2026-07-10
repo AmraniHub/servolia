@@ -101,7 +101,7 @@ export default async function AnalyticsPage() {
               return (
                 <div key={i} className="flex-1 flex flex-col items-center gap-1 group">
                   <span className="text-[10px] font-bold text-[#36671E] opacity-0 group-hover:opacity-100 transition-opacity">{w.count}</span>
-                  <div className="w-full rounded-t-md bg-gradient-to-t from-[#36671E] to-[#0CA6E9] transition-all min-h-[2px]"
+                  <div className="w-full rounded-t-md bg-gradient-to-t from-[#36671E] to-[#BEF264] transition-all min-h-[2px]"
                     style={{ height: `${Math.max(h, 2)}%` }} />
                   <span className="text-[9px] text-[#A1A1AA]">{w.label}</span>
                 </div>
@@ -122,7 +122,7 @@ export default async function AnalyticsPage() {
                     <span className="text-[#71717A]">{f.count} · {pct}%</span>
                   </div>
                   <div className="h-2 rounded-full bg-[#F5F4EF] overflow-hidden">
-                    <div className="h-full rounded-full bg-gradient-to-r from-[#36671E] to-[#0CA6E9]" style={{ width: `${pct}%` }} />
+                    <div className="h-full rounded-full bg-gradient-to-r from-[#36671E] to-[#BEF264]" style={{ width: `${pct}%` }} />
                   </div>
                 </div>
               );
@@ -167,7 +167,7 @@ export default async function AnalyticsPage() {
                     <span className="text-[#71717A]">{count}</span>
                   </div>
                   <div className="h-2 rounded-full bg-[#F5F4EF]">
-                    <div className="h-full rounded-full bg-[#0CA6E9]" style={{ width: `${(count/maxNiche)*100}%` }} />
+                    <div className="h-full rounded-full bg-[#BEF264]" style={{ width: `${(count/maxNiche)*100}%` }} />
                   </div>
                 </div>
               ))}

@@ -25,30 +25,30 @@ export default function MarketingPage({ data }: { data: MarketingContent }) {
       <Navbar />
       <main className="bg-[#FAFAF7]">
         {/* HERO */}
-        <section className="relative pt-32 pb-20 lg:pt-40 lg:pb-28 bg-[#091C20] overflow-hidden">
+        <section className="relative pt-32 pb-20 lg:pt-40 lg:pb-28 bg-[#0A1F14] overflow-hidden">
           <div className="absolute inset-0 pointer-events-none">
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-[#36671E] opacity-60 rounded-full blur-[120px]" />
             <div className="absolute inset-0 grain opacity-30" />
           </div>
           <div className="relative max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-[#0CA6E9]/40 bg-[#0CA6E9]/10 text-[#ABDF90] text-xs font-bold uppercase tracking-widest mb-6">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-[#BEF264]/40 bg-[#BEF264]/10 text-[#ABDF90] text-xs font-bold uppercase tracking-widest mb-6">
               {data.eyebrow}
             </div>
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-[#FAFAF7] leading-[1.05] tracking-tight mb-6">
               {data.title}{" "}
-              <span className="bg-gradient-to-r from-[#0CA6E9] to-[#ABDF90] bg-clip-text text-transparent">{data.highlight}</span>
+              <span className="bg-gradient-to-r from-[#BEF264] to-[#ABDF90] bg-clip-text text-transparent">{data.highlight}</span>
             </h1>
             <p className="text-[#ABDF90]/80 text-lg max-w-2xl mx-auto mb-7 leading-relaxed">{data.sub}</p>
             <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 mb-9">
               {data.heroBullets.map((b) => (
                 <span key={b} className="flex items-center gap-1.5 text-[#FAFAF7]/70 text-sm font-medium">
-                  <CheckCircle className="w-4 h-4 text-[#0CA6E9]" /> {b}
+                  <CheckCircle className="w-4 h-4 text-[#BEF264]" /> {b}
                 </span>
               ))}
             </div>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link href="/free-audit"
-                className="group px-8 py-4 rounded-xl bg-[#0CA6E9] text-[#091C20] font-black text-base hover:bg-[#ABDF90] transition-colors shadow-lg shadow-[#0CA6E9]/20 flex items-center gap-2">
+                className="group px-8 py-4 rounded-xl bg-[#BEF264] text-[#0A1F14] font-black text-base hover:bg-[#D9F99D] transition-colors shadow-lg shadow-[#BEF264]/20 flex items-center gap-2">
                 Book a Free System Audit <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </Link>
               <Link href="/pricing"
@@ -161,13 +161,13 @@ export default function MarketingPage({ data }: { data: MarketingContent }) {
         </section>
 
         {/* CTA */}
-        <section className="py-24 bg-[#091C20] relative overflow-hidden">
+        <section className="py-24 bg-[#0A1F14] relative overflow-hidden">
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[350px] bg-[#36671E] opacity-60 rounded-full blur-[100px] pointer-events-none" />
           <div className="relative max-w-2xl mx-auto px-4 sm:px-6 text-center">
             <h2 className="text-3xl sm:text-4xl font-black text-[#FAFAF7] mb-4 leading-tight">{data.ctaHeadline}</h2>
             <p className="text-[#FAFAF7]/60 mb-8 max-w-xl mx-auto">{data.ctaSub}</p>
             <Link href="/free-audit"
-              className="group inline-flex items-center gap-2 px-9 py-4 rounded-xl bg-[#0CA6E9] text-[#091C20] font-black text-lg hover:bg-[#ABDF90] transition-colors shadow-lg shadow-[#0CA6E9]/20">
+              className="group inline-flex items-center gap-2 px-9 py-4 rounded-xl bg-[#BEF264] text-[#0A1F14] font-black text-lg hover:bg-[#D9F99D] transition-colors shadow-lg shadow-[#BEF264]/20">
               Book a Free System Audit <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </Link>
             <p className="text-[#FAFAF7]/40 text-xs mt-5">Delivered within 24h · No call required · Fixed price in writing</p>

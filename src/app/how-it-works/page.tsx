@@ -28,7 +28,7 @@ const steps = [
     time: "Within 24 hours",
     desc: "We record a 5-minute screen video walking through your current online presence — showing exactly what's costing you clients and what we'd fix.",
     detail: "This isn't a template. We look at your site, your Google Maps listing, your competitors in the same city, and your booking/contact flow. You get specific observations, not generic advice.",
-    color: "from-[#295115] to-[#0CA6E9]",
+    color: "from-[#295115] to-[#6B8439]",
   },
   {
     num: "03",
@@ -38,7 +38,7 @@ const steps = [
     time: "Your choice",
     desc: "If you want to discuss the audit, ask questions, or get more detail — we're available. If the audit is enough to convince you, you can skip straight to step 4.",
     detail: "No hard sell. If Servolia is the right fit, it's obvious from the audit. We don't chase or pressure. If you're ready, we send the scope document.",
-    color: "from-[#10B981] to-[#34D399]",
+    color: "from-[#059669] to-[#10B981]",
   },
   {
     num: "04",
@@ -98,7 +98,7 @@ const steps = [
     time: "Day 5–7",
     desc: "Once you're happy with the draft, we send a Stripe Payment Link for the remaining 50%. Payment clears → we go live within 24 hours.",
     detail: "Going live includes: domain connection, SSL setup, final testing on mobile and desktop, Google Analytics activation, Meta Pixel firing check (if included), and chatbot activation.",
-    color: "from-[#10B981] to-[#34D399]",
+    color: "from-[#059669] to-[#10B981]",
   },
   {
     num: "10",
@@ -161,7 +161,7 @@ export default function HowItWorksPage() {
                 {steps.map((s, i) => (
                   <div key={i} className="relative flex gap-6">
                     {/* Icon */}
-                    <div className={`hidden md:flex w-12 h-12 rounded-xl bg-gradient-to-br ${s.color} items-center justify-center text-[#18181B] shrink-0 shadow-md z-10`}>
+                    <div className={`hidden md:flex w-12 h-12 rounded-xl bg-gradient-to-br ${s.color} items-center justify-center text-[#FAFAF7] shrink-0 shadow-md z-10`}>
                       {s.icon}
                     </div>
 

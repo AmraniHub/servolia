@@ -6,6 +6,7 @@ import Link from "next/link";
 import HeroProduct from "@/components/HeroProduct";
 import AIReceptionistDemo from "@/components/AIReceptionistDemo";
 import ROICalculator from "@/components/ROICalculator";
+import StickyMobileCTA from "@/components/StickyMobileCTA";
 import {
   Bot, CheckCircle, ArrowRight, Shield, Clock, Globe, Lock,
   XCircle, ChevronDown, BadgeCheck,
@@ -56,7 +57,7 @@ export default function FrenchHome() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16 lg:h-18">
           <Link href="/fr" className="flex items-center gap-2 group">
             <div className="w-8 h-8 rounded-lg bg-[#36671E] flex items-center justify-center group-hover:bg-[#295115] transition-colors">
-              <Logomark className="w-4 h-4 text-[#0CA6E9]" />
+              <Logomark className="w-4 h-4 text-[#BEF264]" />
             </div>
             <span className="text-xl font-black tracking-tight text-[#18181B]">Serv<span className="gradient-text">olia</span></span>
           </Link>
@@ -67,13 +68,13 @@ export default function FrenchHome() {
           </div>
           <div className="flex items-center gap-3">
             <Link href="/" className="text-xs font-bold text-[#52525B] hover:text-[#36671E] transition-colors border border-[#E8E6E0] rounded-lg px-2.5 py-1.5">EN</Link>
-            <Link href="/free-audit" className="px-4 py-2 rounded-lg bg-[#36671E] text-[#FAFAF7] text-sm font-semibold hover:bg-[#295115] transition-colors shadow-soft">Audit gratuit →</Link>
+            <Link href="/fr/audit" className="px-4 py-2 rounded-lg bg-[#36671E] text-[#FAFAF7] text-sm font-semibold hover:bg-[#295115] transition-colors shadow-soft">Audit gratuit →</Link>
           </div>
         </div>
       </nav>
 
       {/* HERO */}
-      <section className="relative min-h-[92vh] flex items-center justify-center overflow-hidden bg-[#091C20] pt-20">
+      <section className="relative min-h-[92vh] flex items-center justify-center overflow-hidden bg-[#0A1F14] pt-20">
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[600px] bg-[#36671E] opacity-60 rounded-full blur-[120px]" />
           <div className="absolute inset-0 grain opacity-30" />
@@ -81,9 +82,9 @@ export default function FrenchHome() {
         <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5 }}
-            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#0CA6E9]/40 bg-[#0CA6E9]/10 text-[#ABDF90] text-sm font-semibold mb-8"
+            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#BEF264]/40 bg-[#BEF264]/10 text-[#ABDF90] text-sm font-semibold mb-8"
           >
-            <span className="w-1.5 h-1.5 rounded-full bg-[#0CA6E9] animate-pulse-dot" />
+            <span className="w-1.5 h-1.5 rounded-full bg-[#BEF264] animate-pulse-dot" />
             Systèmes d&apos;acquisition client par IA · France, Belgique & Suisse
           </motion.div>
 
@@ -92,7 +93,7 @@ export default function FrenchHome() {
             className="text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-black text-[#FAFAF7] leading-[1.02] tracking-tight mb-7"
           >
             Transformez votre site en{" "}
-            <span className="bg-gradient-to-r from-[#0CA6E9] via-[#ABDF90] to-[#0CA6E9] bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-[#BEF264] via-[#ABDF90] to-[#BEF264] bg-clip-text text-transparent">
               machine à clients 24h/24.
             </span>
           </motion.h1>
@@ -114,7 +115,7 @@ export default function FrenchHome() {
             initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.45 }}
             className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12"
           >
-            <Link href="/free-audit" className="group px-8 py-4 rounded-xl bg-[#0CA6E9] text-[#091C20] font-black text-base hover:bg-[#ABDF90] transition-colors shadow-lg shadow-[#0CA6E9]/20 flex items-center gap-2">
+            <Link href="/fr/audit" className="group px-8 py-4 rounded-xl bg-[#BEF264] text-[#0A1F14] font-black text-base hover:bg-[#D9F99D] transition-colors shadow-lg shadow-[#BEF264]/20 flex items-center gap-2">
               Réserver un audit gratuit <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </Link>
             <a href="#demo-ia" className="px-7 py-4 rounded-xl border border-[#FAFAF7]/20 text-[#FAFAF7] font-semibold text-base hover:bg-[#FAFAF7]/8 transition-colors flex items-center gap-2">
@@ -126,8 +127,8 @@ export default function FrenchHome() {
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5, delay: 0.6 }}
             className="flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-sm"
           >
-            <div className="flex items-center gap-1.5 text-[#FAFAF7]/70"><Clock className="w-4 h-4 text-[#0CA6E9]" /><span className="font-medium">Livré en 7 jours, ou 10 % remboursé par jour de retard</span></div>
-            <div className="flex items-center gap-1.5 text-[#FAFAF7]/70"><Lock className="w-4 h-4 text-[#0CA6E9]" /><span className="font-medium">Prix fixe, défini par écrit</span></div>
+            <div className="flex items-center gap-1.5 text-[#FAFAF7]/70"><Clock className="w-4 h-4 text-[#BEF264]" /><span className="font-medium">Livré en 7 jours, ou 10 % remboursé par jour de retard</span></div>
+            <div className="flex items-center gap-1.5 text-[#FAFAF7]/70"><Lock className="w-4 h-4 text-[#BEF264]" /><span className="font-medium">Prix fixe, défini par écrit</span></div>
           </motion.div>
 
           <div className="mt-16"><HeroProduct /></div>
@@ -162,7 +163,7 @@ export default function FrenchHome() {
               </div>
               <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-[#18181B] mb-5 leading-tight">
                 Essayez la réceptionniste IA{" "}
-                <span className="bg-gradient-to-r from-[#36671E] to-[#0CA6E9] bg-clip-text text-transparent">qui parlera à vos clients.</span>
+                <span className="bg-gradient-to-r from-[#36671E] to-[#6B8439] bg-clip-text text-transparent">qui parlera à vos clients.</span>
               </h2>
               <p className="text-[#52525B] text-base leading-relaxed mb-6">
                 C&apos;est la même IA qui répond à vos visiteurs 24h/24 — les qualifie, répond dans leur langue, prend le rendez-vous et enregistre le lead dans votre CRM. Plus d&apos;appels manqués. Plus de messageries à 20h. Plus de clients perdus.
@@ -177,7 +178,7 @@ export default function FrenchHome() {
                   <li key={i} className="flex items-start gap-2.5 text-sm text-[#18181B]"><CheckCircle className="w-4 h-4 text-[#36671E] mt-0.5 shrink-0" /> {f}</li>
                 ))}
               </ul>
-              <Link href="/free-audit" className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl bg-[#36671E] text-[#FAFAF7] font-bold text-sm hover:bg-[#295115] transition-colors">
+              <Link href="/fr/audit" className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl bg-[#36671E] text-[#FAFAF7] font-bold text-sm hover:bg-[#295115] transition-colors">
                 L&apos;installer sur votre site <ArrowRight className="w-4 h-4" />
               </Link>
             </FadeUp>
@@ -248,7 +249,7 @@ export default function FrenchHome() {
             <p className="text-xs font-black text-[#36671E] uppercase tracking-widest mb-3">Nos systèmes</p>
             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-[#18181B] mb-4">
               Nous ne vendons pas des sites.{" "}
-              <span className="bg-gradient-to-r from-[#36671E] to-[#0CA6E9] bg-clip-text text-transparent">Nous vendons des systèmes clients IA.</span>
+              <span className="bg-gradient-to-r from-[#36671E] to-[#6B8439] bg-clip-text text-transparent">Nous vendons des systèmes clients IA.</span>
             </h2>
           </FadeUp>
           <div className="grid md:grid-cols-3 gap-5">
@@ -278,7 +279,7 @@ export default function FrenchHome() {
             <p className="text-xs font-black text-[#36671E] uppercase tracking-widest mb-3">Combien ça vaut ?</p>
             <h2 className="text-3xl sm:text-4xl font-black text-[#18181B] mb-3">
               Voyez ce que les demandes manquées{" "}
-              <span className="bg-gradient-to-r from-[#36671E] to-[#0CA6E9] bg-clip-text text-transparent">vous coûtent.</span>
+              <span className="bg-gradient-to-r from-[#36671E] to-[#6B8439] bg-clip-text text-transparent">vous coûtent.</span>
             </h2>
             <p className="text-[#71717A] max-w-lg mx-auto text-sm">Déplacez les curseurs pour estimer les revenus qu&apos;un système IA 24h/24 pourrait récupérer.</p>
           </FadeUp>
@@ -312,7 +313,7 @@ export default function FrenchHome() {
       </section>
 
       {/* FINAL CTA */}
-      <section id="audit" className="py-24 lg:py-32 bg-[#091C20] relative overflow-hidden scroll-mt-20">
+      <section id="audit" className="py-24 lg:py-32 bg-[#0A1F14] relative overflow-hidden scroll-mt-20">
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] bg-[#36671E] opacity-60 rounded-full blur-[100px]" />
           <div className="absolute inset-0 grain opacity-30" />
@@ -321,12 +322,12 @@ export default function FrenchHome() {
           <FadeUp>
             <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black text-[#FAFAF7] mb-6 leading-[1.05]">
               Arrêtez de perdre des clients{" "}
-              <span className="bg-gradient-to-r from-[#0CA6E9] to-[#ABDF90] bg-clip-text text-transparent">au profit de mieux équipés.</span>
+              <span className="bg-gradient-to-r from-[#BEF264] to-[#ABDF90] bg-clip-text text-transparent">au profit de mieux équipés.</span>
             </h2>
             <p className="text-[#FAFAF7]/60 text-lg mb-10 max-w-xl mx-auto leading-relaxed">
               L&apos;audit gratuit prend 5 minutes. Le système prend 7 jours. Les résultats durent des années.
             </p>
-            <Link href="/free-audit" className="group inline-flex items-center gap-2 px-9 py-4 rounded-xl bg-[#0CA6E9] text-[#091C20] font-black text-lg hover:bg-[#ABDF90] transition-colors shadow-lg shadow-[#0CA6E9]/20">
+            <Link href="/fr/audit" className="group inline-flex items-center gap-2 px-9 py-4 rounded-xl bg-[#BEF264] text-[#0A1F14] font-black text-lg hover:bg-[#D9F99D] transition-colors shadow-lg shadow-[#BEF264]/20">
               Obtenir mon audit gratuit <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </Link>
             <p className="text-[#FAFAF7]/40 text-xs mt-5">Livré sous 24h · Sans appel · Prix fixe par écrit</p>
@@ -335,10 +336,11 @@ export default function FrenchHome() {
       </section>
 
       {/* FOOTER (French, simplified) */}
+      <StickyMobileCTA label="Réservez votre audit gratuit" sub="Gratuit · Livré en 24h · Sans appel" href="/fr/audit" />
       <footer className="bg-[#FAFAF7] border-t border-[#E8E6E0] py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-[#36671E] flex items-center justify-center"><Logomark className="w-4 h-4 text-[#0CA6E9]" /></div>
+            <div className="w-8 h-8 rounded-lg bg-[#36671E] flex items-center justify-center"><Logomark className="w-4 h-4 text-[#BEF264]" /></div>
             <span className="text-lg font-black tracking-tight text-[#18181B]">Serv<span className="gradient-text">olia</span></span>
           </div>
           <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm">

@@ -81,7 +81,7 @@ export default async function RevenuePage() {
           </div>
           <div className="flex gap-4 text-xs">
             <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-[#36671E]" /> Deposits</span>
-            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-[#0CA6E9]" /> MRR</span>
+            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-[#BEF264]" /> MRR</span>
           </div>
         </div>
 
@@ -95,7 +95,7 @@ export default async function RevenuePage() {
                   <div className="flex-1 rounded-t-md bg-[#36671E] transition-all relative group min-h-[2px]" style={{ height: `${Math.max(depH, 2)}%` }}>
                     <span className="absolute -top-6 left-1/2 -translate-x-1/2 text-[10px] font-bold text-[#36671E] opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">€{b.deposits.toLocaleString()}</span>
                   </div>
-                  <div className="flex-1 rounded-t-md bg-[#0CA6E9] transition-all relative group min-h-[2px]" style={{ height: `${Math.max(mrrH, 2)}%` }}>
+                  <div className="flex-1 rounded-t-md bg-[#BEF264] transition-all relative group min-h-[2px]" style={{ height: `${Math.max(mrrH, 2)}%` }}>
                     <span className="absolute -top-6 left-1/2 -translate-x-1/2 text-[10px] font-bold text-[#6B8439] opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">€{b.mrr.toLocaleString()}</span>
                   </div>
                 </div>

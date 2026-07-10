@@ -25,18 +25,18 @@ export default async function BlogIndex() {
       <Navbar />
       <main className="bg-[#FAFAF7]">
         {/* HERO */}
-        <section className="relative pt-32 pb-14 lg:pt-40 lg:pb-16 bg-[#091C20] overflow-hidden">
+        <section className="relative pt-32 pb-14 lg:pt-40 lg:pb-16 bg-[#0A1F14] overflow-hidden">
           <div className="absolute inset-0 pointer-events-none">
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[450px] bg-[#36671E] opacity-60 rounded-full blur-[120px]" />
             <div className="absolute inset-0 grain opacity-30" />
           </div>
           <div className="relative max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-[#0CA6E9]/40 bg-[#0CA6E9]/10 text-[#ABDF90] text-xs font-bold uppercase tracking-widest mb-6">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-[#BEF264]/40 bg-[#BEF264]/10 text-[#ABDF90] text-xs font-bold uppercase tracking-widest mb-6">
               Insights
             </div>
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-[#FAFAF7] leading-[1.05] tracking-tight mb-5">
               Client acquisition,{" "}
-              <span className="bg-gradient-to-r from-[#0CA6E9] to-[#ABDF90] bg-clip-text text-transparent">made practical.</span>
+              <span className="bg-gradient-to-r from-[#BEF264] to-[#ABDF90] bg-clip-text text-transparent">made practical.</span>
             </h1>
             <p className="text-[#ABDF90]/80 text-lg max-w-2xl mx-auto leading-relaxed">
               No-fluff thinking on AI receptionists, booking, and lead capture for service businesses that want more booked clients and less manual work.
@@ -57,7 +57,7 @@ export default async function BlogIndex() {
             <Link href={`/blog/${featured.slug}`}
               className="group block rounded-3xl overflow-hidden border border-[#E8E6E0] bg-white hover:shadow-elevated transition-all duration-300 mb-12">
               <div className="grid lg:grid-cols-2">
-                <div className="bg-[#091C20] p-8 lg:p-12 flex flex-col justify-center relative overflow-hidden min-h-[240px]">
+                <div className="bg-[#0A1F14] p-8 lg:p-12 flex flex-col justify-center relative overflow-hidden min-h-[240px]">
                   <div className="absolute -top-10 -right-10 w-64 h-64 bg-[#36671E] opacity-50 rounded-full blur-3xl pointer-events-none" />
                   <div className="relative">
                     <span className="text-[10px] font-black text-[#ABDF90] uppercase tracking-widest">Featured · {featured.category}</span>

@@ -71,15 +71,15 @@ export default function AIReceptionistDemo({ lang = "en" }: { lang?: "en" | "fr"
   return (
     <div className="relative rounded-2xl border border-[#E8E6E0] bg-white shadow-card overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 bg-[#091C20]">
+      <div className="flex items-center justify-between px-4 py-3 bg-[#0A1F14]">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-[#0CA6E9] flex items-center justify-center">
-            <Bot className="w-4 h-4 text-[#091C20]" />
+          <div className="w-8 h-8 rounded-lg bg-[#BEF264] flex items-center justify-center">
+            <Bot className="w-4 h-4 text-[#0A1F14]" />
           </div>
           <div>
             <p className="text-[#FAFAF7] text-sm font-bold leading-none">{L.title}</p>
-            <p className="text-[#0CA6E9] text-[11px] font-semibold mt-1 flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#0CA6E9] animate-pulse-dot" /> {L.status}
+            <p className="text-[#BEF264] text-[11px] font-semibold mt-1 flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#BEF264] animate-pulse-dot" /> {L.status}
             </p>
           </div>
         </div>
@@ -114,7 +114,7 @@ export default function AIReceptionistDemo({ lang = "en" }: { lang?: "en" | "fr"
             {[0, 1, 2].map((d) => (
               <span
                 key={d}
-                className="w-1.5 h-1.5 rounded-full bg-[#0CA6E9]"
+                className="w-1.5 h-1.5 rounded-full bg-[#BEF264]"
                 style={{ animation: `bounce 1.2s ${d * 0.15}s infinite ease-in-out` }}
               />
             ))}

@@ -46,7 +46,7 @@ export default function Footer() {
           <div className="lg:col-span-1">
             <Link href="/" className="flex items-center gap-2 mb-4">
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#36671E] to-[#295115] flex items-center justify-center">
-                <Logomark className="w-4 h-4 text-[#0CA6E9]" />
+                <Logomark className="w-4 h-4 text-[#BEF264]" />
               </div>
               <span className="text-xl font-black tracking-tight text-[#18181B]">
                 Serv<span className="gradient-text">olia</span>

@@ -67,7 +67,7 @@ const cases = [
     capability:
       "Instead of DMs no one can keep up with, every enquiry flows into one system and gets followed up automatically — so interest turns into booked consultations.",
     cta: "/contact",
-    color: "from-[#295115] to-[#0CA6E9]",
+    color: "from-[#295115] to-[#6B8439]",
     lightColor: "bg-[#EEF5EA]",
     borderColor: "border-[#6BA52A]/20",
   },

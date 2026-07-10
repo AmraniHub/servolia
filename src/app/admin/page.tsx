@@ -250,13 +250,13 @@ function KpiCard({ label, value, sub, icon, accent }: {
 }) {
   if (accent) {
     return (
-      <div className="relative p-5 rounded-2xl bg-[#091C20] overflow-hidden">
+      <div className="relative p-5 rounded-2xl bg-[#0A1F14] overflow-hidden">
         <div className="absolute -top-8 -right-8 w-32 h-32 bg-[#36671E] opacity-60 rounded-full blur-2xl pointer-events-none" />
         <div className="relative">
           <div className="flex items-center justify-between mb-4">
             <p className="text-[11px] font-black uppercase tracking-widest text-[#ABDF90]">{label}</p>
             {icon && (
-              <span className="w-8 h-8 rounded-lg bg-[#0CA6E9]/20 text-[#ABDF90] flex items-center justify-center">{icon}</span>
+              <span className="w-8 h-8 rounded-lg bg-[#BEF264]/20 text-[#ABDF90] flex items-center justify-center">{icon}</span>
             )}
           </div>
           <p className="text-3xl font-black text-[#FAFAF7] tabular-nums">{value}</p>

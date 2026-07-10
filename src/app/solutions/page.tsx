@@ -20,18 +20,18 @@ export default function SolutionsHub() {
       <Navbar />
       <main className="bg-[#FAFAF7]">
         {/* HERO */}
-        <section className="relative pt-32 pb-16 lg:pt-40 lg:pb-20 bg-[#091C20] overflow-hidden">
+        <section className="relative pt-32 pb-16 lg:pt-40 lg:pb-20 bg-[#0A1F14] overflow-hidden">
           <div className="absolute inset-0 pointer-events-none">
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-[#36671E] opacity-60 rounded-full blur-[120px]" />
             <div className="absolute inset-0 grain opacity-30" />
           </div>
           <div className="relative max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-[#0CA6E9]/40 bg-[#0CA6E9]/10 text-[#ABDF90] text-xs font-bold uppercase tracking-widest mb-6">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-[#BEF264]/40 bg-[#BEF264]/10 text-[#ABDF90] text-xs font-bold uppercase tracking-widest mb-6">
               Our Solutions
             </div>
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-[#FAFAF7] leading-[1.05] tracking-tight mb-6">
               One platform.{" "}
-              <span className="bg-gradient-to-r from-[#0CA6E9] to-[#ABDF90] bg-clip-text text-transparent">Every part of client acquisition.</span>
+              <span className="bg-gradient-to-r from-[#BEF264] to-[#ABDF90] bg-clip-text text-transparent">Every part of client acquisition.</span>
             </h1>
             <p className="text-[#ABDF90]/80 text-lg max-w-2xl mx-auto leading-relaxed">
               From the first visit to the booked appointment and the monthly report — each Servolia system handles one part of turning strangers into paying clients.

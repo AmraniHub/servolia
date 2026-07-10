@@ -33,10 +33,18 @@
   --color-forest-light: #EEF5EA; /* very light tint backgrounds */
   --color-forest-soft: #D6E2CF;  /* soft tint */
 
-  /* Brand — Sage (bright accent for highlights, badges) */
-  --color-sage: #0CA6E9;
-  --color-sage-dark: #6B8439;
+  /* Brand — Lime (electric accent on dark surfaces) */
+  --color-lime: #BEF264;
+  --color-lime-bright: #D9F99D;
+  --color-lime-soft: #ABDF90;
+
+  /* Brand — Sage / Olive (secondary accent on light surfaces) */
+  --color-sage: #6B8439;
+  --color-sage-dark: #55692E;
   --color-sage-light: #F0F5E6;
+
+  /* Dark surface (hero, CTA sections) */
+  --color-forest-ink: #0A1F14;
 
   /* Status */
   --color-success: #059669;
@@ -54,8 +62,24 @@
   --foreground: #18181B;
 }
 
-* {
+html {
   scroll-behavior: smooth;
+}
+
+/* Accessible focus rings — brand forest, visible on cream & white */
+:focus-visible {
+  outline: 2px solid #36671E;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 body {
@@ -69,14 +93,14 @@ body {
 
 /* === Premium gradient text === */
 .gradient-text {
-  background: linear-gradient(135deg, #36671E 0%, #295115 50%, #0CA6E9 100%);
+  background: linear-gradient(135deg, #36671E 0%, #295115 55%, #6B8439 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
 .gradient-text-sage {
-  background: linear-gradient(135deg, #0CA6E9 0%, #6B8439 100%);
+  background: linear-gradient(135deg, #BEF264 0%, #ABDF90 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -96,7 +120,7 @@ body {
 }
 
 .shadow-glow {
-  box-shadow: 0 0 0 1px rgba(31, 77, 46, 0.08), 0 8px 24px rgba(31, 77, 46, 0.12);
+  box-shadow: 0 0 0 1px rgba(54, 103, 30, 0.08), 0 8px 24px rgba(54, 103, 30, 0.12);
 }
 
 /* === Premium button styles === */
@@ -108,7 +132,8 @@ body {
 }
 .btn-primary:hover {
   background: #295115;
-  box-shadow: 0 4px 12px rgba(31, 77, 46, 0.15);
+  box-shadow: 0 4px 12px rgba(54, 103, 30, 0.2);
+  transform: translateY(-1px);
 }
 
 .btn-secondary {

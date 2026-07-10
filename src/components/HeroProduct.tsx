@@ -17,7 +17,7 @@ export default function HeroProduct() {
       className="relative mx-auto max-w-4xl"
     >
       {/* Glow behind the card */}
-      <div className="absolute -inset-4 bg-[#0CA6E9]/20 rounded-[28px] blur-3xl pointer-events-none" />
+      <div className="absolute -inset-4 bg-[#BEF264]/20 rounded-[28px] blur-3xl pointer-events-none" />
 
       {/* Browser frame */}
       <div className="relative rounded-2xl border border-[#FAFAF7]/15 bg-[#0B1F12]/80 backdrop-blur-xl shadow-2xl overflow-hidden">
@@ -41,19 +41,19 @@ export default function HeroProduct() {
           <div className="p-5 border-b md:border-b-0 md:border-r border-[#FAFAF7]/10">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
-                <TrendingUp className="w-4 h-4 text-[#0CA6E9]" />
+                <TrendingUp className="w-4 h-4 text-[#BEF264]" />
                 <span className="text-[#FAFAF7] text-sm font-bold">Live Pipeline</span>
               </div>
-              <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#0CA6E9]/15 border border-[#0CA6E9]/30">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#0CA6E9] animate-pulse-dot" />
+              <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#BEF264]/15 border border-[#BEF264]/30">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#BEF264] animate-pulse-dot" />
                 <span className="text-[#ABDF90] text-[10px] font-bold">€48,200 open</span>
               </div>
             </div>
 
             <div className="space-y-2">
               {[
-                { name: "Dr. Laurent — Dental", niche: "Implant consult", score: 92, value: "€4,500", color: "#0CA6E9" },
-                { name: "Élodie Spa — Aesthetic", niche: "Botox enquiry", score: 78, value: "€1,200", color: "#0CA6E9" },
+                { name: "Dr. Laurent — Dental", niche: "Implant consult", score: 92, value: "€4,500", color: "#BEF264" },
+                { name: "Élodie Spa — Aesthetic", niche: "Botox enquiry", score: 78, value: "€1,200", color: "#BEF264" },
                 { name: "Maison Royale — Realty", niche: "Villa mandate", score: 64, value: "€18,000", color: "#FEBC2E" },
                 { name: "ClimaTech — HVAC", niche: "Install quote", score: 51, value: "€3,300", color: "#FEBC2E" },
               ].map((lead, i) => (
@@ -86,12 +86,12 @@ export default function HeroProduct() {
           {/* RIGHT — AI chat + booking */}
           <div className="p-5 flex flex-col">
             <div className="flex items-center gap-2 mb-4">
-              <div className="w-7 h-7 rounded-lg bg-[#0CA6E9] flex items-center justify-center">
-                <Bot className="w-4 h-4 text-[#091C20]" />
+              <div className="w-7 h-7 rounded-lg bg-[#BEF264] flex items-center justify-center">
+                <Bot className="w-4 h-4 text-[#0A1F14]" />
               </div>
               <div>
                 <p className="text-[#FAFAF7] text-xs font-bold leading-none">AI Receptionist</p>
-                <p className="text-[#0CA6E9] text-[10px] font-semibold mt-0.5">● online · replies instantly</p>
+                <p className="text-[#BEF264] text-[10px] font-semibold mt-0.5">● online · replies instantly</p>
               </div>
             </div>
 
@@ -100,7 +100,7 @@ export default function HeroProduct() {
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 1.1 }}
-                className="ml-auto max-w-[85%] px-3 py-2 rounded-2xl rounded-br-sm bg-[#0CA6E9] text-[#091C20] text-[11px] font-medium leading-snug"
+                className="ml-auto max-w-[85%] px-3 py-2 rounded-2xl rounded-br-sm bg-[#BEF264] text-[#0A1F14] text-[11px] font-medium leading-snug"
               >
                 Hi, do you do implants? I&apos;m free Thursday.
               </motion.div>
@@ -116,7 +116,7 @@ export default function HeroProduct() {
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 1.9 }}
-                className="ml-auto max-w-[60%] px-3 py-2 rounded-2xl rounded-br-sm bg-[#0CA6E9] text-[#091C20] text-[11px] font-medium leading-snug"
+                className="ml-auto max-w-[60%] px-3 py-2 rounded-2xl rounded-br-sm bg-[#BEF264] text-[#0A1F14] text-[11px] font-medium leading-snug"
               >
                 Yes please 🙌
               </motion.div>
@@ -127,9 +127,9 @@ export default function HeroProduct() {
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 2.3, ease: [0.22, 1, 0.36, 1] }}
-              className="mt-3 flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-[#0CA6E9]/15 border border-[#0CA6E9]/30"
+              className="mt-3 flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-[#BEF264]/15 border border-[#BEF264]/30"
             >
-              <CheckCircle2 className="w-4 h-4 text-[#0CA6E9] shrink-0" />
+              <CheckCircle2 className="w-4 h-4 text-[#BEF264] shrink-0" />
               <div className="min-w-0">
                 <p className="text-[#FAFAF7] text-[11px] font-bold leading-none">Appointment booked</p>
                 <p className="text-[#ABDF90] text-[10px] mt-1 flex items-center gap-1">

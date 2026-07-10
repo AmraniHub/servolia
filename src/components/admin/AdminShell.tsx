@@ -52,7 +52,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         <div className="px-5 py-5 border-b border-[#E8E6E0]">
           <Link href="/admin" className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-[#36671E] flex items-center justify-center">
-              <Logomark className="w-4 h-4 text-[#0CA6E9]" />
+              <Logomark className="w-4 h-4 text-[#BEF264]" />
             </div>
             <span className="text-base font-black tracking-tight text-[#18181B]">
               Servolia <span className="text-[#36671E]">CRM</span>
@@ -117,7 +117,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
       <div className="lg:hidden fixed top-0 inset-x-0 bg-white border-b border-[#E8E6E0] z-30 h-14 flex items-center justify-between px-4">
         <Link href="/admin" className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg bg-[#36671E] flex items-center justify-center">
-            <Logomark className="w-3.5 h-3.5 text-[#0CA6E9]" />
+            <Logomark className="w-3.5 h-3.5 text-[#BEF264]" />
           </div>
           <span className="text-sm font-black text-[#18181B]">Servolia CRM</span>
         </Link>
