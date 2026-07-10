@@ -1,12 +1,21 @@
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import StickyMobileCTA from "@/components/StickyMobileCTA";
 import Link from "next/link";
 import { CheckCircle, ArrowRight, Bot, Calendar, BarChart3, Globe, Clock, Lock, TrendingUp } from "lucide-react";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "AI Booking System for Dental Clinics — Servolia",
-  description: "Turn your dental website into a 24/7 booking assistant. AI receptionist, lead capture, appointment flow, and tracking — delivered in 7 days.",
+  description: "Stop losing patients to the clinic that answers first. AI receptionist, online booking, and lead tracking for dental clinics — delivered in 7 days, fixed price.",
+  alternates: {
+    canonical: "https://servolia.com/dentists",
+    languages: {
+      "en-US": "https://servolia.com/dentists",
+      "fr-FR": "https://servolia.com/fr/dentistes",
+      "x-default": "https://servolia.com/dentists",
+    },
+  },
 };
 
 export default function DentistsPage() {
@@ -91,14 +100,23 @@ export default function DentistsPage() {
             </div>
           </div>
           <h1 className="text-center text-4xl sm:text-5xl lg:text-6xl font-black text-[#18181B] leading-tight mb-5">
-            Turn your dental website into a{" "}
-            <span className="gradient-text">24/7 booking assistant</span>
+            Stop losing patients to the clinic{" "}
+            <span className="gradient-text">that answers first.</span>
           </h1>
-          <p className="text-center text-lg text-[#52525B] max-w-2xl mx-auto mb-8">
-            We build a fast website, AI receptionist, booking flow, and lead tracking system for dental clinics — in 7 days. Fixed price. GDPR compliant.
+          <p className="text-center text-lg text-[#52525B] max-w-2xl mx-auto mb-6">
+            Patients enquire after hours, wait too long, or hit a contact form that goes nowhere — and book elsewhere. Servolia installs an AI receptionist, online booking, and lead tracking on your site in 7 days, so every enquiry is answered and captured.
           </p>
+          {/* Missed-revenue math */}
+          <div className="max-w-xl mx-auto mb-8 p-4 rounded-2xl bg-white border border-[#D6E2CF] text-center">
+            <p className="text-sm text-[#52525B]">
+              A clinic missing just <strong className="text-[#18181B]">9 after-hours enquiries a month</strong>, at{" "}
+              <strong className="text-[#18181B]">€1,500 per patient</strong>, is leaking
+            </p>
+            <p className="text-3xl font-black text-[#36671E] mt-1">~€13,500 / month</p>
+            <p className="text-[10px] text-[#A1A1AA] mt-1">Illustrative estimate — your free audit uses your clinic&apos;s own numbers.</p>
+          </div>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-10">
-            <Link href="/contact?niche=dentist" className="px-7 py-3.5 rounded-xl bg-gradient-to-r from-[#36671E] to-[#295115] text-[#FAFAF7] font-bold text-base hover:opacity-90 glow-button flex items-center gap-2">
+            <Link href="/free-audit" className="px-7 py-3.5 rounded-xl bg-gradient-to-r from-[#36671E] to-[#295115] text-[#FAFAF7] font-bold text-base hover:opacity-90 glow-button flex items-center gap-2">
               Get Free Clinic Audit <ArrowRight className="w-4 h-4" />
             </Link>
             <Link href="/pricing" className="text-[#52525B] hover:text-[#18181B] text-sm font-semibold transition-colors">
@@ -228,13 +246,14 @@ export default function DentistsPage() {
             Ready to fill your <span className="gradient-text">appointment calendar?</span>
           </h2>
           <p className="text-[#52525B] mb-6">Get a free clinic audit. We'll show you exactly what's missing and how to fix it in 7 days.</p>
-          <Link href="/contact?niche=dentist"
+          <Link href="/free-audit"
             className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl bg-gradient-to-r from-[#36671E] to-[#295115] text-[#FAFAF7] font-bold hover:opacity-90 glow-button">
             Get My Free Clinic Audit <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
       </section>
 
+      <StickyMobileCTA label="Get My Free Clinic Audit" sub="Free · 24h delivery · No call required" />
       <Footer />
     </main>
   );
