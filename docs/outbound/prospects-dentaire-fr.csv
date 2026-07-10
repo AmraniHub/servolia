@@ -1,0 +1,24 @@
+clinic,city,website,phone,online_booking,chat_or_ai,design,score,leak_angle
+IEDENT - Cabinet dentaire Bellecour,Lyon,http://www.iedent.com/,,NO,NO,dated,HOT,"No booking, no chat, dated site; phone advisors only Mon-Fri 8-19 — every evening/weekend implant enquiry leaks"
+Cabinet Metay (Dentaire Monplaisir),Lyon,https://dentairemonplaisir.fr/,04 78 76 66 66,NO,NO,modern,HOT,"Modern site but phone-only contact; no booking, no chat — invested in image, loses the conversion"
+Dr Alain Gracia (parodontie/implants),Bordeaux,https://www.dr-alaingracia.fr/,+33 5 56 24 44 32,NO,NO,dated,HOT,"Dated site, no booking, contact form only — high-value perio/implant patients hit friction"
+Cabinet Dentaire Charbit & Associés,Nice,https://www.cabinet-dentaire-charbit.fr/,04 93 44 32 20,NO,NO,modern,HOT,"Modern esthetics-focused site with NO booking and NO chat — pure brochure"
+AD Dentistes (Orangerie),Strasbourg,https://ad-dentistes-strasbourg.fr/,03 88 95 13 15,NO,NO,modern,HOT,"THREE separate phone numbers, one per dentist, no booking, no chat — maximum patient friction"
+Studio Dentaire (Dr Touati),Lyon,https://www.dr-touati-herve.chirurgiens-dentistes.fr/,,LIKELY NO,LIKELY NO,templated,HOT (verify),"Templated directory site — implant specialist on a cookie-cutter page"
+Clinique du Parc Lyon 6,Lyon,http://cabinetdechirurgiedentaireduparclyon6.fr/,,UNVERIFIED,LIKELY NO,dated (http!),HOT (verify),"Site still on plain HTTP — instant credibility leak for €3k+ implant cases"
+GAD Cabinet dentaire,Bordeaux,https://selarl-gadcabinetdentaire.chirurgiens-dentistes.fr/,05 57 87 22 67,LIKELY NO,LIKELY NO,templated,HOT (verify),"Multi-specialist team on a templated directory page"
+Cabinet Mondésir Santé Dentaire,Bordeaux,https://selarl-cauderan-dentaire.chirurgiens-dentistes.fr/,,LIKELY NO,LIKELY NO,templated,HOT (verify),"Implant/perio specialist, templated directory site"
+Dr Georges Marty (Saint-Cyprien),Toulouse,https://selarl-cabinetdentaire-dr-marty-chirurgiens-dentistes.fr/,,LIKELY NO,LIKELY NO,templated,HOT (verify),Implant-focused templated directory site
+Dr Gabriel-Robez,Toulouse,https://dr-jean-michel-gabriel-robez.chirurgiens-dentistes.fr/,,LIKELY NO,LIKELY NO,templated,HOT (verify),Implant page on templated directory site
+Drs Mailhes & Sabatie,Toulouse,https://dr-david-mailhes.chirurgiens-dentistes.fr/implantologie,,LIKELY NO,LIKELY NO,templated,HOT (verify),Implantology on templated directory site
+Dr David Aouizerat,Nice,https://dr-aouizerat-david.chirurgiens-dentistes.fr/,,LIKELY NO,LIKELY NO,templated,HOT (verify),"Implants + aesthetics, templated directory site"
+Dr Cédric Boileau,Nice,https://dr-boileau-cedric.chirurgiens-dentistes.fr/,,LIKELY NO,LIKELY NO,templated,HOT (verify),Implant solutions on templated directory site
+Dr Mammadov Elnur,Nice,https://www.dr-mammadov-elnur-chirurgiens-dentistes.fr/implantologie,,LIKELY NO,LIKELY NO,templated,HOT (verify),Implantology on templated directory site
+Cabinet du Grand Théâtre (Dr Leuret),Bordeaux,https://www.implant-dentaire-bordeaux.fr/,05 47 74 29 90,UNVERIFIED (403),UNVERIFIED,unknown,VERIFY,"Implant expert in Bordeaux centre — site blocks bots, check manually"
+Cabinet 47VH (implants/paro),Nice,https://47vh.fr/,,UNVERIFIED (403),UNVERIFIED,unknown,VERIFY,"Dedicated implant/perio surgery practice — site blocks bots, check manually"
+Cabinet Le 72,Bordeaux,https://www.cabinetdentairele72.fr/,05 56 46 30 30,YES,NO,modern,WARM,"Has booking but no chat/AI — after-hours questions still unanswered; upsell chatbot + tracking"
+CDBN (Bordeaux Nord),Bordeaux,https://cdbnord.com/,,YES (Doctolib),NO,modern,WARM,"3 locations on Doctolib, no chat — Doctolib books but never answers implant questions or follows up"
+Cabinet Dentaire Lumière,Lyon,https://cabinetdentairelumiere.fr/,04 72 35 08 45,YES,NO,modern,WARM,"7 dentists, online booking, no chat — big practice, good retainer candidate"
+Cabinet Pierre de Fermat,Toulouse,https://www.cabinet-dentaire-toulouse-fermat.fr/,05 87 14 06 17,YES (Doctolib),NO,modern,WARM,"Premium positioning, Doctolib, no chat — 'your site sends patients to Doctolib where your competitors are listed'"
+Dr Benichou,Toulouse,https://dentiste-toulouse-benichou.fr/,05 61 14 43 91,YES,NO,modern,WARM,"Modern digital practice, booking present, no AI/chat — image-conscious, retainer candidate"
+Pôle Santé ASC (Chamoux/Sancier/Anduze-Acher),Toulouse,https://www.polesante-asc.fr/,,UNVERIFIED,LIKELY NO,unknown,VERIFY,Multi-practitioner perio/implant pole — check manually
