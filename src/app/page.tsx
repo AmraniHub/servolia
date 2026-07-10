@@ -117,7 +117,7 @@ export default function HomePage() {
   return (
     <main className="flex flex-col bg-[#FAFAF7]">
       <FaqSchema faqs={faqs} />
-      <Navbar />
+      <Navbar heroDark />
 
       {/* ══════════════════════════════════════════════════════════════
           HERO — dark forest with grain texture

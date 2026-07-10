@@ -17,7 +17,7 @@ const ICONS = [Globe, Bot, Calendar, LayoutDashboard];
 export default function SolutionsHub() {
   return (
     <>
-      <Navbar />
+      <Navbar heroDark />
       <main className="bg-[#FAFAF7]">
         {/* HERO */}
         <section className="relative pt-32 pb-16 lg:pt-40 lg:pb-20 bg-[#0A1F14] overflow-hidden">

@@ -13,20 +13,26 @@ const links = [
   { label: "About", href: "/about" },
 ];
 
-export default function Navbar() {
+export default function Navbar({ heroDark = false }: { heroDark?: boolean }) {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
+    if (!heroDark) return; // no dark hero under the nav — chrome never needs to change
     const onScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener("scroll", onScroll);
+    onScroll();
     return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+  }, [heroDark]);
+
+  // True once the nav should render its light-page chrome (dark text, cream bg):
+  // always true on pages that don't open on a dark hero, otherwise only after scrolling past it.
+  const light = !heroDark || scrolled;
 
   return (
     <nav
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        scrolled
+        light
           ? "bg-[#FAFAF7]/85 backdrop-blur-xl border-b border-[#E8E6E0]"
           : "bg-transparent"
       }`}
@@ -34,12 +40,12 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 lg:h-18">
           {/* Wordmark — text only, no icon. Color flips for readability over
-              the dark hero (unscrolled) vs the light page background (scrolled). */}
+              a dark hero (heroDark, unscrolled) vs a light page (default/scrolled). */}
           <Link href="/" className="flex items-center group">
             <span className={`text-xl font-black tracking-tight transition-colors ${
-              scrolled ? "text-[#18181B]" : "text-[#FAFAF7]"
+              light ? "text-[#18181B]" : "text-[#FAFAF7]"
             }`}>
-              Serv<span className={scrolled ? "gradient-text" : "text-[#BEF264]"}>olia</span>
+              Serv<span className={light ? "gradient-text" : "text-[#BEF264]"}>olia</span>
             </span>
           </Link>
 
@@ -50,7 +56,7 @@ export default function Navbar() {
                 key={l.label}
                 href={l.href}
                 className={`text-sm font-medium transition-colors ${
-                  scrolled ? "text-[#52525B] hover:text-[#18181B]" : "text-[#FAFAF7]/70 hover:text-[#FAFAF7]"
+                  light ? "text-[#52525B] hover:text-[#18181B]" : "text-[#FAFAF7]/70 hover:text-[#FAFAF7]"
                 }`}
               >
                 {l.label}
@@ -63,7 +69,7 @@ export default function Navbar() {
             <Link
               href="/fr"
               className={`text-xs font-bold transition-colors border rounded-lg px-2.5 py-1.5 ${
-                scrolled
+                light
                   ? "text-[#52525B] hover:text-[#36671E] border-[#E8E6E0]"
                   : "text-[#FAFAF7]/80 hover:text-[#FAFAF7] border-[#FAFAF7]/20"
               }`}
@@ -74,7 +80,7 @@ export default function Navbar() {
             <Link
               href="/contact"
               className={`text-sm font-medium transition-colors ${
-                scrolled ? "text-[#52525B] hover:text-[#18181B]" : "text-[#FAFAF7]/70 hover:text-[#FAFAF7]"
+                light ? "text-[#52525B] hover:text-[#18181B]" : "text-[#FAFAF7]/70 hover:text-[#FAFAF7]"
               }`}
             >
               Contact
@@ -89,7 +95,7 @@ export default function Navbar() {
 
           {/* Mobile toggle */}
           <button
-            className={`md:hidden p-2 transition-colors ${scrolled ? "text-[#18181B]" : "text-[#FAFAF7]"}`}
+            className={`md:hidden p-2 transition-colors ${light ? "text-[#18181B]" : "text-[#FAFAF7]"}`}
             onClick={() => setOpen(!open)}
             aria-label="Toggle menu"
           >

@@ -22,7 +22,7 @@ export default function MarketingPage({ data }: { data: MarketingContent }) {
   return (
     <>
       <FaqSchema faqs={data.faqs} />
-      <Navbar />
+      <Navbar heroDark />
       <main className="bg-[#FAFAF7]">
         {/* HERO */}
         <section className="relative pt-32 pb-20 lg:pt-40 lg:pb-28 bg-[#0A1F14] overflow-hidden">

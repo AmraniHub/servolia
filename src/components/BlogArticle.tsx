@@ -54,7 +54,7 @@ export default function BlogArticle({ post }: { post: Post }) {
 
   return (
     <>
-      <Navbar />
+      <Navbar heroDark />
       <main className="bg-white">
         {/* HERO */}
         <section className="relative pt-32 pb-14 lg:pt-40 lg:pb-16 bg-[#0A1F14] overflow-hidden">
