@@ -2,12 +2,17 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin, type Build, type Lead } from "@/lib/supabase";
 import { isAdminAuthed } from "@/lib/auth";
 import { configFromIntake, slugify, type ClientSiteConfig } from "@/lib/clientSites";
+import { aiEnrichConfig } from "@/lib/generateSiteCopy";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
 /**
  * Generate (or regenerate) a draft client site from a build's intake data.
- * POST { buildId }  →  { slug }
+ * Mechanical draft first (configFromIntake), then Claude writes the full
+ * site copy from the intake answers (aiEnrichConfig) — falls back to the
+ * mechanical draft if the AI call fails, so generation never breaks.
+ * POST { buildId }  →  { slug, config, ai }
  * Admin-only.
  */
 export async function POST(req: NextRequest) {
@@ -32,13 +37,14 @@ export async function POST(req: NextRequest) {
     niche = (lead as Pick<Lead, "niche"> | null)?.niche ?? null;
   }
 
-  // Draft the config from intake
-  const config: ClientSiteConfig = configFromIntake({
+  // Draft the config from intake, then let Claude write the real copy
+  const draft: ClientSiteConfig = configFromIntake({
     intake: b.intake_data ?? null,
     business: b.business,
     niche,
     email: b.email,
   });
+  const { config, ai } = await aiEnrichConfig(draft, b.intake_data ?? {});
 
   // Ensure a unique slug (append short suffix on collision with a *different* build)
   let slug = config.slug;
@@ -65,5 +71,5 @@ export async function POST(req: NextRequest) {
     await db.from("client_sites").insert(row);
   }
 
-  return NextResponse.json({ slug, config });
+  return NextResponse.json({ slug, config, ai });
 }
