@@ -11,7 +11,6 @@ import {
   Bot, CheckCircle, ArrowRight, Shield, Clock, Globe, Lock,
   XCircle, ChevronDown, BadgeCheck,
 } from "lucide-react";
-import Logomark from "@/components/Logomark";
 
 function FadeUp({ children, delay = 0, className = "" }: { children: React.ReactNode; delay?: number; className?: string }) {
   return (
@@ -55,10 +54,7 @@ export default function FrenchHome() {
       {/* NAV (French) */}
       <nav className="fixed top-0 inset-x-0 z-50 bg-[#FAFAF7]/85 backdrop-blur-xl border-b border-[#E8E6E0]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16 lg:h-18">
-          <Link href="/fr" className="flex items-center gap-2 group">
-            <div className="w-8 h-8 rounded-lg bg-[#36671E] flex items-center justify-center group-hover:bg-[#295115] transition-colors">
-              <Logomark className="w-4 h-4 text-[#BEF264]" />
-            </div>
+          <Link href="/fr" className="flex items-center group">
             <span className="text-xl font-black tracking-tight text-[#18181B]">Serv<span className="gradient-text">olia</span></span>
           </Link>
           <div className="hidden md:flex items-center gap-7">
@@ -339,8 +335,7 @@ export default function FrenchHome() {
       <StickyMobileCTA label="Réservez votre audit gratuit" sub="Gratuit · Livré en 24h · Sans appel" href="/fr/audit" />
       <footer className="bg-[#FAFAF7] border-t border-[#E8E6E0] py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-[#36671E] flex items-center justify-center"><Logomark className="w-4 h-4 text-[#BEF264]" /></div>
+          <div className="flex items-center">
             <span className="text-lg font-black tracking-tight text-[#18181B]">Serv<span className="gradient-text">olia</span></span>
           </div>
           <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm">

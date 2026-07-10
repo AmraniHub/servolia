@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Lock, ArrowRight } from "lucide-react";
-import Logomark from "@/components/Logomark";
 
 export default function AdminLogin() {
   const router = useRouter();
@@ -38,10 +37,7 @@ export default function AdminLogin() {
   return (
     <div className="min-h-screen flex items-center justify-center px-4 bg-[#FAFAF7]">
       <div className="w-full max-w-sm">
-        <div className="flex items-center justify-center gap-2 mb-8">
-          <div className="w-9 h-9 rounded-lg bg-[#36671E] flex items-center justify-center">
-            <Logomark className="w-4 h-4 text-[#BEF264]" />
-          </div>
+        <div className="flex items-center justify-center mb-8">
           <span className="text-xl font-black tracking-tight text-[#18181B]">
             Servolia <span className="text-[#36671E]">CRM</span>
           </span>

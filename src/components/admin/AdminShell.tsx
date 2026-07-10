@@ -8,7 +8,6 @@ import {
   TrendingUp, Settings, LogOut, Menu, X, BarChart3, Kanban, Search, Globe, Sparkles,
 } from "lucide-react";
 import CommandPalette from "./CommandPalette";
-import Logomark from "@/components/Logomark";
 
 const nav = [
   { label: "Dashboard",   href: "/admin",           icon: LayoutDashboard },
@@ -50,10 +49,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
       {/* === SIDEBAR (desktop) === */}
       <aside className="hidden lg:flex w-60 bg-white border-r border-[#E8E6E0] flex-col fixed inset-y-0 left-0 z-30">
         <div className="px-5 py-5 border-b border-[#E8E6E0]">
-          <Link href="/admin" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-[#36671E] flex items-center justify-center">
-              <Logomark className="w-4 h-4 text-[#BEF264]" />
-            </div>
+          <Link href="/admin" className="flex items-center">
             <span className="text-base font-black tracking-tight text-[#18181B]">
               Servolia <span className="text-[#36671E]">CRM</span>
             </span>
@@ -115,10 +111,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
 
       {/* === MOBILE TOPBAR === */}
       <div className="lg:hidden fixed top-0 inset-x-0 bg-white border-b border-[#E8E6E0] z-30 h-14 flex items-center justify-between px-4">
-        <Link href="/admin" className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-[#36671E] flex items-center justify-center">
-            <Logomark className="w-3.5 h-3.5 text-[#BEF264]" />
-          </div>
+        <Link href="/admin" className="flex items-center">
           <span className="text-sm font-black text-[#18181B]">Servolia CRM</span>
         </Link>
         <button onClick={() => setMobileOpen(true)} className="text-[#18181B]">

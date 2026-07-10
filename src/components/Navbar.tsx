@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
-import Logomark from "@/components/Logomark";
 
 const links = [
   { label: "Solutions", href: "/solutions" },
@@ -34,13 +33,13 @@ export default function Navbar() {
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 lg:h-18">
-          {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 group">
-            <div className="w-8 h-8 rounded-lg bg-[#36671E] flex items-center justify-center group-hover:bg-[#295115] transition-colors">
-              <Logomark className="w-4 h-4 text-[#BEF264]" />
-            </div>
-            <span className="text-xl font-black tracking-tight text-[#18181B]">
-              Serv<span className="gradient-text">olia</span>
+          {/* Wordmark — text only, no icon. Color flips for readability over
+              the dark hero (unscrolled) vs the light page background (scrolled). */}
+          <Link href="/" className="flex items-center group">
+            <span className={`text-xl font-black tracking-tight transition-colors ${
+              scrolled ? "text-[#18181B]" : "text-[#FAFAF7]"
+            }`}>
+              Serv<span className={scrolled ? "gradient-text" : "text-[#BEF264]"}>olia</span>
             </span>
           </Link>
 
@@ -50,7 +49,9 @@ export default function Navbar() {
               <Link
                 key={l.label}
                 href={l.href}
-                className="text-sm font-medium text-[#52525B] hover:text-[#18181B] transition-colors"
+                className={`text-sm font-medium transition-colors ${
+                  scrolled ? "text-[#52525B] hover:text-[#18181B]" : "text-[#FAFAF7]/70 hover:text-[#FAFAF7]"
+                }`}
               >
                 {l.label}
               </Link>
@@ -61,14 +62,20 @@ export default function Navbar() {
           <div className="hidden md:flex items-center gap-3">
             <Link
               href="/fr"
-              className="text-xs font-bold text-[#52525B] hover:text-[#36671E] transition-colors border border-[#E8E6E0] rounded-lg px-2.5 py-1.5"
+              className={`text-xs font-bold transition-colors border rounded-lg px-2.5 py-1.5 ${
+                scrolled
+                  ? "text-[#52525B] hover:text-[#36671E] border-[#E8E6E0]"
+                  : "text-[#FAFAF7]/80 hover:text-[#FAFAF7] border-[#FAFAF7]/20"
+              }`}
               aria-label="Version française"
             >
               FR
             </Link>
             <Link
               href="/contact"
-              className="text-sm font-medium text-[#52525B] hover:text-[#18181B] transition-colors"
+              className={`text-sm font-medium transition-colors ${
+                scrolled ? "text-[#52525B] hover:text-[#18181B]" : "text-[#FAFAF7]/70 hover:text-[#FAFAF7]"
+              }`}
             >
               Contact
             </Link>
@@ -82,7 +89,7 @@ export default function Navbar() {
 
           {/* Mobile toggle */}
           <button
-            className="md:hidden text-[#18181B] p-2"
+            className={`md:hidden p-2 transition-colors ${scrolled ? "text-[#18181B]" : "text-[#FAFAF7]"}`}
             onClick={() => setOpen(!open)}
             aria-label="Toggle menu"
           >

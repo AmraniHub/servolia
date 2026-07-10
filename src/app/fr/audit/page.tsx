@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import AuditForm from "@/components/AuditForm";
-import Logomark from "@/components/Logomark";
 
 export const metadata: Metadata = {
   title: "Audit gratuit — Servolia",
@@ -23,10 +22,7 @@ export default function FrenchAuditPage() {
       {/* Minimal French header — lead page, keep distractions low */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-[#FAFAF7]/85 backdrop-blur-xl border-b border-[#E8E6E0]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
-          <Link href="/fr" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-[#36671E] flex items-center justify-center">
-              <Logomark className="w-4 h-4 text-[#BEF264]" />
-            </div>
+          <Link href="/fr" className="flex items-center">
             <span className="text-xl font-black tracking-tight text-[#18181B]">
               Serv<span className="gradient-text">olia</span>
             </span>
