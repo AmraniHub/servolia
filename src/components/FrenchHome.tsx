@@ -7,6 +7,8 @@ import HeroProduct from "@/components/HeroProduct";
 import AIReceptionistDemo from "@/components/AIReceptionistDemo";
 import ROICalculator from "@/components/ROICalculator";
 import StickyMobileCTA from "@/components/StickyMobileCTA";
+import FrenchNav from "@/components/FrenchNav";
+import FrenchFooter from "@/components/FrenchFooter";
 import {
   Bot, CheckCircle, ArrowRight, Shield, Clock, Globe, Lock,
   XCircle, ChevronDown, BadgeCheck,
@@ -26,13 +28,6 @@ function FadeUp({ children, delay = 0, className = "" }: { children: React.React
   );
 }
 
-const NAV = [
-  { label: "Solutions", href: "/solutions" },
-  { label: "Tarifs", href: "/pricing" },
-  { label: "Cas clients", href: "/case-studies" },
-  { label: "Blog", href: "/blog" },
-];
-
 const SYSTEMS = [
   { name: "Système Site Web", price: "Dès 490 €", delay: "3 jours", desc: "Un site professionnel conçu pour convertir vos visiteurs en demandes — mobile-first, conforme RGPD, en ligne en 72 h.", accent: false },
   { name: "Système Réservation", price: "990 €", delay: "5 jours", desc: "Réceptionniste IA + site + suivi complet. Prend les rendez-vous, capture les leads, répond aux questions 24h/24.", accent: true },
@@ -51,23 +46,8 @@ export default function FrenchHome() {
 
   return (
     <main className="flex flex-col bg-[#FAFAF7]">
-      {/* NAV (French) */}
-      <nav className="fixed top-0 inset-x-0 z-50 bg-[#FAFAF7]/85 backdrop-blur-xl border-b border-[#E8E6E0]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16 lg:h-18">
-          <Link href="/fr" className="flex items-center group">
-            <span className="text-xl font-black tracking-tight text-[#18181B]">Serv<span className="gradient-text">olia</span></span>
-          </Link>
-          <div className="hidden md:flex items-center gap-7">
-            {NAV.map((l) => (
-              <Link key={l.label} href={l.href} className="text-sm font-medium text-[#52525B] hover:text-[#18181B] transition-colors">{l.label}</Link>
-            ))}
-          </div>
-          <div className="flex items-center gap-3">
-            <Link href="/" className="text-xs font-bold text-[#52525B] hover:text-[#36671E] transition-colors border border-[#E8E6E0] rounded-lg px-2.5 py-1.5">EN</Link>
-            <Link href="/fr/audit" className="px-4 py-2 rounded-lg bg-[#36671E] text-[#FAFAF7] text-sm font-semibold hover:bg-[#295115] transition-colors shadow-soft">Audit gratuit →</Link>
-          </div>
-        </div>
-      </nav>
+      {/* NAV (French, shared) */}
+      <FrenchNav heroDark enHref="/" />
 
       {/* HERO */}
       <section className="relative min-h-[92vh] flex items-center justify-center overflow-hidden bg-[#0A1F14] pt-20">
@@ -331,21 +311,9 @@ export default function FrenchHome() {
         </div>
       </section>
 
-      {/* FOOTER (French, simplified) */}
+      {/* FOOTER (French, shared) */}
       <StickyMobileCTA label="Réservez votre audit gratuit" sub="Gratuit · Livré en 24h · Sans appel" href="/fr/audit" />
-      <footer className="bg-[#FAFAF7] border-t border-[#E8E6E0] py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-6">
-          <div className="flex items-center">
-            <span className="text-lg font-black tracking-tight text-[#18181B]">Serv<span className="gradient-text">olia</span></span>
-          </div>
-          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm">
-            {NAV.map((l) => <Link key={l.label} href={l.href} className="text-[#52525B] hover:text-[#18181B] transition-colors">{l.label}</Link>)}
-            <Link href="/legal/privacy" className="text-[#52525B] hover:text-[#18181B] transition-colors">Confidentialité</Link>
-            <Link href="/" className="text-[#36671E] font-bold">English →</Link>
-          </div>
-          <p className="text-[#A1A1AA] text-xs">© {new Date().getFullYear()} Servolia</p>
-        </div>
-      </footer>
+      <FrenchFooter />
     </main>
   );
 }

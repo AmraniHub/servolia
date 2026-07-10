@@ -7,6 +7,14 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "About Servolia — Built by an operator, for operators",
   description: "Servolia is an AI client acquisition systems agency built for service businesses in Europe and the US. We deliver fixed-price AI websites and lead systems in 7 days.",
+  alternates: {
+    canonical: "https://servolia.com/about",
+    languages: {
+      "en-US": "https://servolia.com/about",
+      "fr-FR": "https://servolia.com/fr/a-propos",
+      "x-default": "https://servolia.com/about",
+    },
+  },
 };
 
 export default function AboutPage() {

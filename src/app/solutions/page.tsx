@@ -9,7 +9,14 @@ import { Globe, Bot, Calendar, LayoutDashboard, ArrowRight } from "lucide-react"
 export const metadata: Metadata = {
   title: "Solutions — AI Client Systems for Service Businesses | Servolia",
   description: "Explore Servolia's AI client acquisition systems: AI websites, AI receptionist, booking systems, and CRM dashboards. Fixed price, delivered in days.",
-  alternates: { canonical: "https://servolia.com/solutions" },
+  alternates: {
+    canonical: "https://servolia.com/solutions",
+    languages: {
+      "en-US": "https://servolia.com/solutions",
+      "fr-FR": "https://servolia.com/fr/solutions",
+      "x-default": "https://servolia.com/solutions",
+    },
+  },
 };
 
 const ICONS = [Globe, Bot, Calendar, LayoutDashboard];

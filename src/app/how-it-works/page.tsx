@@ -7,6 +7,14 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "How It Works — Servolia",
   description: "From free audit to live AI system in 7 days. See the exact Servolia delivery process — what happens, when, and what you need to do.",
+  alternates: {
+    canonical: "https://servolia.com/how-it-works",
+    languages: {
+      "en-US": "https://servolia.com/how-it-works",
+      "fr-FR": "https://servolia.com/fr/comment-ca-marche",
+      "x-default": "https://servolia.com/how-it-works",
+    },
+  },
 };
 
 const steps = [

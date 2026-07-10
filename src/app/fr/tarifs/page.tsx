@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import CheckoutButton from "@/components/CheckoutButton";
 import StickyMobileCTA from "@/components/StickyMobileCTA";
+import FrenchNav from "@/components/FrenchNav";
+import FrenchFooter from "@/components/FrenchFooter";
 import { CheckCircle, ArrowRight, Shield, Clock, Globe, Bot, Building2, Lock } from "lucide-react";
 
 export const metadata: Metadata = {
@@ -117,24 +119,7 @@ const carePlans = [
 export default function FrenchPricingPage() {
   return (
     <main className="flex flex-col bg-white">
-      {/* Minimal French header */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-[#FAFAF7]/85 backdrop-blur-xl border-b border-[#E8E6E0]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
-          <Link href="/fr" className="flex items-center">
-            <span className="text-xl font-black tracking-tight text-[#18181B]">
-              Serv<span className="gradient-text">olia</span>
-            </span>
-          </Link>
-          <div className="flex items-center gap-3">
-            <Link href="/fr/dentistes" className="hidden sm:block text-sm font-medium text-[#52525B] hover:text-[#18181B] transition-colors">
-              Dentistes
-            </Link>
-            <Link href="/fr/audit" className="px-4 py-2 rounded-lg bg-[#36671E] text-[#FAFAF7] text-sm font-semibold hover:bg-[#295115] transition-colors">
-              Audit gratuit →
-            </Link>
-          </div>
-        </div>
-      </nav>
+      <FrenchNav enHref="/pricing" />
 
       {/* Hero */}
       <section className="bg-[#FAFAF7] pt-28 pb-12">
@@ -300,12 +285,7 @@ export default function FrenchPricingPage() {
       </section>
 
       <StickyMobileCTA label="Recevoir mon audit gratuit" sub="Gratuit · Livré en 24h · Sans appel" href="/fr/audit" />
-
-      <footer className="bg-[#FAFAF7] border-t border-[#E8E6E0] py-8 text-center text-xs text-[#71717A]">
-        © {new Date().getFullYear()} Servolia ·{" "}
-        <a href="mailto:hello@servolia.com" className="hover:text-[#36671E]">hello@servolia.com</a> ·{" "}
-        <Link href="/legal/privacy" className="hover:text-[#36671E]">Confidentialité</Link>
-      </footer>
+      <FrenchFooter />
     </main>
   );
 }

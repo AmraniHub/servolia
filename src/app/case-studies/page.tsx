@@ -7,6 +7,14 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Example Deployments — What a Servolia System Delivers",
   description: "Illustrative deployment scenarios showing how dental clinics, aesthetic practices, and service businesses in Europe and the US use Servolia AI systems to capture and book more clients.",
+  alternates: {
+    canonical: "https://servolia.com/case-studies",
+    languages: {
+      "en-US": "https://servolia.com/case-studies",
+      "fr-FR": "https://servolia.com/fr/cas-clients",
+      "x-default": "https://servolia.com/case-studies",
+    },
+  },
 };
 
 const cases = [
