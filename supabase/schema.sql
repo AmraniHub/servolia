@@ -223,6 +223,25 @@ alter table chat_sessions add column if not exists site_slug text;
 create index if not exists chat_sessions_site_idx on chat_sessions(site_slug);
 
 
+-- CLIENT MESSAGES: two-way thread between a paying client (portal) and the founder (CRM)
+create table if not exists client_messages (
+  id          uuid primary key default gen_random_uuid(),
+  created_at  timestamptz default now(),
+
+  email       text not null,              -- the client's login email (ties thread to them)
+  build_id    uuid references builds(id) on delete set null,
+
+  sender      text not null,              -- 'client' | 'admin'
+  body        text not null,
+
+  read_by_admin  boolean default false,
+  read_by_client boolean default false
+);
+
+create index if not exists client_messages_email_idx on client_messages(email, created_at);
+create index if not exists client_messages_build_idx on client_messages(build_id);
+
+
 -- LEAD ACTIVITIES: timeline of every interaction with a lead
 create table if not exists lead_activities (
   id          uuid primary key default gen_random_uuid(),

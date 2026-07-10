@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabase";
 import { ArrowLeft, Calendar, CreditCard, User } from "lucide-react";
 import BuildStatusActions from "@/components/admin/BuildStatusActions";
+import ClientMessageThread from "@/components/admin/ClientMessageThread";
 
 export const dynamic = "force-dynamic";
 
@@ -67,6 +68,13 @@ export default async function BuildDetailPage({ params }: { params: Promise<{ id
               <p className="text-xs text-[#71717A]">{lead.email ?? "no email"}</p>
             </div>
           </Link>
+        </div>
+      )}
+
+      {build.email && (
+        <div className="mb-6">
+          <p className="text-xs font-black text-[#71717A] uppercase tracking-widest mb-3">Client conversation</p>
+          <ClientMessageThread email={build.email} buildId={build.id} />
         </div>
       )}
 

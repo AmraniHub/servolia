@@ -146,6 +146,34 @@ export const depositReceivedEmail = (firstName: string, planName: string, amount
   };
 };
 
+/** Sent when a client requests to log into their portal (magic link). */
+export const portalLoginEmail = (loginUrl: string) => ({
+  subject: "Your Servolia login link",
+  html: wrapper(`
+    <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">Log in to your portal</h1>
+    <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#3F3F46;">
+      Click below to securely log in — no password needed. This link expires in 15 minutes.
+    </p>
+    ${btn(loginUrl, "Log in to Servolia →")}
+    <p style="margin:24px 0 0;font-size:13px;line-height:1.6;color:#71717A;">
+      Didn't request this? You can safely ignore this email.
+    </p>
+  `),
+});
+
+/** Sent to a client when the founder replies to their portal message. */
+export const newPortalMessageEmail = (firstName: string, preview: string) => ({
+  subject: "New reply from Servolia",
+  html: wrapper(`
+    <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">You have a new message</h1>
+    <p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#3F3F46;">Hi ${firstName},</p>
+    <p style="margin:0 0 16px;padding:16px;background:#FAFAF7;border-left:3px solid #36671E;font-size:15px;line-height:1.6;color:#18181B;">
+      ${preview}
+    </p>
+    ${btn("https://servolia.com/portal", "View & reply →")}
+  `),
+});
+
 /** Sent to client when their build goes live. */
 export const liveEmail = (firstName: string, url: string) => ({
   subject: "🚀 Your system is live",

@@ -26,6 +26,7 @@ const company = [
   { label: "Insights", href: "/blog" },
   { label: "Pricing", href: "/pricing" },
   { label: "Free Audit", href: "/free-audit" },
+  { label: "Client Portal", href: "/portal" },
   { label: "Client Billing", href: "/billing" },
 ];
 
