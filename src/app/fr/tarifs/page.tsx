@@ -24,8 +24,8 @@ const tiers = [
   {
     plan: "starter",
     name: "Système Site Web",
-    price: "490 €",
-    deposit: "245 €",
+    price: "290 €",
+    deposit: "145 €",
     delivery: "3 jours",
     forWho: "Pour les entreprises qui ont besoin d'une présence en ligne professionnelle et fiable",
     desc: "Un site orienté conversion qui inspire confiance et transforme les visiteurs en demandes.",
@@ -45,8 +45,8 @@ const tiers = [
   {
     plan: "growth",
     name: "Système de Réservation",
-    price: "990 €",
-    deposit: "495 €",
+    price: "590 €",
+    deposit: "295 €",
     delivery: "5 jours",
     forWho: "Pour les entreprises qui veulent des demandes et des rendez-vous réservés automatiquement",
     desc: "Réceptionniste IA + site + suivi complet. Votre entreprise travaille pour vous 24h/24.",
@@ -68,8 +68,8 @@ const tiers = [
   {
     plan: "pro",
     name: "Système Client",
-    price: "1 900 €",
-    deposit: "950 €",
+    price: "990 €",
+    deposit: "495 €",
     delivery: "7 jours",
     forWho: "Pour les entreprises qui veulent suivi complet, tableau de bord et automatisations",
     desc: "Système de leads IA complet : tableau de bord, pipeline, automatisations, rapports mensuels.",
@@ -93,7 +93,7 @@ const carePlans = [
   {
     plan: "care",
     name: "Care",
-    price: "69 €",
+    price: "49 €",
     desc: "Pour ceux qui veulent un système surveillé et à jour.",
     features: ["Surveillance de disponibilité", "Modifications de contenu (1h/mois)", "Mises à jour de sécurité", "Support par email"],
     popular: false,
@@ -101,7 +101,7 @@ const carePlans = [
   {
     plan: "care_growth",
     name: "Growth",
-    price: "149 €",
+    price: "99 €",
     desc: "Pour ceux qui veulent une IA réentraînée et des améliorations chaque mois.",
     features: ["Tout Care", "Réentraînement du chatbot", "Rapport analytique mensuel", "2h d'améliorations/mois"],
     popular: true,
@@ -109,7 +109,7 @@ const carePlans = [
   {
     plan: "care_scale",
     name: "Scale",
-    price: "299 €",
+    price: "199 €",
     desc: "Pour ceux qui traitent Servolia comme leur système d'acquisition complet.",
     features: ["Tout Growth", "Améliorations A/B testées", "Évolutions CRM & workflows", "Appel stratégique mensuel"],
     popular: false,

@@ -26,9 +26,9 @@ const tiers = [
   {
     plan: "starter",
     name: "Website System",
-    price: "€490",
-    deposit: "€245",
-    usd: "~$530",
+    price: "€290",
+    deposit: "€145",
+    usd: "~$315",
     delivery: "3 days",
     for: "For businesses that need a trusted, professional online presence",
     desc: "A conversion-first website that builds trust and turns visitors into inquiries.",
@@ -51,9 +51,9 @@ const tiers = [
   {
     plan: "growth",
     name: "Booking System",
-    price: "€990",
-    deposit: "€495",
-    usd: "~$1,070",
+    price: "€590",
+    deposit: "€295",
+    usd: "~$640",
     delivery: "5 days",
     for: "For businesses that want leads and appointments booked automatically",
     desc: "AI receptionist + website + full tracking. Your business works for you 24/7.",
@@ -78,9 +78,9 @@ const tiers = [
   {
     plan: "pro",
     name: "Client System",
-    price: "€1,900",
-    deposit: "€950",
-    usd: "~$2,050",
+    price: "€990",
+    deposit: "€495",
+    usd: "~$1,070",
     delivery: "7 days",
     for: "For businesses that want full tracking, dashboard, and automation",
     desc: "Complete AI lead system with dashboard, pipeline, automations, and monthly reports.",
@@ -108,7 +108,7 @@ const carePlans = [
   {
     plan: "care",
     name: "Care",
-    price: "€69/mo",
+    price: "€49/mo",
     desc: "Maintenance, small edits, and uptime monitoring.",
     features: ["Uptime monitoring", "Content edits (1h/mo)", "Security updates", "Email support"],
     popular: false,
@@ -116,7 +116,7 @@ const carePlans = [
   {
     plan: "care_growth",
     name: "Growth",
-    price: "€149/mo",
+    price: "€99/mo",
     desc: "Analytics, chatbot updates, and monthly improvements.",
     features: ["Everything in Care", "Chatbot retraining", "Monthly analytics report", "2h of improvements/mo"],
     popular: true,
@@ -124,7 +124,7 @@ const carePlans = [
   {
     plan: "care_scale",
     name: "Scale",
-    price: "€299/mo",
+    price: "€199/mo",
     desc: "Full monthly optimization: A/B testing, CRM, conversion review.",
     features: ["Everything in Growth", "A/B test improvements", "CRM workflow updates", "Monthly strategy call"],
     popular: false,
@@ -135,8 +135,8 @@ const appServices = [
   {
     plan: "webapp",
     name: "Web App / SaaS MVP",
-    price: "€490",
-    deposit: "€245",
+    price: "€290",
+    deposit: "€145",
     delivery: "7–14 days",
     icon: <LayoutDashboard className="w-5 h-5" />,
     desc: "Custom web application, SaaS MVP, or internal tool — built and deployed to production.",
@@ -145,12 +145,12 @@ const appServices = [
   {
     plan: "mobile",
     name: "Mobile App (Android/iOS)",
-    price: "€690",
-    deposit: "€345",
+    price: "€490",
+    deposit: "€245",
     delivery: "10–15 days",
     icon: <Smartphone className="w-5 h-5" />,
-    desc: "React Native app for Android (iOS optional +€150). Play Store submission included.",
-    features: ["Android app (React Native)", "iOS version available +€150", "Push notifications", "User auth + API integration", "Play Store submission", "1 month support"],
+    desc: "React Native app for Android (iOS optional +€100). Play Store submission included.",
+    features: ["Android app (React Native)", "iOS version available +€100", "Push notifications", "User auth + API integration", "Play Store submission", "1 month support"],
   },
 ];
 
@@ -421,7 +421,7 @@ export default function PricingPage() {
               { q: "Are paid ads included?", a: "No. Paid ad budget (Meta, Google) is paid directly by you to the platform. We can set up full tracking and landing pages, but we don't manage ad spend — we're clear about this upfront." },
               { q: "Do you offer refunds?", a: "If we miss the agreed delivery deadline, we refund 10% per day of delay. If we fail to deliver at all, full refund. See our full refund policy in the CGV." },
               { q: "Can I upgrade plans after delivery?", a: "Yes. If you start on Website System and want to add AI chatbot or a dashboard later, we quote an upgrade price — never the full plan price." },
-              { q: "Does the mobile app work on both Android and iOS?", a: "We build with React Native so the same code runs on both. Android app and Play Store submission is included. iOS version is +€150, App Store submission +€100 extra." },
+              { q: "Does the mobile app work on both Android and iOS?", a: "We build with React Native so the same code runs on both. Android app and Play Store submission is included. iOS version is +€100, App Store submission +€100 extra." },
             ].map((f, i) => (
               <div key={i} className="bg-white rounded-xl border border-[#E8E6E0] p-5 shadow-sm">
                 <h3 className="font-bold text-[#080E1C] text-sm mb-2">{f.q}</h3>

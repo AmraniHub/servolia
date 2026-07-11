@@ -80,28 +80,28 @@ export default function HomePage() {
   const systems = [
     {
       num: "01", icon: <Globe className="w-5 h-5" />,
-      title: "AI Website System", price: "From €490", delivery: "3 days",
+      title: "AI Website System", price: "From €290", delivery: "3 days",
       desc: "A professional website built to convert visitors into inquiries — mobile-first, GDPR-ready, live in 72 hours.",
       features: ["5–10 conversion-focused pages", "Booking & contact CTA", "Google Analytics 4", "GDPR pages included"],
       accent: false,
     },
     {
       num: "02", icon: <Bot className="w-5 h-5" />,
-      title: "AI Booking System", price: "€990", delivery: "5 days",
+      title: "AI Booking System", price: "€590", delivery: "5 days",
       desc: "AI receptionist + website + full tracking. Books appointments, captures leads, answers FAQs 24/7.",
       features: ["Everything in Website System", "AI receptionist chatbot", "Lead capture + CRM sync", "Meta Pixel + GA4"],
       accent: true,
     },
     {
       num: "03", icon: <BarChart3 className="w-5 h-5" />,
-      title: "Ads Landing System", price: "€490 + €200/mo", delivery: "4 days",
+      title: "Ads Landing System", price: "€290 + €99/mo", delivery: "4 days",
       desc: "High-converting landing page with full Meta + GA4 tracking. Know exactly which ad drives revenue.",
       features: ["Conversion-focused page", "Meta Pixel + CAPI", "GA4 event tracking", "Instant lead alerts"],
       accent: false,
     },
     {
       num: "04", icon: <Building2 className="w-5 h-5" />,
-      title: "Client System", price: "From €1,900", delivery: "7 days",
+      title: "Client System", price: "From €990", delivery: "7 days",
       desc: "Complete AI system — website, chatbot, admin dashboard, lead pipeline, automations, and monthly reports.",
       features: ["Everything in Booking System", "Admin dashboard", "Lead pipeline + history", "Monthly analytics report"],
       accent: false,
@@ -109,9 +109,9 @@ export default function HomePage() {
   ];
 
   const carePlans = [
-    { name: "Care", price: "€69", sub: "/mo", desc: "Maintenance, edits & uptime.", features: ["Uptime monitoring", "Content edits (1h/mo)", "Security updates", "Email support"], popular: false },
-    { name: "Growth", price: "€149", sub: "/mo", desc: "Analytics, chatbot updates, monthly improvements.", features: ["Everything in Care", "Chatbot retraining", "Monthly analytics report", "2h improvements/mo"], popular: true },
-    { name: "Scale", price: "€299", sub: "/mo", desc: "Full monthly optimization & strategy.", features: ["Everything in Growth", "A/B test improvements", "CRM workflow updates", "Monthly strategy call"], popular: false },
+    { name: "Care", price: "€49", sub: "/mo", desc: "Maintenance, edits & uptime.", features: ["Uptime monitoring", "Content edits (1h/mo)", "Security updates", "Email support"], popular: false },
+    { name: "Growth", price: "€99", sub: "/mo", desc: "Analytics, chatbot updates, monthly improvements.", features: ["Everything in Care", "Chatbot retraining", "Monthly analytics report", "2h improvements/mo"], popular: true },
+    { name: "Scale", price: "€199", sub: "/mo", desc: "Full monthly optimization & strategy.", features: ["Everything in Growth", "A/B test improvements", "CRM workflow updates", "Monthly strategy call"], popular: false },
   ];
 
   return (
@@ -624,7 +624,7 @@ export default function HomePage() {
                 </div>
                 <div className="text-right">
                   <p className="text-xs text-[#36671E] font-bold mb-0.5">Your price</p>
-                  <p className="text-4xl font-black text-[#36671E]">€990</p>
+                  <p className="text-4xl font-black text-[#36671E]">€590</p>
                 </div>
               </div>
             </div>
@@ -902,9 +902,9 @@ export default function HomePage() {
 
           <div className="grid md:grid-cols-3 gap-5">
             {[
-              { name: "Website System", price: "€490", delivery: "3 days", desc: "For businesses that need a trusted online presence", features: ["5-page website", "Contact form", "Google Analytics", "GDPR compliant", "Mobile optimized"], popular: false },
-              { name: "Booking System", price: "€990", delivery: "5 days", desc: "For businesses that want leads and appointments automatically", features: ["10-page website", "AI chatbot", "Booking flow", "CRM sync", "Meta Pixel + GA4", "GDPR compliant"], popular: true },
-              { name: "Client System", price: "€1,900", delivery: "7 days", desc: "For businesses that want full tracking and client management", features: ["Everything in Booking", "Admin dashboard", "Lead pipeline", "Auto notifications", "Monthly reporting"], popular: false },
+              { name: "Website System", price: "€290", delivery: "3 days", desc: "For businesses that need a trusted online presence", features: ["5-page website", "Contact form", "Google Analytics", "GDPR compliant", "Mobile optimized"], popular: false },
+              { name: "Booking System", price: "€590", delivery: "5 days", desc: "For businesses that want leads and appointments automatically", features: ["10-page website", "AI chatbot", "Booking flow", "CRM sync", "Meta Pixel + GA4", "GDPR compliant"], popular: true },
+              { name: "Client System", price: "€990", delivery: "7 days", desc: "For businesses that want full tracking and client management", features: ["Everything in Booking", "Admin dashboard", "Lead pipeline", "Auto notifications", "Monthly reporting"], popular: false },
             ].map((p, i) => (
               <FadeUp key={i} delay={i * 0.1}>
                 <div className={`relative bg-white rounded-2xl border-2 p-7 h-full flex flex-col ${p.popular ? "border-[#36671E] shadow-xl shadow-[#36671E]/10" : "border-[#E8E6E0]"}`}>

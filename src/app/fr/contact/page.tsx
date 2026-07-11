@@ -5,7 +5,7 @@ import FrenchNav from "@/components/FrenchNav";
 import FrenchFooter from "@/components/FrenchFooter";
 import { Mail, Clock, Shield, CheckCircle, ArrowRight, Zap } from "lucide-react";
 
-const plans = ["Pas encore sûr — audit d'abord", "Système Site Web (490 €)", "Système Réservation (990 €)", "Système Client (1 900 €)", "Sur mesure / Option"];
+const plans = ["Pas encore sûr — audit d'abord", "Système Site Web (290 €)", "Système Réservation (590 €)", "Système Client (990 €)", "Sur mesure / Option"];
 const industries = ["Cabinet dentaire", "Clinique esthétique / Med spa", "Immobilier", "Services à domicile (CVC, toiture…)", "Restaurant / Alimentation", "Juridique / Comptabilité", "Autre"];
 
 export default function FrenchContactPage() {

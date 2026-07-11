@@ -1,0 +1,61 @@
+/**
+ * PRICING — single source of truth for every Servolia price.
+ *
+ * Import from here for anything that charges money or quotes a price
+ * (Stripe checkout, chatbot prompts). Marketing pages display these same
+ * numbers as copy — when you change a price HERE, grep the repo for the old
+ * value and update the display strings too:
+ *   pricing/page.tsx · fr/tarifs · page.tsx · FrenchHome.tsx · contact pages ·
+ *   niches/* · dentists · fr/dentistes · fr/solutions · ROICalculator ·
+ *   cf-worker/src/index.ts (separate deploy — cannot import this file).
+ */
+
+export interface BuildPlan {
+  key: string;
+  name: string;
+  nameFr: string;
+  totalEur: number;   // full price in EUR
+  delivery: string;   // e.g. "3 days"
+  monthlyEur?: number; // optional recurring component (e.g. Ads Landing)
+}
+
+export const BUILD_PLANS: Record<string, BuildPlan> = {
+  starter: { key: "starter", name: "Website System", nameFr: "Système Site Web",        totalEur: 290, delivery: "3 days" },
+  growth:  { key: "growth",  name: "Booking System", nameFr: "Système de Réservation",  totalEur: 590, delivery: "5 days" },
+  pro:     { key: "pro",     name: "Client System",  nameFr: "Système Client",          totalEur: 990, delivery: "7 days" },
+  landing: { key: "landing", name: "Ads Landing",    nameFr: "Système Landing Pub",     totalEur: 290, delivery: "4 days", monthlyEur: 99 },
+  webapp:  { key: "webapp",  name: "Web App / SaaS", nameFr: "Web App / SaaS",          totalEur: 290, delivery: "7–14 days" },
+  mobile:  { key: "mobile",  name: "Mobile App",     nameFr: "Application Mobile",      totalEur: 490, delivery: "10–15 days" },
+};
+
+export const CARE_PLANS: Record<string, { key: string; name: string; monthlyEur: number }> = {
+  care:        { key: "care",        name: "Care",   monthlyEur: 49 },
+  care_growth: { key: "care_growth", name: "Growth", monthlyEur: 99 },
+  care_scale:  { key: "care_scale",  name: "Scale",  monthlyEur: 199 },
+};
+
+/** iOS add-on for the mobile plan, EUR. */
+export const MOBILE_IOS_ADDON_EUR = 100;
+
+/** 50% deposit in Stripe cents. */
+export function depositCents(plan: BuildPlan): number {
+  return Math.round((plan.totalEur * 100) / 2);
+}
+
+/** Remaining balance in Stripe cents. */
+export function balanceCents(plan: BuildPlan): number {
+  return plan.totalEur * 100 - depositCents(plan);
+}
+
+/** Pricing block for AI prompts — keeps every bot quoting the same numbers. */
+export function pricingPromptLines(): string {
+  const p = BUILD_PLANS;
+  const c = CARE_PLANS;
+  return [
+    `1. AI Website System — €${p.starter.totalEur}, ${p.starter.delivery}. Conversion-focused website.`,
+    `2. AI Booking System — €${p.growth.totalEur}, ${p.growth.delivery}. Website + AI receptionist + booking.`,
+    `3. Ads Landing System — €${p.landing.totalEur} + €${p.landing.monthlyEur}/mo. High-converting landing page with full tracking.`,
+    `4. AI Client System — €${p.pro.totalEur}, ${p.pro.delivery}. Complete: site + chatbot + admin dashboard + CRM + monthly reports.`,
+    `5. Monthly Care Plans — €${c.care.monthlyEur} / €${c.care_growth.monthlyEur} / €${c.care_scale.monthlyEur} for hosting, retraining, reports.`,
+  ].join("\n");
+}

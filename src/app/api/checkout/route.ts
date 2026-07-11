@@ -2,16 +2,16 @@ import Stripe from "stripe";
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { sendMetaCapiEvent } from "@/lib/metaCapi";
+import { BUILD_PLANS, depositCents, balanceCents } from "@/lib/pricing";
 
-// 50% deposit amounts in cents (EUR)
-const PLANS: Record<string, { name: string; deposit: number; balance: number }> = {
-  starter:  { name: "Website System",  deposit: 24500,  balance: 24500  }, // €490 total
-  growth:   { name: "Booking System",  deposit: 49500,  balance: 49500  }, // €990 total
-  pro:      { name: "Client System",   deposit: 95000,  balance: 95000  }, // €1,900 total
-  landing:  { name: "Ads Landing",     deposit: 24500,  balance: 24500  }, // €490 total
-  mobile:   { name: "Mobile App",      deposit: 34500,  balance: 34500  }, // €690 total
-  webapp:   { name: "Web App / SaaS",  deposit: 24500,  balance: 24500  }, // €490 total
-};
+// 50% deposit amounts in cents (EUR) — prices come from src/lib/pricing.ts
+const PLANS: Record<string, { name: string; deposit: number; balance: number }> =
+  Object.fromEntries(
+    Object.values(BUILD_PLANS).map((p) => [
+      p.key,
+      { name: p.name, deposit: depositCents(p), balance: balanceCents(p) },
+    ])
+  );
 
 export async function POST(req: NextRequest) {
   const key = process.env.STRIPE_SECRET_KEY;

@@ -23,7 +23,7 @@ const cases = [
     badge: "Dental clinic · Western Europe",
     name: "Dental clinic scenario",
     system: "AI Booking System",
-    plan: "Growth Plan (€149/mo)",
+    plan: "Growth Plan (€99/mo)",
     timeline: "5-day build · designed for results in week 1",
     headline: "Turning after-hours enquiries into booked appointments.",
     challenge:
@@ -53,7 +53,7 @@ const cases = [
     badge: "Aesthetic clinic · Europe",
     name: "Aesthetic clinic scenario",
     system: "AI Client System",
-    plan: "Authority Plan (€299/mo)",
+    plan: "Authority Plan (€199/mo)",
     timeline: "7-day build · designed for first booking in week 1",
     headline: "Converting Instagram interest that was going nowhere.",
     challenge:
@@ -84,7 +84,7 @@ const cases = [
     badge: "HVAC / home services · US",
     name: "Home services scenario",
     system: "AI Booking System",
-    plan: "Growth Plan ($199/mo)",
+    plan: "Growth Plan ($99/mo)",
     timeline: "4-day build · designed for quote requests in week 1",
     headline: "Replacing word-of-mouth-only with a 24/7 lead engine.",
     challenge:

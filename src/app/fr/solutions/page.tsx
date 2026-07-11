@@ -23,25 +23,25 @@ const solutions = [
     icon: Globe,
     title: "Sites web IA",
     sub: "Un site conçu pour convertir — pas seulement pour être joli. Mobile-first, conforme RGPD, avec appels à l'action de réservation et de contact, en ligne en 72 heures.",
-    tag: "Dès 490 €",
+    tag: "Dès 290 €",
   },
   {
     icon: Bot,
     title: "Réceptionniste IA",
     sub: "Répond aux visiteurs 24h/24 en français et en anglais, qualifie les demandes, répond aux questions sur vos services et prix, et enregistre chaque conversation comme un lead scoré.",
-    tag: "Inclus dès 990 €",
+    tag: "Inclus dès 590 €",
   },
   {
     icon: Calendar,
     title: "Systèmes de réservation",
     sub: "Vos clients réservent en ligne, reçoivent confirmations et rappels automatiques — même à 2h du matin, même le dimanche. Fini les appels manqués qui partent chez le concurrent.",
-    tag: "Inclus dès 990 €",
+    tag: "Inclus dès 590 €",
   },
   {
     icon: LayoutDashboard,
     title: "Tableaux de bord CRM",
     sub: "Chaque lead, sa source, son statut et sa valeur dans un seul tableau de bord. Pipeline de suivi, notifications automatiques et rapport mensuel de performance.",
-    tag: "Inclus dès 1 900 €",
+    tag: "Inclus dès 990 €",
   },
 ];
 

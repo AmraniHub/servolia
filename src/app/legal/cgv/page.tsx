@@ -39,7 +39,7 @@ export default function CGVPage() {
             </div>
             <div>
               <h2 className="text-lg font-black text-[#080E1C] mb-3">5. Revisions</h2>
-              <p>Each plan includes a defined number of revision rounds (Starter: 2 rounds, Growth: 3 rounds, Pro: unlimited first month). A revision round is defined as a consolidated list of changes submitted in one document. Additional revision rounds beyond the included amount are billed at €75/hour.</p>
+              <p>Each plan includes a defined number of revision rounds (Starter: 2 rounds, Growth: 3 rounds, Pro: unlimited first month). A revision round is defined as a consolidated list of changes submitted in one document. Additional revision rounds beyond the included amount are billed at €50/hour.</p>
             </div>
             <div>
               <h2 className="text-lg font-black text-[#080E1C] mb-3">6. Client responsibilities</h2>

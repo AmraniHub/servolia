@@ -78,28 +78,28 @@ export default function FrenchHome() {
   const systems = [
     {
       num: "01", icon: <Globe className="w-5 h-5" />,
-      title: "Système Site Web IA", price: "Dès 490 €", delivery: "3 jours",
+      title: "Système Site Web IA", price: "Dès 290 €", delivery: "3 jours",
       desc: "Un site professionnel conçu pour convertir les visiteurs en demandes — mobile-first, conforme RGPD, en ligne en 72 heures.",
       features: ["5–10 pages orientées conversion", "Boutons réservation & contact", "Google Analytics 4", "Pages RGPD incluses"],
       accent: false,
     },
     {
       num: "02", icon: <Bot className="w-5 h-5" />,
-      title: "Système de Réservation IA", price: "990 €", delivery: "5 jours",
+      title: "Système de Réservation IA", price: "590 €", delivery: "5 jours",
       desc: "Réceptionniste IA + site + suivi complet. Prend les rendez-vous, capture les leads, répond aux questions 24h/24.",
       features: ["Tout le Système Site Web", "Chatbot réceptionniste IA", "Capture de leads + synchro CRM", "Pixel Meta + GA4"],
       accent: true,
     },
     {
       num: "03", icon: <BarChart3 className="w-5 h-5" />,
-      title: "Système Landing Pub", price: "490 € + 200 €/mois", delivery: "4 jours",
+      title: "Système Landing Pub", price: "290 € + 99 €/mois", delivery: "4 jours",
       desc: "Page d'atterrissage à haute conversion avec tracking Meta + GA4 complet. Sachez exactement quelle pub génère du chiffre.",
       features: ["Page orientée conversion", "Pixel Meta + CAPI", "Suivi d'événements GA4", "Alertes leads instantanées"],
       accent: false,
     },
     {
       num: "04", icon: <Building2 className="w-5 h-5" />,
-      title: "Système Client", price: "Dès 1 900 €", delivery: "7 jours",
+      title: "Système Client", price: "Dès 990 €", delivery: "7 jours",
       desc: "Système IA complet — site, chatbot, tableau de bord, pipeline de leads, automatisations et rapports mensuels.",
       features: ["Tout le Système Réservation", "Tableau de bord de gestion", "Pipeline de leads + historique", "Rapport analytique mensuel"],
       accent: false,
@@ -107,9 +107,9 @@ export default function FrenchHome() {
   ];
 
   const carePlans = [
-    { name: "Care", price: "69 €", sub: "/mois", desc: "Maintenance, modifications & disponibilité.", features: ["Surveillance de disponibilité", "Modifications de contenu (1h/mois)", "Mises à jour de sécurité", "Support par email"], popular: false },
-    { name: "Growth", price: "149 €", sub: "/mois", desc: "Analytique, mises à jour du chatbot, améliorations mensuelles.", features: ["Tout Care", "Réentraînement du chatbot", "Rapport analytique mensuel", "2h d'améliorations/mois"], popular: true },
-    { name: "Scale", price: "299 €", sub: "/mois", desc: "Optimisation et stratégie mensuelles complètes.", features: ["Tout Growth", "Améliorations A/B testées", "Évolutions CRM & workflows", "Appel stratégique mensuel"], popular: false },
+    { name: "Care", price: "49 €", sub: "/mois", desc: "Maintenance, modifications & disponibilité.", features: ["Surveillance de disponibilité", "Modifications de contenu (1h/mois)", "Mises à jour de sécurité", "Support par email"], popular: false },
+    { name: "Growth", price: "99 €", sub: "/mois", desc: "Analytique, mises à jour du chatbot, améliorations mensuelles.", features: ["Tout Care", "Réentraînement du chatbot", "Rapport analytique mensuel", "2h d'améliorations/mois"], popular: true },
+    { name: "Scale", price: "199 €", sub: "/mois", desc: "Optimisation et stratégie mensuelles complètes.", features: ["Tout Growth", "Améliorations A/B testées", "Évolutions CRM & workflows", "Appel stratégique mensuel"], popular: false },
   ];
 
   return (
@@ -551,7 +551,7 @@ export default function FrenchHome() {
                 </div>
                 <div className="text-right">
                   <p className="text-xs text-[#36671E] font-bold mb-0.5">Votre prix</p>
-                  <p className="text-4xl font-black text-[#36671E]">990 €</p>
+                  <p className="text-4xl font-black text-[#36671E]">590 €</p>
                 </div>
               </div>
             </div>
@@ -820,9 +820,9 @@ export default function FrenchHome() {
 
           <div className="grid md:grid-cols-3 gap-5">
             {[
-              { name: "Système Site Web", price: "490 €", delivery: "3 jours", desc: "Pour les entreprises qui ont besoin d'une présence en ligne fiable", features: ["Site 5 pages", "Formulaire de contact", "Google Analytics", "Conforme RGPD", "Optimisé mobile"], popular: false },
-              { name: "Système Réservation", price: "990 €", delivery: "5 jours", desc: "Pour les entreprises qui veulent leads et rendez-vous en automatique", features: ["Site 10 pages", "Chatbot IA", "Parcours de réservation", "Synchro CRM", "Pixel Meta + GA4", "Conforme RGPD"], popular: true },
-              { name: "Système Client", price: "1 900 €", delivery: "7 jours", desc: "Pour les entreprises qui veulent suivi complet et gestion clients", features: ["Tout le Système Réservation", "Tableau de bord", "Pipeline de leads", "Notifications automatiques", "Rapport mensuel"], popular: false },
+              { name: "Système Site Web", price: "290 €", delivery: "3 jours", desc: "Pour les entreprises qui ont besoin d'une présence en ligne fiable", features: ["Site 5 pages", "Formulaire de contact", "Google Analytics", "Conforme RGPD", "Optimisé mobile"], popular: false },
+              { name: "Système Réservation", price: "590 €", delivery: "5 jours", desc: "Pour les entreprises qui veulent leads et rendez-vous en automatique", features: ["Site 10 pages", "Chatbot IA", "Parcours de réservation", "Synchro CRM", "Pixel Meta + GA4", "Conforme RGPD"], popular: true },
+              { name: "Système Client", price: "990 €", delivery: "7 jours", desc: "Pour les entreprises qui veulent suivi complet et gestion clients", features: ["Tout le Système Réservation", "Tableau de bord", "Pipeline de leads", "Notifications automatiques", "Rapport mensuel"], popular: false },
             ].map((p, i) => (
               <FadeUp key={i} delay={i * 0.1}>
                 <div className={`relative bg-white rounded-2xl border-2 p-7 h-full flex flex-col ${p.popular ? "border-[#36671E] shadow-xl shadow-[#36671E]/10" : "border-[#E8E6E0]"}`}>

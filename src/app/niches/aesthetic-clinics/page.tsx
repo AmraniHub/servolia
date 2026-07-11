@@ -29,7 +29,7 @@ export default function AestheticClinicsPage() {
   const packages = [
     {
       name: "AI Website System",
-      price: "€490",
+      price: "€290",
       description: "A high-converting clinic website with treatment pages and lead capture form.",
       features: [
         "Treatment showcase pages (Botox, fillers, laser, skin)",
@@ -42,7 +42,7 @@ export default function AestheticClinicsPage() {
     },
     {
       name: "AI Booking System",
-      price: "€990",
+      price: "€590",
       description: "Everything in the Website System plus a full online booking flow for consultations.",
       features: [
         "Everything in Website System",
@@ -56,7 +56,7 @@ export default function AestheticClinicsPage() {
     },
     {
       name: "AI Client System",
-      price: "€1,900",
+      price: "€990",
       description: "The complete system — website, booking, AI receptionist, tracking, and monthly reports.",
       features: [
         "Everything in Booking System",

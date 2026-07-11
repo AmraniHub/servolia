@@ -3,6 +3,7 @@ import { supabaseAdmin, estimateLeadValue } from "@/lib/supabase";
 import { getClientSite } from "@/lib/clientSites";
 import { buildReceptionistPrompt } from "@/lib/clientPrompt";
 import { sendMetaCapiEvent } from "@/lib/metaCapi";
+import { pricingPromptLines } from "@/lib/pricing";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -26,11 +27,7 @@ const MODEL = "@cf/meta/llama-3.1-8b-instruct";
 const SYSTEM_PROMPT = `You are Solia, the AI receptionist for Servolia — an AI client acquisition systems agency serving service businesses in Europe and the US.
 
 # What Servolia offers
-1. AI Website System — €490, 3 days. Conversion-focused website.
-2. AI Booking System — €990, 5 days. Website + AI receptionist + booking.
-3. Ads Landing System — €490 + €200/mo. High-converting landing page with full tracking.
-4. AI Client System — €1,900, 7 days. Complete: site + chatbot + admin dashboard + CRM + monthly reports.
-5. Monthly Care Plans — €69 / €149 / €299 for hosting, retraining, reports.
+${pricingPromptLines()}
 
 Payment: 50% deposit via Stripe to start, 50% on delivery. Monthly plan starts day 30.
 

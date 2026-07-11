@@ -5,7 +5,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Mail, Clock, Shield, CheckCircle, ArrowRight, Zap } from "lucide-react";
 
-const plans = ["Not sure yet — audit first", "Website System (€490)", "Booking System (€990)", "Client System (€1,900)", "Custom / Add-on"];
+const plans = ["Not sure yet — audit first", "Website System (€290)", "Booking System (€590)", "Client System (€990)", "Custom / Add-on"];
 const industries = ["Dental Clinic", "Aesthetic / Med Spa", "Real Estate", "Home Services (HVAC, Roofing…)", "Restaurant / Food", "Legal / Accounting", "Other"];
 
 export default function ContactPage() {

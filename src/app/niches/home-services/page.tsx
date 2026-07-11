@@ -246,7 +246,7 @@ export default function HomeServicesPage() {
                 </div>
               ))}
             </div>
-            <p className="text-center text-sm text-[#A1A1AA] mt-6">50% deposit · 50% on delivery · Monthly care from $69/mo</p>
+            <p className="text-center text-sm text-[#A1A1AA] mt-6">50% deposit · 50% on delivery · Monthly care from $49/mo</p>
           </div>
         </section>
 

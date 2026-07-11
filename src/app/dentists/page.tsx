@@ -38,7 +38,7 @@ export default function DentistsPage() {
   const packages = [
     {
       name: "Starter Clinic",
-      price: "€490",
+      price: "€290",
       delivery: "3 days",
       features: [
         "5-page dental website",
@@ -53,7 +53,7 @@ export default function DentistsPage() {
     },
     {
       name: "AI Clinic System",
-      price: "€990",
+      price: "€590",
       delivery: "5 days",
       features: [
         "10-page website",
@@ -70,7 +70,7 @@ export default function DentistsPage() {
     },
     {
       name: "Full Clinic Pro",
-      price: "€1,900",
+      price: "€990",
       delivery: "7 days",
       features: [
         "Everything in AI System",

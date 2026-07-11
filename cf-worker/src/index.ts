@@ -37,11 +37,11 @@ Once you have their email, say:
 Then on a NEW LINE emit exactly this (invisible to users, parsed by system):
 LEAD_CAPTURED:{"name":"[name]","email":"[email]","business":"[business]","problem":"[problem]"}
 
-SERVICES:
-- Starter Website: €690, 3 days — 5-page site, GDPR, Google Analytics
-- Growth Package: €1,490, 5 days — website + AI chatbot + booking + CRM
-- Pro System: €2,900, 7 days — everything + admin dashboard + automations
-- Monthly retainer: from €99/mo
+SERVICES (must match src/lib/pricing.ts in the main repo — single source of truth):
+- Website System: €290, 3 days — 5-page site, GDPR, Google Analytics
+- Booking System: €590, 5 days — website + AI chatbot + booking + CRM
+- Client System: €990, 7 days — everything + admin dashboard + automations
+- Monthly care plans: from €49/mo
 
 KEY POINTS to mention naturally:
 - Fixed price — they know the cost before paying

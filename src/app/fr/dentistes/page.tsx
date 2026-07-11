@@ -36,7 +36,7 @@ const gains = [
 const packages = [
   {
     name: "Cabinet Essentiel",
-    price: "490 €",
+    price: "290 €",
     delivery: "3 jours",
     features: [
       "Site dentaire 5 pages",
@@ -51,7 +51,7 @@ const packages = [
   },
   {
     name: "Système IA Cabinet",
-    price: "990 €",
+    price: "590 €",
     delivery: "5 jours",
     features: [
       "Site 10 pages",
@@ -68,7 +68,7 @@ const packages = [
   },
   {
     name: "Cabinet Pro Complet",
-    price: "1 900 €",
+    price: "990 €",
     delivery: "7 jours",
     features: [
       "Tout le Système IA",

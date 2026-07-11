@@ -13,7 +13,7 @@ import Link from "next/link";
 // Transparent, conservative model assumptions
 const AI_RECOVERY = 0.6;  // share of currently-missed enquiries the AI recovers
 const CLOSE_RATE = 0.3;   // share of recovered enquiries that become paying clients
-const SYSTEM_PRICE = 990; // AI Booking System, €
+const SYSTEM_PRICE = 590; // AI Booking System, € — keep in sync with src/lib/pricing.ts
 
 function fmt(n: number) {
   return n.toLocaleString("en-US", { maximumFractionDigits: 0 });
@@ -28,7 +28,7 @@ const COPY = {
     assume: (r: number, c: number) => `Model assumes the AI recovers ${r}% of currently-missed enquiries and ${c}% of those become paying clients. Conservative estimate for illustration — your numbers will vary.`,
     potential: "Modeled potential", perMonth: "extra revenue per month",
     extraClients: "Extra clients / mo", extraYear: "Extra revenue / yr",
-    payback: (d: number) => <>The €990 Booking System would pay for itself in <span className="font-black text-[#ABDF90]">~{d} days</span>.</>,
+    payback: (d: number) => <>The €590 Booking System would pay for itself in <span className="font-black text-[#ABDF90]">~{d} days</span>.</>,
     adjust: "Adjust the sliders to model your potential upside.",
     cta: "Get my real numbers — free audit",
   },
@@ -40,7 +40,7 @@ const COPY = {
     assume: (r: number, c: number) => `Le modèle suppose que l'IA récupère ${r}% des demandes actuellement manquées et que ${c}% deviennent des clients payants. Estimation prudente à titre indicatif — vos chiffres varieront.`,
     potential: "Potentiel estimé", perMonth: "de revenus supplémentaires par mois",
     extraClients: "Clients en plus / mois", extraYear: "Revenus en plus / an",
-    payback: (d: number) => <>Le Système de Réservation à 990 € serait rentabilisé en <span className="font-black text-[#ABDF90]">~{d} jours</span>.</>,
+    payback: (d: number) => <>Le Système de Réservation à 590 € serait rentabilisé en <span className="font-black text-[#ABDF90]">~{d} jours</span>.</>,
     adjust: "Déplacez les curseurs pour estimer votre potentiel.",
     cta: "Obtenir mes vrais chiffres — audit gratuit",
   },

@@ -24,7 +24,7 @@ const cases = [
     badge: "Cabinet dentaire · Europe de l'Ouest",
     name: "Scénario cabinet dentaire",
     system: "Système de Réservation IA",
-    plan: "Forfait Growth (149 €/mois)",
+    plan: "Forfait Growth (99 €/mois)",
     timeline: "Construction en 5 jours · conçu pour des résultats dès la semaine 1",
     headline: "Transformer les demandes hors horaires en rendez-vous réservés.",
     challenge:
@@ -53,7 +53,7 @@ const cases = [
     badge: "Clinique esthétique · Europe",
     name: "Scénario clinique esthétique",
     system: "Système Client IA",
-    plan: "Forfait Scale (299 €/mois)",
+    plan: "Forfait Scale (199 €/mois)",
     timeline: "Construction en 7 jours · conçu pour une première réservation en semaine 1",
     headline: "Convertir l'intérêt Instagram qui ne menait nulle part.",
     challenge:

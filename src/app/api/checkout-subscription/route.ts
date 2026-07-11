@@ -1,12 +1,12 @@
 import Stripe from "stripe";
 import { NextRequest, NextResponse } from "next/server";
+import { CARE_PLANS as CARE_PRICING } from "@/lib/pricing";
 
-// Monthly Care Plan amounts in cents (EUR) — recurring
-const CARE_PLANS: Record<string, { name: string; amount: number }> = {
-  care:        { name: "Care",   amount: 6900  }, // €69/mo
-  care_growth: { name: "Growth", amount: 14900 }, // €149/mo
-  care_scale:  { name: "Scale",  amount: 29900 }, // €299/mo
-};
+// Monthly Care Plan amounts in cents (EUR) — prices come from src/lib/pricing.ts
+const CARE_PLANS: Record<string, { name: string; amount: number }> =
+  Object.fromEntries(
+    Object.values(CARE_PRICING).map((p) => [p.key, { name: p.name, amount: p.monthlyEur * 100 }])
+  );
 
 export async function POST(req: NextRequest) {
   const key = process.env.STRIPE_SECRET_KEY;

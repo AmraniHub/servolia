@@ -29,7 +29,7 @@ export default function RealEstatePage() {
   const packages = [
     {
       name: "Website System",
-      price: "€490",
+      price: "€290",
       description: "A professional agency website that positions you as the local expert and captures every visitor.",
       features: [
         "5-page professional website",
@@ -42,7 +42,7 @@ export default function RealEstatePage() {
     },
     {
       name: "AI Booking System",
-      price: "€990",
+      price: "€590",
       description: "AI receptionist + website + full lead tracking. Your pipeline fills while you're at viewings.",
       features: [
         "Everything in Website System",
@@ -56,7 +56,7 @@ export default function RealEstatePage() {
     },
     {
       name: "AI Client System",
-      price: "€1,900",
+      price: "€990",
       description: "The complete system for agents running ads or managing a team — full pipeline visibility.",
       features: [
         "Everything in Booking System",
@@ -218,7 +218,7 @@ export default function RealEstatePage() {
                 </div>
               ))}
             </div>
-            <p className="text-center text-sm text-[#A1A1AA] mt-6">50% deposit · 50% on delivery · Stripe secured · Monthly care from €69/mo</p>
+            <p className="text-center text-sm text-[#A1A1AA] mt-6">50% deposit · 50% on delivery · Stripe secured · Monthly care from €49/mo</p>
           </div>
         </section>
 
