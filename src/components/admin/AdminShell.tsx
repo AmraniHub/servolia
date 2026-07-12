@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard, Users, Hammer, UserCircle, MessageSquare,
-  TrendingUp, Settings, LogOut, Menu, X, BarChart3, Kanban, Search, Globe, Sparkles, RefreshCcw, Wand2,
+  TrendingUp, Settings, LogOut, Menu, X, BarChart3, Kanban, Search, Globe, Sparkles, RefreshCcw, Wand2, CalendarClock, Target, Star,
 } from "lucide-react";
 import CommandPalette from "./CommandPalette";
 
@@ -13,12 +13,15 @@ const nav = [
   { label: "Dashboard",   href: "/admin",           icon: LayoutDashboard },
   { label: "Leads",       href: "/admin/leads",     icon: Users },
   { label: "Pipeline",    href: "/admin/pipeline",  icon: Kanban },
+  { label: "Prospects",   href: "/admin/prospects", icon: Target },
+  { label: "Calls",       href: "/admin/bookings",  icon: CalendarClock },
   { label: "Builds",      href: "/admin/builds",    icon: Hammer },
   { label: "Client Sites", href: "/admin/sites",    icon: Globe },
   { label: "Demo Generator", href: "/admin/demo",  icon: Wand2 },
   { label: "Clients",     href: "/admin/clients",   icon: UserCircle },
   { label: "Chat inbox",  href: "/admin/chat",      icon: MessageSquare },
   { label: "Campaigns",   href: "/admin/reactivation", icon: RefreshCcw },
+  { label: "Case Studies", href: "/admin/case-studies", icon: Star },
   { label: "Content Engine", href: "/admin/content", icon: Sparkles },
   { label: "Analytics",   href: "/admin/analytics", icon: BarChart3 },
   { label: "Revenue",     href: "/admin/revenue",   icon: TrendingUp },

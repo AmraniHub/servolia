@@ -1,6 +1,7 @@
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import StickyMobileCTA from "@/components/StickyMobileCTA";
+import Guarantee from "@/components/Guarantee";
 import Link from "next/link";
 import { CheckCircle, ArrowRight, Bot, Calendar, BarChart3, Globe, Clock, Lock, TrendingUp } from "lucide-react";
 import type { Metadata } from "next";
@@ -252,6 +253,8 @@ export default function DentistsPage() {
           </Link>
         </div>
       </section>
+
+      <Guarantee lang="en" />
 
       <StickyMobileCTA label="Get My Free Clinic Audit" sub="Free · 24h delivery · No call required" />
       <Footer />

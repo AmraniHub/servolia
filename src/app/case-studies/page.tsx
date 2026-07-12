@@ -1,8 +1,12 @@
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import RealCaseStudies from "@/components/RealCaseStudies";
+import { getPublishedCaseStudies } from "@/lib/caseStudies";
 import Link from "next/link";
 import { ArrowRight, Clock, CheckCircle } from "lucide-react";
 import type { Metadata } from "next";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Example Deployments — What a Servolia System Delivers",
@@ -111,11 +115,16 @@ const cases = [
   },
 ];
 
-export default function CaseStudiesPage() {
+export default async function CaseStudiesPage() {
+  const realStudies = await getPublishedCaseStudies();
+  const hasReal = realStudies.length > 0;
+
   return (
     <>
       <Navbar />
       <main>
+        <RealCaseStudies studies={realStudies} />
+
         {/* HERO */}
         <section className="pt-28 pb-16 lg:pt-36 lg:pb-20 bg-[#FAFAF7]">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
@@ -151,6 +160,13 @@ export default function CaseStudiesPage() {
         </section>
 
         {/* CASE STUDIES */}
+        {hasReal && (
+          <div className="bg-[#FAFAF7] pt-16 text-center">
+            <span className="inline-block text-xs font-black text-[#71717A] uppercase tracking-widest bg-white border border-[#E8E6E0] px-3 py-1 rounded-full">
+              More scenarios we&apos;re built for
+            </span>
+          </div>
+        )}
         <div className="bg-[#FAFAF7]">
           {cases.map((c, idx) => (
             <section key={c.id} id={c.id} className={`py-20 lg:py-28 ${idx % 2 === 0 ? "bg-[#FAFAF7]" : "bg-white"}`}>

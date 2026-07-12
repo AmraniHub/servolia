@@ -4,6 +4,7 @@ import CheckoutButton from "@/components/CheckoutButton";
 import StickyMobileCTA from "@/components/StickyMobileCTA";
 import FrenchNav from "@/components/FrenchNav";
 import FrenchFooter from "@/components/FrenchFooter";
+import Guarantee from "@/components/Guarantee";
 import { CheckCircle, ArrowRight, Shield, Clock, Globe, Bot, Building2, Lock } from "lucide-react";
 
 export const metadata: Metadata = {
@@ -283,6 +284,8 @@ export default function FrenchPricingPage() {
           </Link>
         </div>
       </section>
+
+      <Guarantee lang="fr" />
 
       <StickyMobileCTA label="Recevoir mon audit gratuit" sub="Gratuit · Livré en 24h · Sans appel" href="/fr/audit" />
       <FrenchFooter />

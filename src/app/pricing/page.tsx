@@ -1,6 +1,7 @@
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import CheckoutButton from "@/components/CheckoutButton";
+import Guarantee from "@/components/Guarantee";
 import Link from "next/link";
 import {
   CheckCircle, ArrowRight, Shield, Clock, Zap,
@@ -407,6 +408,8 @@ export default function PricingPage() {
           </div>
         </div>
       </section>
+
+      <Guarantee lang="en" />
 
       {/* ── PRICING FAQ ── */}
       <section className="py-16 bg-[#FAFAF7]">

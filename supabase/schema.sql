@@ -358,6 +358,101 @@ create index if not exists client_reports_site_idx on client_reports(site_slug, 
 alter table chat_sessions add column if not exists utm jsonb;
 
 
+-- BOOKINGS: discovery / demo calls booked by prospects from /call
+create table if not exists bookings (
+  id          uuid primary key default gen_random_uuid(),
+  created_at  timestamptz default now(),
+  updated_at  timestamptz default now(),
+
+  name        text not null,
+  email       text not null,
+  phone       text,
+  business    text,
+  city        text,
+  message     text,
+
+  slot_start  timestamptz not null,     -- the chosen 30-min slot (Europe/Paris)
+  status      text not null default 'confirmed',  -- confirmed, completed, no_show, cancelled
+  source      text default 'website',   -- website, demo, prospect
+  lead_id     uuid references leads(id) on delete set null,
+  notes       text
+);
+
+create index if not exists bookings_slot_idx   on bookings(slot_start);
+create index if not exists bookings_status_idx on bookings(status);
+
+drop trigger if exists bookings_updated_at on bookings;
+create trigger bookings_updated_at before update on bookings
+  for each row execute function set_updated_at();
+
+
+-- PROSPECTS: cold outbound targets (dental clinics) + mystery-shop pipeline
+create table if not exists prospects (
+  id          uuid primary key default gen_random_uuid(),
+  created_at  timestamptz default now(),
+  updated_at  timestamptz default now(),
+
+  business    text not null,
+  owner_name  text,
+  city        text,
+  niche       text default 'dental',
+  phone       text,
+  email       text,
+  instagram   text,
+  website     text,
+
+  -- Pipeline: to_contact → mystery_shopped → demo_sent → followup_1
+  --           → followup_2 → replied → call_booked → won / lost
+  status      text not null default 'to_contact',
+  demo_slug   text,                     -- links to a generated /sites/demo-... site
+  mystery_shop_notes text,              -- what happened when you DM'd/called them
+  last_touch_at timestamptz,
+  touch_count int default 0,
+  next_action_at date,                  -- when to follow up next
+  value_estimate numeric default 0,
+  notes       text
+);
+
+create index if not exists prospects_status_idx on prospects(status);
+create index if not exists prospects_city_idx   on prospects(city);
+create index if not exists prospects_next_idx   on prospects(next_action_at);
+
+drop trigger if exists prospects_updated_at on prospects;
+create trigger prospects_updated_at before update on prospects
+  for each row execute function set_updated_at();
+
+
+-- CASE STUDIES: real client results, shown on /case-studies
+create table if not exists case_studies (
+  id          uuid primary key default gen_random_uuid(),
+  created_at  timestamptz default now(),
+  updated_at  timestamptz default now(),
+
+  slug        text unique not null,
+  published   boolean default false,
+  featured    boolean default false,
+  sort        int default 0,
+
+  business    text not null,
+  niche       text,
+  city        text,
+  logo_url    text,
+  accent      text default '#36671E',
+
+  headline    text not null,            -- "How Cabinet X filled 40 chairs in 60 days"
+  summary     text,                     -- one-liner under the headline
+  challenge   text,                     -- the before
+  solution    text,                     -- what Servolia did
+  metrics     jsonb default '[]',       -- [{label, value}] e.g. {"label":"Booked consultations","value":"+38/mo"}
+  quote       text,
+  quote_author text,                    -- "Dr. Marie Dupont, Owner"
+
+  plan        text                      -- which Servolia plan they're on
+);
+
+create index if not exists case_studies_pub_idx on case_studies(published, sort);
+
+
 -- HELPFUL VIEWS for admin dashboard
 create or replace view crm_kpis as
 select

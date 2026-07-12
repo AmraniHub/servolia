@@ -174,6 +174,29 @@ export const newPortalMessageEmail = (firstName: string, preview: string) => ({
   `),
 });
 
+/** Sent to a prospect when they book a discovery call from /call. */
+export const callBookingEmail = (firstName: string, when: string, lang: "en" | "fr" = "fr") => {
+  const fr = lang === "fr";
+  return {
+    subject: fr ? `Votre appel Servolia est confirmé — ${when}` : `Your Servolia call is confirmed — ${when}`,
+    html: wrapper(`
+      <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">${fr ? "C'est noté 🗓" : "You're booked 🗓"}</h1>
+      <p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#3F3F46;">${fr ? `Bonjour ${firstName},` : `Hi ${firstName},`}</p>
+      <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#3F3F46;">
+        ${fr
+          ? `Votre appel découverte de 30 minutes est confirmé pour le <strong>${when}</strong>. Je vous appellerai à l'heure convenue — préparez vos questions.`
+          : `Your 30-minute discovery call is confirmed for <strong>${when}</strong>. I'll call you at that time — bring your questions.`}
+      </p>
+      <p style="margin:0 0 16px;padding:16px;background:#FAFAF7;border-left:3px solid #36671E;font-size:15px;line-height:1.6;color:#18181B;">
+        ${fr
+          ? "Avant l'appel, réfléchissez à : combien de demandes recevez-vous par mois, et combien deviennent des rendez-vous ? C'est là que nous allons vous faire gagner."
+          : "Before the call, think about: how many enquiries do you get per month, and how many become appointments? That's where we'll win for you."}
+      </p>
+      <p style="margin:0;font-size:14px;line-height:1.6;color:#71717A;">${fr ? "Besoin de replanifier ? Répondez à cet email." : "Need to reschedule? Just reply to this email."}</p>
+    `),
+  };
+};
+
 /** Monthly ROI report sent to each live client — the retention weapon. */
 export const monthlyReportEmail = (input: {
   businessName: string;
