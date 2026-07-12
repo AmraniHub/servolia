@@ -18,6 +18,9 @@ export async function GET() {
     telegram: !!process.env.TELEGRAM_BOT_TOKEN && !!process.env.TELEGRAM_CHAT_ID,
     ga4DataApi: !!process.env.GOOGLE_SERVICE_ACCOUNT_KEY && !!process.env.GA4_PROPERTY_ID,
     metaCapi: !!process.env.META_CAPI_ACCESS_TOKEN,
+    // Without Resend, ALL outbound email silently no-ops: audit confirmations,
+    // Stripe receipts, portal magic-link login, 48h follow-ups, client reports.
+    resend: !!process.env.RESEND_API_KEY,
   };
 
   // Table existence checks — a select that fails means "not migrated yet".

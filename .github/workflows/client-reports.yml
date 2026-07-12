@@ -1,0 +1,15 @@
+name: Monthly client reports
+
+on:
+  schedule:
+    - cron: "0 8 5 * *" # 5th of each month, 08:00 UTC
+  workflow_dispatch: {}
+
+jobs:
+  reports:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate and send client reports
+        run: |
+          curl -sf -X POST "https://servolia.com/api/cron/client-reports" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"

@@ -1,0 +1,15 @@
+name: 48h lead follow-up
+
+on:
+  schedule:
+    - cron: "30 9 * * *" # every day 09:30 UTC (late morning in France)
+  workflow_dispatch: {}
+
+jobs:
+  follow-up:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send 48h follow-up emails
+        run: |
+          curl -sf -X POST "https://servolia.com/api/cron/follow-up" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
