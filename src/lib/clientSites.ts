@@ -56,6 +56,12 @@ export interface ClientSiteConfig {
   aiTone?: string; // "warm, professional"
   aiGreeting?: string; // first message the widget shows
 
+  // Business economics & growth loop
+  avgTreatmentValue?: number; // avg € per new client — used in the monthly ROI report
+  googleReviewUrl?: string; // "leave us a review" link (g.page/r/...)
+  metaPixelId?: string; // client's own Meta pixel — CAPI Lead events fire on bookings
+  metaCapiToken?: string; // client's CAPI access token (paired with metaPixelId)
+
   // Meta
   status?: "draft" | "published";
 }
@@ -185,6 +191,7 @@ export function configFromIntake(src: IntakeSource): ClientSiteConfig {
     phone,
     whatsapp: phone ? phone.replace(/[^\d]/g, "") : undefined,
     email: str(src.email) ?? undefined,
+    bookingUrl: str(d.bookingUrl) ?? str(d.doctolibUrl),
     logoUrl: str(d.logoUrl),
     heroHeadline,
     heroSub,

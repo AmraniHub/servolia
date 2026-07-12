@@ -174,6 +174,58 @@ export const newPortalMessageEmail = (firstName: string, preview: string) => ({
   `),
 });
 
+/** Monthly ROI report sent to each live client — the retention weapon. */
+export const monthlyReportEmail = (input: {
+  businessName: string;
+  period: string; // "June 2026"
+  lang: "en" | "fr";
+  enquiries: number;
+  bookings: number;
+  afterHours: number;
+  fromAds: number;
+  estValue: number;
+}) => {
+  const fr = input.lang === "fr";
+  const stat = (label: string, value: string, highlight = false) => `
+    <td style="padding:14px 10px;text-align:center;background:${highlight ? "#EEF5EA" : "#FAFAF7"};border-radius:12px;">
+      <div style="font-size:24px;font-weight:900;color:${highlight ? "#36671E" : "#18181B"};">${value}</div>
+      <div style="font-size:11px;color:#71717A;margin-top:4px;">${label}</div>
+    </td>`;
+  return {
+    subject: fr
+      ? `${input.businessName} — votre rapport Servolia de ${input.period}`
+      : `${input.businessName} — your Servolia report for ${input.period}`,
+    html: wrapper(`
+      <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">${fr ? `Votre mois en chiffres — ${input.period}` : `Your month in numbers — ${input.period}`}</h1>
+      <p style="margin:0 0 20px;font-size:15px;line-height:1.6;color:#3F3F46;">
+        ${fr
+          ? `Voici ce que votre assistant Servolia a capté pour <strong>${input.businessName}</strong> ce mois-ci :`
+          : `Here's what your Servolia assistant captured for <strong>${input.businessName}</strong> this month:`}
+      </p>
+      <table style="width:100%;border-collapse:separate;border-spacing:6px;margin:0 0 20px;">
+        <tr>
+          ${stat(fr ? "Demandes traitées" : "Enquiries handled", String(input.enquiries))}
+          ${stat(fr ? "Demandes de RDV" : "Booking requests", String(input.bookings), true)}
+        </tr>
+        <tr>
+          ${stat(fr ? "Hors horaires d'ouverture" : "After business hours", String(input.afterHours))}
+          ${stat(fr ? "Venant de vos publicités" : "From your ads", String(input.fromAds))}
+        </tr>
+      </table>
+      ${input.estValue > 0 ? `
+      <div style="background:#0A1F14;border-radius:12px;padding:20px;text-align:center;margin:0 0 20px;">
+        <div style="font-size:12px;color:#ABDF90;font-weight:700;text-transform:uppercase;letter-spacing:1px;">${fr ? "Valeur estimée des RDV captés" : "Estimated value of captured bookings"}</div>
+        <div style="font-size:32px;font-weight:900;color:#FAFAF7;margin-top:6px;">€${input.estValue.toLocaleString()}</div>
+      </div>` : ""}
+      <p style="margin:0;font-size:14px;line-height:1.6;color:#71717A;">
+        ${fr
+          ? "Une question sur ces chiffres ? Répondez simplement à cet email."
+          : "Questions about these numbers? Just reply to this email."}
+      </p>
+    `),
+  };
+};
+
 /** Sent to client when their build goes live. */
 export const liveEmail = (firstName: string, url: string) => ({
   subject: "🚀 Your system is live",

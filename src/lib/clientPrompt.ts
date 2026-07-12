@@ -27,8 +27,11 @@ export function buildReceptionistPrompt(c: ClientSiteConfig): string {
     ? c.faqs.map((f) => `Q: ${f.q}\nA: ${f.a}`).join("\n\n")
     : "";
 
+  const isDoctolib = /doctolib\.(fr|de|it)/i.test(c.bookingUrl ?? "");
   const bookLine = c.bookingUrl
-    ? `To book, share this link: ${c.bookingUrl}`
+    ? isDoctolib
+      ? `${c.businessName} takes bookings on Doctolib. Once the visitor knows what they want, share this exact link so they can pick a slot: ${c.bookingUrl} — then still capture their name and phone/email as backup in case they don't complete the booking.`
+      : `To book, share this link: ${c.bookingUrl}`
     : `To book, take their name and preferred day/time, then confirm the team will lock it in. Capture their phone or email so ${c.businessName} can confirm.`;
 
   return `You are the AI receptionist for ${c.businessName}${c.city ? ` in ${c.city}` : ""} — a ${c.niche.replace(/[-_]+/g, " ")} business. You are NOT a generic assistant; you speak *as* ${c.businessName}'s front desk.

@@ -34,6 +34,10 @@ export interface CapiEventInput {
   eventSourceUrl?: string;
   eventId?: string; // shared with client-side Pixel fbq call for dedup, if any
   req?: NextRequest; // used to pull client IP + user agent for match quality
+  // Per-client override — fire the event on a CLIENT's pixel instead of Servolia's
+  // (the ads closed loop: their ad spend → their booked consultation).
+  pixelId?: string;
+  accessToken?: string;
 }
 
 export function metaCapiConfigured(): boolean {
@@ -42,8 +46,8 @@ export function metaCapiConfigured(): boolean {
 
 /** Send a server-side conversion event to Meta. Fire-and-forget — never throws, never blocks callers. */
 export async function sendMetaCapiEvent(input: CapiEventInput): Promise<void> {
-  const token = process.env.META_CAPI_ACCESS_TOKEN;
-  const datasetId = process.env.NEXT_PUBLIC_META_PIXEL_ID || DEFAULT_PIXEL;
+  const token = input.accessToken ?? process.env.META_CAPI_ACCESS_TOKEN;
+  const datasetId = input.pixelId ?? (process.env.NEXT_PUBLIC_META_PIXEL_ID || DEFAULT_PIXEL);
   if (!token || !datasetId) return;
 
   try {

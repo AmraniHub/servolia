@@ -129,13 +129,14 @@ export interface CrmKpis {
  * Used for pipeline value calculation in the CRM.
  */
 export function estimateLeadValue(niche?: string | null, plan?: string | null): number {
+  // Keep in sync with src/lib/pricing.ts (BUILD_PLANS)
   const planValues: Record<string, number> = {
-    starter: 490, website: 490,
-    growth: 990, booking: 990,
-    pro: 1900, client: 1900,
-    landing: 490,
-    mobile: 690,
-    webapp: 490,
+    starter: 290, website: 290,
+    growth: 590, booking: 590,
+    pro: 990, client: 990,
+    landing: 290,
+    mobile: 490,
+    webapp: 290,
   };
 
   if (plan) {
@@ -146,16 +147,16 @@ export function estimateLeadValue(niche?: string | null, plan?: string | null): 
 
   // Niche-based defaults if no plan specified
   const nicheValues: Record<string, number> = {
-    dental: 990,
-    aesthetic: 1900,
-    "med-spa": 1900,
-    "real-estate": 990,
-    "home-services": 990,
-    "luxury-real-estate": 1900,
-    "cosmetic-surgery": 1900,
-    veterinary: 990,
-    "law-firm": 1900,
-    "wealth-management": 1900,
+    dental: 590,
+    aesthetic: 990,
+    "med-spa": 990,
+    "real-estate": 590,
+    "home-services": 590,
+    "luxury-real-estate": 990,
+    "cosmetic-surgery": 990,
+    veterinary: 590,
+    "law-firm": 990,
+    "wealth-management": 990,
   };
 
   if (niche) {
@@ -165,5 +166,5 @@ export function estimateLeadValue(niche?: string | null, plan?: string | null): 
     }
   }
 
-  return 990; // default mid-tier estimate
+  return 590; // default mid-tier estimate
 }

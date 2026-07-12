@@ -3,13 +3,27 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import type { Build } from "@/lib/supabase";
-import { LogOut, Send, MessageSquare, Clock, CreditCard, CheckCircle2 } from "lucide-react";
+import { LogOut, Send, MessageSquare, Clock, CreditCard, CheckCircle2, Users, CalendarCheck, Megaphone } from "lucide-react";
 
 interface Message {
   id: string;
   sender: "client" | "admin";
   body: string;
   created_at: string;
+}
+
+interface PortalLead {
+  created_at: string;
+  qualified: boolean;
+  contact: string | null;
+  excerpt: string;
+  fromAds: boolean;
+}
+
+interface PortalStats {
+  monthEnquiries: number;
+  monthBookings: number;
+  monthContacts: number;
 }
 
 const STATUS_LABEL: Record<Build["status"], { label: string; color: string; bg: string }> = {
@@ -31,6 +45,8 @@ export default function PortalDashboard({ email, builds }: { email: string; buil
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [leads, setLeads] = useState<PortalLead[]>([]);
+  const [stats, setStats] = useState<PortalStats | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -38,6 +54,13 @@ export default function PortalDashboard({ email, builds }: { email: string; buil
       .then((r) => r.json())
       .then((d) => setMessages(d.messages ?? []))
       .finally(() => setLoading(false));
+    fetch("/api/portal/leads")
+      .then((r) => r.json())
+      .then((d) => {
+        setLeads(d.leads ?? []);
+        setStats(d.stats ?? null);
+      })
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -117,6 +140,54 @@ export default function PortalDashboard({ email, builds }: { email: string; buil
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* This-month stats + lead history — the client's own pipeline */}
+      {stats && (
+        <div className="grid grid-cols-3 gap-3 mb-4">
+          {[
+            { icon: Users, label: "Enquiries this month", value: stats.monthEnquiries },
+            { icon: CalendarCheck, label: "Booking requests", value: stats.monthBookings, highlight: true },
+            { icon: Megaphone, label: "Contacts captured", value: stats.monthContacts },
+          ].map((s) => (
+            <div key={s.label} className={`rounded-2xl border p-4 ${s.highlight ? "bg-[#EEF5EA] border-[#36671E]/20" : "bg-white border-[#E8E6E0]"}`}>
+              <s.icon className={`w-4 h-4 mb-2 ${s.highlight ? "text-[#36671E]" : "text-[#A1A1AA]"}`} />
+              <p className={`text-2xl font-black ${s.highlight ? "text-[#36671E]" : "text-[#18181B]"}`}>{s.value}</p>
+              <p className="text-[11px] text-[#71717A] mt-0.5">{s.label}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {leads.length > 0 && (
+        <div className="bg-white border border-[#E8E6E0] rounded-2xl overflow-hidden mb-8">
+          <div className="px-5 py-4 border-b border-[#E8E6E0] flex items-center gap-2 bg-[#FAFAF7]">
+            <Users className="w-4 h-4 text-[#36671E]" />
+            <h2 className="font-black text-[#18181B] text-sm">Your leads</h2>
+            <span className="text-xs text-[#A1A1AA]">— every enquiry your assistant handled</span>
+          </div>
+          <div className="max-h-80 overflow-y-auto divide-y divide-[#F5F4EF]">
+            {leads.map((l, i) => (
+              <div key={i} className="px-5 py-3 flex items-start gap-3">
+                <span
+                  className={`mt-1 text-[10px] font-black px-2 py-0.5 rounded-full whitespace-nowrap ${
+                    l.qualified ? "bg-[#DCFCE7] text-[#166534]" : "bg-[#F5F4EF] text-[#71717A]"
+                  }`}
+                >
+                  {l.qualified ? "Booking" : "Enquiry"}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm text-[#18181B] truncate">{l.excerpt || "(conversation)"}</p>
+                  <p className="text-[11px] text-[#A1A1AA] mt-0.5">
+                    {formatDate(l.created_at)}
+                    {l.contact ? ` · ${l.contact}` : ""}
+                    {l.fromAds ? " · from your ads" : ""}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

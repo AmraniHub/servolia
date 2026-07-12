@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard, Users, Hammer, UserCircle, MessageSquare,
-  TrendingUp, Settings, LogOut, Menu, X, BarChart3, Kanban, Search, Globe, Sparkles,
+  TrendingUp, Settings, LogOut, Menu, X, BarChart3, Kanban, Search, Globe, Sparkles, RefreshCcw,
 } from "lucide-react";
 import CommandPalette from "./CommandPalette";
 
@@ -17,6 +17,7 @@ const nav = [
   { label: "Client Sites", href: "/admin/sites",    icon: Globe },
   { label: "Clients",     href: "/admin/clients",   icon: UserCircle },
   { label: "Chat inbox",  href: "/admin/chat",      icon: MessageSquare },
+  { label: "Campaigns",   href: "/admin/reactivation", icon: RefreshCcw },
   { label: "Content Engine", href: "/admin/content", icon: Sparkles },
   { label: "Analytics",   href: "/admin/analytics", icon: BarChart3 },
   { label: "Revenue",     href: "/admin/revenue",   icon: TrendingUp },

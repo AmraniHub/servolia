@@ -307,6 +307,57 @@ create trigger leads_log_stage after update on leads
   for each row execute function log_stage_change();
 
 
+-- REACTIVATION CONTACTS: a client's dormant patients/customers, imported via CSV.
+-- campaign = 'reactivation' (win-back) or 'review' (Google review request).
+create table if not exists reactivation_contacts (
+  id          uuid primary key default gen_random_uuid(),
+  created_at  timestamptz default now(),
+  updated_at  timestamptz default now(),
+
+  site_slug   text not null,             -- which client this contact belongs to
+  campaign    text not null default 'reactivation',  -- reactivation | review
+
+  name        text,
+  phone       text,                      -- digits, international
+  email       text,
+  last_visit  text,                      -- free text from CSV ("2024-11", "March 2025")
+  treatment   text,                      -- last treatment / service
+
+  status      text not null default 'pending',  -- pending, contacted, replied, booked, opted_out
+  contacted_at timestamptz,
+  booked_value numeric default 0,        -- € booked from this contact (filled when status=booked)
+  notes       text
+);
+
+create index if not exists reactivation_site_idx   on reactivation_contacts(site_slug, campaign);
+create index if not exists reactivation_status_idx on reactivation_contacts(status);
+
+drop trigger if exists reactivation_updated_at on reactivation_contacts;
+create trigger reactivation_updated_at before update on reactivation_contacts
+  for each row execute function set_updated_at();
+
+
+-- CLIENT REPORTS: monthly ROI snapshots emailed to each client
+create table if not exists client_reports (
+  id          uuid primary key default gen_random_uuid(),
+  created_at  timestamptz default now(),
+
+  site_slug   text not null,
+  period      text not null,             -- '2026-06' (year-month)
+  metrics     jsonb not null,            -- enquiries, bookings, after_hours, est_value, from_ads...
+  emailed_to  text,
+  sent_at     timestamptz,
+
+  unique (site_slug, period)
+);
+
+create index if not exists client_reports_site_idx on client_reports(site_slug, period);
+
+
+-- Ad attribution on chatbot conversations (utm params captured from the landing URL)
+alter table chat_sessions add column if not exists utm jsonb;
+
+
 -- HELPFUL VIEWS for admin dashboard
 create or replace view crm_kpis as
 select

@@ -51,6 +51,11 @@ export default function ChatWidget({
   const [loading, setLoading] = useState(false);
   const [qualified, setQualified] = useState(false);
   const [hasGreeted, setHasGreeted] = useState(false);
+  // Graceful degradation: when the AI backend is down, capture the lead with a mini form.
+  const [fallbackMode, setFallbackMode] = useState(false);
+  const [fbName, setFbName] = useState("");
+  const [fbContact, setFbContact] = useState("");
+  const [fbState, setFbState] = useState<"idle" | "sending" | "done" | "error">("idle");
   const [pulse, setPulse] = useState(true);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -87,7 +92,12 @@ export default function ChatWidget({
         setMessages([{ role: "assistant", content: openingLine }]);
         setLoading(false);
       }, 500);
-      return () => clearTimeout(t);
+      // If the widget closes before the greeting fires, don't leave `loading`
+      // stuck true — that would block every future message.
+      return () => {
+        clearTimeout(t);
+        setLoading(false);
+      };
     }
   }, [open, hasGreeted, openingLine]);
 
@@ -107,20 +117,44 @@ export default function ChatWidget({
         body: JSON.stringify({
           messages: newMessages,
           sessionId: getSessionId(siteSlug ?? "servolia"),
-          pageUrl: typeof window !== "undefined" ? window.location.pathname : "/",
+          // Keep the query string — utm_* params drive ad attribution server-side.
+          pageUrl: typeof window !== "undefined" ? window.location.pathname + window.location.search : "/",
           siteSlug,
         }),
       });
-      const data = (await res.json()) as { reply: string; qualified: boolean };
+      const data = (await res.json()) as { reply: string; qualified: boolean; fallback?: boolean };
       setMessages((prev) => [...prev, { role: "assistant", content: data.reply }]);
       if (data.qualified) setQualified(true);
+      if (data.fallback) setFallbackMode(true);
     } catch {
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: "Sorry, I'm having a connection issue. Please try again in a moment 🙏" },
+        { role: "assistant", content: "Sorry, I'm having a connection issue — leave your details below and we'll get right back to you 🙏" },
       ]);
+      setFallbackMode(true);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function submitFallback() {
+    if (!fbContact.trim() || fbState === "sending") return;
+    setFbState("sending");
+    try {
+      const res = await fetch("/api/chat-fallback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: fbName,
+          contact: fbContact,
+          siteSlug,
+          sessionId: getSessionId(siteSlug ?? "servolia"),
+          pageUrl: typeof window !== "undefined" ? window.location.pathname + window.location.search : "/",
+        }),
+      });
+      setFbState(res.ok ? "done" : "error");
+    } catch {
+      setFbState("error");
     }
   }
 
@@ -239,6 +273,43 @@ export default function ChatWidget({
             {qualified && (
               <div className="mx-auto px-3 py-1.5 rounded-full bg-[#EEF5EA] border border-[#36671E]/30 text-[#36671E] text-xs font-semibold text-center">
                 {confirmationText}
+              </div>
+            )}
+
+            {fallbackMode && fbState !== "done" && (
+              <div className="bg-white border border-[#E8E6E0] rounded-xl p-3 flex flex-col gap-2">
+                <p className="text-xs font-bold text-[#18181B]">Leave your details — we&apos;ll get back to you fast:</p>
+                <input
+                  value={fbName}
+                  onChange={(e) => setFbName(e.target.value)}
+                  placeholder="Your name"
+                  className="bg-[#FAFAF7] text-[#18181B] placeholder-[#A1A1AA] text-sm rounded-lg px-3 py-2 border border-[#E8E6E0] focus:outline-none"
+                />
+                <input
+                  value={fbContact}
+                  onChange={(e) => setFbContact(e.target.value)}
+                  placeholder="Phone or email"
+                  className="bg-[#FAFAF7] text-[#18181B] placeholder-[#A1A1AA] text-sm rounded-lg px-3 py-2 border border-[#E8E6E0] focus:outline-none"
+                />
+                <button
+                  onClick={submitFallback}
+                  disabled={!fbContact.trim() || fbState === "sending"}
+                  className="text-sm font-bold text-[#FAFAF7] rounded-lg py-2 disabled:opacity-40 transition-opacity"
+                  style={{ background: accent }}
+                >
+                  {fbState === "sending" ? "Sending…" : "Send"}
+                </button>
+                {fbState === "error" && (
+                  <p className="text-[11px] text-[#B91C1C]">
+                    {siteSlug ? "Couldn't send — please call or email us directly." : "Couldn't send — please email hello@servolia.com"}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {fallbackMode && fbState === "done" && (
+              <div className="mx-auto px-3 py-1.5 rounded-full bg-[#EEF5EA] border border-[#36671E]/30 text-[#36671E] text-xs font-semibold text-center">
+                ✓ Got it — we&apos;ll be in touch shortly!
               </div>
             )}
 

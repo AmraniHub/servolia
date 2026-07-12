@@ -24,6 +24,11 @@ export const maxDuration = 30;
 
 const MODEL = "@cf/meta/llama-3.1-8b-instruct";
 
+// Client-facing receptionists use Claude when ANTHROPIC_API_KEY is set —
+// dramatically better French and safer guardrails than the 8B Llama, at
+// pennies per conversation. Llama remains the fallback path.
+const CLAUDE_MODEL = "claude-haiku-4-5";
+
 const SYSTEM_PROMPT = `You are Solia, the AI receptionist for Servolia — an AI client acquisition systems agency serving service businesses in Europe and the US.
 
 # What Servolia offers
@@ -58,6 +63,50 @@ Today is ${new Date().toISOString().slice(0, 10)}.`;
 interface ChatMessage {
   role: "user" | "assistant";
   content: string;
+}
+
+async function callClaude(messages: ChatMessage[], systemContent: string): Promise<string> {
+  const { default: Anthropic } = await import("@anthropic-ai/sdk");
+  const client = new Anthropic();
+  const response = await client.messages.create({
+    model: CLAUDE_MODEL,
+    max_tokens: 400,
+    system: systemContent,
+    messages: messages.map((m) => ({ role: m.role, content: m.content })),
+  });
+  const text = response.content
+    .map((b) => (b.type === "text" ? b.text : ""))
+    .join("");
+  if (!text) throw new Error("Claude returned no text");
+  return text;
+}
+
+/** Prefer Claude, fall back to Cloudflare Llama — whichever is configured and up. */
+async function runAssistant(messages: ChatMessage[], systemContent: string): Promise<string> {
+  if (process.env.ANTHROPIC_API_KEY) {
+    try {
+      return await callClaude(messages, systemContent);
+    } catch (err) {
+      console.error("Claude call failed, falling back to Cloudflare AI:", err);
+    }
+  }
+  return callCloudflareAI(messages, systemContent);
+}
+
+/** Pull utm_* params out of the landing URL for ad attribution. */
+function parseUtm(pageUrl?: string): Record<string, string> | null {
+  if (!pageUrl || !pageUrl.includes("utm_")) return null;
+  try {
+    const qs = new URLSearchParams(pageUrl.split("?")[1] ?? "");
+    const utm: Record<string, string> = {};
+    for (const key of ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term"]) {
+      const v = qs.get(key);
+      if (v) utm[key] = v.slice(0, 120);
+    }
+    return Object.keys(utm).length ? utm : null;
+  } catch {
+    return null;
+  }
 }
 
 async function callCloudflareAI(messages: ChatMessage[], systemContent: string): Promise<string> {
@@ -102,13 +151,6 @@ async function callCloudflareAI(messages: ChatMessage[], systemContent: string):
 }
 
 export async function POST(req: NextRequest) {
-  if (!process.env.CLOUDFLARE_ACCOUNT_ID || !process.env.CLOUDFLARE_AI_TOKEN) {
-    return NextResponse.json({
-      reply: "Hi! 👋 I'm Solia. Our chat is being upgraded right now — please email us at hello@servolia.com and we'll respond within 24 hours.",
-      qualified: false,
-    });
-  }
-
   try {
     const { messages, sessionId, pageUrl, siteSlug } = await req.json() as {
       messages: ChatMessage[];
@@ -117,13 +159,26 @@ export async function POST(req: NextRequest) {
       siteSlug?: string;
     };
 
+    const cfConfigured = !!(process.env.CLOUDFLARE_ACCOUNT_ID && process.env.CLOUDFLARE_AI_TOKEN);
+    if (!process.env.ANTHROPIC_API_KEY && !cfConfigured) {
+      // No AI backend at all — tell the widget to degrade to its lead-capture form.
+      // On client sites, stay white-label: never mention Solia/Servolia.
+      return NextResponse.json({
+        reply: siteSlug
+          ? "Thanks for reaching out! Leave your details below and the team will get back to you shortly."
+          : "Hi! 👋 I'm Solia. Our chat is being upgraded right now — leave your details below and we'll get back to you within a few hours.",
+        qualified: false,
+        fallback: true,
+      });
+    }
+
     const db = supabaseAdmin();
 
     // ── CLIENT SITE branch: speak AS the client's business ────────────────
     if (siteSlug) {
       const config = await getClientSite(siteSlug);
       const systemContent = config ? buildReceptionistPrompt(config) : SYSTEM_PROMPT;
-      const rawReply = (await callCloudflareAI(messages, systemContent)).trim();
+      const rawReply = (await runAssistant(messages, systemContent)).trim();
       const isBooking = /\[BOOKING\]/i.test(rawReply);
       const reply = rawReply.replace(/\[BOOKING\]/gi, "").trim();
 
@@ -144,9 +199,24 @@ export async function POST(req: NextRequest) {
             phone_captured: phoneMatch?.[0] ?? null,
             site_slug: siteSlug,
             page_url: pageUrl ?? null,
+            utm: parseUtm(pageUrl) ?? undefined,
           };
           if (existing) await db.from("chat_sessions").update(row).eq("id", existing.id);
           else await db.from("chat_sessions").insert({ session_id: sessionId, ...row });
+
+          // Ads closed loop: a booking on a client site fires a Lead event on the
+          // CLIENT's pixel, so their Ads Manager sees which euro became a consultation.
+          if (isBooking && config?.metaPixelId && config?.metaCapiToken) {
+            sendMetaCapiEvent({
+              eventName: "Lead",
+              email: emailMatch?.[0],
+              phone: phoneMatch?.[0],
+              eventSourceUrl: pageUrl,
+              pixelId: config.metaPixelId,
+              accessToken: config.metaCapiToken,
+              req,
+            });
+          }
         } catch { /* table/column may not exist yet — reply still returns */ }
       }
 
@@ -174,7 +244,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const rawReply = (await callCloudflareAI(messages, SYSTEM_PROMPT + (priorContext ?? ""))).trim();
+    const rawReply = (await runAssistant(messages, SYSTEM_PROMPT + (priorContext ?? ""))).trim();
     const isQualified = /\[QUALIFIED\]/i.test(rawReply);
     const reply = rawReply.replace(/\[QUALIFIED\]/gi, "").trim();
 
@@ -208,6 +278,7 @@ export async function POST(req: NextRequest) {
           email_captured: emailMatch?.[0] ?? null,
           phone_captured: phoneMatch?.[0] ?? null,
           page_url: pageUrl ?? null,
+          utm: parseUtm(pageUrl) ?? undefined,
         });
       }
 
@@ -261,9 +332,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ reply, qualified: isQualified });
   } catch (err) {
     console.error("Chat API error:", err);
+    // Graceful degradation: tell the widget to switch to its lead-capture form
+    // so a broken AI backend never costs the business the enquiry.
     return NextResponse.json({
-      reply: "Sorry, I'm having a connection issue. Please email us at hello@servolia.com and we'll get right back to you 🙏",
+      reply: "Sorry, I'm having a connection issue — leave your details below and we'll get right back to you 🙏",
       qualified: false,
+      fallback: true,
     }, { status: 200 });
   }
 }
