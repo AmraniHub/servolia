@@ -4,19 +4,43 @@ import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { Mail, ArrowRight, RefreshCw, CheckCircle2, MessageSquare, FileText, Clock } from "lucide-react";
+import { Mail, ArrowRight, RefreshCw, CheckCircle2, MessageSquare, FileText, Clock, Lock } from "lucide-react";
 
 function LoginForm() {
   const params = useSearchParams();
   const urlError = params.get("error");
 
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [mode, setMode] = useState<"link" | "password">("link");
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState(
     urlError === "expired" ? "That login link expired — request a new one below." :
     urlError === "missing" ? "That login link was invalid — request a new one below." : ""
   );
+
+  const handlePasswordLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/portal/login-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      if (res.ok) {
+        window.location.href = "/portal";
+      } else {
+        const data = await res.json();
+        setError(data.error ?? "Login failed.");
+      }
+    } catch {
+      setError("Connection error. Please try again.");
+    }
+    setLoading(false);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,8 +95,13 @@ function LoginForm() {
             ) : (
               <>
                 <h2 className="text-[#18181B] font-black mb-1">Log in</h2>
-                <p className="text-[#71717A] text-sm mb-6">Enter your email and we&apos;ll send you a one-click login link.</p>
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <p className="text-[#71717A] text-sm mb-6">
+                  {mode === "link"
+                    ? "Enter your email and we'll send you a one-click login link."
+                    : "Log in with your email and password."}
+                </p>
+
+                <form onSubmit={mode === "link" ? handleSubmit : handlePasswordLogin} className="space-y-4">
                   <div>
                     <label className="block text-xs font-bold text-[#52525B] uppercase tracking-widest mb-2">Email address</label>
                     <div className="relative">
@@ -83,10 +112,29 @@ function LoginForm() {
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="you@yourbusiness.com"
+                        autoComplete="email"
                         className="w-full pl-11 pr-4 py-3 rounded-xl bg-white border border-[#D4D2CC] text-[#18181B] placeholder:text-[#A1A1AA] focus:outline-none focus:border-[#36671E]/60 focus:ring-1 focus:ring-[#36671E]/30 text-sm transition-all"
                       />
                     </div>
                   </div>
+
+                  {mode === "password" && (
+                    <div>
+                      <label className="block text-xs font-bold text-[#52525B] uppercase tracking-widest mb-2">Password</label>
+                      <div className="relative">
+                        <Lock className="w-4 h-4 text-[#A1A1AA] absolute left-4 top-1/2 -translate-y-1/2" />
+                        <input
+                          type="password"
+                          required
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          placeholder="Your password"
+                          autoComplete="current-password"
+                          className="w-full pl-11 pr-4 py-3 rounded-xl bg-white border border-[#D4D2CC] text-[#18181B] placeholder:text-[#A1A1AA] focus:outline-none focus:border-[#36671E]/60 focus:ring-1 focus:ring-[#36671E]/30 text-sm transition-all"
+                        />
+                      </div>
+                    </div>
+                  )}
 
                   {error && (
                     <div className="px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 text-sm">
@@ -99,9 +147,20 @@ function LoginForm() {
                     disabled={loading}
                     className="w-full py-3.5 rounded-xl bg-gradient-to-r from-[#36671E] to-[#295115] text-[#FAFAF7] font-black text-sm hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
-                    {loading ? (<><RefreshCw className="w-4 h-4 animate-spin" /> Sending…</>) : (<>Send me a login link <ArrowRight className="w-4 h-4" /></>)}
+                    {loading
+                      ? (<><RefreshCw className="w-4 h-4 animate-spin" /> {mode === "link" ? "Sending…" : "Logging in…"}</>)
+                      : mode === "link"
+                        ? (<>Send me a login link <ArrowRight className="w-4 h-4" /></>)
+                        : (<>Log in <ArrowRight className="w-4 h-4" /></>)}
                   </button>
                 </form>
+
+                <button
+                  onClick={() => { setMode(mode === "link" ? "password" : "link"); setError(""); }}
+                  className="mt-4 w-full text-center text-xs font-bold text-[#36671E] hover:underline"
+                >
+                  {mode === "link" ? "Prefer a password? Log in with password" : "Use a one-click email link instead"}
+                </button>
               </>
             )}
           </div>

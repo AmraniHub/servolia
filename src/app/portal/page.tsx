@@ -1,8 +1,6 @@
 import { redirect } from "next/navigation";
 import { getClientEmail } from "@/lib/clientAuth";
 import { supabaseAdmin, type Build, type Client } from "@/lib/supabase";
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
 import PortalDashboard from "@/components/PortalDashboard";
 
 export const dynamic = "force-dynamic";
@@ -32,11 +30,5 @@ export default async function PortalPage() {
     subscription = (client as Client) ?? null;
   }
 
-  return (
-    <main className="min-h-screen bg-[#FAFAF7]">
-      <Navbar />
-      <PortalDashboard email={email} builds={builds} subscription={subscription} />
-      <Footer />
-    </main>
-  );
+  return <PortalDashboard email={email} builds={builds} subscription={subscription} />;
 }

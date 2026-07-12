@@ -66,6 +66,36 @@ html {
   scroll-behavior: smooth;
 }
 
+/* === Portal theme — scoped light/dark tokens for /portal === */
+[data-portal-theme="light"] {
+  --p-bg: #FAFAF7;
+  --p-surface: #FFFFFF;
+  --p-raised: #F5F4EF;
+  --p-border: #E8E6E0;
+  --p-text: #18181B;
+  --p-muted: #71717A;
+  --p-faint: #A1A1AA;
+  --p-accent: #36671E;
+  --p-accent-hover: #295115;
+  --p-accent-fg: #FAFAF7;
+  --p-accent-soft: #EEF5EA;
+  --p-shadow: 0 1px 3px rgba(24,24,27,0.06), 0 1px 2px rgba(24,24,27,0.04);
+}
+[data-portal-theme="dark"] {
+  --p-bg: #0B0F0D;
+  --p-surface: #121613;
+  --p-raised: #1A211C;
+  --p-border: #262E28;
+  --p-text: #F2F3F0;
+  --p-muted: #9BA39C;
+  --p-faint: #6B726C;
+  --p-accent: #BEF264;
+  --p-accent-hover: #D9F99D;
+  --p-accent-fg: #0A1F14;
+  --p-accent-soft: #18251A;
+  --p-shadow: 0 1px 3px rgba(0,0,0,0.4);
+}
+
 /* Accessible focus rings — brand forest, visible on cream & white */
 :focus-visible {
   outline: 2px solid #36671E;

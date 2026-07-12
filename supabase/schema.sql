@@ -453,6 +453,20 @@ create table if not exists case_studies (
 create index if not exists case_studies_pub_idx on case_studies(published, sort);
 
 
+-- CLIENT AUTH: optional password login for the portal (magic-link still works).
+-- Passwords are bcrypt-hashed; the plaintext is never stored.
+create table if not exists client_auth (
+  email         text primary key,
+  password_hash text not null,
+  created_at    timestamptz default now(),
+  updated_at    timestamptz default now()
+);
+
+drop trigger if exists client_auth_updated_at on client_auth;
+create trigger client_auth_updated_at before update on client_auth
+  for each row execute function set_updated_at();
+
+
 -- HELPFUL VIEWS for admin dashboard
 create or replace view crm_kpis as
 select
