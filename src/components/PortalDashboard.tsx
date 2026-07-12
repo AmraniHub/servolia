@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import type { Build } from "@/lib/supabase";
-import { LogOut, Send, MessageSquare, Clock, CreditCard, CheckCircle2, Users, CalendarCheck, Megaphone } from "lucide-react";
+import type { Build, Client } from "@/lib/supabase";
+import { LogOut, Send, MessageSquare, Clock, CreditCard, CheckCircle2, Users, CalendarCheck, Megaphone, ExternalLink } from "lucide-react";
 
 interface Message {
   id: string;
@@ -39,8 +39,18 @@ function formatDate(iso?: string | null) {
   return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 }
 
-export default function PortalDashboard({ email, builds }: { email: string; builds: Build[] }) {
+export default function PortalDashboard({
+  email,
+  builds,
+  subscription,
+}: {
+  email: string;
+  builds: Build[];
+  subscription?: Client | null;
+}) {
   const router = useRouter();
+  const [billingBusy, setBillingBusy] = useState(false);
+  const [billingError, setBillingError] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(true);
@@ -83,6 +93,24 @@ export default function PortalDashboard({ email, builds }: { email: string; buil
     } finally {
       setSending(false);
     }
+  }
+
+  async function openBillingPortal() {
+    if (billingBusy) return;
+    setBillingBusy(true);
+    setBillingError("");
+    try {
+      const res = await fetch("/api/billing-portal", { method: "POST" });
+      const data = await res.json();
+      if (res.ok) {
+        window.location.href = data.url;
+        return;
+      }
+      setBillingError(data.error ?? "Could not open the billing portal.");
+    } catch {
+      setBillingError("Connection error — please try again.");
+    }
+    setBillingBusy(false);
   }
 
   async function handleLogout() {
@@ -142,6 +170,47 @@ export default function PortalDashboard({ email, builds }: { email: string; buil
           })}
         </div>
       )}
+
+      {/* Subscription — plan, status, and self-serve management via Stripe */}
+      <div className="bg-white border border-[#E8E6E0] rounded-2xl p-5 mb-4 flex flex-wrap items-center gap-4">
+        <div className="w-10 h-10 rounded-xl bg-[#EEF5EA] flex items-center justify-center flex-shrink-0">
+          <CreditCard className="w-5 h-5 text-[#36671E]" />
+        </div>
+        <div className="min-w-0 flex-1">
+          {subscription ? (
+            <>
+              <p className="font-black text-[#18181B] text-sm capitalize">
+                {subscription.plan} plan · €{Number(subscription.monthly_amount).toLocaleString()}/mo
+                <span
+                  className={`ml-2 text-[10px] font-black px-2 py-0.5 rounded-full align-middle ${
+                    subscription.status === "active"
+                      ? "bg-[#DCFCE7] text-[#166534]"
+                      : subscription.status === "paused"
+                      ? "bg-[#FEF3C7] text-[#92400E]"
+                      : "bg-[#FEE2E2] text-[#B91C1C]"
+                  }`}
+                >
+                  {subscription.status}
+                </span>
+              </p>
+              <p className="text-xs text-[#71717A] mt-0.5">Update payment method, download invoices, or change your plan.</p>
+            </>
+          ) : (
+            <>
+              <p className="font-black text-[#18181B] text-sm">Billing & invoices</p>
+              <p className="text-xs text-[#71717A] mt-0.5">Manage payment methods and download your invoices.</p>
+            </>
+          )}
+          {billingError && <p className="text-xs text-[#B91C1C] mt-1">{billingError}</p>}
+        </div>
+        <button
+          onClick={openBillingPortal}
+          disabled={billingBusy}
+          className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#36671E] text-[#FAFAF7] text-sm font-bold hover:bg-[#295115] transition-colors disabled:opacity-50 flex-shrink-0"
+        >
+          {billingBusy ? "Opening…" : "Manage subscription"} <ExternalLink className="w-3.5 h-3.5" />
+        </button>
+      </div>
 
       {/* This-month stats + lead history — the client's own pipeline */}
       {stats && (

@@ -28,9 +28,13 @@ function LoginForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
       });
+      const data = await res.json();
       if (!res.ok) {
-        const data = await res.json();
         setError(data.error ?? "Something went wrong. Please try again.");
+      } else if (data.emailSent === false) {
+        // Be honest when the email couldn't actually go out — a fake "check
+        // your inbox" would strand the client.
+        setError("We couldn't send the email right now — please write to hello@servolia.com and we'll log you in.");
       } else {
         setSent(true);
       }
