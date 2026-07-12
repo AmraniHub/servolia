@@ -25,8 +25,24 @@ export default function ClientSite({ config }: { config: ClientSiteConfig }) {
   const t = T[c.language === "fr" ? "fr" : "en"];
   const initials = c.businessName.split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
 
+  const demoCta = c.demoContactUrl || "https://servolia.com/contact";
+  const demoText = c.language === "fr"
+    ? { tag: "DÉMO", line: `Ceci est un aperçu créé pour ${c.businessName}. Essayez le chat en bas à droite — c'est votre réceptionniste IA.`, cta: "Je veux ce système →" }
+    : { tag: "DEMO", line: `This is a preview built for ${c.businessName}. Try the chat, bottom-right — it's your AI receptionist.`, cta: "I want this system →" };
+
   return (
     <div className="min-h-screen bg-white text-[#18181B] flex flex-col">
+      {/* Prospect demo banner — the conversion hook while they play with the site */}
+      {c.isDemo && (
+        <div className="text-white text-sm" style={{ background: accentDark }}>
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 flex items-center justify-center gap-3 flex-wrap text-center">
+            <span className="text-[10px] font-black tracking-widest px-2 py-0.5 rounded bg-white/20">{demoText.tag}</span>
+            <span className="text-white/90">{demoText.line}</span>
+            <a href={demoCta} className="font-black underline underline-offset-2 hover:opacity-80 whitespace-nowrap">{demoText.cta}</a>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <header className="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-[#ECECEC]">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">

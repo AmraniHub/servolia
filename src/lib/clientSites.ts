@@ -56,6 +56,11 @@ export interface ClientSiteConfig {
   aiTone?: string; // "warm, professional"
   aiGreeting?: string; // first message the widget shows
 
+  // Prospect demo mode — a pre-sale site built for a clinic that hasn't paid.
+  // Renders a conversion banner ("this is your AI receptionist — book a call").
+  isDemo?: boolean;
+  demoContactUrl?: string; // where the demo's "Book a call / Get this" CTA points
+
   // Business economics & growth loop
   avgTreatmentValue?: number; // avg € per new client — used in the monthly ROI report
   googleReviewUrl?: string; // "leave us a review" link (g.page/r/...)
