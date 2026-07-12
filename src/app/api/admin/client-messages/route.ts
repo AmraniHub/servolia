@@ -20,6 +20,10 @@ export async function GET(req: NextRequest) {
     .eq("email", email)
     .order("created_at", { ascending: true });
 
+  // Mark this client's messages as read now that the admin has opened the thread.
+  db.from("client_messages").update({ read_by_admin: true })
+    .eq("email", email).eq("sender", "client").then(() => {});
+
   return NextResponse.json({ messages: data ?? [] });
 }
 

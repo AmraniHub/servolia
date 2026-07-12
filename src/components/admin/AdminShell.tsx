@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard, Users, Hammer, UserCircle, MessageSquare,
-  TrendingUp, Settings, LogOut, Menu, X, BarChart3, Kanban, Search, Globe, Sparkles, RefreshCcw, Wand2, CalendarClock, Target, Star,
+  TrendingUp, Settings, LogOut, Menu, X, BarChart3, Kanban, Search, Globe, Sparkles, RefreshCcw, Wand2, CalendarClock, Target, Star, Bot,
 } from "lucide-react";
 import CommandPalette from "./CommandPalette";
 
@@ -19,7 +19,8 @@ const nav = [
   { label: "Client Sites", href: "/admin/sites",    icon: Globe },
   { label: "Demo Generator", href: "/admin/demo",  icon: Wand2 },
   { label: "Clients",     href: "/admin/clients",   icon: UserCircle },
-  { label: "Chat inbox",  href: "/admin/chat",      icon: MessageSquare },
+  { label: "Messages",    href: "/admin/messages",  icon: MessageSquare },
+  { label: "Chat inbox",  href: "/admin/chat",      icon: Bot },
   { label: "Campaigns",   href: "/admin/reactivation", icon: RefreshCcw },
   { label: "Case Studies", href: "/admin/case-studies", icon: Star },
   { label: "Content Engine", href: "/admin/content", icon: Sparkles },

@@ -78,12 +78,12 @@ export default function Navbar({ heroDark = false }: { heroDark?: boolean }) {
               FR
             </Link>
             <Link
-              href="/contact"
+              href="/portal"
               className={`text-sm font-medium transition-colors ${
                 light ? "text-[#52525B] hover:text-[#18181B]" : "text-[#FAFAF7]/70 hover:text-[#FAFAF7]"
               }`}
             >
-              Contact
+              Client Login
             </Link>
             <Link
               href="/call"
@@ -117,6 +117,13 @@ export default function Navbar({ heroDark = false }: { heroDark?: boolean }) {
               {l.label}
             </Link>
           ))}
+          <Link
+            href="/portal"
+            onClick={() => setOpen(false)}
+            className="text-sm font-medium text-[#52525B] hover:text-[#18181B] transition-colors py-2"
+          >
+            Client Login
+          </Link>
           <Link
             href="/call"
             onClick={() => setOpen(false)}
