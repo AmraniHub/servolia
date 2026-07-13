@@ -64,6 +64,26 @@ export default function PortalDashboard({
     fetch("/api/portal/messages").then((r) => r.json()).then((d) => setMessages(d.messages ?? [])).finally(() => setLoadingMsgs(false));
     fetch("/api/portal/leads").then((r) => r.json()).then((d) => { setLeads(d.leads ?? []); setStats(d.stats ?? null); }).catch(() => {});
   }, []);
+
+  // Live updates: while on the Messages tab, poll for new replies without a refresh.
+  useEffect(() => {
+    if (tab !== "messages") return;
+    const id = setInterval(async () => {
+      const res = await fetch("/api/portal/messages");
+      if (!res.ok) return;
+      const d = await res.json();
+      const fresh: Message[] = d.messages ?? [];
+      setMessages((prev) => {
+        if (fresh.length <= prev.length) return prev;
+        const seen = new Set(prev.map((m) => m.id));
+        const merged = [...prev];
+        for (const m of fresh) if (!seen.has(m.id)) merged.push(m);
+        return merged;
+      });
+    }, 4000);
+    return () => clearInterval(id);
+  }, [tab]);
+
   useEffect(() => { if (tab === "messages") bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, tab]);
 
   async function sendMessage() {

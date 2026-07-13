@@ -34,16 +34,40 @@ export default function MessagesInbox() {
   }, []);
   useEffect(() => { loadThreads(); }, [loadThreads]);
 
+  const fetchThread = useCallback(async (email: string): Promise<Message[]> => {
+    const res = await fetch(`/api/admin/client-messages?email=${encodeURIComponent(email)}`);
+    if (!res.ok) return [];
+    return (await res.json()).messages ?? [];
+  }, []);
+
   const openThread = useCallback(async (email: string) => {
     setActive(email); setComposing(false); setLoadingThread(true); setMessages([]);
     try {
-      const res = await fetch(`/api/admin/client-messages?email=${encodeURIComponent(email)}`);
-      const d = await res.json();
-      setMessages(d.messages ?? []);
-      // clear the unread badge locally
+      setMessages(await fetchThread(email));
       setThreads((prev) => prev.map((t) => (t.email === email ? { ...t, unread: 0 } : t)));
     } finally { setLoadingThread(false); }
-  }, []);
+  }, [fetchThread]);
+
+  // Live updates: poll the open thread for new messages, and the list for unread.
+  useEffect(() => {
+    if (!active) return;
+    const id = setInterval(async () => {
+      const fresh = await fetchThread(active);
+      setMessages((prev) => {
+        if (fresh.length <= prev.length) return prev;
+        const seen = new Set(prev.map((m) => m.id));
+        const merged = [...prev];
+        for (const m of fresh) if (!seen.has(m.id)) merged.push(m);
+        return merged;
+      });
+    }, 4000);
+    return () => clearInterval(id);
+  }, [active, fetchThread]);
+
+  useEffect(() => {
+    const id = setInterval(loadThreads, 12000);
+    return () => clearInterval(id);
+  }, [loadThreads]);
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
 

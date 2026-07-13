@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard, Users, Hammer, UserCircle, MessageSquare,
-  TrendingUp, Settings, LogOut, Menu, X, BarChart3, Kanban, Search, Globe, Sparkles, RefreshCcw, Wand2, CalendarClock, Target, Star, Bot,
+  TrendingUp, Settings, LogOut, Menu, X, BarChart3, Kanban, Search, Globe, Sparkles, RefreshCcw, Wand2, CalendarClock, Target, Star, Bot, Sun, Moon,
 } from "lucide-react";
 import CommandPalette from "./CommandPalette";
 
@@ -34,10 +34,19 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isMac, setIsMac] = useState(true);
+  const [theme, setTheme] = useState<"light" | "dark">("light");
 
   useEffect(() => {
     setIsMac(/Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent));
+    const saved = localStorage.getItem("servolia_admin_theme");
+    if (saved === "dark" || saved === "light") setTheme(saved);
   }, []);
+
+  const toggleTheme = () => setTheme((t) => {
+    const next = t === "light" ? "dark" : "light";
+    localStorage.setItem("servolia_admin_theme", next);
+    return next;
+  });
 
   const openPalette = () => {
     window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true, ctrlKey: true }));
@@ -49,7 +58,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   };
 
   return (
-    <div className="min-h-screen bg-[#FAFAF7] flex">
+    <div data-admin-theme={theme} className="min-h-screen bg-[#FAFAF7] flex transition-colors">
       <CommandPalette />
 
       {/* === SIDEBAR (desktop) === */}
@@ -104,6 +113,10 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
               <p className="text-sm font-semibold text-[#18181B] truncate">Founder</p>
               <p className="text-xs text-[#71717A] truncate">Servolia</p>
             </div>
+            <button onClick={toggleTheme} aria-label="Toggle theme"
+              className="w-8 h-8 rounded-lg border border-[#E8E6E0] flex items-center justify-center text-[#71717A] hover:text-[#18181B] hover:bg-[#F5F4EF] transition-colors">
+              {theme === "light" ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+            </button>
           </div>
           <button
             onClick={handleLogout}
@@ -120,9 +133,14 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         <Link href="/admin" className="flex items-center">
           <span className="text-sm font-black text-[#18181B]">Servolia CRM</span>
         </Link>
-        <button onClick={() => setMobileOpen(true)} className="text-[#18181B]">
-          <Menu className="w-5 h-5" />
-        </button>
+        <div className="flex items-center gap-1">
+          <button onClick={toggleTheme} aria-label="Toggle theme" className="w-9 h-9 flex items-center justify-center text-[#71717A]">
+            {theme === "light" ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+          </button>
+          <button onClick={() => setMobileOpen(true)} className="text-[#18181B]">
+            <Menu className="w-5 h-5" />
+          </button>
+        </div>
       </div>
 
       {/* === MOBILE DRAWER === */}

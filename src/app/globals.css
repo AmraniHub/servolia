@@ -66,6 +66,70 @@ html {
   scroll-behavior: smooth;
 }
 
+/* === Admin dark theme — red-accented, retrofit over the light palette ===
+   Scoped to [data-admin-theme="dark"] on the AdminShell root so light mode is
+   untouched. Overrides the ~30 color tokens the admin actually uses. */
+[data-admin-theme="dark"] { color-scheme: dark; background: #0c0d11; }
+
+/* Surfaces */
+[data-admin-theme="dark"] .bg-white,
+[data-admin-theme="dark"] .bg-\[\#FFFFFF\] { background-color: #16181f; }
+[data-admin-theme="dark"] .bg-\[\#FAFAF7\] { background-color: #0f1014; }
+[data-admin-theme="dark"] .bg-\[\#F5F4EF\] { background-color: #1c1f27; }
+[data-admin-theme="dark"] .bg-\[\#F0EFEA\] { background-color: #20232c; }
+[data-admin-theme="dark"] .bg-\[\#18181B\] { background-color: #2a2c36; }
+
+/* Borders */
+[data-admin-theme="dark"] .border-\[\#E8E6E0\],
+[data-admin-theme="dark"] .border-\[\#D4D2CC\] { border-color: #2b2e39; }
+[data-admin-theme="dark"] .border-\[\#F5F4EF\] { border-color: #23262f; }
+[data-admin-theme="dark"] .divide-\[\#F5F4EF\] > * { border-color: #23262f; }
+
+/* Text */
+[data-admin-theme="dark"] .text-\[\#18181B\],
+[data-admin-theme="dark"] .text-\[\#080E1C\] { color: #f3f4f6; }
+[data-admin-theme="dark"] .text-\[\#3F3F46\] { color: #d5d8de; }
+[data-admin-theme="dark"] .text-\[\#52525B\] { color: #c4c8d0; }
+[data-admin-theme="dark"] .text-\[\#71717A\] { color: #9aa0aa; }
+[data-admin-theme="dark"] .text-\[\#A1A1AA\] { color: #7d838d; }
+[data-admin-theme="dark"] .text-\[\#D4D2CC\] { color: #6b7079; }
+
+/* Brand green → red accent */
+[data-admin-theme="dark"] .bg-\[\#36671E\] { background-color: #dc2626; }
+[data-admin-theme="dark"] .hover\:bg-\[\#295115\]:hover,
+[data-admin-theme="dark"] .bg-\[\#295115\] { background-color: #b91c1c; }
+[data-admin-theme="dark"] .text-\[\#36671E\] { color: #f87171; }
+[data-admin-theme="dark"] .border-\[\#36671E\] { border-color: #dc2626; }
+[data-admin-theme="dark"] .from-\[\#36671E\] { --tw-gradient-from: #dc2626; }
+[data-admin-theme="dark"] .to-\[\#295115\] { --tw-gradient-to: #b91c1c; }
+[data-admin-theme="dark"] .bg-\[\#EEF5EA\] { background-color: #2a1618; }
+[data-admin-theme="dark"] .hover\:bg-\[\#EEF5EA\]:hover { background-color: #2a1618; }
+[data-admin-theme="dark"] .bg-\[\#BEF264\] { background-color: #ef4444; }
+[data-admin-theme="dark"] .text-\[\#ABDF90\],
+[data-admin-theme="dark"] .text-\[\#6B8439\] { color: #fca5a5; }
+
+/* Status chips — darken tints, lighten text so they stay legible */
+[data-admin-theme="dark"] .bg-\[\#FEF3C7\],
+[data-admin-theme="dark"] .bg-\[\#FDE68A\] { background-color: #2c2510; }
+[data-admin-theme="dark"] .text-\[\#92400E\],
+[data-admin-theme="dark"] .text-\[\#B45309\],
+[data-admin-theme="dark"] .text-\[\#D97706\] { color: #fbbf24; }
+[data-admin-theme="dark"] .bg-\[\#FEE2E2\] { background-color: #2c1416; }
+[data-admin-theme="dark"] .text-\[\#B91C1C\],
+[data-admin-theme="dark"] .text-\[\#991B1B\] { color: #f87171; }
+[data-admin-theme="dark"] .bg-\[\#DCFCE7\] { background-color: #132a1c; }
+[data-admin-theme="dark"] .text-\[\#166534\],
+[data-admin-theme="dark"] .text-\[\#065F46\] { color: #4ade80; }
+[data-admin-theme="dark"] .bg-\[\#DBEAFE\] { background-color: #14243d; }
+[data-admin-theme="dark"] .text-\[\#1D4ED8\] { color: #60a5fa; }
+[data-admin-theme="dark"] .bg-\[\#EDE9FE\] { background-color: #1f1a35; }
+[data-admin-theme="dark"] .text-\[\#5B21B6\] { color: #c4b5fd; }
+[data-admin-theme="dark"] .bg-\[\#E0F2FE\] { background-color: #10283a; }
+[data-admin-theme="dark"] .text-\[\#0369A1\] { color: #38bdf8; }
+/* Inputs get a darker field */
+[data-admin-theme="dark"] input, [data-admin-theme="dark"] textarea, [data-admin-theme="dark"] select { color: #f3f4f6; }
+[data-admin-theme="dark"] input::placeholder, [data-admin-theme="dark"] textarea::placeholder { color: #6b7079; }
+
 /* === Portal theme — scoped light/dark tokens for /portal === */
 [data-portal-theme="light"] {
   --p-bg: #FAFAF7;
