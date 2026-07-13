@@ -8,6 +8,8 @@ import {
   TrendingUp, Settings, LogOut, Menu, X, BarChart3, Kanban, Search, Globe, Sparkles, RefreshCcw, Wand2, CalendarClock, Target, Star, Bot, Sun, Moon,
 } from "lucide-react";
 import CommandPalette from "./CommandPalette";
+import AutoRefresh from "@/components/AutoRefresh";
+import Copilot from "./Copilot";
 
 const nav = [
   { label: "Dashboard",   href: "/admin",           icon: LayoutDashboard },
@@ -60,6 +62,8 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   return (
     <div data-admin-theme={theme} className="min-h-screen bg-[#FAFAF7] flex transition-colors">
       <CommandPalette />
+      <AutoRefresh />
+      <Copilot />
 
       {/* === SIDEBAR (desktop) === */}
       <aside className="hidden lg:flex w-60 bg-white border-r border-[#E8E6E0] flex-col fixed inset-y-0 left-0 z-30">

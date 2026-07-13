@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { Build, Client } from "@/lib/supabase";
+import AutoRefresh from "@/components/AutoRefresh";
 import {
   LogOut, Send, MessageSquare, Clock, CreditCard, CheckCircle2, Users, CalendarCheck,
   Megaphone, ExternalLink, Sun, Moon, LayoutDashboard, KeyRound, Loader2, ShieldCheck,
@@ -121,6 +122,7 @@ export default function PortalDashboard({
 
   return (
     <div data-portal-theme={theme} className="min-h-screen bg-[var(--p-bg)] text-[var(--p-text)] transition-colors">
+      <AutoRefresh intervalMs={30000} />
       {/* Top bar */}
       <header className="sticky top-0 z-30 bg-[var(--p-surface)] border-b border-[var(--p-border)]">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
