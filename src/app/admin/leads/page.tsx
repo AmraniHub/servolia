@@ -148,7 +148,7 @@ function LeadsContent() {
       </div>
 
       {/* Table */}
-      <div className="bg-white border border-[#E8E6E0] rounded-2xl overflow-hidden">
+      <div className="bg-white border border-[#E8E6E0] rounded-2xl overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-[#FAFAF7] border-b border-[#E8E6E0]">
             <tr className="text-left text-[10px] font-black text-[#71717A] uppercase tracking-widest">

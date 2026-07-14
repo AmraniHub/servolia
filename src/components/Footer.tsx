@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Mail, MapPin } from "lucide-react";
+import EmailSignup from "./EmailSignup";
 
 const services = [
   { label: "AI Websites", href: "/solutions/ai-websites" },
@@ -64,6 +65,9 @@ export default function Footer() {
                 <MapPin className="w-3.5 h-3.5" />
                 France · Belgium · Switzerland · US
               </div>
+            </div>
+            <div className="mt-5">
+              <EmailSignup source="footer" />
             </div>
           </div>
 

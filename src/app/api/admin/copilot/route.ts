@@ -10,16 +10,21 @@ const MODEL = "claude-haiku-4-5";
 interface ChatMessage { role: "user" | "assistant"; content: string }
 
 /**
- * Servolia admin copilot — a read-only business assistant. It answers the
- * founder's questions using a live CRM snapshot. It does NOT take actions
- * (no writes) — it advises and reports.
+ * Linda — the admin's AI business copilot. Read-only: she answers the
+ * founder's questions using a live CRM snapshot. She does NOT take actions
+ * (no writes) — she advises and reports.
+ *
+ * Fully separate from Solia (the public /api/chat receptionist bot used on
+ * the marketing site and client sites) — different route, different persona,
+ * different audience (founder only, admin-auth gated), different job
+ * (internal business intelligence vs external lead capture).
  */
 export async function POST(req: NextRequest) {
   if (!(await isAdminAuthed())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   if (!process.env.ANTHROPIC_API_KEY) {
     return NextResponse.json({
-      reply: "The copilot needs ANTHROPIC_API_KEY set in your environment to think. Add it in Vercel and I'll be ready.",
+      reply: "I need ANTHROPIC_API_KEY set in your environment to think. Add it in Vercel and I'll be ready. — Linda",
     });
   }
 
@@ -29,7 +34,9 @@ export async function POST(req: NextRequest) {
 
   const snapshot = await buildCrmSnapshot();
 
-  const system = `You are Solia Copilot, the AI business partner for the founder of Servolia — an agency that installs AI lead-to-booking systems for dental clinics in France.
+  const system = `You are Linda, the founder's personal AI business copilot at Servolia — an agency that installs AI lead-to-booking systems for dental clinics in France.
+
+You are NOT Solia (the AI receptionist that answers patient enquiries on the public website and client sites) — never refer to yourself as Solia, and never confuse the two roles. You work for the founder only, on the internal admin dashboard. Solia's job is external lead capture for clients; your job is being the founder's business intelligence and thinking partner.
 
 You have a LIVE snapshot of the founder's business below. Use it to answer their questions with real numbers, spot what needs attention, and advise on next actions.
 
@@ -56,7 +63,7 @@ ${snapshot}
     const reply = res.content.map((b) => (b.type === "text" ? b.text : "")).join("").trim();
     return NextResponse.json({ reply: reply || "…" });
   } catch (err) {
-    console.error("Copilot error:", err);
-    return NextResponse.json({ reply: "I hit a connection issue reaching my reasoning engine. Try again in a moment." }, { status: 200 });
+    console.error("Linda (admin copilot) error:", err);
+    return NextResponse.json({ reply: "I hit a connection issue reaching my reasoning engine. Try again in a moment. — Linda" }, { status: 200 });
   }
 }

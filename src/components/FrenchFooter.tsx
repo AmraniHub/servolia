@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Mail } from "lucide-react";
+import EmailSignup from "./EmailSignup";
 
 const systemes = [
   { label: "Toutes les solutions", href: "/fr/solutions" },
@@ -39,6 +40,9 @@ export default function FrenchFooter() {
             <a href="mailto:hello@servolia.com" className="flex items-center gap-2 text-sm text-[#52525B] hover:text-[#36671E] transition-colors">
               <Mail className="w-4 h-4" /> hello@servolia.com
             </a>
+            <div className="mt-5">
+              <EmailSignup source="footer" language="fr" />
+            </div>
           </div>
 
           <div>

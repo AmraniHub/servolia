@@ -8,7 +8,7 @@ const KEY = "servolia-exit-popup-shown";
 export default function ExitIntentPopup() {
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
-  const [status, setStatus] = useState<"idle" | "loading" | "done">("idle");
+  const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -46,14 +46,15 @@ export default function ExitIntentPopup() {
     e.preventDefault();
     setStatus("loading");
     try {
-      await fetch("/api/contact", {
+      const response = await fetch("/api/subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, type: "lead-magnet", source: "exit-popup" }),
+        body: JSON.stringify({ email, source: "exit-popup", language: "en", consent: true }),
       });
+      if (!response.ok) throw new Error("Subscription failed");
       setStatus("done");
     } catch {
-      setStatus("done");
+      setStatus("error");
     }
   };
 
@@ -99,7 +100,7 @@ export default function ExitIntentPopup() {
               </button>
             </form>
             <p className="text-[11px] text-[#A1A1AA] mt-3 text-center">
-              We never share your email. Unsubscribe anytime.
+              {status === "error" ? "We couldn’t save your email. Please try again." : "We never share your email. Unsubscribe anytime."}
             </p>
           </>
         ) : (

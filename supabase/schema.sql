@@ -45,6 +45,21 @@ create index if not exists leads_created_idx   on leads(created_at desc);
 create index if not exists leads_email_idx     on leads(email);
 
 
+-- EMAIL SUBSCRIBERS: explicit permission for Servolia marketing campaigns.
+-- Keep this separate from CRM leads: an enquiry is not automatic marketing consent.
+create table if not exists email_subscribers (
+  email           text primary key,
+  created_at      timestamptz default now(),
+  consented_at    timestamptz not null default now(),
+  unsubscribed_at timestamptz,
+  source          text not null default 'footer',
+  language        text not null default 'en',
+  status          text not null default 'active'
+);
+
+create index if not exists email_subscribers_status_idx on email_subscribers(status, created_at desc);
+
+
 -- BUILDS: active client projects (after deposit paid)
 create table if not exists builds (
   id          uuid primary key default gen_random_uuid(),

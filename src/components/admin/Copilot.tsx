@@ -4,9 +4,12 @@ import { useState, useRef, useEffect } from "react";
 import { Sparkles, X, Send, Loader2 } from "lucide-react";
 
 /**
- * Solia Copilot — a floating AI business partner, available on every admin page.
- * Read-only: it answers questions over the live CRM snapshot and advises.
- * Colors follow the admin theme (green light / red dark) via the [data-admin-theme] root.
+ * Linda — the admin's AI business copilot, floating on every admin page.
+ * Completely separate from Solia (the public website/client-site receptionist
+ * bot): different component, different API route (/api/admin/copilot vs
+ * /api/chat), different persona and system prompt, admin-auth only.
+ * Read-only: Linda answers questions over the live CRM snapshot and advises.
+ * Colors follow the admin theme (green light / red dark) via [data-admin-theme].
  */
 
 interface Msg { role: "user" | "assistant"; content: string }
@@ -55,7 +58,7 @@ export default function Copilot() {
       {/* Launcher */}
       <button
         onClick={() => setOpen((o) => !o)}
-        aria-label="Open copilot"
+        aria-label="Open Linda, your business copilot"
         className="fixed bottom-5 right-5 z-40 w-14 h-14 rounded-full bg-[#36671E] text-[#FAFAF7] shadow-elevated flex items-center justify-center hover:scale-105 transition-transform"
       >
         {open ? <X className="w-6 h-6" /> : <Sparkles className="w-6 h-6" />}
@@ -69,8 +72,8 @@ export default function Copilot() {
               <Sparkles className="w-4 h-4 text-[#FAFAF7]" />
             </div>
             <div>
-              <p className="text-[#FAFAF7] text-sm font-black">Solia Copilot</p>
-              <p className="text-[#FAFAF7]/70 text-xs">Knows your live business</p>
+              <p className="text-[#FAFAF7] text-sm font-black">Linda</p>
+              <p className="text-[#FAFAF7]/70 text-xs">Your business copilot</p>
             </div>
           </div>
 
@@ -78,7 +81,7 @@ export default function Copilot() {
           <div className="flex-1 overflow-y-auto bg-[#FAFAF7] p-3 flex flex-col gap-2.5">
             {messages.length === 0 && (
               <div className="mt-2">
-                <p className="text-sm text-[#71717A] px-1 mb-3">Ask me anything about your business — I can see your live numbers, leads, calls and messages.</p>
+                <p className="text-sm text-[#71717A] px-1 mb-3">Hi, I&apos;m Linda 👋 Ask me anything about your business — I can see your live numbers, leads, calls and messages.</p>
                 <div className="flex flex-col gap-1.5">
                   {SUGGESTIONS.map((s) => (
                     <button key={s} onClick={() => send(s)}
@@ -118,7 +121,7 @@ export default function Copilot() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(input); } }}
-              placeholder="Ask your copilot…"
+              placeholder="Ask Linda…"
               className="flex-1 bg-[#FAFAF7] text-[#18181B] placeholder-[#A1A1AA] text-sm rounded-lg px-3.5 py-2 border border-[#E8E6E0] focus:outline-none focus:border-[#36671E]"
             />
             <button onClick={() => send(input)} disabled={!input.trim() || loading}

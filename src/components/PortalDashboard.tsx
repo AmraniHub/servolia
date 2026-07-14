@@ -125,7 +125,7 @@ export default function PortalDashboard({
       <AutoRefresh intervalMs={30000} />
       {/* Top bar */}
       <header className="sticky top-0 z-30 bg-[var(--p-surface)] border-b border-[var(--p-border)]">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
           <Link href="/" className="text-lg font-black tracking-tight text-[var(--p-text)]">
             Serv<span className="text-[var(--p-accent)]">olia</span>
           </Link>
@@ -134,19 +134,19 @@ export default function PortalDashboard({
               className="w-9 h-9 rounded-lg border border-[var(--p-border)] flex items-center justify-center text-[var(--p-muted)] hover:text-[var(--p-text)] hover:bg-[var(--p-raised)] transition-colors">
               {theme === "light" ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
             </button>
-            <button onClick={handleLogout}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[var(--p-border)] text-[var(--p-muted)] text-sm font-semibold hover:bg-[var(--p-raised)] hover:text-[var(--p-text)] transition-colors">
-              <LogOut className="w-3.5 h-3.5" /> Sign out
+            <button onClick={handleLogout} aria-label="Sign out"
+              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-lg border border-[var(--p-border)] text-[var(--p-muted)] text-sm font-semibold hover:bg-[var(--p-raised)] hover:text-[var(--p-text)] transition-colors">
+              <LogOut className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Sign out</span>
             </button>
           </div>
         </div>
       </header>
 
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-5 sm:py-8">
         {/* Greeting */}
         <div className="mb-6">
-          <h1 className="text-2xl font-black text-[var(--p-text)]">Welcome back, {firstName} 👋</h1>
-          <p className="text-sm text-[var(--p-muted)]">{email}</p>
+          <h1 className="text-xl sm:text-2xl font-black text-[var(--p-text)] break-words">Welcome back, {firstName} 👋</h1>
+          <p className="text-sm text-[var(--p-muted)] break-all">{email}</p>
         </div>
 
         {/* Tabs */}
@@ -171,7 +171,7 @@ export default function PortalDashboard({
         {tab === "overview" && (
           <div className="space-y-4">
             {/* Subscription */}
-            <div className="rounded-2xl border border-[var(--p-border)] bg-[var(--p-surface)] p-5 flex flex-wrap items-center gap-4" style={{ boxShadow: "var(--p-shadow)" }}>
+            <div className="rounded-2xl border border-[var(--p-border)] bg-[var(--p-surface)] p-4 sm:p-5 flex flex-wrap items-center gap-4" style={{ boxShadow: "var(--p-shadow)" }}>
               <div className="w-10 h-10 rounded-xl bg-[var(--p-accent-soft)] flex items-center justify-center flex-shrink-0">
                 <CreditCard className="w-5 h-5 text-[var(--p-accent)]" />
               </div>
@@ -196,24 +196,24 @@ export default function PortalDashboard({
                 {billingError && <p className="text-xs text-[#EF4444] mt-1">{billingError}</p>}
               </div>
               <button onClick={openBillingPortal} disabled={billingBusy}
-                className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-[var(--p-accent)] text-[var(--p-accent-fg)] text-sm font-bold hover:bg-[var(--p-accent-hover)] transition-colors disabled:opacity-50 flex-shrink-0">
+                className="flex w-full sm:w-auto items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-[var(--p-accent)] text-[var(--p-accent-fg)] text-sm font-bold hover:bg-[var(--p-accent-hover)] transition-colors disabled:opacity-50 flex-shrink-0">
                 {billingBusy ? "Opening…" : "Manage subscription"} <ExternalLink className="w-3.5 h-3.5" />
               </button>
             </div>
 
             {/* This-month stats */}
             {stats && (
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 min-[420px]:grid-cols-3 gap-3">
                 {[
                   { icon: Users, label: "Enquiries this month", value: stats.monthEnquiries },
                   { icon: CalendarCheck, label: "Booking requests", value: stats.monthBookings, accent: true },
                   { icon: Megaphone, label: "Contacts captured", value: stats.monthContacts },
                 ].map((s) => (
-                  <div key={s.label} className="rounded-2xl border border-[var(--p-border)] p-4"
+                  <div key={s.label} className="rounded-2xl border border-[var(--p-border)] p-4 flex min-[420px]:block items-center gap-3"
                     style={{ background: s.accent ? "var(--p-accent-soft)" : "var(--p-surface)", boxShadow: "var(--p-shadow)" }}>
-                    <s.icon className={`w-4 h-4 mb-2 ${s.accent ? "text-[var(--p-accent)]" : "text-[var(--p-faint)]"}`} />
+                    <s.icon className={`w-4 h-4 min-[420px]:mb-2 ${s.accent ? "text-[var(--p-accent)]" : "text-[var(--p-faint)]"}`} />
                     <p className={`text-2xl font-black ${s.accent ? "text-[var(--p-accent)]" : "text-[var(--p-text)]"}`}>{s.value}</p>
-                    <p className="text-[11px] text-[var(--p-muted)] mt-0.5">{s.label}</p>
+                    <p className="text-[11px] text-[var(--p-muted)] min-[420px]:mt-0.5">{s.label}</p>
                   </div>
                 ))}
               </div>
@@ -253,14 +253,14 @@ export default function PortalDashboard({
             <div className="px-5 py-4 border-b border-[var(--p-border)] flex items-center gap-2 bg-[var(--p-raised)]">
               <Users className="w-4 h-4 text-[var(--p-accent)]" />
               <h2 className="font-black text-[var(--p-text)] text-sm">Your leads</h2>
-              <span className="text-xs text-[var(--p-faint)]">— every enquiry your assistant handled</span>
+              <span className="hidden sm:inline text-xs text-[var(--p-faint)]">— every enquiry your assistant handled</span>
             </div>
             {leads.length === 0 ? (
               <p className="text-sm text-[var(--p-faint)] text-center py-12">No enquiries captured yet — they&apos;ll appear here as they arrive.</p>
             ) : (
               <div className="max-h-[540px] overflow-y-auto divide-y divide-[var(--p-border)]">
                 {leads.map((l, i) => (
-                  <div key={i} className="px-5 py-3 flex items-start gap-3">
+                  <div key={i} className="px-4 sm:px-5 py-3 flex items-start gap-3">
                     <span className={`mt-1 text-[10px] font-black px-2 py-0.5 rounded-full whitespace-nowrap ${l.qualified ? "bg-[#DCFCE7] text-[#166534]" : "bg-[var(--p-raised)] text-[var(--p-muted)]"}`}>
                       {l.qualified ? "Booking" : "Enquiry"}
                     </span>
@@ -283,9 +283,9 @@ export default function PortalDashboard({
             <div className="px-5 py-4 border-b border-[var(--p-border)] flex items-center gap-2 bg-[var(--p-raised)]">
               <MessageSquare className="w-4 h-4 text-[var(--p-accent)]" />
               <h2 className="font-black text-[var(--p-text)] text-sm">Message us</h2>
-              <span className="text-xs text-[var(--p-faint)]">— we usually reply within a few hours</span>
+              <span className="hidden sm:inline text-xs text-[var(--p-faint)]">— we usually reply within a few hours</span>
             </div>
-            <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-3">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-5 flex flex-col gap-3">
               {loadingMsgs ? (
                 <p className="text-sm text-[var(--p-faint)] text-center mt-8">Loading…</p>
               ) : messages.length === 0 ? (
@@ -293,7 +293,7 @@ export default function PortalDashboard({
               ) : (
                 messages.map((m) => (
                   <div key={m.id} className={`flex ${m.sender === "client" ? "justify-end" : "justify-start"}`}>
-                    <div className={`max-w-[75%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
+                    <div className={`max-w-[85%] sm:max-w-[75%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
                       m.sender === "client" ? "bg-[var(--p-accent)] text-[var(--p-accent-fg)] rounded-br-sm" : "bg-[var(--p-raised)] text-[var(--p-text)] rounded-bl-sm border border-[var(--p-border)]"
                     }`}>
                       {m.body}
