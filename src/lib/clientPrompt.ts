@@ -28,9 +28,12 @@ export function buildReceptionistPrompt(c: ClientSiteConfig): string {
     : "";
 
   const isDoctolib = /doctolib\.(fr|de|it)/i.test(c.bookingUrl ?? "");
+  const isPlanity = /planity\.com/i.test(c.bookingUrl ?? "");
   const bookLine = c.bookingUrl
     ? isDoctolib
       ? `${c.businessName} takes bookings on Doctolib. Once the visitor knows what they want, share this exact link so they can pick a slot: ${c.bookingUrl} — then still capture their name and phone/email as backup in case they don't complete the booking.`
+      : isPlanity
+      ? `${c.businessName} takes bookings on Planity. Once the visitor knows which service/treatment they want, share this exact link so they can pick a slot: ${c.bookingUrl} — then still capture their name and phone/email as backup in case they don't complete the booking.`
       : `To book, share this link: ${c.bookingUrl}`
     : `To book, take their name and preferred day/time, then confirm the team will lock it in. Capture their phone or email so ${c.businessName} can confirm.`;
 

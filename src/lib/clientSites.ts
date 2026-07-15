@@ -196,7 +196,7 @@ export function configFromIntake(src: IntakeSource): ClientSiteConfig {
     phone,
     whatsapp: phone ? phone.replace(/[^\d]/g, "") : undefined,
     email: str(src.email) ?? undefined,
-    bookingUrl: str(d.bookingUrl) ?? str(d.doctolibUrl),
+    bookingUrl: str(d.bookingUrl) ?? str(d.doctolibUrl) ?? str(d.planityUrl),
     logoUrl: str(d.logoUrl),
     heroHeadline,
     heroSub,
