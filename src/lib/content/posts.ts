@@ -4,6 +4,8 @@
  * and sitemap entry update automatically.
  */
 
+import { pollinationsImageUrl } from "@/lib/pollinations";
+
 export type Block =
   | { type: "p"; text: string }
   | { type: "h2"; text: string }
@@ -34,6 +36,7 @@ const posts: Post[] = [
     excerpt:
       "Most practices are full during the day and invisible after it. Here's where after-hours patients actually go, and how a 24/7 AI receptionist captures them instead.",
     category: "Dental",
+    coverImageUrl: pollinationsImageUrl("Dental", "evening, dusk, closed sign"),
     readingMinutes: 6,
     publishedAt: "2026-06-20",
     metaTitle: "Why Dental Clinics Lose Patients After Hours (And the AI Fix)",
@@ -74,6 +77,7 @@ const posts: Post[] = [
     excerpt:
       "Cut through the hype. Here's a plain-English breakdown of what an AI receptionist does for a clinic, what it doesn't, and where it fits alongside your team.",
     category: "AI Systems",
+    coverImageUrl: pollinationsImageUrl("AI Systems", "friendly digital assistant concept, clinic setting"),
     readingMinutes: 7,
     publishedAt: "2026-06-12",
     metaTitle: "AI Receptionists for Clinics: What They Actually Do (2026)",
@@ -112,6 +116,7 @@ const posts: Post[] = [
     excerpt:
       "A missed call feels like nothing. Multiply it across a month and a realistic client value, and it's often the single biggest line item your P&L never shows.",
     category: "Growth",
+    coverImageUrl: pollinationsImageUrl("Growth", "declining line on a small business ledger, subtle"),
     readingMinutes: 5,
     publishedAt: "2026-06-04",
     metaTitle: "The Real Cost of a Missed Enquiry for Service Businesses",
@@ -148,6 +153,7 @@ const posts: Post[] = [
     excerpt:
       "A contact form asks the client to wait. A booking system lets them commit. That difference quietly decides how many enquiries become appointments.",
     category: "Booking",
+    coverImageUrl: pollinationsImageUrl("Booking", "self-service, tapping a confirmed appointment"),
     readingMinutes: 5,
     publishedAt: "2026-05-26",
     metaTitle: "Booking Systems vs. Contact Forms: Why Self-Scheduling Wins",

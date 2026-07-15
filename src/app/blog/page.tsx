@@ -58,6 +58,11 @@ export default async function BlogIndex() {
               className="group block rounded-3xl overflow-hidden border border-[#E8E6E0] bg-white hover:shadow-elevated transition-all duration-300 mb-12">
               <div className="grid lg:grid-cols-2">
                 <div className="bg-[#0A1F14] p-8 lg:p-12 flex flex-col justify-center relative overflow-hidden min-h-[240px]">
+                  {featured.coverImageUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={featured.coverImageUrl} alt="" className="absolute inset-0 w-full h-full object-cover opacity-40" />
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#0A1F14] via-[#0A1F14]/80 to-[#0A1F14]/40 pointer-events-none" />
                   <div className="absolute -top-10 -right-10 w-64 h-64 bg-[#36671E] opacity-50 rounded-full blur-3xl pointer-events-none" />
                   <div className="relative">
                     <span className="text-[10px] font-black text-[#ABDF90] uppercase tracking-widest">Featured · {featured.category}</span>
@@ -85,14 +90,22 @@ export default async function BlogIndex() {
           <div className="grid md:grid-cols-3 gap-5">
             {rest.map((p) => (
               <Link key={p.slug} href={`/blog/${p.slug}`}
-                className="group bg-white rounded-2xl p-7 border border-[#E8E6E0] hover:border-[#36671E]/30 hover:shadow-card transition-all duration-300 flex flex-col">
-                <span className="self-start text-[10px] font-black text-[#36671E] bg-[#EEF5EA] px-2.5 py-1 rounded-full uppercase tracking-widest mb-4">{p.category}</span>
-                <h3 className="text-lg font-black text-[#18181B] mb-2 leading-tight group-hover:text-[#36671E] transition-colors">{p.title}</h3>
-                <p className="text-sm text-[#71717A] leading-relaxed flex-1 mb-5">{p.excerpt}</p>
-                <div className="flex items-center gap-2 text-xs text-[#A1A1AA] border-t border-[#F5F4EF] pt-4">
-                  <time dateTime={p.publishedAt}>{formatDate(p.publishedAt)}</time>
-                  <span>·</span>
-                  <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> {p.readingMinutes} min</span>
+                className="group bg-white rounded-2xl overflow-hidden border border-[#E8E6E0] hover:border-[#36671E]/30 hover:shadow-card transition-all duration-300 flex flex-col">
+                {p.coverImageUrl && (
+                  <div className="aspect-video w-full overflow-hidden bg-[#F5F4EF]">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={p.coverImageUrl} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                  </div>
+                )}
+                <div className="p-7 flex flex-col flex-1">
+                  <span className="self-start text-[10px] font-black text-[#36671E] bg-[#EEF5EA] px-2.5 py-1 rounded-full uppercase tracking-widest mb-4">{p.category}</span>
+                  <h3 className="text-lg font-black text-[#18181B] mb-2 leading-tight group-hover:text-[#36671E] transition-colors">{p.title}</h3>
+                  <p className="text-sm text-[#71717A] leading-relaxed flex-1 mb-5">{p.excerpt}</p>
+                  <div className="flex items-center gap-2 text-xs text-[#A1A1AA] border-t border-[#F5F4EF] pt-4">
+                    <time dateTime={p.publishedAt}>{formatDate(p.publishedAt)}</time>
+                    <span>·</span>
+                    <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> {p.readingMinutes} min</span>
+                  </div>
                 </div>
               </Link>
             ))}

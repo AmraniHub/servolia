@@ -12,6 +12,8 @@ const CATEGORY_STYLE: Record<string, string> = {
   Accounting: "modern office desk with laptop and documents, clean minimal workspace",
   Consulting: "two professionals in a bright meeting room, modern office",
   "AI Systems": "abstract technology visualization, soft green and cream tones, minimal",
+  Growth: "upward trending chart on a laptop screen, bright modern office desk, clean minimal",
+  Booking: "smartphone showing a calendar booking app, clean desk, soft natural light",
 };
 
 export function pollinationsImageUrl(category: string, extra = ""): string {
