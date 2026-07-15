@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { supabaseAdmin } from "@/lib/supabase";
 import { sendTelegramMessage, telegramConfigured } from "@/lib/telegram";
-import { pollinationsImageUrl } from "@/lib/pollinations";
+import { pollinationsImageUrl, warmPollinationsImage } from "@/lib/pollinations";
 import { pickCluster, type KeywordCluster } from "@/lib/blogClusters";
 import type { Block } from "@/lib/content/posts";
 
@@ -158,6 +158,11 @@ export async function POST(req: NextRequest) {
 
     const slug = `${slugify(meta.title)}-${Date.now().toString(36).slice(-4)}`;
     const coverImageUrl = pollinationsImageUrl(cluster.category);
+    // Generate + cache the image now, server-side, so no real visitor is ever
+    // the one waiting on a cold Pollinations render — by the time this post
+    // is approved and live, the image loads instantly for everyone.
+    const imageWarmed = await warmPollinationsImage(coverImageUrl);
+    if (!imageWarmed) console.error(`Cover image failed to warm for cluster "${cluster.category}" — post will still publish, image loads on first real visit instead.`);
     const wordCount = body.filter((b): b is Extract<Block, { type: "p" }> => b.type === "p")
       .reduce((s, b) => s + b.text.split(/\s+/).length, 0);
     const readingMinutes = Math.max(3, Math.round(wordCount / 220));

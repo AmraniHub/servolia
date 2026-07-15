@@ -2,6 +2,7 @@ import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import ChatWidget from "@/components/ChatWidget";
+import CoverImage from "@/components/CoverImage";
 import type { Post, Block } from "@/lib/content/posts";
 import { formatDate, getRelated } from "@/lib/content/posts";
 import { Clock, ArrowRight, ArrowLeft, Quote } from "lucide-react";
@@ -83,8 +84,12 @@ export default function BlogArticle({ post }: { post: Post }) {
         <article className="py-14 lg:py-20">
           <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
             {post.coverImageUrl && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={post.coverImageUrl} alt={post.title} className="w-full h-auto rounded-2xl mb-10 border border-[#E8E6E0]" />
+              <CoverImage
+                src={post.coverImageUrl}
+                alt={post.title}
+                className="w-full h-auto rounded-2xl mb-10 border border-[#E8E6E0]"
+                fallbackClassName="w-full aspect-[1200/630] rounded-2xl mb-10 border border-[#E8E6E0]"
+              />
             )}
             <p className="text-xl text-[#52525B] leading-relaxed font-medium mb-10 pb-10 border-b border-[#E8E6E0]">{post.excerpt}</p>
             {post.body.map(renderBlock)}

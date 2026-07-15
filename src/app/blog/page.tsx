@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import ChatWidget from "@/components/ChatWidget";
+import CoverImage from "@/components/CoverImage";
 import { formatDate } from "@/lib/content/posts";
 import { getAllPosts } from "@/lib/content/dynamicPosts";
 import { Clock, ArrowRight } from "lucide-react";
@@ -59,8 +60,7 @@ export default async function BlogIndex() {
               <div className="grid lg:grid-cols-2">
                 <div className="bg-[#0A1F14] p-8 lg:p-12 flex flex-col justify-center relative overflow-hidden min-h-[240px]">
                   {featured.coverImageUrl && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={featured.coverImageUrl} alt="" className="absolute inset-0 w-full h-full object-cover opacity-40" />
+                    <CoverImage src={featured.coverImageUrl} className="absolute inset-0 w-full h-full object-cover opacity-40" fallbackClassName="absolute inset-0 w-full h-full" />
                   )}
                   <div className="absolute inset-0 bg-gradient-to-t from-[#0A1F14] via-[#0A1F14]/80 to-[#0A1F14]/40 pointer-events-none" />
                   <div className="absolute -top-10 -right-10 w-64 h-64 bg-[#36671E] opacity-50 rounded-full blur-3xl pointer-events-none" />
@@ -93,8 +93,7 @@ export default async function BlogIndex() {
                 className="group bg-white rounded-2xl overflow-hidden border border-[#E8E6E0] hover:border-[#36671E]/30 hover:shadow-card transition-all duration-300 flex flex-col">
                 {p.coverImageUrl && (
                   <div className="aspect-video w-full overflow-hidden bg-[#F5F4EF]">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={p.coverImageUrl} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                    <CoverImage src={p.coverImageUrl} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" fallbackClassName="w-full h-full" />
                   </div>
                 )}
                 <div className="p-7 flex flex-col flex-1">
