@@ -46,7 +46,15 @@ export default function EmailSignup({ language = "en", source, compact = false }
           <p className="mt-0.5 text-xs leading-relaxed text-[#52525B]">{copy.description}</p>
         </div>
       </div>
-      <form onSubmit={submit} className="mt-3 flex flex-col gap-2 sm:flex-row">
+      {/*
+        Always stacked, never side-by-side: this form only ever renders inside
+        a narrow footer column (~200px), not a full-width section. A row
+        layout at "sm:" reacts to VIEWPORT width, not this container's actual
+        width, so on any normal desktop screen it used to squeeze the input
+        and button into that ~200px together — the input rendered wide enough
+        to show only "you@" of the placeholder before the button ate the rest.
+      */}
+      <form onSubmit={submit} className="mt-3 flex flex-col gap-2">
         <input
           type="email"
           required
@@ -54,9 +62,9 @@ export default function EmailSignup({ language = "en", source, compact = false }
           onChange={(event) => setEmail(event.target.value)}
           placeholder={copy.placeholder}
           aria-label={copy.placeholder}
-          className="min-w-0 flex-1 rounded-lg border border-[#D4D2CC] bg-white px-3 py-2 text-sm text-[#18181B] placeholder:text-[#A1A1AA] focus:border-[#36671E] focus:outline-none"
+          className="w-full min-w-0 rounded-lg border border-[#D4D2CC] bg-white px-3 py-2 text-sm text-[#18181B] placeholder:text-[#A1A1AA] focus:border-[#36671E] focus:outline-none"
         />
-        <button type="submit" disabled={status === "loading"} className="flex shrink-0 items-center justify-center gap-1.5 rounded-lg bg-[#36671E] px-3 py-2 text-sm font-bold text-[#FAFAF7] transition-colors hover:bg-[#295115] disabled:opacity-50">
+        <button type="submit" disabled={status === "loading"} className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-[#36671E] px-3 py-2 text-sm font-bold text-[#FAFAF7] transition-colors hover:bg-[#295115] disabled:opacity-50">
           {status === "loading" ? "…" : <>{copy.submit} <ArrowRight className="h-3.5 w-3.5" /></>}
         </button>
       </form>
