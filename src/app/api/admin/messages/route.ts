@@ -16,19 +16,19 @@ export async function GET() {
 
   const { data: msgs } = await db
     .from("client_messages")
-    .select("email, sender, body, created_at, read_by_admin")
+    .select("email, sender, body, created_at, read_by_admin, attachment_url")
     .is("deleted_by_admin_at", null)
     .order("created_at", { ascending: false })
     .limit(2000);
 
-  type Row = { email: string; sender: string; body: string; created_at: string; read_by_admin: boolean };
+  type Row = { email: string; sender: string; body: string; created_at: string; read_by_admin: boolean; attachment_url: string | null };
   const rows = (msgs as Row[] | null) ?? [];
 
   const byEmail = new Map<string, { email: string; lastBody: string; lastAt: string; lastSender: string; unread: number }>();
   for (const m of rows) {
     let t = byEmail.get(m.email);
     if (!t) {
-      t = { email: m.email, lastBody: m.body, lastAt: m.created_at, lastSender: m.sender, unread: 0 };
+      t = { email: m.email, lastBody: m.body || (m.attachment_url ? "📷 Photo" : ""), lastAt: m.created_at, lastSender: m.sender, unread: 0 };
       byEmail.set(m.email, t);
     }
     // rows are newest-first, so the first seen per email is the latest

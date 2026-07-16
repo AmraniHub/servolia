@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { MessageSquare, Send, Loader2, PenSquare, ArrowLeft, Search, Trash2, ArchiveRestore } from "lucide-react";
+import { MessageSquare, Send, Loader2, PenSquare, ArrowLeft, Search, Trash2, ArchiveRestore, Bell, BellOff, Image as ImageIcon, X } from "lucide-react";
 
 /**
  * Unified client-messages inbox. Left: every conversation with unread badges.
@@ -10,9 +10,16 @@ import { MessageSquare, Send, Loader2, PenSquare, ArrowLeft, Search, Trash2, Arc
  * so the Trash panel can restore it for you, the client, or both.
  */
 
+const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
+const ACCEPTED_IMAGE_TYPES = "image/jpeg,image/png,image/webp,image/gif";
+
 interface Thread { email: string; lastBody: string; lastAt: string; lastSender: string; unread: number }
 interface Contact { email: string; business: string | null }
-interface Message { id: string; sender: "client" | "admin"; body: string; created_at: string; deleted_by_admin_at?: string | null; deleted_by_client_at?: string | null }
+interface Message {
+  id: string; sender: "client" | "admin"; body: string; created_at: string;
+  deleted_by_admin_at?: string | null; deleted_by_client_at?: string | null;
+  attachment_url?: string | null; attachment_type?: string | null;
+}
 interface TrashThread { email: string; deletedByAdmin: number; deletedByClient: number; lastDeletedAt: string }
 
 export default function MessagesInbox() {
@@ -29,7 +36,25 @@ export default function MessagesInbox() {
   const [newEmail, setNewEmail] = useState("");
   const [deleting, setDeleting] = useState(false);
   const [restoring, setRestoring] = useState(false);
+  const [notify, setNotify] = useState(true);
+  const [pendingImage, setPendingImage] = useState<File | null>(null);
+  const [pendingPreview, setPendingPreview] = useState<string | null>(null);
+  const [imageError, setImageError] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Email-notify preference persists across messages so you don't have to re-toggle it every send.
+  useEffect(() => {
+    const saved = localStorage.getItem("servolia_admin_email_notify");
+    if (saved === "0") setNotify(false);
+  }, []);
+  function toggleNotify() {
+    setNotify((v) => {
+      const next = !v;
+      localStorage.setItem("servolia_admin_email_notify", next ? "1" : "0");
+      return next;
+    });
+  }
 
   const loadThreads = useCallback(async () => {
     const res = await fetch("/api/admin/messages");
@@ -89,15 +114,39 @@ export default function MessagesInbox() {
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
 
+  function pickImage(file: File) {
+    setImageError("");
+    if (!ACCEPTED_IMAGE_TYPES.split(",").includes(file.type)) { setImageError("Only JPEG, PNG, WEBP, or GIF images."); return; }
+    if (file.size > MAX_IMAGE_BYTES) { setImageError("Image must be under 4MB."); return; }
+    setPendingImage(file);
+    setPendingPreview(URL.createObjectURL(file));
+  }
+  function clearPendingImage() {
+    if (pendingPreview) URL.revokeObjectURL(pendingPreview);
+    setPendingImage(null); setPendingPreview(null); setImageError("");
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
   async function send() {
     const text = input.trim();
     const email = active;
-    if (!text || !email || sending) return;
-    setSending(true); setInput("");
+    if ((!text && !pendingImage) || !email || sending) return;
+    setSending(true);
     try {
+      let attachmentUrl: string | undefined;
+      let attachmentType: string | undefined;
+      if (pendingImage) {
+        const form = new FormData();
+        form.append("file", pendingImage);
+        const up = await fetch("/api/admin/client-messages/upload", { method: "POST", body: form });
+        const upData = await up.json();
+        if (!up.ok) { setImageError(upData.error ?? "Upload failed"); setSending(false); return; }
+        attachmentUrl = upData.url; attachmentType = upData.type;
+      }
+      setInput(""); clearPendingImage();
       const res = await fetch("/api/admin/client-messages", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, body: text }),
+        body: JSON.stringify({ email, body: text, attachmentUrl, attachmentType, notify }),
       });
       const d = await res.json();
       if (d.message) {
@@ -259,6 +308,11 @@ export default function MessagesInbox() {
                       <div className={`max-w-[80%] px-3.5 py-2 rounded-xl text-sm leading-relaxed ${
                         m.sender === "admin" ? "bg-[#36671E] text-[#FAFAF7] rounded-br-sm" : "bg-[#F5F4EF] text-[#18181B] rounded-bl-sm border border-[#E8E6E0]"
                       } ${view === "trash" ? "opacity-70" : ""}`}>
+                        {m.attachment_url && (
+                          <a href={m.attachment_url} target="_blank" rel="noopener noreferrer" className="block mb-1.5 -mx-1 -mt-0.5">
+                            <img src={m.attachment_url} alt="Attachment" className="rounded-lg max-h-56 max-w-full object-contain" />
+                          </a>
+                        )}
                         {m.body}
                         <div className={`text-[10px] mt-1 flex items-center gap-1.5 ${m.sender === "admin" ? "text-[#FAFAF7]/60" : "text-[#A1A1AA]"}`}>
                           {new Date(m.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
@@ -272,22 +326,46 @@ export default function MessagesInbox() {
                 <div ref={bottomRef} />
               </div>
               {view === "inbox" && (
-                <div className="border-t border-[#E8E6E0] p-2.5 flex gap-2">
-                  <input value={input} onChange={(e) => setInput(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
-                    placeholder="Type a message to your client…"
-                    className="flex-1 bg-[#FAFAF7] text-[#18181B] placeholder-[#A1A1AA] text-sm rounded-lg px-3.5 py-2 border border-[#E8E6E0] focus:outline-none focus:border-[#36671E]" />
-                  <button onClick={send} disabled={!input.trim() || sending}
-                    className="w-9 h-9 rounded-lg bg-[#36671E] flex items-center justify-center disabled:opacity-40 hover:bg-[#295115] flex-shrink-0">
-                    {sending ? <Loader2 className="w-4 h-4 text-white animate-spin" /> : <Send className="w-4 h-4 text-white" />}
-                  </button>
+                <div className="border-t border-[#E8E6E0]">
+                  {imageError && <p className="text-xs text-red-600 px-2.5 pt-2">{imageError}</p>}
+                  {pendingPreview && (
+                    <div className="px-2.5 pt-2 flex items-center gap-2">
+                      <div className="relative">
+                        <img src={pendingPreview} alt="" className="h-14 w-14 object-cover rounded-lg border border-[#E8E6E0]" />
+                        <button onClick={clearPendingImage} className="absolute -top-1.5 -right-1.5 w-4.5 h-4.5 rounded-full bg-[#18181B] text-white flex items-center justify-center">
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                      <span className="text-xs text-[#A1A1AA]">Image ready — add a caption or just hit send.</span>
+                    </div>
+                  )}
+                  <div className="p-2.5 flex items-center gap-2">
+                    <button onClick={toggleNotify} title={notify ? "Email notification: ON — client gets an email for this message" : "Email notification: OFF — saves Resend credits, no email sent"}
+                      className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 border transition-colors ${notify ? "bg-[#EEF5EA] border-[#36671E]/30 text-[#36671E]" : "bg-[#FAFAF7] border-[#E8E6E0] text-[#A1A1AA]"}`}>
+                      {notify ? <Bell className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}
+                    </button>
+                    <button onClick={() => fileInputRef.current?.click()} title="Attach an image"
+                      className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 border border-[#E8E6E0] text-[#71717A] hover:bg-[#FAFAF7]">
+                      <ImageIcon className="w-4 h-4" />
+                    </button>
+                    <input ref={fileInputRef} type="file" accept={ACCEPTED_IMAGE_TYPES} className="hidden"
+                      onChange={(e) => { const f = e.target.files?.[0]; if (f) pickImage(f); }} />
+                    <input value={input} onChange={(e) => setInput(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
+                      placeholder="Type a message to your client…"
+                      className="flex-1 bg-[#FAFAF7] text-[#18181B] placeholder-[#A1A1AA] text-sm rounded-lg px-3.5 py-2 border border-[#E8E6E0] focus:outline-none focus:border-[#36671E]" />
+                    <button onClick={send} disabled={(!input.trim() && !pendingImage) || sending}
+                      className="w-9 h-9 rounded-lg bg-[#36671E] flex items-center justify-center disabled:opacity-40 hover:bg-[#295115] flex-shrink-0">
+                      {sending ? <Loader2 className="w-4 h-4 text-white animate-spin" /> : <Send className="w-4 h-4 text-white" />}
+                    </button>
+                  </div>
                 </div>
               )}
             </>
           )}
         </div>
       </div>
-      <p className="text-xs text-[#A1A1AA] mt-3">Clients get an email + a portal notification for every message you send. They reply from their portal.</p>
+      <p className="text-xs text-[#A1A1AA] mt-3">Clients always get a portal notification. The bell toggle controls whether they also get an email — turn it off for quick back-and-forth to save Resend credits.</p>
     </div>
   );
 }

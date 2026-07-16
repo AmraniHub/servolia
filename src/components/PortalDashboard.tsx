@@ -8,9 +8,13 @@ import AutoRefresh from "@/components/AutoRefresh";
 import {
   LogOut, Send, MessageSquare, Clock, CreditCard, CheckCircle2, Users, CalendarCheck,
   Megaphone, ExternalLink, Sun, Moon, LayoutDashboard, KeyRound, Loader2, ShieldCheck, Trash2,
+  Image as ImageIcon, X,
 } from "lucide-react";
 
-interface Message { id: string; sender: "client" | "admin"; body: string; created_at: string }
+const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
+const ACCEPTED_IMAGE_TYPES = "image/jpeg,image/png,image/webp,image/gif";
+
+interface Message { id: string; sender: "client" | "admin"; body: string; created_at: string; attachment_url?: string | null; attachment_type?: string | null }
 interface PortalLead { created_at: string; qualified: boolean; contact: string | null; excerpt: string; fromAds: boolean }
 interface PortalStats { monthEnquiries: number; monthBookings: number; monthContacts: number }
 
@@ -46,6 +50,11 @@ export default function PortalDashboard({
   const [billingBusy, setBillingBusy] = useState(false);
   const [billingError, setBillingError] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  const [pendingImage, setPendingImage] = useState<File | null>(null);
+  const [pendingPreview, setPendingPreview] = useState<string | null>(null);
+  const [imageError, setImageError] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Theme init: saved preference → system → light.
   useEffect(() => {
@@ -87,13 +96,38 @@ export default function PortalDashboard({
 
   useEffect(() => { if (tab === "messages") bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, tab]);
 
+  function pickImage(file: File) {
+    setImageError("");
+    if (!ACCEPTED_IMAGE_TYPES.split(",").includes(file.type)) { setImageError("Only JPEG, PNG, WEBP, or GIF images."); return; }
+    if (file.size > MAX_IMAGE_BYTES) { setImageError("Image must be under 4MB."); return; }
+    setPendingImage(file);
+    setPendingPreview(URL.createObjectURL(file));
+  }
+  function clearPendingImage() {
+    if (pendingPreview) URL.revokeObjectURL(pendingPreview);
+    setPendingImage(null); setPendingPreview(null); setImageError("");
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
   async function sendMessage() {
     const text = input.trim();
-    if (!text || sending) return;
-    setSending(true); setInput("");
+    if ((!text && !pendingImage) || sending) return;
+    setSending(true);
     try {
+      let attachmentUrl: string | undefined;
+      let attachmentType: string | undefined;
+      if (pendingImage) {
+        const form = new FormData();
+        form.append("file", pendingImage);
+        const up = await fetch("/api/portal/messages/upload", { method: "POST", body: form });
+        const upData = await up.json();
+        if (!up.ok) { setImageError(upData.error ?? "Upload failed"); setSending(false); return; }
+        attachmentUrl = upData.url; attachmentType = upData.type;
+      }
+      setInput(""); clearPendingImage();
       const res = await fetch("/api/portal/messages", {
-        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ body: text }),
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ body: text, attachmentUrl, attachmentType }),
       });
       const data = await res.json();
       if (data.message) setMessages((prev) => [...prev, data.message]);
@@ -313,6 +347,11 @@ export default function PortalDashboard({
                     <div className={`max-w-[85%] sm:max-w-[75%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
                       m.sender === "client" ? "bg-[var(--p-accent)] text-[var(--p-accent-fg)] rounded-br-sm" : "bg-[var(--p-raised)] text-[var(--p-text)] rounded-bl-sm border border-[var(--p-border)]"
                     }`}>
+                      {m.attachment_url && (
+                        <a href={m.attachment_url} target="_blank" rel="noopener noreferrer" className="block mb-1.5 -mx-1 -mt-0.5">
+                          <img src={m.attachment_url} alt="Attachment" className="rounded-lg max-h-56 max-w-full object-contain" />
+                        </a>
+                      )}
                       {m.body}
                       <div className={`text-[10px] mt-1 ${m.sender === "client" ? "opacity-60" : "text-[var(--p-faint)]"}`}>
                         {new Date(m.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
@@ -323,15 +362,35 @@ export default function PortalDashboard({
               )}
               <div ref={bottomRef} />
             </div>
-            <div className="border-t border-[var(--p-border)] p-3 flex gap-2">
-              <input value={input} onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
-                placeholder="Type a message…"
-                className="flex-1 bg-[var(--p-bg)] text-[var(--p-text)] placeholder-[var(--p-faint)] text-sm rounded-xl px-4 py-2.5 border border-[var(--p-border)] focus:outline-none focus:border-[var(--p-accent)] transition-colors" />
-              <button onClick={sendMessage} disabled={!input.trim() || sending}
-                className="w-10 h-10 rounded-xl bg-[var(--p-accent)] flex items-center justify-center disabled:opacity-40 hover:bg-[var(--p-accent-hover)] transition-colors flex-shrink-0">
-                <Send className="w-4 h-4 text-[var(--p-accent-fg)]" />
-              </button>
+            <div className="border-t border-[var(--p-border)]">
+              {imageError && <p className="text-xs text-red-500 px-3 pt-2">{imageError}</p>}
+              {pendingPreview && (
+                <div className="px-3 pt-2 flex items-center gap-2">
+                  <div className="relative">
+                    <img src={pendingPreview} alt="" className="h-14 w-14 object-cover rounded-lg border border-[var(--p-border)]" />
+                    <button onClick={clearPendingImage} className="absolute -top-1.5 -right-1.5 w-4.5 h-4.5 rounded-full bg-[var(--p-text)] text-[var(--p-bg)] flex items-center justify-center">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                  <span className="text-xs text-[var(--p-faint)]">Image ready — add a caption or just send.</span>
+                </div>
+              )}
+              <div className="p-3 flex gap-2">
+                <button onClick={() => fileInputRef.current?.click()} title="Attach an image"
+                  className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 border border-[var(--p-border)] text-[var(--p-faint)] hover:bg-[var(--p-raised)] transition-colors">
+                  <ImageIcon className="w-4 h-4" />
+                </button>
+                <input ref={fileInputRef} type="file" accept={ACCEPTED_IMAGE_TYPES} className="hidden"
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) pickImage(f); }} />
+                <input value={input} onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
+                  placeholder="Type a message…"
+                  className="flex-1 bg-[var(--p-bg)] text-[var(--p-text)] placeholder-[var(--p-faint)] text-sm rounded-xl px-4 py-2.5 border border-[var(--p-border)] focus:outline-none focus:border-[var(--p-accent)] transition-colors" />
+                <button onClick={sendMessage} disabled={(!input.trim() && !pendingImage) || sending}
+                  className="w-10 h-10 rounded-xl bg-[var(--p-accent)] flex items-center justify-center disabled:opacity-40 hover:bg-[var(--p-accent-hover)] transition-colors flex-shrink-0">
+                  <Send className="w-4 h-4 text-[var(--p-accent-fg)]" />
+                </button>
+              </div>
             </div>
           </div>
         )}

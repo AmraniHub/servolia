@@ -14,7 +14,7 @@ export async function GET() {
 
   const { data } = await db
     .from("client_messages")
-    .select("id, sender, body, created_at")
+    .select("id, sender, body, created_at, attachment_url, attachment_type")
     .eq("email", email)
     .is("deleted_by_client_at", null)
     .order("created_at", { ascending: true });
@@ -45,9 +45,11 @@ export async function POST(req: NextRequest) {
   const email = await getClientEmail();
   if (!email) return NextResponse.json({ error: "Not logged in" }, { status: 401 });
 
-  const { body } = (await req.json().catch(() => ({}))) as { body?: string };
-  const text = body?.trim();
-  if (!text) return NextResponse.json({ error: "Message can't be empty" }, { status: 400 });
+  const { body, attachmentUrl, attachmentType } = (await req.json().catch(() => ({}))) as {
+    body?: string; attachmentUrl?: string; attachmentType?: string;
+  };
+  const text = body?.trim() ?? "";
+  if (!text && !attachmentUrl) return NextResponse.json({ error: "Message can't be empty" }, { status: 400 });
 
   const db = supabaseAdmin();
   if (!db) return NextResponse.json({ error: "Not configured" }, { status: 503 });
@@ -63,17 +65,21 @@ export async function POST(req: NextRequest) {
 
   const { data: inserted, error } = await db
     .from("client_messages")
-    .insert({ email, build_id: build?.id ?? null, sender: "client", body: text })
-    .select("id, sender, body, created_at")
+    .insert({
+      email, build_id: build?.id ?? null, sender: "client", body: text,
+      attachment_url: attachmentUrl ?? null, attachment_type: attachmentType ?? null,
+    })
+    .select("id, sender, body, created_at, attachment_url, attachment_type")
     .single();
 
   if (error) return NextResponse.json({ error: "Failed to send" }, { status: 500 });
 
+  const preview = text || "📷 Sent a photo";
   const msg =
     `💬 *New portal message*\n` +
     `${build?.business ? `*${build.business}*` : email}\n` +
     `📧 ${email}\n\n` +
-    `"${text.slice(0, 300)}"` +
+    `"${preview.slice(0, 300)}"` +
     (build?.id ? `\n\n[Open build in CRM](https://servolia.com/admin/builds/${build.id})` : "");
   sendTelegramMessage(msg);
 

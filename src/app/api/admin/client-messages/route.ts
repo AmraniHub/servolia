@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
 
   let query = db
     .from("client_messages")
-    .select("id, sender, body, created_at, deleted_by_admin_at, deleted_by_client_at")
+    .select("id, sender, body, created_at, deleted_by_admin_at, deleted_by_client_at, attachment_url, attachment_type")
     .eq("email", email)
     .order("created_at", { ascending: true });
   if (!includeDeleted) query = query.is("deleted_by_admin_at", null);
@@ -52,23 +52,33 @@ export async function DELETE(req: NextRequest) {
 export async function POST(req: NextRequest) {
   if (!(await isAdminAuthed())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { email, buildId, body } = (await req.json().catch(() => ({}))) as { email?: string; buildId?: string; body?: string };
-  const text = body?.trim();
-  if (!email || !text) return NextResponse.json({ error: "email and body required" }, { status: 400 });
+  const { email, buildId, body, attachmentUrl, attachmentType, notify } = (await req.json().catch(() => ({}))) as {
+    email?: string; buildId?: string; body?: string; attachmentUrl?: string; attachmentType?: string; notify?: boolean;
+  };
+  const text = body?.trim() ?? "";
+  if (!email || (!text && !attachmentUrl)) return NextResponse.json({ error: "email and (body or image) required" }, { status: 400 });
 
   const db = supabaseAdmin();
   if (!db) return NextResponse.json({ error: "Not configured" }, { status: 503 });
 
   const { data: inserted, error } = await db
     .from("client_messages")
-    .insert({ email, build_id: buildId ?? null, sender: "admin", body: text })
-    .select("id, sender, body, created_at")
+    .insert({
+      email, build_id: buildId ?? null, sender: "admin", body: text,
+      attachment_url: attachmentUrl ?? null, attachment_type: attachmentType ?? null,
+    })
+    .select("id, sender, body, created_at, attachment_url, attachment_type")
     .single();
 
   if (error) return NextResponse.json({ error: "Failed to send" }, { status: 500 });
 
-  const firstName = email.split("@")[0];
-  sendEmail(email, newPortalMessageEmail(firstName, text).subject, newPortalMessageEmail(firstName, text).html).catch(() => {});
+  // Email notification is opt-out per message — the admin toggles it off for
+  // quick back-and-forth chat to avoid burning Resend credits on every reply.
+  if (notify !== false) {
+    const firstName = email.split("@")[0];
+    const preview = text || "📷 Sent a photo";
+    sendEmail(email, newPortalMessageEmail(firstName, preview).subject, newPortalMessageEmail(firstName, preview).html).catch(() => {});
+  }
 
   return NextResponse.json({ ok: true, message: inserted });
 }

@@ -262,6 +262,11 @@ create index if not exists client_messages_build_idx on client_messages(build_id
 alter table client_messages add column if not exists deleted_by_admin_at timestamptz;
 alter table client_messages add column if not exists deleted_by_client_at timestamptz;
 
+-- Image attachments (Supabase Storage URL — see src/lib/chatAttachments.ts for
+-- the magic-byte validation applied before anything is ever uploaded).
+alter table client_messages add column if not exists attachment_url text;
+alter table client_messages add column if not exists attachment_type text;
+
 
 -- LEAD ACTIVITIES: timeline of every interaction with a lead
 create table if not exists lead_activities (
