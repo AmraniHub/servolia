@@ -16,12 +16,29 @@ export async function GET() {
     .from("client_messages")
     .select("id, sender, body, created_at")
     .eq("email", email)
+    .is("deleted_by_client_at", null)
     .order("created_at", { ascending: true });
 
   // Mark admin replies as read now that the client has opened the thread.
   db.from("client_messages").update({ read_by_client: true }).eq("email", email).eq("sender", "admin").then(() => {});
 
   return NextResponse.json({ messages: data ?? [] });
+}
+
+/** Delete this conversation — clears it from the client's own portal view only. The admin's CRM is untouched. */
+export async function DELETE() {
+  const email = await getClientEmail();
+  if (!email) return NextResponse.json({ error: "Not logged in" }, { status: 401 });
+
+  const db = supabaseAdmin();
+  if (!db) return NextResponse.json({ error: "Not configured" }, { status: 503 });
+
+  const { error } = await db.from("client_messages")
+    .update({ deleted_by_client_at: new Date().toISOString() })
+    .eq("email", email).is("deleted_by_client_at", null);
+  if (error) return NextResponse.json({ error: "Failed to delete" }, { status: 500 });
+
+  return NextResponse.json({ ok: true });
 }
 
 export async function POST(req: NextRequest) {

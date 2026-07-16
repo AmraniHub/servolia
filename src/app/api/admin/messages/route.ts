@@ -17,6 +17,7 @@ export async function GET() {
   const { data: msgs } = await db
     .from("client_messages")
     .select("email, sender, body, created_at, read_by_admin")
+    .is("deleted_by_admin_at", null)
     .order("created_at", { ascending: false })
     .limit(2000);
 

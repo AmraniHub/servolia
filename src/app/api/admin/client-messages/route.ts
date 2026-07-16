@@ -10,21 +10,43 @@ export async function GET(req: NextRequest) {
 
   const email = req.nextUrl.searchParams.get("email");
   if (!email) return NextResponse.json({ error: "email required" }, { status: 400 });
+  // Trash preview lets the admin see everything (incl. what they deleted) before restoring.
+  const includeDeleted = req.nextUrl.searchParams.get("includeDeleted") === "1";
 
   const db = supabaseAdmin();
   if (!db) return NextResponse.json({ messages: [] });
 
-  const { data } = await db
+  let query = db
     .from("client_messages")
-    .select("id, sender, body, created_at")
+    .select("id, sender, body, created_at, deleted_by_admin_at, deleted_by_client_at")
     .eq("email", email)
     .order("created_at", { ascending: true });
+  if (!includeDeleted) query = query.is("deleted_by_admin_at", null);
+  const { data } = await query;
 
   // Mark this client's messages as read now that the admin has opened the thread.
   db.from("client_messages").update({ read_by_admin: true })
     .eq("email", email).eq("sender", "client").then(() => {});
 
   return NextResponse.json({ messages: data ?? [] });
+}
+
+/** Delete a chat — soft-delete, admin's own view only. The client's portal is untouched. */
+export async function DELETE(req: NextRequest) {
+  if (!(await isAdminAuthed())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const email = req.nextUrl.searchParams.get("email");
+  if (!email) return NextResponse.json({ error: "email required" }, { status: 400 });
+
+  const db = supabaseAdmin();
+  if (!db) return NextResponse.json({ error: "Not configured" }, { status: 503 });
+
+  const { error } = await db.from("client_messages")
+    .update({ deleted_by_admin_at: new Date().toISOString() })
+    .eq("email", email).is("deleted_by_admin_at", null);
+  if (error) return NextResponse.json({ error: "Failed to delete" }, { status: 500 });
+
+  return NextResponse.json({ ok: true });
 }
 
 export async function POST(req: NextRequest) {

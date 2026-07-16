@@ -7,7 +7,7 @@ import type { Build, Client } from "@/lib/supabase";
 import AutoRefresh from "@/components/AutoRefresh";
 import {
   LogOut, Send, MessageSquare, Clock, CreditCard, CheckCircle2, Users, CalendarCheck,
-  Megaphone, ExternalLink, Sun, Moon, LayoutDashboard, KeyRound, Loader2, ShieldCheck,
+  Megaphone, ExternalLink, Sun, Moon, LayoutDashboard, KeyRound, Loader2, ShieldCheck, Trash2,
 } from "lucide-react";
 
 interface Message { id: string; sender: "client" | "admin"; body: string; created_at: string }
@@ -98,6 +98,17 @@ export default function PortalDashboard({
       const data = await res.json();
       if (data.message) setMessages((prev) => [...prev, data.message]);
     } finally { setSending(false); }
+  }
+
+  const [deletingChat, setDeletingChat] = useState(false);
+  async function deleteChat() {
+    if (deletingChat) return;
+    if (!confirm("Delete this conversation? It'll disappear from your view — Servolia can still see and restore it if needed.")) return;
+    setDeletingChat(true);
+    try {
+      const res = await fetch("/api/portal/messages", { method: "DELETE" });
+      if (res.ok) setMessages([]);
+    } finally { setDeletingChat(false); }
   }
 
   async function openBillingPortal() {
@@ -284,6 +295,12 @@ export default function PortalDashboard({
               <MessageSquare className="w-4 h-4 text-[var(--p-accent)]" />
               <h2 className="font-black text-[var(--p-text)] text-sm">Message us</h2>
               <span className="hidden sm:inline text-xs text-[var(--p-faint)]">— we usually reply within a few hours</span>
+              {messages.length > 0 && (
+                <button onClick={deleteChat} disabled={deletingChat} title="Delete conversation"
+                  className="ml-auto flex items-center gap-1.5 text-xs text-[var(--p-faint)] hover:text-red-500 transition-colors disabled:opacity-40">
+                  <Trash2 className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Delete</span>
+                </button>
+              )}
             </div>
             <div className="flex-1 overflow-y-auto p-4 sm:p-5 flex flex-col gap-3">
               {loadingMsgs ? (
