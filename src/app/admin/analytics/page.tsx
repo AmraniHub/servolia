@@ -19,11 +19,16 @@ const STAGE_LABELS: Record<string,string> = {
 
 export default async function AnalyticsPage() {
   const db = supabaseAdmin();
+  const since = new Date(Date.now() - 1000*60*60*24*90).toISOString();
   const [leadsRes, chatRes] = await Promise.all([
-    db ? db.from("leads").select("*").gte("created_at", new Date(Date.now() - 1000*60*60*24*90).toISOString()) : { data: [] },
-    db ? db.from("chat_sessions").select("id, created_at, qualified, message_count, lead_id") : { data: [] },
+    // Unfiltered: stage/value metrics (funnel, pipeline, won, response SLA) reflect
+    // current state and must include leads that started before the 90-day window —
+    // otherwise a deal older than 90 days silently vanishes from pipeline/won value.
+    db ? db.from("leads").select("*") : { data: [] },
+    db ? db.from("chat_sessions").select("id, created_at, qualified, message_count, lead_id").gte("created_at", since) : { data: [] },
   ]);
-  const leads = (leadsRes.data ?? []) as Lead[];
+  const allLeads = (leadsRes.data ?? []) as Lead[];
+  const leads = allLeads.filter(l => new Date(l.created_at) >= new Date(since)); // last 90 days, for time-windowed breakdowns
   const sessions = (chatRes.data ?? []) as ChatSession[];
 
   // ── Source breakdown ───────────────────────────────────────────────
@@ -43,9 +48,9 @@ export default async function AnalyticsPage() {
   leads.forEach(l => { const c = l.country ?? "unknown"; countryCounts[c] = (countryCounts[c] ?? 0) + 1; });
   const countries = Object.entries(countryCounts).sort((a,b) => b[1]-a[1]).slice(0, 6);
 
-  // ── Conversion funnel ──────────────────────────────────────────────
-  const funnel = STAGES.map(s => ({ stage: s, count: leads.filter(l => l.stage === s).length }));
-  const totalFunnel = leads.length;
+  // ── Conversion funnel (all-time current stage, not creation-date windowed) ──
+  const funnel = STAGES.map(s => ({ stage: s, count: allLeads.filter(l => l.stage === s).length }));
+  const totalFunnel = allLeads.length;
 
   // ── Leads over time (last 12 weeks) ────────────────────────────────
   const weeks: { label: string; count: number }[] = [];
@@ -66,22 +71,22 @@ export default async function AnalyticsPage() {
   const chatConvRate = totalChats > 0 ? Math.round((qualifiedChats / totalChats) * 100) : 0;
   const avgMessages = totalChats > 0 ? Math.round(sessions.reduce((s,c) => s + c.message_count, 0) / totalChats) : 0;
 
-  // ── Response time SLA ──────────────────────────────────────────────
-  const contacted = leads.filter(l => l.last_contacted_at);
+  // ── Response time SLA (all-time, not creation-date windowed) ────────
+  const contacted = allLeads.filter(l => l.last_contacted_at);
   const avgResponseHours = contacted.length > 0
     ? contacted.reduce((s, l) => s + (new Date(l.last_contacted_at!).getTime() - new Date(l.created_at).getTime()) / 3600000, 0) / contacted.length
     : 0;
 
-  // ── Pipeline value ─────────────────────────────────────────────────
-  const openLeads = leads.filter(l => !["live","lost","deposit_paid"].includes(l.stage));
+  // ── Pipeline value (all-time open leads, not creation-date windowed) ────
+  const openLeads = allLeads.filter(l => !["live","lost","deposit_paid"].includes(l.stage));
   const pipelineValue = openLeads.reduce((s,l) => s + Number(l.value_estimate ?? 0), 0);
-  const wonValue = leads.filter(l => l.stage === "deposit_paid" || l.stage === "live")
+  const wonValue = allLeads.filter(l => l.stage === "deposit_paid" || l.stage === "live")
     .reduce((s,l) => s + Number(l.value_estimate ?? 0), 0);
 
   return (
     <div className="px-4 sm:px-6 lg:px-8 py-6 lg:py-8 max-w-7xl mx-auto">
       <h1 className="text-2xl font-black text-[#18181B] mb-1">Analytics</h1>
-      <p className="text-sm text-[#71717A] mb-6">Last 90 days · {leads.length} leads · {totalChats} chat sessions</p>
+      <p className="text-sm text-[#71717A] mb-6">Last 90 days · {leads.length} new leads · {totalChats} chat sessions · {totalFunnel} total in pipeline</p>
 
       {/* KPI strip */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
