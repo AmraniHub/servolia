@@ -1,8 +1,11 @@
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import VideoEmbed from "@/components/VideoEmbed";
 import Link from "next/link";
 import { ArrowRight, FileText, Video, CreditCard, ClipboardList, Hammer, Eye, Rocket, BarChart3, MessageSquare, CheckCircle } from "lucide-react";
 import type { Metadata } from "next";
+
+const DEMO_VIDEO_ID = process.env.NEXT_PUBLIC_DEMO_VIDEO_ID;
 
 export const metadata: Metadata = {
   title: "How It Works — Servolia",
@@ -157,6 +160,15 @@ export default function HowItWorksPage() {
             </div>
           </div>
         </section>
+
+        {/* VIDEO — only renders once a real explainer is recorded and NEXT_PUBLIC_DEMO_VIDEO_ID is set */}
+        {DEMO_VIDEO_ID && (
+          <section className="pb-16 lg:pb-20 bg-[#FAFAF7]">
+            <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+              <VideoEmbed videoId={DEMO_VIDEO_ID} title="Watch the AI receptionist handle a real enquiry" />
+            </div>
+          </section>
+        )}
 
         {/* STEPS */}
         <section className="py-16 lg:py-24 bg-[#FAFAF7]">

@@ -1,8 +1,11 @@
 import FrenchNav from "@/components/FrenchNav";
 import FrenchFooter from "@/components/FrenchFooter";
+import VideoEmbed from "@/components/VideoEmbed";
 import Link from "next/link";
 import { ArrowRight, FileText, Video, CreditCard, ClipboardList, Hammer, Eye, Rocket, BarChart3, MessageSquare, CheckCircle } from "lucide-react";
 import type { Metadata } from "next";
+
+const DEMO_VIDEO_ID = process.env.NEXT_PUBLIC_DEMO_VIDEO_ID;
 
 export const metadata: Metadata = {
   title: "Comment ça marche — Servolia",
@@ -158,6 +161,15 @@ export default function FrenchHowItWorksPage() {
             </div>
           </div>
         </section>
+
+        {/* VIDEO — n'apparaît qu'une fois une vraie vidéo enregistrée et NEXT_PUBLIC_DEMO_VIDEO_ID défini */}
+        {DEMO_VIDEO_ID && (
+          <section className="pb-16 lg:pb-20 bg-[#FAFAF7]">
+            <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+              <VideoEmbed videoId={DEMO_VIDEO_ID} title="Voir l'IA gérer une vraie demande en direct" />
+            </div>
+          </section>
+        )}
 
         {/* STEPS */}
         <section className="py-16 lg:py-24 bg-[#FAFAF7]">
