@@ -42,6 +42,8 @@ export default function PortalDashboard({
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [loadingMsgs, setLoadingMsgs] = useState(true);
+  const [messagesLoaded, setMessagesLoaded] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [leads, setLeads] = useState<PortalLead[]>([]);
@@ -71,13 +73,32 @@ export default function PortalDashboard({
   };
 
   useEffect(() => {
-    fetch("/api/portal/messages").then((r) => r.json()).then((d) => setMessages(d.messages ?? [])).finally(() => setLoadingMsgs(false));
     fetch("/api/portal/leads").then((r) => r.json()).then((d) => { setLeads(d.leads ?? []); setStats(d.stats ?? null); }).catch(() => {});
   }, []);
 
-  // Live updates: while on the Messages tab, poll for new replies without a refresh.
+  // Read-only unread badge — polls regardless of which tab is open, never marks anything read.
+  // Fetching the real conversation (below) is what marks messages read, so this must stay separate
+  // or the badge would reset to 0 the instant the dashboard loads, before the client ever looks.
+  useEffect(() => {
+    const poll = async () => {
+      const res = await fetch("/api/portal/messages/unread-count");
+      if (res.ok) setUnreadCount((await res.json()).count ?? 0);
+    };
+    poll();
+    const id = setInterval(poll, 10000);
+    return () => clearInterval(id);
+  }, []);
+
+  // Load the full thread the first time the Messages tab is opened, then poll for new replies
+  // while it stays open. This is what marks admin replies as read (see the GET route).
   useEffect(() => {
     if (tab !== "messages") return;
+    if (!messagesLoaded) {
+      setLoadingMsgs(true);
+      fetch("/api/portal/messages").then((r) => r.json()).then((d) => {
+        setMessages(d.messages ?? []); setMessagesLoaded(true); setUnreadCount(0);
+      }).finally(() => setLoadingMsgs(false));
+    }
     const id = setInterval(async () => {
       const res = await fetch("/api/portal/messages");
       if (!res.ok) return;
@@ -90,9 +111,10 @@ export default function PortalDashboard({
         for (const m of fresh) if (!seen.has(m.id)) merged.push(m);
         return merged;
       });
+      setUnreadCount(0);
     }, 4000);
     return () => clearInterval(id);
-  }, [tab]);
+  }, [tab, messagesLoaded]);
 
   useEffect(() => { if (tab === "messages") bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, tab]);
 
@@ -163,7 +185,6 @@ export default function PortalDashboard({
   }
 
   const firstName = email.split("@")[0];
-  const unreadFromAdmin = 0; // reserved for future badge
 
   return (
     <div data-portal-theme={theme} className="min-h-screen bg-[var(--p-bg)] text-[var(--p-text)] transition-colors">
@@ -207,7 +228,11 @@ export default function PortalDashboard({
                 tab === t.key ? "bg-[var(--p-accent)] text-[var(--p-accent-fg)]" : "text-[var(--p-muted)] hover:text-[var(--p-text)]"
               }`}>
               <t.icon className="w-4 h-4" /> {t.label}
-              {t.key === "messages" && unreadFromAdmin > 0 && <span className="ml-1 w-2 h-2 rounded-full bg-[var(--p-accent)]" />}
+              {t.key === "messages" && unreadCount > 0 && (
+                <span className={`ml-0.5 text-[10px] font-black px-1.5 py-0.5 rounded-full ${tab === "messages" ? "bg-[var(--p-accent-fg)]/20 text-[var(--p-accent-fg)]" : "bg-[var(--p-accent)] text-[var(--p-accent-fg)]"}`}>
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              )}
             </button>
           ))}
         </div>

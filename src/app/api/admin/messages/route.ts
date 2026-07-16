@@ -24,16 +24,25 @@ export async function GET() {
   type Row = { email: string; sender: string; body: string; created_at: string; read_by_admin: boolean; attachment_url: string | null };
   const rows = (msgs as Row[] | null) ?? [];
 
-  const byEmail = new Map<string, { email: string; lastBody: string; lastAt: string; lastSender: string; unread: number }>();
+  const byEmail = new Map<string, { email: string; lastBody: string; lastAt: string; lastSender: string; unread: number; telegramMuted: boolean }>();
   for (const m of rows) {
     let t = byEmail.get(m.email);
     if (!t) {
-      t = { email: m.email, lastBody: m.body || (m.attachment_url ? "📷 Photo" : ""), lastAt: m.created_at, lastSender: m.sender, unread: 0 };
+      t = { email: m.email, lastBody: m.body || (m.attachment_url ? "📷 Photo" : ""), lastAt: m.created_at, lastSender: m.sender, unread: 0, telegramMuted: false };
       byEmail.set(m.email, t);
     }
     // rows are newest-first, so the first seen per email is the latest
     if (m.sender === "client" && !m.read_by_admin) t.unread += 1;
   }
+
+  if (byEmail.size > 0) {
+    const { data: prefs } = await db.from("chat_notification_prefs").select("email, telegram_muted").in("email", Array.from(byEmail.keys()));
+    for (const p of (prefs ?? []) as { email: string; telegram_muted: boolean }[]) {
+      const t = byEmail.get(p.email);
+      if (t) t.telegramMuted = p.telegram_muted;
+    }
+  }
+
   const threads = Array.from(byEmail.values());
 
   // Contacts you can start a NEW conversation with: every client + build email.

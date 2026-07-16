@@ -39,12 +39,24 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isMac, setIsMac] = useState(true);
   const [theme, setTheme] = useState<"light" | "dark">("light");
+  const [unreadMsgs, setUnreadMsgs] = useState(0);
 
   useEffect(() => {
     setIsMac(/Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent));
     const saved = localStorage.getItem("servolia_admin_theme");
     if (saved === "dark" || saved === "light") setTheme(saved);
   }, []);
+
+  // Unread client-messages badge, visible from anywhere in the CRM (not just the Messages page).
+  useEffect(() => {
+    const poll = async () => {
+      const res = await fetch("/api/admin/messages/unread-count");
+      if (res.ok) setUnreadMsgs((await res.json()).count ?? 0);
+    };
+    poll();
+    const id = setInterval(poll, 15000);
+    return () => clearInterval(id);
+  }, [pathname]);
 
   const toggleTheme = () => setTheme((t) => {
     const next = t === "light" ? "dark" : "light";
@@ -93,6 +105,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
               ? pathname === "/admin"
               : pathname.startsWith(item.href);
             const Icon = item.icon;
+            const badge = item.href === "/admin/messages" && unreadMsgs > 0 ? unreadMsgs : 0;
             return (
               <Link
                 key={item.href}
@@ -104,7 +117,10 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
                 }`}
               >
                 <Icon className="w-4 h-4" />
-                {item.label}
+                <span className="flex-1">{item.label}</span>
+                {badge > 0 && (
+                  <span className="text-[10px] font-black px-1.5 py-0.5 rounded-full bg-[#36671E] text-white">{badge > 99 ? "99+" : badge}</span>
+                )}
               </Link>
             );
           })}
@@ -161,10 +177,15 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
               {nav.map((item) => {
                 const active = pathname === item.href;
                 const Icon = item.icon;
+                const badge = item.href === "/admin/messages" && unreadMsgs > 0 ? unreadMsgs : 0;
                 return (
                   <Link key={item.href} href={item.href} onClick={() => setMobileOpen(false)}
                     className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm ${active ? "bg-[#EEF5EA] text-[#36671E] font-semibold" : "text-[#52525B]"}`}>
-                    <Icon className="w-4 h-4" /> {item.label}
+                    <Icon className="w-4 h-4" />
+                    <span className="flex-1">{item.label}</span>
+                    {badge > 0 && (
+                      <span className="text-[10px] font-black px-1.5 py-0.5 rounded-full bg-[#36671E] text-white">{badge > 99 ? "99+" : badge}</span>
+                    )}
                   </Link>
                 );
               })}

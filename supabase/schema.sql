@@ -267,6 +267,15 @@ alter table client_messages add column if not exists deleted_by_client_at timest
 alter table client_messages add column if not exists attachment_url text;
 alter table client_messages add column if not exists attachment_type text;
 
+-- Per-client Telegram mute — a chatty client's back-and-forth shouldn't page
+-- the founder's phone for every message. Muting is per email, admin-controlled,
+-- and only affects the Telegram ping — the message still lands in the CRM.
+create table if not exists chat_notification_prefs (
+  email          text primary key,
+  telegram_muted boolean default false,
+  updated_at     timestamptz default now()
+);
+
 
 -- LEAD ACTIVITIES: timeline of every interaction with a lead
 create table if not exists lead_activities (

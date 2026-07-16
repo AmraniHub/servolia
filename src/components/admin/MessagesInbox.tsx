@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { MessageSquare, Send, Loader2, PenSquare, ArrowLeft, Search, Trash2, ArchiveRestore, Bell, BellOff, Image as ImageIcon, X } from "lucide-react";
+import { MessageSquare, Send, Loader2, PenSquare, ArrowLeft, Search, Trash2, ArchiveRestore, Bell, BellOff, Image as ImageIcon, X, Volume2, VolumeX } from "lucide-react";
 
 /**
  * Unified client-messages inbox. Left: every conversation with unread badges.
@@ -13,7 +13,7 @@ import { MessageSquare, Send, Loader2, PenSquare, ArrowLeft, Search, Trash2, Arc
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
 const ACCEPTED_IMAGE_TYPES = "image/jpeg,image/png,image/webp,image/gif";
 
-interface Thread { email: string; lastBody: string; lastAt: string; lastSender: string; unread: number }
+interface Thread { email: string; lastBody: string; lastAt: string; lastSender: string; unread: number; telegramMuted: boolean }
 interface Contact { email: string; business: string | null }
 interface Message {
   id: string; sender: "client" | "admin"; body: string; created_at: string;
@@ -36,6 +36,10 @@ export default function MessagesInbox() {
   const [newEmail, setNewEmail] = useState("");
   const [deleting, setDeleting] = useState(false);
   const [restoring, setRestoring] = useState(false);
+  const [muting, setMuting] = useState(false);
+  // Overrides threads[].telegramMuted for instant feedback — matters for a brand-new
+  // conversation with zero messages yet, where there's no thread entry to update optimistically.
+  const [mutedOverrides, setMutedOverrides] = useState<Record<string, boolean>>({});
   const [notify, setNotify] = useState(true);
   const [pendingImage, setPendingImage] = useState<File | null>(null);
   const [pendingPreview, setPendingPreview] = useState<string | null>(null);
@@ -180,6 +184,19 @@ export default function MessagesInbox() {
     } finally { setRestoring(false); }
   }
 
+  async function toggleMute(email: string, muted: boolean) {
+    if (muting) return;
+    setMuting(true);
+    setMutedOverrides((prev) => ({ ...prev, [email]: muted }));
+    setThreads((prev) => prev.map((t) => (t.email === email ? { ...t, telegramMuted: muted } : t)));
+    try {
+      await fetch("/api/admin/messages/mute", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, muted }),
+      });
+    } finally { setMuting(false); }
+  }
+
   function startNew(email: string) {
     if (!email.trim()) return;
     setComposing(false);
@@ -235,7 +252,10 @@ export default function MessagesInbox() {
                   <button key={t.email} onClick={() => openThread(t.email)}
                     className={`w-full text-left px-4 py-3 hover:bg-[#FAFAF7] transition-colors ${active === t.email ? "bg-[#EEF5EA]" : ""}`}>
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-sm font-bold text-[#18181B] truncate">{t.email}</span>
+                      <span className="flex items-center gap-1 min-w-0">
+                        {(mutedOverrides[t.email] ?? t.telegramMuted) && <VolumeX className="w-3 h-3 text-amber-600 flex-shrink-0" />}
+                        <span className="text-sm font-bold text-[#18181B] truncate">{t.email}</span>
+                      </span>
                       {t.unread > 0 && <span className="text-[10px] font-black px-1.5 py-0.5 rounded-full bg-[#36671E] text-white flex-shrink-0">{t.unread}</span>}
                     </div>
                     <p className="text-xs text-[#71717A] truncate mt-0.5">{t.lastSender === "admin" ? "You: " : ""}{t.lastBody}</p>
@@ -276,10 +296,24 @@ export default function MessagesInbox() {
                 <button onClick={() => setActive(null)} className="md:hidden text-[#52525B]"><ArrowLeft className="w-4 h-4" /></button>
                 <span className="text-sm font-black text-[#18181B] truncate flex-1">{active}</span>
                 {view === "inbox" ? (
-                  <button onClick={deleteActiveChat} disabled={deleting} title="Delete conversation"
-                    className="flex items-center gap-1.5 text-xs text-[#A1A1AA] hover:text-red-600 transition-colors disabled:opacity-40 flex-shrink-0">
-                    <Trash2 className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Delete</span>
-                  </button>
+                  <div className="flex items-center gap-3 flex-shrink-0">
+                    {(() => {
+                      const t = threads.find((th) => th.email === active);
+                      const muted = mutedOverrides[active] ?? t?.telegramMuted ?? false;
+                      return (
+                        <button onClick={() => toggleMute(active, !muted)} disabled={muting}
+                          title={muted ? "Telegram notifications muted for this client — click to unmute" : "Mute Telegram notifications for this client"}
+                          className={`flex items-center gap-1.5 text-xs transition-colors disabled:opacity-40 ${muted ? "text-amber-600" : "text-[#A1A1AA] hover:text-[#18181B]"}`}>
+                          {muted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
+                          <span className="hidden sm:inline">{muted ? "Muted" : "Mute Telegram"}</span>
+                        </button>
+                      );
+                    })()}
+                    <button onClick={deleteActiveChat} disabled={deleting} title="Delete conversation"
+                      className="flex items-center gap-1.5 text-xs text-[#A1A1AA] hover:text-red-600 transition-colors disabled:opacity-40">
+                      <Trash2 className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Delete</span>
+                    </button>
+                  </div>
                 ) : (
                   <div className="flex items-center gap-1.5 flex-shrink-0">
                     {activeTrash && activeTrash.deletedByAdmin > 0 && (

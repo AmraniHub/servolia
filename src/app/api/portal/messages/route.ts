@@ -74,14 +74,17 @@ export async function POST(req: NextRequest) {
 
   if (error) return NextResponse.json({ error: "Failed to send" }, { status: 500 });
 
-  const preview = text || "📷 Sent a photo";
-  const msg =
-    `💬 *New portal message*\n` +
-    `${build?.business ? `*${build.business}*` : email}\n` +
-    `📧 ${email}\n\n` +
-    `"${preview.slice(0, 300)}"` +
-    (build?.id ? `\n\n[Open build in CRM](https://servolia.com/admin/builds/${build.id})` : "");
-  sendTelegramMessage(msg);
+  const { data: pref } = await db.from("chat_notification_prefs").select("telegram_muted").eq("email", email).maybeSingle();
+  if (!pref?.telegram_muted) {
+    const preview = text || "📷 Sent a photo";
+    const msg =
+      `💬 *New portal message*\n` +
+      `${build?.business ? `*${build.business}*` : email}\n` +
+      `📧 ${email}\n\n` +
+      `"${preview.slice(0, 300)}"` +
+      (build?.id ? `\n\n[Open build in CRM](https://servolia.com/admin/builds/${build.id})` : "");
+    sendTelegramMessage(msg);
+  }
 
   return NextResponse.json({ ok: true, message: inserted });
 }
