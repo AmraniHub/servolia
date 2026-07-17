@@ -276,6 +276,36 @@ create table if not exists chat_notification_prefs (
   updated_at     timestamptz default now()
 );
 
+-- SCOPE ACCEPTANCES: the self-built "electronic signature" for a client's
+-- scope document (see src/app/scope/[token]/page.tsx). A simple electronic
+-- signature (clickwrap: typed name + logged IP/timestamp), not a notarized
+-- one — appropriate for fixed-price builds in the hundreds of euros, not a
+-- replacement for a real e-signature vendor if Servolia ever needs one for
+-- larger contracts. scope_text is frozen at link-creation time so a later
+-- pricing change never rewrites a document someone already agreed to.
+create table if not exists scope_acceptances (
+  id           uuid primary key default gen_random_uuid(),
+  created_at   timestamptz default now(),
+
+  lead_id      uuid references leads(id) on delete cascade,
+  token        text not null unique,
+
+  business_name text not null,
+  contact_name  text,
+  email         text,
+  plan_key      text not null,
+  care_plan_key text,
+  scope_text    text not null,
+
+  accepted_at        timestamptz,
+  accepted_name      text,
+  accepted_ip        text,
+  accepted_user_agent text
+);
+
+create index if not exists scope_acceptances_lead_idx on scope_acceptances(lead_id);
+create index if not exists scope_acceptances_token_idx on scope_acceptances(token);
+
 
 -- LEAD ACTIVITIES: timeline of every interaction with a lead
 create table if not exists lead_activities (

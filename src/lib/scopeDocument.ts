@@ -31,6 +31,10 @@ export interface ScopeDocInput {
   email?: string | null;
   planKey: keyof typeof BUILD_PLANS;
   carePlanKey?: keyof typeof CARE_PLANS | null;
+  /** Web acceptance flow (src/app/scope/[token]) provides its own digital
+   * accept UI below this text, so it doesn't need the blank physical
+   * signature-line footer meant for a printed/Google-Docs copy. */
+  forWeb?: boolean;
 }
 
 export function generateScopeDocument(input: ScopeDocInput): string {
@@ -40,6 +44,15 @@ export function generateScopeDocument(input: ScopeDocInput): string {
   const deposit = (depositCents(plan) / 100).toLocaleString();
   const balance = (balanceCents(plan) / 100).toLocaleString();
   const today = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+
+  const footer = input.forWeb
+    ? `Any additions beyond what's listed above will be quoted separately before work begins.`
+    : `Any additions beyond what's listed above will be quoted separately before work begins. By signing below, both parties agree to this scope.
+
+SERVOLIA                                          CLIENT
+_________________________                         _________________________
+Date: ${today}                                     Date: __________________
+`;
 
   return `SERVOLIA — PROJECT SCOPE
 ${input.businessName}
@@ -65,10 +78,5 @@ DELIVERY
 GUARANTEE
   Live on time or 10% of your payment refunded per day late, if the delay is Servolia's fault — per our Terms of Service (servolia.com/legal/cgv).
 
-Any additions beyond what's listed above will be quoted separately before work begins. By signing below, both parties agree to this scope.
-
-SERVOLIA                                          CLIENT
-_________________________                         _________________________
-Date: ${today}                                     Date: __________________
-`;
+${footer}`;
 }

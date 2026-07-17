@@ -7,9 +7,11 @@ interface Props {
   className?: string;
   /** Defaults to the one-time deposit checkout; pass "/api/checkout-subscription" for recurring plans. */
   endpoint?: string;
+  /** Ties the Stripe checkout session (and the build it creates) back to an existing lead. */
+  leadId?: string;
 }
 
-export default function CheckoutButton({ plan, label, className, endpoint = "/api/checkout" }: Props) {
+export default function CheckoutButton({ plan, label, className, endpoint = "/api/checkout", leadId }: Props) {
   const [loading, setLoading] = useState(false);
 
   async function handleClick() {
@@ -18,7 +20,7 @@ export default function CheckoutButton({ plan, label, className, endpoint = "/ap
       const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan }),
+        body: JSON.stringify({ plan, leadId }),
       });
       const data = await res.json() as { url?: string };
       if (data.url) window.location.href = data.url;

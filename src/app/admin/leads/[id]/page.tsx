@@ -183,6 +183,7 @@ export default async function LeadDetailPage({ params }: { params: Promise<{ id:
             businessName={lead.business || lead.name || "this client"}
             contactName={lead.name}
             email={lead.email}
+            phone={lead.phone}
             suggestedPlan={lead.plan_interest}
           />
         </aside>
