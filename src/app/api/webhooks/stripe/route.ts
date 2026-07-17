@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
+import { randomUUID } from "crypto";
 import Stripe from "stripe";
 import { supabaseAdmin } from "@/lib/supabase";
 import { sendEmail, depositReceivedEmail } from "@/lib/email";
 import { sendMetaCapiEvent } from "@/lib/metaCapi";
+import { generateScopeDocument } from "@/lib/scopeDocument";
+import { BUILD_PLANS } from "@/lib/pricing";
 
 export const runtime = "nodejs";
 
@@ -131,6 +134,31 @@ export async function POST(req: NextRequest) {
             lead_id: build.lead_id,
             type: "payment",
             description: `Deposit received — €${amountPaid.toLocaleString()} via Stripe`,
+          });
+        }
+      }
+
+      // Auto-create a scope acceptance if this build's lead doesn't already have
+      // one. Direct /pricing purchases skip the audit funnel entirely, so
+      // without this they'd pay a deposit having never seen or accepted a
+      // written scope -- directly contradicting the pricing page's own
+      // promised process ("02. Approve scope" before "03. 50% deposit"). This
+      // doesn't gate payment (keeps the self-serve path fast); it just makes
+      // sure the scope exists and is reachable from the portal right after.
+      if (build?.lead_id) {
+        const { data: existingScope } = await db.from("scope_acceptances")
+          .select("id").eq("lead_id", build.lead_id).maybeSingle();
+        const planKey = build.plan as keyof typeof BUILD_PLANS | undefined;
+        if (!existingScope && planKey && BUILD_PLANS[planKey]) {
+          const businessName = build.business && build.business !== "Pending intake" ? build.business : "Your business";
+          const scopeText = generateScopeDocument({ businessName, email: customerEmail, planKey, forWeb: true });
+          await db.from("scope_acceptances").insert({
+            lead_id: build.lead_id,
+            token: randomUUID(),
+            business_name: businessName,
+            email: customerEmail,
+            plan_key: planKey,
+            scope_text: scopeText,
           });
         }
       }

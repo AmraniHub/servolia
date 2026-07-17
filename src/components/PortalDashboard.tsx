@@ -42,8 +42,8 @@ function formatPeriod(period: string) {
 type Tab = "overview" | "leads" | "reports" | "messages" | "account";
 
 export default function PortalDashboard({
-  email, builds, subscription, siteSlugs,
-}: { email: string; builds: Build[]; subscription?: Client | null; siteSlugs?: Record<string, string> }) {
+  email, builds, subscription, siteSlugs, scopesByLeadId,
+}: { email: string; builds: Build[]; subscription?: Client | null; siteSlugs?: Record<string, string>; scopesByLeadId?: Record<string, { token: string; accepted: boolean }> }) {
   const router = useRouter();
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [tab, setTab] = useState<Tab>("overview");
@@ -344,8 +344,10 @@ export default function PortalDashboard({
                   const st = STATUS_LABEL[b.status] ?? STATUS_LABEL.intake;
                   const slug = siteSlugs?.[b.id];
                   const needsIntake = b.status === "intake";
+                  const scope = b.lead_id ? scopesByLeadId?.[b.lead_id] : undefined;
+                  const needsScope = scope && !scope.accepted;
                   return (
-                    <div key={b.id} className={`rounded-2xl border p-5 ${needsIntake ? "border-[#D97706]/40" : "border-[var(--p-border)]"} bg-[var(--p-surface)]`} style={{ boxShadow: "var(--p-shadow)" }}>
+                    <div key={b.id} className={`rounded-2xl border p-5 ${needsScope || needsIntake ? "border-[#D97706]/40" : "border-[var(--p-border)]"} bg-[var(--p-surface)]`} style={{ boxShadow: "var(--p-shadow)" }}>
                       <div className="flex items-start justify-between gap-2 mb-3">
                         <h3 className="font-black text-[var(--p-text)]">{b.plan_name ?? b.plan}</h3>
                         <span className="text-[10px] font-black px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: st.bg, color: st.color }}>{st.label}</span>
@@ -359,6 +361,15 @@ export default function PortalDashboard({
                         {b.deadline && <div className="flex items-center gap-2"><Clock className="w-3.5 h-3.5 text-[var(--p-faint)]" /> Target delivery: {formatDate(b.deadline)}</div>}
                         {b.live_at && <div className="flex items-center gap-2 text-[#22C55E]"><CheckCircle2 className="w-3.5 h-3.5" /> Live since {formatDate(b.live_at)}</div>}
                       </div>
+                      {needsScope && (
+                        <>
+                          <p className="text-xs text-[#92400E] mt-3 leading-relaxed">Please review and confirm your project scope — what's included, the price, and the delivery deadline in writing.</p>
+                          <a href={`/scope/${scope.token}`}
+                            className="mt-3 flex items-center justify-center gap-1.5 py-2.5 rounded-xl border-2 border-[#D97706] text-[#92400E] text-sm font-black hover:bg-[#FEF3C7] transition-colors">
+                            <FileText className="w-3.5 h-3.5" /> Confirm your scope
+                          </a>
+                        </>
+                      )}
                       {needsIntake && (
                         <>
                           <p className="text-xs text-[#92400E] mt-3 leading-relaxed">One last step before we start building — tell us about your business, branding, and services. Takes about 8 minutes.</p>
