@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Globe, ExternalLink, Sparkles, Loader2, Eye, EyeOff } from "lucide-react";
 
 export interface SiteRow {
@@ -29,6 +30,16 @@ export default function ClientSitesManager({
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+
+  // Faster local refresh on top of the global 25s poll — this page is watched
+  // right after a client completes intake, so a quick "is it here yet" cadence
+  // matters more here than on most admin pages.
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (document.visibilityState === "visible" && !busy) router.refresh();
+    }, 8000);
+    return () => clearInterval(id);
+  }, [router, busy]);
 
   async function generate(buildId: string) {
     setBusy(buildId);
@@ -131,13 +142,13 @@ export default function ClientSitesManager({
           <div className="bg-white border border-[#E8E6E0] rounded-2xl overflow-hidden">
             {builds.map((b) => (
               <div key={b.id} className="flex items-center justify-between gap-3 p-4 border-b border-[#E8E6E0] last:border-0">
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-[#18181B] truncate">{b.business}</p>
+                <Link href={`/admin/builds/${b.id}`} className="min-w-0 flex-1 group">
+                  <p className="text-sm font-semibold text-[#18181B] truncate group-hover:text-[#36671E] group-hover:underline transition-colors">{b.business}</p>
                   <p className="text-xs text-[#71717A]">
                     {b.plan_name}
                     {!b.hasIntake && <span className="text-[#D97706]"> · no intake yet (basic draft)</span>}
                   </p>
-                </div>
+                </Link>
                 <button
                   onClick={() => generate(b.id)}
                   disabled={busy === b.id}
