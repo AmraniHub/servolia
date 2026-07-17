@@ -15,7 +15,10 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { name, email, phone, business, businessName, industry, niche, plan, planName,
             website, websiteUrl, problem, problems, type, country, city,
-            clientValue, language } = body;
+            clientValue, language, sessionId } = body;
+
+    const resolvedNiche = niche || industry || null;
+    const resolvedBiz   = business || businessName || null;
 
     // ── 1. Persist to Supabase ────────────────────────────────────────────
     const db = supabaseAdmin();
@@ -27,8 +30,6 @@ export async function POST(req: NextRequest) {
         type === "chatbot"    ? "chatbot" :
         "contact";
 
-      const resolvedNiche = niche || industry || null;
-      const resolvedBiz   = business || businessName || null;
       const valueEstimate = estimateLeadValue(resolvedNiche, plan || planName);
 
       const { data: lead, error } = await db.from("leads").insert({
@@ -60,6 +61,32 @@ export async function POST(req: NextRequest) {
         });
       } else if (error) {
         console.error("Supabase insert error:", error);
+      }
+
+      // ── 1b. Link intake answers to the build that was actually paid for ──
+      // Without this, a completed intake form was landing only as a disconnected
+      // lead row — the paid build never received the real answers, so "Generate
+      // site" always ran on a basic draft and the portal never left "Awaiting
+      // your intake" (see src/app/api/webhooks/stripe/route.ts: payment sets
+      // status "intake", this is what advances it to "building").
+      if (type === "intake" && sessionId) {
+        const { data: build } = await db.from("builds")
+          .select("id, lead_id").eq("checkout_session_id", sessionId).maybeSingle();
+        if (build) {
+          await db.from("builds").update({
+            intake_data: body,
+            business: resolvedBiz || undefined,
+            status: "building",
+            started_at: new Date().toISOString(),
+          }).eq("id", build.id);
+          if (build.lead_id) {
+            await db.from("lead_activities").insert({
+              lead_id: build.lead_id,
+              type: "note",
+              description: "✅ Intake form completed — build started",
+            });
+          }
+        }
       }
     }
 

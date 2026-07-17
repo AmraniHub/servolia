@@ -22,6 +22,7 @@ function OnboardingForm() {
   const params = useSearchParams();
   const plan = params.get("plan") ?? "growth";
   const planName = PLAN_NAMES[plan] ?? "Servolia System";
+  const sessionId = params.get("session_id");
 
   const [step, setStep] = useState(0);
   const [submitted, setSubmitted] = useState(false);
@@ -65,7 +66,7 @@ function OnboardingForm() {
       await fetch("/api/contact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, plan, planName, type: "intake" }),
+        body: JSON.stringify({ ...form, plan, planName, type: "intake", sessionId }),
       });
     } catch {}
     setLoading(false);

@@ -96,6 +96,9 @@ export async function POST(req: NextRequest) {
 
       // Resilience: if the pre-checkout build creation failed for some reason,
       // create the build now so the payment is never lost from the CRM.
+      // Status stays "intake" here — paying doesn't mean intake is done. The
+      // /onboarding submission (see src/app/api/contact/route.ts, type "intake")
+      // is what flips this to "building", once we actually have their answers.
       if (!build) {
         const planMeta = session.metadata?.plan ?? "unknown";
         const { data: newBuild } = await db.from("builds").insert({
@@ -106,8 +109,7 @@ export async function POST(req: NextRequest) {
           total_price: amountPaid * 2,        // assume 50% deposit
           deposit_paid: amountPaid,
           balance_due: amountPaid,
-          status: "building",
-          started_at: new Date().toISOString(),
+          status: "intake",
           checkout_session_id: sessionId,
           customer_id: (session.customer as string) ?? null,
         }).select("*").single();
@@ -115,8 +117,7 @@ export async function POST(req: NextRequest) {
       } else {
         await db.from("builds").update({
           deposit_paid: amountPaid,
-          status: "building",
-          started_at: new Date().toISOString(),
+          status: "intake",
           email: customerEmail ?? build.email,
           customer_id: (session.customer as string) ?? null,
         }).eq("id", build.id);

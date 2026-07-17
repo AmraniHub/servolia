@@ -9,7 +9,7 @@ import AutoRefresh from "@/components/AutoRefresh";
 import {
   LogOut, Send, MessageSquare, Clock, CreditCard, CheckCircle2, Users, CalendarCheck,
   Megaphone, ExternalLink, Sun, Moon, LayoutDashboard, KeyRound, Loader2, ShieldCheck, Trash2,
-  Image as ImageIcon, X, Globe, BarChart3, Search, Download, HelpCircle, FileText, Sparkles,
+  Image as ImageIcon, X, Globe, BarChart3, Search, Download, HelpCircle, FileText, Sparkles, ArrowRight,
 } from "lucide-react";
 
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
@@ -343,8 +343,9 @@ export default function PortalDashboard({
                 {builds.map((b) => {
                   const st = STATUS_LABEL[b.status] ?? STATUS_LABEL.intake;
                   const slug = siteSlugs?.[b.id];
+                  const needsIntake = b.status === "intake";
                   return (
-                    <div key={b.id} className="rounded-2xl border border-[var(--p-border)] bg-[var(--p-surface)] p-5" style={{ boxShadow: "var(--p-shadow)" }}>
+                    <div key={b.id} className={`rounded-2xl border p-5 ${needsIntake ? "border-[#D97706]/40" : "border-[var(--p-border)]"} bg-[var(--p-surface)]`} style={{ boxShadow: "var(--p-shadow)" }}>
                       <div className="flex items-start justify-between gap-2 mb-3">
                         <h3 className="font-black text-[var(--p-text)]">{b.plan_name ?? b.plan}</h3>
                         <span className="text-[10px] font-black px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: st.bg, color: st.color }}>{st.label}</span>
@@ -358,6 +359,15 @@ export default function PortalDashboard({
                         {b.deadline && <div className="flex items-center gap-2"><Clock className="w-3.5 h-3.5 text-[var(--p-faint)]" /> Target delivery: {formatDate(b.deadline)}</div>}
                         {b.live_at && <div className="flex items-center gap-2 text-[#22C55E]"><CheckCircle2 className="w-3.5 h-3.5" /> Live since {formatDate(b.live_at)}</div>}
                       </div>
+                      {needsIntake && (
+                        <>
+                          <p className="text-xs text-[#92400E] mt-3 leading-relaxed">One last step before we start building — tell us about your business, branding, and services. Takes about 8 minutes.</p>
+                          <a href={`/onboarding?plan=${b.plan}${b.checkout_session_id ? `&session_id=${b.checkout_session_id}` : ""}`}
+                            className="mt-3 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-gradient-to-r from-[#F59E0B] to-[#D97706] text-white text-sm font-black hover:opacity-90 transition-opacity">
+                            Complete your intake form <ArrowRight className="w-3.5 h-3.5" />
+                          </a>
+                        </>
+                      )}
                       {slug && (
                         <a href={`/sites/${slug}`} target="_blank" rel="noopener noreferrer"
                           className="mt-4 flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-[var(--p-border)] text-[var(--p-text)] text-sm font-bold hover:bg-[var(--p-raised)] transition-colors">
