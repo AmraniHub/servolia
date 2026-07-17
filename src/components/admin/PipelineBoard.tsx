@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { GripVertical, AlertTriangle } from "lucide-react";
+import { GripVertical, AlertTriangle, ChevronLeft, ChevronRight } from "lucide-react";
 import { computeLeadScore, scoreColors, scoreLabel } from "@/lib/scoring";
 
 interface Lead {
@@ -40,6 +40,43 @@ export default function PipelineBoard({ initialLeads }: { initialLeads: Lead[] }
   const [dragId, setDragId] = useState<string | null>(null);
   const [overCol, setOverCol] = useState<string | null>(null);
 
+  // 6 columns are wider than most viewports, and a plain mouse (no trackpad)
+  // can't scroll sideways by default — the "Lost" column was effectively
+  // unreachable. Redirect vertical wheel scroll to horizontal, and add
+  // fade hints + arrow buttons so the overflow is actually discoverable.
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const updateScrollState = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setCanScrollLeft(el.scrollLeft > 4);
+    setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 4);
+  }, []);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    updateScrollState();
+
+    const onWheel = (e: WheelEvent) => {
+      if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return; // already horizontal (trackpad) — leave it alone
+      e.preventDefault();
+      el.scrollLeft += e.deltaY;
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    el.addEventListener("scroll", updateScrollState);
+    window.addEventListener("resize", updateScrollState);
+    return () => {
+      el.removeEventListener("wheel", onWheel);
+      el.removeEventListener("scroll", updateScrollState);
+      window.removeEventListener("resize", updateScrollState);
+    };
+  }, [updateScrollState]);
+
+  const scrollBy = (dir: -1 | 1) => scrollRef.current?.scrollBy({ left: dir * 280, behavior: "smooth" });
+
   const moveLead = async (id: string, newStage: string) => {
     const prev = leads.find(l => l.id === id);
     if (!prev || prev.stage === newStage) return;
@@ -63,7 +100,26 @@ export default function PipelineBoard({ initialLeads }: { initialLeads: Lead[] }
   };
 
   return (
-    <div className="flex gap-4 overflow-x-auto pb-4 -mx-1 px-1">
+    <div className="relative">
+      {canScrollLeft && (
+        <>
+          <div className="pointer-events-none absolute left-0 top-0 bottom-4 w-12 bg-gradient-to-r from-[#FAFAF7] to-transparent z-10" />
+          <button onClick={() => scrollBy(-1)} aria-label="Scroll left"
+            className="absolute left-1 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-white border border-[#E8E6E0] shadow-md flex items-center justify-center text-[#52525B] hover:text-[#18181B] hover:border-[#36671E]/40 transition-colors">
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+        </>
+      )}
+      {canScrollRight && (
+        <>
+          <div className="pointer-events-none absolute right-0 top-0 bottom-4 w-12 bg-gradient-to-l from-[#FAFAF7] to-transparent z-10" />
+          <button onClick={() => scrollBy(1)} aria-label="Scroll right"
+            className="absolute right-1 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-white border border-[#E8E6E0] shadow-md flex items-center justify-center text-[#52525B] hover:text-[#18181B] hover:border-[#36671E]/40 transition-colors">
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </>
+      )}
+      <div ref={scrollRef} className="flex gap-4 overflow-x-auto pb-4 -mx-1 px-1">
       {COLUMNS.map(col => {
         const colLeads = leads
           .filter(l => l.stage === col.key)
@@ -131,6 +187,7 @@ export default function PipelineBoard({ initialLeads }: { initialLeads: Lead[] }
           </div>
         );
       })}
+      </div>
     </div>
   );
 }
