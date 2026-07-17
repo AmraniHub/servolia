@@ -1,14 +1,15 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { Build, Client } from "@/lib/supabase";
+import { toCsv } from "@/lib/csv";
 import AutoRefresh from "@/components/AutoRefresh";
 import {
   LogOut, Send, MessageSquare, Clock, CreditCard, CheckCircle2, Users, CalendarCheck,
   Megaphone, ExternalLink, Sun, Moon, LayoutDashboard, KeyRound, Loader2, ShieldCheck, Trash2,
-  Image as ImageIcon, X,
+  Image as ImageIcon, X, Globe, BarChart3, Search, Download, HelpCircle, FileText, Sparkles,
 } from "lucide-react";
 
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
@@ -17,6 +18,8 @@ const ACCEPTED_IMAGE_TYPES = "image/jpeg,image/png,image/webp,image/gif";
 interface Message { id: string; sender: "client" | "admin"; body: string; created_at: string; attachment_url?: string | null; attachment_type?: string | null }
 interface PortalLead { created_at: string; qualified: boolean; contact: string | null; excerpt: string; fromAds: boolean }
 interface PortalStats { monthEnquiries: number; monthBookings: number; monthContacts: number }
+interface ReportMetrics { enquiries: number; bookings: number; afterHours: number; fromAds: number; estValue: number; perClient: number }
+interface PortalReport { period: string; metrics: ReportMetrics; sent_at: string | null }
 
 const STATUS_LABEL: Record<Build["status"], { label: string; color: string; bg: string }> = {
   intake:   { label: "Awaiting your intake", color: "#92400E", bg: "#FEF3C7" },
@@ -31,11 +34,16 @@ function formatDate(iso?: string | null) {
   return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 }
 
-type Tab = "overview" | "leads" | "messages" | "account";
+function formatPeriod(period: string) {
+  const [y, m] = period.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+}
+
+type Tab = "overview" | "leads" | "reports" | "messages" | "account";
 
 export default function PortalDashboard({
-  email, builds, subscription,
-}: { email: string; builds: Build[]; subscription?: Client | null }) {
+  email, builds, subscription, siteSlugs,
+}: { email: string; builds: Build[]; subscription?: Client | null; siteSlugs?: Record<string, string> }) {
   const router = useRouter();
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [tab, setTab] = useState<Tab>("overview");
@@ -48,6 +56,12 @@ export default function PortalDashboard({
   const [sending, setSending] = useState(false);
   const [leads, setLeads] = useState<PortalLead[]>([]);
   const [stats, setStats] = useState<PortalStats | null>(null);
+  const [leadSearch, setLeadSearch] = useState("");
+  const [leadFilter, setLeadFilter] = useState<"all" | "week" | "month">("all");
+
+  const [reports, setReports] = useState<PortalReport[]>([]);
+  const [reportsLoaded, setReportsLoaded] = useState(false);
+  const [loadingReports, setLoadingReports] = useState(true);
 
   const [billingBusy, setBillingBusy] = useState(false);
   const [billingError, setBillingError] = useState("");
@@ -75,6 +89,39 @@ export default function PortalDashboard({
   useEffect(() => {
     fetch("/api/portal/leads").then((r) => r.json()).then((d) => { setLeads(d.leads ?? []); setStats(d.stats ?? null); }).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (tab !== "reports" || reportsLoaded) return;
+    setLoadingReports(true);
+    fetch("/api/portal/reports").then((r) => r.json()).then((d) => {
+      setReports(d.reports ?? []); setReportsLoaded(true);
+    }).finally(() => setLoadingReports(false));
+  }, [tab, reportsLoaded]);
+
+  const filteredLeads = useMemo(() => {
+    const now = Date.now();
+    const cutoff = leadFilter === "week" ? now - 7 * 86400000 : leadFilter === "month" ? now - 30 * 86400000 : 0;
+    const q = leadSearch.trim().toLowerCase();
+    return leads.filter((l) => {
+      if (cutoff && new Date(l.created_at).getTime() < cutoff) return false;
+      if (q && !l.excerpt.toLowerCase().includes(q) && !(l.contact ?? "").toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }, [leads, leadSearch, leadFilter]);
+
+  function exportLeadsCsv() {
+    const headers = ["date", "type", "contact", "excerpt", "from_ads"];
+    const rows = filteredLeads.map((l) => ({
+      date: l.created_at, type: l.qualified ? "booking" : "enquiry", contact: l.contact ?? "", excerpt: l.excerpt, from_ads: l.fromAds ? "yes" : "no",
+    }));
+    const csv = toCsv(headers, rows);
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `servolia-leads-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 
   // Read-only unread badge — polls regardless of which tab is open, never marks anything read.
   // Fetching the real conversation (below) is what marks messages read, so this must stay separate
@@ -220,6 +267,7 @@ export default function PortalDashboard({
           {([
             { key: "overview", label: "Overview", icon: LayoutDashboard },
             { key: "leads", label: "My leads", icon: Users },
+            { key: "reports", label: "Reports", icon: BarChart3 },
             { key: "messages", label: "Messages", icon: MessageSquare },
             { key: "account", label: "Account", icon: KeyRound },
           ] as const).map((t) => (
@@ -294,6 +342,7 @@ export default function PortalDashboard({
               <div className="grid sm:grid-cols-2 gap-4">
                 {builds.map((b) => {
                   const st = STATUS_LABEL[b.status] ?? STATUS_LABEL.intake;
+                  const slug = siteSlugs?.[b.id];
                   return (
                     <div key={b.id} className="rounded-2xl border border-[var(--p-border)] bg-[var(--p-surface)] p-5" style={{ boxShadow: "var(--p-shadow)" }}>
                       <div className="flex items-start justify-between gap-2 mb-3">
@@ -309,6 +358,12 @@ export default function PortalDashboard({
                         {b.deadline && <div className="flex items-center gap-2"><Clock className="w-3.5 h-3.5 text-[var(--p-faint)]" /> Target delivery: {formatDate(b.deadline)}</div>}
                         {b.live_at && <div className="flex items-center gap-2 text-[#22C55E]"><CheckCircle2 className="w-3.5 h-3.5" /> Live since {formatDate(b.live_at)}</div>}
                       </div>
+                      {slug && (
+                        <a href={`/sites/${slug}`} target="_blank" rel="noopener noreferrer"
+                          className="mt-4 flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-[var(--p-border)] text-[var(--p-text)] text-sm font-bold hover:bg-[var(--p-raised)] transition-colors">
+                          <Globe className="w-3.5 h-3.5 text-[var(--p-accent)]" /> {b.status === "live" ? "View my live site" : "Preview my site"} <ExternalLink className="w-3 h-3" />
+                        </a>
+                      )}
                     </div>
                   );
                 })}
@@ -320,16 +375,43 @@ export default function PortalDashboard({
         {/* ── LEADS ── */}
         {tab === "leads" && (
           <div className="rounded-2xl border border-[var(--p-border)] bg-[var(--p-surface)] overflow-hidden" style={{ boxShadow: "var(--p-shadow)" }}>
-            <div className="px-5 py-4 border-b border-[var(--p-border)] flex items-center gap-2 bg-[var(--p-raised)]">
-              <Users className="w-4 h-4 text-[var(--p-accent)]" />
-              <h2 className="font-black text-[var(--p-text)] text-sm">Your leads</h2>
-              <span className="hidden sm:inline text-xs text-[var(--p-faint)]">— every enquiry your assistant handled</span>
+            <div className="px-5 py-4 border-b border-[var(--p-border)] bg-[var(--p-raised)]">
+              <div className="flex items-center gap-2 mb-3">
+                <Users className="w-4 h-4 text-[var(--p-accent)]" />
+                <h2 className="font-black text-[var(--p-text)] text-sm">Your leads</h2>
+                <span className="hidden sm:inline text-xs text-[var(--p-faint)]">— every enquiry your assistant handled</span>
+                {leads.length > 0 && (
+                  <button onClick={exportLeadsCsv} title="Export as CSV"
+                    className="ml-auto flex items-center gap-1.5 text-xs text-[var(--p-faint)] hover:text-[var(--p-text)] transition-colors">
+                    <Download className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Export</span>
+                  </button>
+                )}
+              </div>
+              {leads.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="relative flex-1 min-w-[160px]">
+                    <Search className="w-3.5 h-3.5 text-[var(--p-faint)] absolute left-2.5 top-1/2 -translate-y-1/2" />
+                    <input value={leadSearch} onChange={(e) => setLeadSearch(e.target.value)} placeholder="Search…"
+                      className="w-full pl-8 pr-3 py-1.5 rounded-lg bg-[var(--p-bg)] border border-[var(--p-border)] text-xs text-[var(--p-text)] placeholder-[var(--p-faint)] focus:outline-none focus:border-[var(--p-accent)]" />
+                  </div>
+                  <div className="flex gap-1">
+                    {([["all", "All time"], ["month", "30 days"], ["week", "7 days"]] as const).map(([k, label]) => (
+                      <button key={k} onClick={() => setLeadFilter(k)}
+                        className={`px-2.5 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-colors ${leadFilter === k ? "bg-[var(--p-accent)] text-[var(--p-accent-fg)]" : "text-[var(--p-muted)] hover:bg-[var(--p-bg)]"}`}>
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
             {leads.length === 0 ? (
               <p className="text-sm text-[var(--p-faint)] text-center py-12">No enquiries captured yet — they&apos;ll appear here as they arrive.</p>
+            ) : filteredLeads.length === 0 ? (
+              <p className="text-sm text-[var(--p-faint)] text-center py-12">No leads match your search.</p>
             ) : (
               <div className="max-h-[540px] overflow-y-auto divide-y divide-[var(--p-border)]">
-                {leads.map((l, i) => (
+                {filteredLeads.map((l, i) => (
                   <div key={i} className="px-4 sm:px-5 py-3 flex items-start gap-3">
                     <span className={`mt-1 text-[10px] font-black px-2 py-0.5 rounded-full whitespace-nowrap ${l.qualified ? "bg-[#DCFCE7] text-[#166534]" : "bg-[var(--p-raised)] text-[var(--p-muted)]"}`}>
                       {l.qualified ? "Booking" : "Enquiry"}
@@ -340,6 +422,51 @@ export default function PortalDashboard({
                         {formatDate(l.created_at)}{l.contact ? ` · ${l.contact}` : ""}{l.fromAds ? " · from your ads" : ""}
                       </p>
                     </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── REPORTS ── */}
+        {tab === "reports" && (
+          <div className="rounded-2xl border border-[var(--p-border)] bg-[var(--p-surface)] overflow-hidden" style={{ boxShadow: "var(--p-shadow)" }}>
+            <div className="px-5 py-4 border-b border-[var(--p-border)] flex items-center gap-2 bg-[var(--p-raised)]">
+              <BarChart3 className="w-4 h-4 text-[var(--p-accent)]" />
+              <h2 className="font-black text-[var(--p-text)] text-sm">Monthly reports</h2>
+              <span className="hidden sm:inline text-xs text-[var(--p-faint)]">— the same numbers we email you on the 1st</span>
+            </div>
+            {loadingReports ? (
+              <p className="text-sm text-[var(--p-faint)] text-center py-12">Loading…</p>
+            ) : reports.length === 0 ? (
+              <p className="text-sm text-[var(--p-faint)] text-center py-12">No reports yet — your first one lands after your first full month live.</p>
+            ) : (
+              <div className="divide-y divide-[var(--p-border)]">
+                {reports.map((r) => (
+                  <div key={r.period} className="px-4 sm:px-5 py-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="font-black text-[var(--p-text)] text-sm">{formatPeriod(r.period)}</h3>
+                      {r.sent_at && <span className="text-[10px] text-[var(--p-faint)]">Emailed {formatDate(r.sent_at)}</span>}
+                    </div>
+                    <div className="grid grid-cols-2 min-[420px]:grid-cols-4 gap-2">
+                      {[
+                        { label: "Enquiries", value: r.metrics.enquiries },
+                        { label: "Bookings", value: r.metrics.bookings, accent: true },
+                        { label: "After-hours", value: r.metrics.afterHours },
+                        { label: "From ads", value: r.metrics.fromAds },
+                      ].map((s) => (
+                        <div key={s.label} className="rounded-xl p-3" style={{ background: s.accent ? "var(--p-accent-soft)" : "var(--p-raised)" }}>
+                          <p className={`text-lg font-black ${s.accent ? "text-[var(--p-accent)]" : "text-[var(--p-text)]"}`}>{s.value}</p>
+                          <p className="text-[10px] text-[var(--p-muted)] mt-0.5">{s.label}</p>
+                        </div>
+                      ))}
+                    </div>
+                    {r.metrics.estValue > 0 && (
+                      <p className="text-xs text-[var(--p-muted)] mt-3">
+                        Estimated pipeline value: <span className="font-black text-[var(--p-text)]">€{r.metrics.estValue.toLocaleString()}</span>
+                      </p>
+                    )}
                   </div>
                 ))}
               </div>
@@ -505,6 +632,25 @@ function AccountTab({ email, onLogout }: { email: string; onLogout: () => void }
           className="mt-4 flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[var(--p-accent)] text-[var(--p-accent-fg)] text-sm font-bold hover:bg-[var(--p-accent-hover)] transition-colors disabled:opacity-40">
           {busy ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving…</> : hasPassword ? "Update password" : "Set password"}
         </button>
+      </div>
+
+      {/* Resources */}
+      <div className={card} style={{ boxShadow: "var(--p-shadow)" }}>
+        <h2 className="font-black text-[var(--p-text)] text-sm mb-1 flex items-center gap-2"><HelpCircle className="w-4 h-4 text-[var(--p-accent)]" /> Resources</h2>
+        <p className="text-xs text-[var(--p-muted)] mb-4">Quick answers before you message us.</p>
+        <div className="space-y-1">
+          {[
+            { href: "/how-it-works", icon: Sparkles, label: "How the process works" },
+            { href: "/legal/cgv", icon: FileText, label: "Your delivery guarantee & terms" },
+            { href: "/legal/privacy", icon: ShieldCheck, label: "Privacy policy" },
+          ].map((r) => (
+            <a key={r.href} href={r.href} target="_blank" rel="noopener noreferrer"
+              className="flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl hover:bg-[var(--p-raised)] transition-colors group">
+              <span className="flex items-center gap-2 text-sm text-[var(--p-text)]"><r.icon className="w-3.5 h-3.5 text-[var(--p-faint)]" /> {r.label}</span>
+              <ExternalLink className="w-3.5 h-3.5 text-[var(--p-faint)] opacity-0 group-hover:opacity-100 transition-opacity" />
+            </a>
+          ))}
+        </div>
       </div>
 
       {/* Sign out */}

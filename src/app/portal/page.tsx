@@ -12,6 +12,8 @@ export default async function PortalPage() {
   const db = supabaseAdmin();
   let builds: Build[] = [];
   let subscription: Client | null = null;
+  let siteSlugs: Record<string, string> = {}; // build_id -> slug
+
   if (db) {
     const { data } = await db
       .from("builds")
@@ -28,7 +30,13 @@ export default async function PortalPage() {
       .limit(1)
       .maybeSingle();
     subscription = (client as Client) ?? null;
+
+    const buildIds = builds.map((b) => b.id);
+    if (buildIds.length) {
+      const { data: sites } = await db.from("client_sites").select("slug, build_id").in("build_id", buildIds);
+      for (const s of (sites ?? []) as { slug: string; build_id: string }[]) siteSlugs[s.build_id] = s.slug;
+    }
   }
 
-  return <PortalDashboard email={email} builds={builds} subscription={subscription} />;
+  return <PortalDashboard email={email} builds={builds} subscription={subscription} siteSlugs={siteSlugs} />;
 }
