@@ -174,6 +174,26 @@ export const newPortalMessageEmail = (firstName: string, preview: string) => ({
   `),
 });
 
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+/** Sent to the client (and a copy to the founder) right after they accept a scope document — their receipt/copy of what they agreed to. */
+export const scopeAcceptedEmail = (businessName: string, acceptedName: string, acceptedAtIso: string, scopeText: string) => {
+  const when = new Date(acceptedAtIso).toLocaleString("en-GB", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  return {
+    subject: `Scope accepted — ${businessName}`,
+    html: wrapper(`
+      <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">Scope accepted ✓</h1>
+      <p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#3F3F46;">
+        This confirms <strong>${escapeHtml(acceptedName)}</strong> accepted the scope below on behalf of <strong>${escapeHtml(businessName)}</strong>, on ${when}.
+      </p>
+      <pre style="margin:16px 0;padding:16px;background:#FAFAF7;border:1px solid #E8E6E0;border-radius:10px;font-family:inherit;font-size:13px;line-height:1.6;color:#18181B;white-space:pre-wrap;word-wrap:break-word;">${escapeHtml(scopeText)}</pre>
+      <p style="margin:16px 0 0;font-size:13px;line-height:1.6;color:#71717A;">Keep this email as your copy of the agreed scope.</p>
+    `),
+  };
+};
+
 /** Sent to a prospect when they book a discovery call from /call. */
 export const callBookingEmail = (firstName: string, when: string, lang: "en" | "fr" = "fr") => {
   const fr = lang === "fr";

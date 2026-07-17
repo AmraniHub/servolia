@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
+import { sendEmail, scopeAcceptedEmail } from "@/lib/email";
+import { sendTelegramMessage } from "@/lib/telegram";
 
 export const runtime = "nodejs";
 
@@ -28,9 +30,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
 
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0].trim() ?? req.headers.get("x-real-ip") ?? "unknown";
   const userAgent = req.headers.get("user-agent") ?? "unknown";
+  const acceptedAt = new Date().toISOString();
 
   const { error } = await db.from("scope_acceptances")
-    .update({ accepted_at: new Date().toISOString(), accepted_name: typedName, accepted_ip: ip, accepted_user_agent: userAgent })
+    .update({ accepted_at: acceptedAt, accepted_name: typedName, accepted_ip: ip, accepted_user_agent: userAgent })
     .eq("token", token).is("accepted_at", null); // guard against a race between two near-simultaneous accepts
   if (error) return NextResponse.json({ error: "Failed to record acceptance" }, { status: 500 });
 
@@ -48,6 +51,21 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
       await db.from("leads").update({ stage: "qualified" }).eq("id", existing.lead_id);
     }
   }
+
+  // Both sides get a receipt: the client's copy by email (their only channel
+  // at this stage — not a portal user yet), the founder's ping via Telegram
+  // to match every other "something just happened" notification in the app.
+  if (existing.email) {
+    sendEmail(
+      existing.email,
+      scopeAcceptedEmail(existing.business_name, typedName, acceptedAt, existing.scope_text).subject,
+      scopeAcceptedEmail(existing.business_name, typedName, acceptedAt, existing.scope_text).html
+    ).catch(() => {});
+  }
+  sendTelegramMessage(
+    `✅ *Scope accepted*\n${existing.business_name}\nBy: ${typedName}\n${existing.email ? `📧 ${existing.email}\n` : ""}` +
+    (existing.lead_id ? `\n[Open in CRM](https://servolia.com/admin/leads/${existing.lead_id})` : "")
+  ).catch(() => {});
 
   return NextResponse.json({ ok: true, planKey: existing.plan_key, leadId: existing.lead_id, alreadyAccepted: false });
 }
