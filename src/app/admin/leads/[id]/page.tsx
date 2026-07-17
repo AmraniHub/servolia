@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { ArrowLeft, Mail, Phone, Globe, MapPin, Clock, ExternalLink, StickyNote, PhoneCall, Send, FileText, MessageCircle } from "lucide-react";
 import LeadActions from "@/components/admin/LeadActions";
 import LeadStageSelect from "@/components/admin/LeadStageSelect";
+import ScopeDocumentPanel from "@/components/admin/ScopeDocumentPanel";
 import { computeLeadScore, scoreColors, scoreLabel } from "@/lib/scoring";
 import { waLink } from "@/lib/whatsapp";
 
@@ -172,9 +173,18 @@ export default async function LeadDetailPage({ params }: { params: Promise<{ id:
         </div>
 
         {/* Side: quick actions */}
-        <aside>
-          <h2 className="text-sm font-black text-[#18181B] uppercase tracking-widest mb-3">Quick actions</h2>
-          <LeadActions leadId={lead.id} />
+        <aside className="space-y-4">
+          <div>
+            <h2 className="text-sm font-black text-[#18181B] uppercase tracking-widest mb-3">Quick actions</h2>
+            <LeadActions leadId={lead.id} />
+          </div>
+          <ScopeDocumentPanel
+            leadId={lead.id}
+            businessName={lead.business || lead.name || "this client"}
+            contactName={lead.name}
+            email={lead.email}
+            suggestedPlan={lead.plan_interest}
+          />
         </aside>
       </div>
     </div>
