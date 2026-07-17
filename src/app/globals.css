@@ -78,6 +78,7 @@ html {
 [data-admin-theme="dark"] .bg-\[\#F5F4EF\] { background-color: #1c1f27; }
 [data-admin-theme="dark"] .bg-\[\#F0EFEA\] { background-color: #20232c; }
 [data-admin-theme="dark"] .bg-\[\#18181B\] { background-color: #2a2c36; }
+[data-admin-theme="dark"] .from-\[\#FAFAF7\] { --tw-gradient-from: #0f1014; }
 
 /* Borders */
 [data-admin-theme="dark"] .border-\[\#E8E6E0\],

@@ -74,7 +74,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   };
 
   return (
-    <div data-admin-theme={theme} className="min-h-screen bg-[#FAFAF7] flex transition-colors">
+    <div data-admin-theme={theme} className="min-h-screen bg-[#FAFAF7] flex transition-colors overflow-x-hidden">
       <CommandPalette />
       <AutoRefresh />
       <Copilot />
@@ -199,7 +199,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
       )}
 
       {/* === MAIN === */}
-      <main className="flex-1 lg:ml-60 pt-14 lg:pt-0 min-h-screen">
+      <main className="flex-1 min-w-0 lg:ml-60 pt-14 lg:pt-0 min-h-screen">
         {children}
       </main>
     </div>
