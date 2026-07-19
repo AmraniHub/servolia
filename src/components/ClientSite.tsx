@@ -125,8 +125,8 @@ export default function ClientSite({ config, page = "home" }: { config: ClientSi
 
   const demoCta = c.demoContactUrl || "https://servolia.com/contact";
   const demoText = c.language === "fr"
-    ? { tag: "DÉMO", line: `Ceci est un aperçu créé pour ${c.businessName}. Essayez le chat en bas à droite — c'est votre réceptionniste IA.`, cta: "Je veux ce système →" }
-    : { tag: "DEMO", line: `This is a preview built for ${c.businessName}. Try the chat, bottom-right — it's your AI receptionist.`, cta: "I want this system →" };
+    ? { tag: "DÉMO", line: `Ceci est un aperçu créé pour ${c.businessName}. Essayez le chat en bas à droite — c'est votre réceptionniste IA.`, cta: "Je veux ce système →", dash: "Voir le tableau de bord →" }
+    : { tag: "DEMO", line: `This is a preview built for ${c.businessName}. Try the chat, bottom-right — it's your AI receptionist.`, cta: "I want this system →", dash: "See the dashboard →" };
 
   const isMulti = !!c.multiPage;
   const isHome = page === "home";
@@ -172,6 +172,7 @@ export default function ClientSite({ config, page = "home" }: { config: ClientSi
             <span className="text-[10px] font-black tracking-widest px-2 py-0.5 rounded bg-white/20">{demoText.tag}</span>
             <span className="text-white/90">{demoText.line}</span>
             <a href={demoCta} className="font-black underline underline-offset-2 hover:opacity-80 whitespace-nowrap">{demoText.cta}</a>
+            <a href={`${basePath}/dashboard`} className="font-bold text-white/80 underline underline-offset-2 hover:text-white whitespace-nowrap">{demoText.dash}</a>
           </div>
         </div>
       )}
