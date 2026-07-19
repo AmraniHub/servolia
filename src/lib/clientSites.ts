@@ -25,6 +25,20 @@ export interface ClientFaq {
   a: string;
 }
 
+export interface TeamMember {
+  name: string;
+  role: string;
+  photoUrl?: string;
+  bio?: string;
+}
+
+export interface ClientHighlight {
+  title: string;
+  body: string;
+  imageUrl?: string;
+  ctaLabel?: string; // defaults to the page's "book" label if omitted
+}
+
 export interface ClientSiteConfig {
   slug: string;
   businessName: string;
@@ -44,6 +58,17 @@ export interface ClientSiteConfig {
 
   // Brand assets
   logoUrl?: string;
+  /** Real photo for a photo-driven hero. Optional — falls back to the flat
+   * gradient hero when not supplied (most clients won't have one yet). */
+  heroImageUrl?: string;
+  /** Full-bleed "feature story" cards — one photo + headline per differentiator
+   * (a technology, a service, a reassurance point). Purely additive; renders
+   * nothing when omitted. Never populate with a stock photo captioned as a
+   * specific named person — only use client-supplied photos for people. */
+  highlights?: ClientHighlight[];
+  /** Humanizing team section. Only ever populated with a real client's own
+   * photos of their real staff — never a stock photo under a real name. */
+  team?: TeamMember[];
 
   // Copy
   heroHeadline: string;
@@ -205,6 +230,7 @@ export function configFromIntake(src: IntakeSource): ClientSiteConfig {
     email: str(src.email) ?? undefined,
     bookingUrl: str(d.bookingUrl) ?? str(d.doctolibUrl) ?? str(d.planityUrl),
     logoUrl: str(d.logoUrl),
+    heroImageUrl: str(d.heroImageUrl),
     heroHeadline,
     heroSub,
     about,

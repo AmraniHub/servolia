@@ -40,6 +40,7 @@ function OnboardingForm() {
     primaryColor: "",
     stylePreference: "",
     logoUrl: "",
+    heroImageUrl: "",
     inspirationUrls: "",
     // Step 2 – Services
     services: "",
@@ -182,6 +183,11 @@ function OnboardingForm() {
                 <label className={labelClass}>Logo — paste a Google Drive or Dropbox link</label>
                 <input value={form.logoUrl} onChange={e => set("logoUrl", e.target.value)} placeholder="https://drive.google.com/..." className={inputClass} />
                 <p className="text-xs text-[#52525B] mt-1">No logo yet? Leave blank — we can help with direction.</p>
+              </div>
+              <div>
+                <label className={labelClass}>Hero photo <span className="text-[#52525B] font-normal">(optional — a real photo of your team, space, or work)</span></label>
+                <input value={form.heroImageUrl} onChange={e => set("heroImageUrl", e.target.value)} placeholder="https://drive.google.com/..." className={inputClass} />
+                <p className="text-xs text-[#52525B] mt-1">Makes your homepage feel real, not generic. Leave blank and we'll use a clean color-based design instead.</p>
               </div>
               <div>
                 <label className={labelClass}>Style preference</label>

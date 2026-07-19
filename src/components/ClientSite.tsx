@@ -14,9 +14,25 @@ function shade(hex: string, amt = -18): string {
 }
 
 const T = {
-  en: { book: "Book now", services: "Services", why: "Why choose us", contact: "Get in touch", faq: "Questions", callUs: "Call us", emailUs: "Email us", visit: "Visit us", hours: "Hours", bookCta: "Book your appointment", bookSub: "Message our assistant or reach us directly — we respond fast.", chat: "Chat with us" },
-  fr: { book: "Réserver", services: "Services", why: "Pourquoi nous choisir", contact: "Nous contacter", faq: "Questions", callUs: "Appelez-nous", emailUs: "Écrivez-nous", visit: "Nous trouver", hours: "Horaires", bookCta: "Réservez votre rendez-vous", bookSub: "Écrivez à notre assistant ou contactez-nous directement — réponse rapide.", chat: "Discuter" },
+  en: { book: "Book now", services: "Services", why: "Why choose us", contact: "Get in touch", faq: "Questions", callUs: "Call us", emailUs: "Email us", visit: "Visit us", hours: "Hours", bookCta: "Book your appointment", bookSub: "Message our assistant or reach us directly — we respond fast.", chat: "Chat with us", team: "Meet the team" },
+  fr: { book: "Réserver", services: "Services", why: "Pourquoi nous choisir", contact: "Nous contacter", faq: "Questions", callUs: "Appelez-nous", emailUs: "Écrivez-nous", visit: "Nous trouver", hours: "Horaires", bookCta: "Réservez votre rendez-vous", bookSub: "Écrivez à notre assistant ou contactez-nous directement — réponse rapide.", chat: "Discuter", team: "Notre équipe" },
 };
+
+/** Shared CTA row for both hero variants (photo and flat-gradient). */
+function HeroCtas({ c, t, accentDark }: { c: ClientSiteConfig; t: typeof T["en"]; accentDark: string }) {
+  return (
+    <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-9">
+      <a href="#book" className="group px-8 py-4 rounded-xl bg-white font-black text-base flex items-center gap-2 hover:bg-white/90 transition-colors" style={{ color: accentDark }}>
+        {t.book} <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+      </a>
+      {c.phone && (
+        <a href={`tel:${c.phone.replace(/\s+/g, "")}`} className="px-7 py-4 rounded-xl border border-white/30 text-white font-semibold text-base hover:bg-white/10 transition-colors flex items-center gap-2">
+          <Phone className="w-4 h-4" /> {c.phone}
+        </a>
+      )}
+    </div>
+  );
+}
 
 export default function ClientSite({ config }: { config: ClientSiteConfig }) {
   const c = config;
@@ -63,26 +79,82 @@ export default function ClientSite({ config }: { config: ClientSiteConfig }) {
         </div>
       </header>
 
-      {/* Hero */}
-      <section className="relative overflow-hidden" style={{ background: `linear-gradient(135deg, ${accentDark}, ${accent})` }}>
-        <div className="absolute inset-0 opacity-30" style={{ background: "radial-gradient(600px 300px at 70% 0%, rgba(255,255,255,0.25), transparent)" }} />
-        <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-28 text-center">
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-white leading-[1.05] tracking-tight max-w-3xl mx-auto">
-            {c.heroHeadline}
-          </h1>
-          <p className="text-white/80 text-lg max-w-2xl mx-auto mt-6 leading-relaxed">{c.heroSub}</p>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-9">
-            <a href="#book" className="group px-8 py-4 rounded-xl bg-white font-black text-base flex items-center gap-2 hover:bg-white/90 transition-colors" style={{ color: accentDark }}>
-              {t.book} <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-            </a>
-            {c.phone && (
-              <a href={`tel:${c.phone.replace(/\s+/g, "")}`} className="px-7 py-4 rounded-xl border border-white/30 text-white font-semibold text-base hover:bg-white/10 transition-colors flex items-center gap-2">
-                <Phone className="w-4 h-4" /> {c.phone}
-              </a>
-            )}
+      {/* Hero — photo-driven variant when the client has a real hero photo, otherwise the flat gradient */}
+      {c.heroImageUrl ? (
+        <section className="relative overflow-hidden rounded-b-[40px] sm:mx-4 sm:mt-4 sm:rounded-[40px]">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={c.heroImageUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
+          <div className="absolute inset-0" style={{ background: `linear-gradient(180deg, ${accentDark}66, ${accentDark}CC)` }} />
+          <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-28 text-center">
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-white leading-[1.05] tracking-tight max-w-3xl mx-auto">
+              {c.heroHeadline}
+            </h1>
+            <p className="text-white/85 text-lg max-w-2xl mx-auto mt-6 leading-relaxed">{c.heroSub}</p>
+            <HeroCtas c={c} t={t} accentDark={accentDark} />
           </div>
-        </div>
-      </section>
+        </section>
+      ) : (
+        <section className="relative overflow-hidden" style={{ background: `linear-gradient(135deg, ${accentDark}, ${accent})` }}>
+          <div className="absolute inset-0 opacity-30" style={{ background: "radial-gradient(600px 300px at 70% 0%, rgba(255,255,255,0.25), transparent)" }} />
+          <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-28 text-center">
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-white leading-[1.05] tracking-tight max-w-3xl mx-auto">
+              {c.heroHeadline}
+            </h1>
+            <p className="text-white/80 text-lg max-w-2xl mx-auto mt-6 leading-relaxed">{c.heroSub}</p>
+            <HeroCtas c={c} t={t} accentDark={accentDark} />
+          </div>
+        </section>
+      )}
+
+      {/* Highlights — full-bleed photo "story cards", one per differentiator. Purely additive. */}
+      {c.highlights && c.highlights.length > 0 && (
+        <section className="py-10 lg:py-14 bg-white">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+            {c.highlights.map((h, i) => (
+              <div key={i} className="relative overflow-hidden rounded-[40px] min-h-[280px] flex items-end">
+                {h.imageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={h.imageUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                ) : (
+                  <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${accentDark}, ${accent})` }} />
+                )}
+                <div className="absolute inset-0" style={{ background: "linear-gradient(0deg, rgba(0,0,0,0.55), rgba(0,0,0,0.1) 60%)" }} />
+                <div className="relative p-7 sm:p-9">
+                  <h3 className="text-xl sm:text-2xl font-black text-white leading-tight max-w-md">{h.title}</h3>
+                  <p className="text-white/85 text-sm mt-2 max-w-md leading-relaxed">{h.body}</p>
+                  <a href="#book" className="inline-flex mt-5 px-5 py-2.5 rounded-full bg-white font-bold text-sm hover:bg-white/90 transition-colors" style={{ color: accentDark }}>
+                    {h.ctaLabel ?? t.book}
+                  </a>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Team — humanizes the business. Purely additive; only ever real photos of real people. */}
+      {c.team && c.team.length > 0 && (
+        <section className="py-16 lg:py-20 bg-[#FAFAF9]">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h2 className="text-3xl sm:text-4xl font-black text-center mb-12">{t.team}</h2>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {c.team.map((member, i) => (
+                <div key={i} className="bg-white rounded-[28px] overflow-hidden border border-[#ECECEC]">
+                  {member.photoUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={member.photoUrl} alt={member.name} className="w-full aspect-[4/3] object-cover" />
+                  )}
+                  <div className="p-5">
+                    <h3 className="font-black text-base">{member.name}</h3>
+                    <p className="text-xs font-bold uppercase tracking-widest mt-0.5" style={{ color: accent }}>{member.role}</p>
+                    {member.bio && <p className="text-sm text-[#71717A] leading-relaxed mt-2">{member.bio}</p>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* About */}
       {c.about && (
