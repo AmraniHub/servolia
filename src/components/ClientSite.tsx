@@ -14,9 +14,26 @@ function shade(hex: string, amt = -18): string {
 }
 
 const T = {
-  en: { book: "Book now", services: "Services", why: "Why choose us", contact: "Get in touch", faq: "Questions", callUs: "Call us", emailUs: "Email us", visit: "Visit us", hours: "Hours", bookCta: "Book your appointment", bookSub: "Message our assistant or reach us directly — we respond fast.", chat: "Chat with us", team: "Meet the team" },
-  fr: { book: "Réserver", services: "Services", why: "Pourquoi nous choisir", contact: "Nous contacter", faq: "Questions", callUs: "Appelez-nous", emailUs: "Écrivez-nous", visit: "Nous trouver", hours: "Horaires", bookCta: "Réservez votre rendez-vous", bookSub: "Écrivez à notre assistant ou contactez-nous directement — réponse rapide.", chat: "Discuter", team: "Notre équipe" },
+  en: { book: "Book now", home: "Home", about: "About", services: "Services", why: "Why choose us", contact: "Get in touch", faq: "Questions", callUs: "Call us", emailUs: "Email us", visit: "Visit us", hours: "Hours", bookCta: "Book your appointment", bookSub: "Message our assistant or reach us directly — we respond fast.", chat: "Chat with us", team: "Meet the team" },
+  fr: { book: "Réserver", home: "Accueil", about: "Cabinet", services: "Services", why: "Pourquoi nous choisir", contact: "Nous contacter", faq: "Questions", callUs: "Appelez-nous", emailUs: "Écrivez-nous", visit: "Nous trouver", hours: "Horaires", bookCta: "Réservez votre rendez-vous", bookSub: "Écrivez à notre assistant ou contactez-nous directement — réponse rapide.", chat: "Discuter", team: "Notre équipe" },
 };
+
+/** Generic, widely-used minimalist glyphs for linking out to a client's own social profiles. */
+function SocialIcon({ platform }: { platform: string }) {
+  const common = { width: 15, height: 15, viewBox: "0 0 24 24", fill: "currentColor" } as const;
+  switch (platform) {
+    case "facebook":
+      return <svg {...common}><path d="M13.5 21v-7.8h2.6l.4-3h-3V8.3c0-.87.24-1.46 1.5-1.46h1.6V4.14C15.9 4.1 15 4 13.9 4c-2.24 0-3.77 1.37-3.77 3.88v2.32H7.5v3h2.63V21h3.37z"/></svg>;
+    case "instagram":
+      return <svg {...common}><path d="M12 4.6c2.4 0 2.7 0 3.6.05 2.4.11 3.5 1.24 3.66 3.66.05.9.06 1.16.06 3.7s0 2.8-.06 3.7c-.11 2.4-1.24 3.55-3.66 3.66-.9.05-1.16.06-3.6.06s-2.7 0-3.6-.06c-2.43-.11-3.55-1.26-3.66-3.66-.05-.9-.06-1.16-.06-3.7s0-2.8.06-3.7c.11-2.42 1.24-3.55 3.66-3.66.9-.05 1.16-.05 3.6-.05zM12 3c-2.48 0-2.8.01-3.77.06-3.25.15-5.03 1.93-5.18 5.18C3 9.2 3 9.52 3 12s.01 2.8.06 3.77c.15 3.25 1.93 5.03 5.18 5.18C9.2 21 9.52 21 12 21s2.8-.01 3.77-.06c3.25-.15 5.03-1.93 5.18-5.18C21 14.8 21 14.48 21 12s-.01-2.8-.06-3.77c-.15-3.25-1.93-5.03-5.18-5.18C14.8 3 14.48 3 12 3zm0 4.6a4.4 4.4 0 1 0 0 8.8 4.4 4.4 0 0 0 0-8.8zm0 7.26a2.87 2.87 0 1 1 0-5.73 2.87 2.87 0 0 1 0 5.73zm4.6-7.44a1.03 1.03 0 1 1-2.05 0 1.03 1.03 0 0 1 2.05 0z"/></svg>;
+    case "linkedin":
+      return <svg {...common}><path d="M6.94 8.5H4.06V20h2.88V8.5zM5.5 4a1.67 1.67 0 1 0 0 3.34A1.67 1.67 0 0 0 5.5 4zM20 13.34c0-3.16-1.69-4.63-3.94-4.63a3.4 3.4 0 0 0-3.09 1.7h-.04V8.5H10.2c.04.86 0 11.5 0 11.5h2.88v-6.42c0-.34.02-.68.12-.93.27-.68.9-1.38 1.94-1.38 1.37 0 1.92 1.04 1.92 2.57V20H20v-6.66z"/></svg>;
+    case "x":
+      return <svg {...common}><path d="M17.75 3h3.02l-6.6 7.54L22 21h-6.08l-4.76-6.23L5.7 21H2.67l7.06-8.07L2 3h6.24l4.3 5.7L17.75 3zm-1.06 16.2h1.67L7.4 4.7H5.6l11.09 14.5z"/></svg>;
+    default:
+      return <svg {...common}><circle cx="12" cy="12" r="9" /></svg>;
+  }
+}
 
 /** Shared CTA row for both hero variants (photo and flat-gradient). */
 function HeroCtas({ c, t, accentDark }: { c: ClientSiteConfig; t: typeof T["en"]; accentDark: string }) {
@@ -46,6 +63,14 @@ export default function ClientSite({ config }: { config: ClientSiteConfig }) {
     ? { tag: "DÉMO", line: `Ceci est un aperçu créé pour ${c.businessName}. Essayez le chat en bas à droite — c'est votre réceptionniste IA.`, cta: "Je veux ce système →" }
     : { tag: "DEMO", line: `This is a preview built for ${c.businessName}. Try the chat, bottom-right — it's your AI receptionist.`, cta: "I want this system →" };
 
+  const navItems = [
+    { key: "home", label: t.home, href: "#" },
+    { key: "about", label: t.about, href: "#about", show: !!c.about },
+    { key: "services", label: t.services, href: "#services", show: c.services.length > 0 },
+    { key: "why", label: t.why, href: "#why", show: c.whyUs.length > 0 },
+    { key: "faq", label: t.faq, href: "#faq", show: c.faqs.length > 0 },
+  ].filter((n) => n.show !== false);
+
   return (
     <div className="min-h-screen bg-white text-[#18181B] flex flex-col">
       {/* Prospect demo banner — the conversion hook while they play with the site */}
@@ -59,21 +84,54 @@ export default function ClientSite({ config }: { config: ClientSiteConfig }) {
         </div>
       )}
 
+      {/* Top info bar — address, phone, socials. Opt-in via expandedHeader so existing sites are untouched. */}
+      {c.expandedHeader && (c.address || c.phone || (c.socialLinks && c.socialLinks.length > 0)) && (
+        <div className="text-white text-xs" style={{ background: accentDark }}>
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-9 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-4 min-w-0 overflow-hidden">
+              {c.address && <span className="hidden sm:flex items-center gap-1.5 truncate"><MapPin className="w-3 h-3 shrink-0" /> {c.address}</span>}
+              {c.phone && <a href={`tel:${c.phone.replace(/\s+/g, "")}`} className="flex items-center gap-1.5 hover:opacity-80 shrink-0"><Phone className="w-3 h-3" /> {c.phone}</a>}
+            </div>
+            {c.socialLinks && c.socialLinks.length > 0 && (
+              <div className="flex items-center gap-3 shrink-0">
+                {c.socialLinks.map((s, i) => (
+                  <a key={i} href={s.url} target="_blank" rel="noopener noreferrer" className="hover:opacity-80" aria-label={s.platform}>
+                    <SocialIcon platform={s.platform} />
+                  </a>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <header className="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-[#ECECEC]">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2.5 min-w-0">
             {c.logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={c.logoUrl} alt={c.businessName} className="h-8 w-auto object-contain" />
+              <img src={c.logoUrl} alt={c.businessName} className="h-8 w-auto object-contain shrink-0" />
             ) : (
-              <div className="w-9 h-9 rounded-lg flex items-center justify-center text-white font-black text-sm" style={{ background: accent }}>
+              <div className="w-9 h-9 rounded-lg flex items-center justify-center text-white font-black text-sm shrink-0" style={{ background: accent }}>
                 {initials}
               </div>
             )}
-            <span className="font-black tracking-tight text-lg">{c.businessName}</span>
+            <div className="min-w-0">
+              <span className="font-black tracking-tight text-lg block truncate">{c.businessName}</span>
+              {c.expandedHeader && c.tagline && <span className="text-[11px] text-[#71717A] block truncate leading-tight">{c.tagline}</span>}
+            </div>
           </div>
-          <a href="#book" className="px-4 py-2 rounded-lg text-white text-sm font-semibold transition-opacity hover:opacity-90" style={{ background: accent }}>
+          {c.expandedHeader && (
+            <nav className="hidden md:flex items-center gap-6 shrink-0">
+              {navItems.map((n) => (
+                <a key={n.key} href={n.href} className="text-sm font-semibold text-[#3F3F46] hover:opacity-70 transition-opacity">
+                  {n.label}
+                </a>
+              ))}
+            </nav>
+          )}
+          <a href="#book" className="px-4 py-2 rounded-lg text-white text-sm font-semibold transition-opacity hover:opacity-90 shrink-0" style={{ background: accent }}>
             {t.book}
           </a>
         </div>
@@ -158,7 +216,7 @@ export default function ClientSite({ config }: { config: ClientSiteConfig }) {
 
       {/* About */}
       {c.about && (
-        <section className="py-16 lg:py-20 bg-white">
+        <section id="about" className="py-16 lg:py-20 bg-white">
           <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <p className="text-lg leading-relaxed text-[#3F3F46]">{c.about}</p>
           </div>
@@ -191,7 +249,7 @@ export default function ClientSite({ config }: { config: ClientSiteConfig }) {
 
       {/* Why us */}
       {c.whyUs.length > 0 && (
-        <section className="py-16 lg:py-20 bg-white">
+        <section id="why" className="py-16 lg:py-20 bg-white">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
             <h2 className="text-3xl sm:text-4xl font-black text-center mb-12">{t.why}</h2>
             <div className="grid sm:grid-cols-2 gap-4">
@@ -245,7 +303,7 @@ export default function ClientSite({ config }: { config: ClientSiteConfig }) {
 
       {/* FAQ */}
       {c.faqs.length > 0 && (
-        <section className="py-16 lg:py-20 bg-white">
+        <section id="faq" className="py-16 lg:py-20 bg-white">
           <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
             <h2 className="text-3xl font-black text-center mb-10">{t.faq}</h2>
             <div className="space-y-3">
@@ -265,6 +323,26 @@ export default function ClientSite({ config }: { config: ClientSiteConfig }) {
 
       {/* Footer */}
       <footer className="mt-auto border-t border-[#ECECEC] bg-white">
+        {c.expandedHeader && (navItems.length > 0 || (c.socialLinks && c.socialLinks.length > 0)) && (
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-[#ECECEC]">
+            <nav className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
+              {navItems.map((n) => (
+                <a key={n.key} href={n.href} className="text-sm font-semibold text-[#3F3F46] hover:opacity-70 transition-opacity">
+                  {n.label}
+                </a>
+              ))}
+            </nav>
+            {c.socialLinks && c.socialLinks.length > 0 && (
+              <div className="flex items-center gap-4">
+                {c.socialLinks.map((s, i) => (
+                  <a key={i} href={s.url} target="_blank" rel="noopener noreferrer" className="text-[#3F3F46] hover:opacity-70" aria-label={s.platform} style={{ color: accent }}>
+                    <SocialIcon platform={s.platform} />
+                  </a>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col sm:flex-row items-center justify-between gap-3">
           <span className="font-black">{c.businessName}</span>
           <p className="text-[#A1A1AA] text-xs">

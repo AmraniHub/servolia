@@ -69,6 +69,15 @@ export interface ClientSiteConfig {
   /** Humanizing team section. Only ever populated with a real client's own
    * photos of their real staff — never a stock photo under a real name. */
   team?: TeamMember[];
+  /** Short subtitle under the business name in the header, e.g. "Cabinet
+   * d'implantologie à Lyon". Only shown when expandedHeader is on. */
+  tagline?: string;
+  /** Opt-in richer header/footer: top info bar (address/phone/socials) +
+   * horizontal section nav + footer nav/social row. Off by default so every
+   * existing site renders exactly as before — purely additive. */
+  expandedHeader?: boolean;
+  /** Links to the client's own real social profiles. */
+  socialLinks?: { platform: "facebook" | "instagram" | "linkedin" | "x" | "tiktok" | "youtube"; url: string }[];
 
   // Copy
   heroHeadline: string;
@@ -312,6 +321,14 @@ const DEMO_SITES: ClientSiteConfig[] = [
     phone: "04 78 76 66 66",
     email: "dentistelyon8@gmail.com",
     hours: "Lun–Ven, 9h30–12h00 et 14h00–17h00 (fermé le mercredi)",
+    tagline: "Cabinet d'implantologie à Lyon",
+    expandedHeader: true,
+    socialLinks: [
+      { platform: "facebook", url: "https://www.facebook.com/cabinetnicolasmetay/" },
+      { platform: "instagram", url: "https://www.instagram.com/cabinetnicolasmetay/" },
+      { platform: "linkedin", url: "https://www.linkedin.com/company/cabinetnicolasmetay/" },
+      { platform: "x", url: "https://twitter.com/cabinetmetay" },
+    ],
     heroImageUrl: "https://images.unsplash.com/photo-1629909613654-28e377c37b09?w=1600&q=80&auto=format&fit=crop",
     heroHeadline: "Des implants dentaires, sans l'appréhension.",
     heroSub: "Cabinet spécialisé en implantologie à Lyon Monplaisir. Notre assistant répond à vos questions et prend vos coordonnées à tout moment — jour et nuit.",
