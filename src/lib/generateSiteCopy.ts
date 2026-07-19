@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { ClientSiteConfig, ClientService, ClientFaq } from "@/lib/clientSites";
+import { isDentalNiche, dentalCopyPlaybook } from "@/lib/niches/dental";
 
 /**
  * AI enrichment for client-site generation.
@@ -109,6 +110,9 @@ export async function aiEnrichConfig(
     .map(([k, v]) => `${k}: ${String(v).trim().slice(0, 500)}`)
     .join("\n");
 
+  const nicheLang = draft.language;
+  const nichePlaybook = isDentalNiche(draft.niche) ? dentalCopyPlaybook(nicheLang) : "";
+
   const prompt = `You are the senior copywriter at Servolia, an agency that delivers websites with AI receptionists for service businesses (dental clinics, aesthetic clinics, real estate, home services, law firms...).
 
 A new client paid and filled our intake form. Write their complete website copy IN ${lang.toUpperCase()}.
@@ -120,6 +124,7 @@ Business name: ${draft.businessName}
 Niche: ${draft.niche}
 City/Country: ${[draft.city, draft.country].filter(Boolean).join(", ") || "not specified"}
 Current parsed services: ${draft.services.map((s) => s.name).join(", ") || "none parsed"}
+${nichePlaybook}
 
 Return ONLY a JSON object with exactly these keys:
 {

@@ -5,6 +5,7 @@
  */
 
 import type { ClientSiteConfig } from "@/lib/clientSites";
+import { isDentalNiche, DENTAL_RECEPTIONIST_GUIDANCE } from "@/lib/niches/dental";
 
 export function buildReceptionistPrompt(c: ClientSiteConfig): string {
   const lang = c.language === "fr" ? "French" : "English";
@@ -51,7 +52,7 @@ ${contactLines || "(No public contact details provided — offer to take a messa
 # Booking
 ${bookLine}
 
-${faqs ? `# Known answers\n${faqs}\n` : ""}
+${faqs ? `# Known answers\n${faqs}\n` : ""}${isDentalNiche(c.niche) ? `${DENTAL_RECEPTIONIST_GUIDANCE}\n` : ""}
 # Style
 - Reply in ${lang}. Match the visitor's language if they switch.
 - Tone: ${c.aiTone ?? "warm and professional"}.

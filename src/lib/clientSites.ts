@@ -12,6 +12,7 @@
  */
 
 import { supabaseAdmin } from "@/lib/supabase";
+import { isDentalNiche, DENTAL_WHY_US, DENTAL_FAQS, DENTAL_AI_TONE, dentalAiGreeting } from "@/lib/niches/dental";
 
 export interface ClientService {
   name: string;
@@ -169,8 +170,14 @@ export function configFromIntake(src: IntakeSource): ClientSiteConfig {
       .filter(Boolean)
       .join(" ");
 
-  const whyUs =
-    lang === "fr"
+  // Servolia's beachhead niche (docs/PRINCIPLES.md P2) gets a real domain-grounded
+  // default instead of generic filler — see src/lib/niches/dental.ts. Every other
+  // niche keeps the fully generic fallback until it gets its own template.
+  const isDental = isDentalNiche(niche);
+
+  const whyUs = isDental
+    ? DENTAL_WHY_US[lang]
+    : lang === "fr"
       ? [
           "Réponse instantanée, jour et nuit",
           "Réservation en ligne en quelques secondes",
@@ -203,10 +210,11 @@ export function configFromIntake(src: IntakeSource): ClientSiteConfig {
     about,
     services,
     whyUs,
-    faqs: [],
-    aiTone: lang === "fr" ? "chaleureux et professionnel" : "warm and professional",
-    aiGreeting:
-      lang === "fr"
+    faqs: isDental ? DENTAL_FAQS[lang] : [],
+    aiTone: isDental ? DENTAL_AI_TONE[lang] : (lang === "fr" ? "chaleureux et professionnel" : "warm and professional"),
+    aiGreeting: isDental
+      ? dentalAiGreeting(businessName, lang)
+      : lang === "fr"
         ? `Bonjour 👋 Bienvenue chez ${businessName}. Comment puis-je vous aider ?`
         : `Hi 👋 Welcome to ${businessName}. How can I help you today?`,
     status: "draft",
