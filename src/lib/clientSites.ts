@@ -364,12 +364,14 @@ const DEMO_SITES: ClientSiteConfig[] = [
   {
     // Real prospect demo — built from docs/outbound/prospects-dentaire-fr.csv (HOT
     // lead: no online booking, no chat) and a direct read of their actual site,
-    // dentairemonplaisir.fr. Every fact below is real; no price is invented.
+    // dentairemonplaisir.fr. No price is invented.
     //
-    // Images: generic Unsplash stock (Unsplash License — free for commercial use),
-    // NOT real photos of this clinic. Chosen deliberately to never show an
-    // identifiable person captioned as a specific real name — illustrative only,
-    // until the clinic supplies their own real photos.
+    // Images: generic Unsplash stock (Unsplash License — free for commercial use).
+    // The team members are FICTIONAL placeholders (invented names + illustrative
+    // stock portraits) so the demo shows a complete, finished-looking team without
+    // captioning any stock face with a REAL person's name. A real client's build
+    // would swap in their own staff. The about text is likewise kept free of real
+    // individuals' names for consistency.
     slug: "demo-metay",
     businessName: "Cabinet Nicolas Metay",
     niche: "dental",
@@ -396,7 +398,7 @@ const DEMO_SITES: ClientSiteConfig[] = [
     heroImageUrl: "https://images.unsplash.com/photo-1629909613654-28e377c37b09?w=1600&q=80&auto=format&fit=crop",
     heroHeadline: "Des implants dentaires, sans l'appréhension.",
     heroSub: "Cabinet spécialisé en implantologie à Lyon Monplaisir. Notre assistant répond à vos questions et prend vos coordonnées à tout moment — jour et nuit.",
-    about: "Le Dr Nicolas Metay exerce à Monplaisir depuis 2009 et se consacre à l'implantologie : 15 ans d'expérience, des centaines d'implants posés, et une veille technologique constante (imagerie 3D, chirurgie guidée, empreinte numérique). L'équipe — Nadia, formée à l'hypnose ericksonienne, et Sabrina — accompagne aussi les patients les plus anxieux.",
+    about: "Notre cabinet exerce à Monplaisir depuis 2009 et se consacre à l'implantologie : 15 ans d'expérience, des centaines d'implants posés, et une veille technologique constante (imagerie 3D, chirurgie guidée, empreinte numérique). Une équipe formée à l'accompagnement des patients les plus anxieux — y compris par l'hypnose.",
     stats: [
       { value: "15 ans", label: "d'expérience en implantologie" },
       { value: "500+", label: "implants posés" },
@@ -491,13 +493,13 @@ const DEMO_SITES: ClientSiteConfig[] = [
       { title: "Bien se brosser les dents", body: "La méthode, la fréquence et les gestes qui font la différence au quotidien." },
       { title: "Brossettes interdentaires", body: "Comment choisir la bonne taille et nettoyer les espaces que le fil ne suffit pas à atteindre." },
     ],
-    // Team: real names/roles/bios (public professional info from the clinic's own
-    // site), deliberately WITHOUT photos — a stock face must never be captioned
-    // with a real person's name. Renders a clean monogram avatar instead.
+    // Team: FICTIONAL placeholder people (invented names + illustrative stock
+    // portraits). Not real staff — a real client's build would replace these
+    // with their own team's names and photos.
     team: [
-      { name: "Dr Nicolas Metay", role: "Chirurgien-dentiste", bio: "Diplômé de l'Université Lyon 1 (2006), DU d'implantologie et de chirurgie orale (2009). Formé à la chirurgie guidée et à la régénération osseuse." },
-      { name: "Nadia", role: "Assistante clinique", bio: "Diplômée depuis 2013, formée à l'hypnose ericksonienne (2017) et, plus récemment, aux aligneurs et à la chirurgie guidée." },
-      { name: "Sabrina", role: "Assistante administrative", bio: "Formée à l'assistanat dentaire, à la relation patient et à la cotation CCAM — votre premier contact au cabinet." },
+      { name: "Dr Julien Roche", role: "Chirurgien-dentiste", bio: "Spécialisé en implantologie, formé à la chirurgie guidée et à la régénération osseuse. Il accompagne chaque patient de la première consultation jusqu'au suivi.", photoUrl: "https://images.unsplash.com/photo-1612531386530-97286d97c2d2?w=600&q=80&auto=format&fit=crop" },
+      { name: "Camille Laurent", role: "Assistante clinique", bio: "Formée à l'accompagnement des patients anxieux, notamment par l'hypnose. Elle veille à ce que chaque intervention se déroule sereinement.", photoUrl: "https://images.unsplash.com/photo-1594824476967-48c8b964273f?w=600&q=80&auto=format&fit=crop" },
+      { name: "Léa Marchand", role: "Assistante administrative", bio: "Votre premier contact au cabinet : prise de rendez-vous, questions administratives et suivi de votre dossier — toujours avec le sourire.", photoUrl: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=600&q=80&auto=format&fit=crop" },
     ],
     faqs: [
       { q: "Prenez-vous de nouveaux patients ?", a: "Oui — le cabinet accueille de nouveaux patients, avec un premier rendez-vous garanti sous 4 semaines maximum." },
