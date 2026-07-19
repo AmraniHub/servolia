@@ -54,6 +54,21 @@ function HeroCtas({ c, t, accentDark }: { c: ClientSiteConfig; t: Dict; accentDa
   );
 }
 
+/** Background photo(s) for a hero/banner. 1 image = static; 2 = gentle CSS
+ *  crossfade slider (top image fades to reveal the base, then back). */
+function PhotoStack({ images, overlay }: { images: string[]; overlay: string }) {
+  const imgs = images.filter(Boolean).slice(0, 2);
+  return (
+    <div className="absolute inset-0">
+      {imgs.map((src, i) => (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img key={i} src={src} alt="" className={`absolute inset-0 w-full h-full object-cover ${i === 1 ? "svl-slide-top" : ""}`} />
+      ))}
+      <div className="absolute inset-0" style={{ background: overlay }} />
+    </div>
+  );
+}
+
 /** Consistent section header (eyebrow + title + optional subtitle). */
 function SectionHead({ eyebrow, title, subtitle, accent }: { eyebrow?: string; title: string; subtitle?: string; accent: string }) {
   return (
@@ -141,6 +156,13 @@ export default function ClientSite({ config, page = "home" }: { config: ClientSi
 
   const pageTitle = page === "cabinet" ? t.about : page === "expertise" ? t.expertise : page === "services" ? t.services : page === "conseils" ? t.advice : "";
 
+  // Hero photos (slider takes precedence over the single heroImageUrl).
+  const heroImgs = c.heroImages && c.heroImages.length ? c.heroImages : c.heroImageUrl ? [c.heroImageUrl] : [];
+  // Sub-page banner photos, if any, for the current page.
+  const bannerImgs = isHome ? [] : c.pageBanners?.[page] ?? [];
+  const heroOverlay = `linear-gradient(180deg, ${accentDark}66, ${accentDark}CC)`;
+  const bannerOverlay = `linear-gradient(135deg, ${accentDark}E0, ${accent}A6)`;
+
   return (
     <div id="top" className="min-h-screen bg-white text-[#18181B] flex flex-col">
       {/* Prospect demo banner — the conversion hook while they play with the site */}
@@ -210,25 +232,27 @@ export default function ClientSite({ config, page = "home" }: { config: ClientSi
       {/* Page-title banner for sub-pages of a multi-page site */}
       {!isHome && (
         <section className="relative overflow-hidden" style={{ background: `linear-gradient(135deg, ${accentDark}, ${accent})` }}>
-          <div className="absolute inset-0 opacity-25" style={{ background: "radial-gradient(600px 240px at 75% 0%, rgba(255,255,255,0.3), transparent)" }} />
-          <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-14 lg:py-20 text-center">
-            <a href={isMulti ? basePath : "#top"} className="text-white/70 text-xs font-semibold hover:text-white transition-colors">← {t.backHome}</a>
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight mt-2">{pageTitle}</h1>
+          {bannerImgs.length > 0 ? (
+            <PhotoStack images={bannerImgs} overlay={bannerOverlay} />
+          ) : (
+            <div className="absolute inset-0 opacity-25" style={{ background: "radial-gradient(600px 240px at 75% 0%, rgba(255,255,255,0.3), transparent)" }} />
+          )}
+          <div className={`relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center ${bannerImgs.length > 0 ? "py-20 lg:py-28" : "py-14 lg:py-20"}`}>
+            <a href={isMulti ? basePath : "#top"} className="text-white/80 text-xs font-semibold hover:text-white transition-colors">← {t.backHome}</a>
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight mt-2 [text-shadow:0_2px_16px_rgba(0,0,0,0.25)]">{pageTitle}</h1>
             {page === "expertise" && c.expertiseIntro && (
-              <p className="text-white/85 max-w-2xl mx-auto mt-5 leading-relaxed">{c.expertiseIntro}</p>
+              <p className="text-white/90 max-w-2xl mx-auto mt-5 leading-relaxed">{c.expertiseIntro}</p>
             )}
           </div>
         </section>
       )}
 
       {/* Hero — photo-driven variant when the client has a real hero photo, otherwise the flat gradient */}
-      {isHome && (c.heroImageUrl ? (
+      {isHome && (heroImgs.length > 0 ? (
         <section className="relative overflow-hidden rounded-b-[40px] sm:mx-4 sm:mt-4 sm:rounded-[40px]">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={c.heroImageUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
-          <div className="absolute inset-0" style={{ background: `linear-gradient(180deg, ${accentDark}66, ${accentDark}CC)` }} />
+          <PhotoStack images={heroImgs} overlay={heroOverlay} />
           <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-28 text-center">
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-white leading-[1.05] tracking-tight max-w-3xl mx-auto">
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-white leading-[1.05] tracking-tight max-w-3xl mx-auto [text-shadow:0_2px_16px_rgba(0,0,0,0.25)]">
               {c.heroHeadline}
             </h1>
             <p className="text-white/85 text-lg max-w-2xl mx-auto mt-6 leading-relaxed">{c.heroSub}</p>

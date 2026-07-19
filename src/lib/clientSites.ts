@@ -101,6 +101,13 @@ export interface ClientSiteConfig {
   /** Real photo for a photo-driven hero. Optional — falls back to the flat
    * gradient hero when not supplied (most clients won't have one yet). */
   heroImageUrl?: string;
+  /** Optional hero slider — 1–2 images that gently crossfade behind the
+   * homepage hero. Takes precedence over heroImageUrl when set. */
+  heroImages?: string[];
+  /** Optional banner background photo(s) per sub-page (1 = static photo,
+   * 2 = gentle crossfade slider). Without it the sub-page banner is the flat
+   * gradient. Purely additive. */
+  pageBanners?: { cabinet?: string[]; expertise?: string[]; services?: string[]; conseils?: string[] };
   /** Full-bleed "feature story" cards — one photo + headline per differentiator
    * (a technology, a service, a reassurance point). Purely additive; renders
    * nothing when omitted. Never populate with a stock photo captioned as a
@@ -396,6 +403,26 @@ const DEMO_SITES: ClientSiteConfig[] = [
       { platform: "x", url: "https://servolia.com" },
     ],
     heroImageUrl: "https://images.unsplash.com/photo-1629909613654-28e377c37b09?w=1600&q=80&auto=format&fit=crop",
+    // Hero slider (2 clinic interiors crossfade). Each sub-page gets its own
+    // themed banner photos too, so every page shows real imagery.
+    heroImages: [
+      "https://images.unsplash.com/photo-1629909613654-28e377c37b09?w=1600&q=80&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1629909615184-74f495363b67?w=1600&q=80&auto=format&fit=crop",
+    ],
+    pageBanners: {
+      cabinet: [
+        "https://images.unsplash.com/photo-1629909615184-74f495363b67?w=1600&q=80&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1588776814546-1ffcf47267a5?w=1600&q=80&auto=format&fit=crop",
+      ],
+      expertise: [
+        "https://images.unsplash.com/photo-1593022356769-11f762e25ed9?w=1600&q=80&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1579154491915-611e891d3a5b?w=1600&q=80&auto=format&fit=crop",
+      ],
+      conseils: [
+        "https://images.unsplash.com/photo-1607613009820-a29f7bb81c04?w=1600&q=80&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1595152772835-219674b2a8a6?w=1600&q=80&auto=format&fit=crop",
+      ],
+    },
     heroHeadline: "Des implants dentaires, sans l'appréhension.",
     heroSub: "Cabinet spécialisé en implantologie à Lyon Monplaisir. Notre assistant répond à vos questions et prend vos coordonnées à tout moment — jour et nuit.",
     about: "Notre cabinet exerce à Monplaisir depuis 2009 et se consacre à l'implantologie : 15 ans d'expérience, des centaines d'implants posés, et une veille technologique constante (imagerie 3D, chirurgie guidée, empreinte numérique). Une équipe formée à l'accompagnement des patients les plus anxieux — y compris par l'hypnose.",

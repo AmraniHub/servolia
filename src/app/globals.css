@@ -288,6 +288,18 @@ body {
   30% { opacity: 1; }
 }
 
+/* Client-site hero/banner photo crossfade (2-image slider). The top image
+   fades out to reveal the base image, then fades back — a gentle loop. */
+@keyframes svl-crossfade {
+  0%, 42% { opacity: 1; }
+  50%, 92% { opacity: 0; }
+  100% { opacity: 1; }
+}
+.svl-slide-top { animation: svl-crossfade 11s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .svl-slide-top { animation: none; opacity: 0; }
+}
+
 /* === Selection === */
 ::selection {
   background: #36671E;
