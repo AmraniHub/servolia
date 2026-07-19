@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import ClientSite, { type ClientSitePage } from "@/components/ClientSite";
 import { getClientSite } from "@/lib/clientSites";
+import { isHiddenDraft, DraftPreviewRibbon } from "@/lib/draftGate";
 
 export const dynamic = "force-dynamic";
 
@@ -43,5 +44,13 @@ export default async function ClientSubPage({ params }: { params: Promise<{ slug
   const config = await getClientSite(slug);
   // Sub-pages are only meaningful for multi-page sites.
   if (!config || !config.multiPage) notFound();
-  return <ClientSite config={config} page={which} />;
+  // Unpublished drafts are private until an admin publishes them.
+  if (await isHiddenDraft(config)) notFound();
+  const isDraft = config.status && config.status !== "published";
+  return (
+    <>
+      {isDraft && <DraftPreviewRibbon lang={config.language === "fr" ? "fr" : "en"} />}
+      <ClientSite config={config} page={which} />
+    </>
+  );
 }
