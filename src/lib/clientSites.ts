@@ -266,6 +266,52 @@ const DEMO_SITES: ClientSiteConfig[] = [
     aiGreeting: "Hi 👋 Welcome to Meridian Dental Studio. Are you a new or returning patient?",
     status: "published",
   },
+  {
+    // Real prospect demo — built from docs/outbound/prospects-dentaire-fr.csv (HOT
+    // lead: no online booking, no chat) and a direct read of their actual site,
+    // dentairemonplaisir.fr. Every fact below is real; no price is invented.
+    slug: "demo-metay",
+    businessName: "Cabinet Nicolas Metay",
+    niche: "dental",
+    language: "fr",
+    accent: "#0E7490",
+    city: "Lyon",
+    country: "France",
+    address: "18 Place Ambroise Courtois, 69008 Lyon",
+    phone: "04 78 76 66 66",
+    email: "dentistelyon8@gmail.com",
+    hours: "Lun–Ven, 9h30–12h00 et 14h00–17h00 (fermé le mercredi)",
+    heroHeadline: "Des implants dentaires, sans l'appréhension.",
+    heroSub: "Cabinet spécialisé en implantologie à Lyon Monplaisir. Notre assistant répond à vos questions et prend vos coordonnées à tout moment — jour et nuit.",
+    about: "Le Dr Nicolas Metay exerce à Monplaisir depuis 2009 et se consacre à l'implantologie : 15 ans d'expérience, des centaines d'implants posés, et une veille technologique constante (imagerie 3D, chirurgie guidée, empreinte numérique). L'équipe — Nadia, formée à l'hypnose ericksonienne, et Sabrina — accompagne aussi les patients les plus anxieux.",
+    services: [
+      { name: "Implant dentaire (dent unique)", description: "Remplacement d'une dent manquante par un implant, dans une salle dédiée à la chirurgie." },
+      { name: "Implants – mâchoire complète", description: "Solution complète pour une mâchoire édentée, avec plan de traitement personnalisé." },
+      { name: "Comblement osseux", description: "Préparation osseuse pour poser les implants dans les meilleures conditions." },
+      { name: "Reprise d'anciens implants", description: "Prise en charge des implants existants nécessitant un nouveau traitement." },
+      { name: "Chirurgie sous anesthésie générale", description: "Option à la Clinique Protestante, pensée pour les patients phobiques." },
+      { name: "Bilan et plan de traitement personnalisé", description: "Jusqu'à trois entretiens pour construire ensemble la solution adaptée." },
+    ],
+    whyUs: [
+      "15 ans d'expérience en implantologie, des centaines d'implants posés",
+      "Formation continue : chirurgie guidée, imagerie 3D, empreinte numérique",
+      "Option anesthésie générale pour les patients anxieux",
+      "Premier rendez-vous garanti sous 4 semaines",
+      "Jusqu'à 3 entretiens personnalisés avant de démarrer un traitement",
+    ],
+    faqs: [
+      { q: "Prenez-vous de nouveaux patients ?", a: "Oui — le cabinet accueille de nouveaux patients, avec un premier rendez-vous garanti sous 4 semaines maximum." },
+      { q: "J'ai peur du dentiste, est-ce un problème ?", a: "Pas du tout — une anesthésie générale est possible à la Clinique Protestante, et l'équipe est formée à l'accompagnement des patients anxieux." },
+      { q: "Comment se passe la première consultation ?", a: "Un premier entretien de 45 minutes pour comprendre vos besoins, suivi d'une proposition de plan de traitement adapté." },
+      { q: "Mon dentiste m'a recommandé un implant, dois-je passer par vous ?", a: "Oui — nous collaborons avec de nombreux dentistes qui ne pratiquent pas l'implantologie, pour prendre en charge leurs patients dans les meilleures conditions." },
+      { q: "Acceptez-vous ma mutuelle ?", a: "La prise en charge dépend de votre contrat et du soin — le cabinet confirme le remboursement exact lors de votre visite." },
+    ],
+    aiTone: "chaleureux, rassurant, à l'écoute des patients anxieux",
+    aiGreeting: "Bonjour 👋 Bienvenue au Cabinet Nicolas Metay, spécialiste en implantologie à Lyon Monplaisir. Comment puis-je vous aider ?",
+    isDemo: true,
+    demoContactUrl: "https://servolia.com/call",
+    status: "published",
+  },
 ];
 
 /* ───────────────────────── loaders ───────────────────────── */
