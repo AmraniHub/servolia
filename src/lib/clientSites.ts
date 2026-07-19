@@ -296,6 +296,11 @@ const DEMO_SITES: ClientSiteConfig[] = [
     // Real prospect demo — built from docs/outbound/prospects-dentaire-fr.csv (HOT
     // lead: no online booking, no chat) and a direct read of their actual site,
     // dentairemonplaisir.fr. Every fact below is real; no price is invented.
+    //
+    // Images: generic Unsplash stock (Unsplash License — free for commercial use),
+    // NOT real photos of this clinic. Chosen deliberately to never show an
+    // identifiable person captioned as a specific real name — illustrative only,
+    // until the clinic supplies their own real photos.
     slug: "demo-metay",
     businessName: "Cabinet Nicolas Metay",
     niche: "dental",
@@ -307,9 +312,22 @@ const DEMO_SITES: ClientSiteConfig[] = [
     phone: "04 78 76 66 66",
     email: "dentistelyon8@gmail.com",
     hours: "Lun–Ven, 9h30–12h00 et 14h00–17h00 (fermé le mercredi)",
+    heroImageUrl: "https://images.unsplash.com/photo-1629909613654-28e377c37b09?w=1600&q=80&auto=format&fit=crop",
     heroHeadline: "Des implants dentaires, sans l'appréhension.",
     heroSub: "Cabinet spécialisé en implantologie à Lyon Monplaisir. Notre assistant répond à vos questions et prend vos coordonnées à tout moment — jour et nuit.",
     about: "Le Dr Nicolas Metay exerce à Monplaisir depuis 2009 et se consacre à l'implantologie : 15 ans d'expérience, des centaines d'implants posés, et une veille technologique constante (imagerie 3D, chirurgie guidée, empreinte numérique). L'équipe — Nadia, formée à l'hypnose ericksonienne, et Sabrina — accompagne aussi les patients les plus anxieux.",
+    highlights: [
+      {
+        title: "Des implants de dernière génération",
+        body: "15 ans d'expérience, chirurgie guidée et imagerie 3D — un système implantaire éprouvé, posé dans une salle dédiée à la chirurgie.",
+        imageUrl: "https://images.unsplash.com/photo-1593022356769-11f762e25ed9?w=1200&q=80&auto=format&fit=crop",
+      },
+      {
+        title: "Anesthésie générale : une solution pour les patients phobiques",
+        body: "À la Clinique Protestante, pour vivre votre intervention sans appréhension — une option pensée pour les patients les plus anxieux.",
+        imageUrl: "https://images.unsplash.com/photo-1579154491915-611e891d3a5b?w=1200&q=80&auto=format&fit=crop",
+      },
+    ],
     services: [
       { name: "Implant dentaire (dent unique)", description: "Remplacement d'une dent manquante par un implant, dans une salle dédiée à la chirurgie." },
       { name: "Implants – mâchoire complète", description: "Solution complète pour une mâchoire édentée, avec plan de traitement personnalisé." },
