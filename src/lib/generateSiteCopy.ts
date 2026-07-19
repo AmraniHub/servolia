@@ -1,6 +1,11 @@
 import Anthropic from "@anthropic-ai/sdk";
-import type { ClientSiteConfig, ClientService, ClientFaq } from "@/lib/clientSites";
-import { isDentalNiche, dentalCopyPlaybook } from "@/lib/niches/dental";
+import type {
+  ClientSiteConfig, ClientService, ClientFaq, ClientHighlight,
+  ClientStat, ClientSolution, ClientExpertiseBlock,
+} from "@/lib/clientSites";
+import {
+  isDentalNiche, dentalCopyPlaybook, DENTAL_HIGHLIGHT_IMAGES, DENTAL_EXPERTISE_IMAGES,
+} from "@/lib/niches/dental";
 
 /**
  * AI enrichment for client-site generation.
@@ -28,6 +33,11 @@ interface AiCopy {
   faqs?: ClientFaq[];
   aiTone?: string;
   aiGreeting?: string;
+  // Rich multi-page blocks — grounded in intake, never invented.
+  highlights?: ClientHighlight[];
+  solutions?: ClientSolution[];
+  expertise?: ClientExpertiseBlock[];
+  stats?: ClientStat[];
 }
 
 function extractJson<T>(raw: string): T | null {
@@ -88,6 +98,45 @@ function sanitize(copy: AiCopy): AiCopy {
     if (!out.faqs.length) delete out.faqs;
   }
 
+  if (Array.isArray(copy.highlights)) {
+    out.highlights = copy.highlights
+      .map((h) => ({ title: cleanStr(h?.title, 80) ?? "", body: cleanStr(h?.body, 260) ?? "" }))
+      .filter((h) => h.title && h.body)
+      .slice(0, 3);
+    if (!out.highlights.length) delete out.highlights;
+  }
+
+  if (Array.isArray(copy.solutions)) {
+    out.solutions = copy.solutions
+      .map((s) => ({ title: cleanStr(s?.title, 60) ?? "", body: cleanStr(s?.body, 160) }))
+      .filter((s) => s.title)
+      .slice(0, 6);
+    if (!out.solutions.length) delete out.solutions;
+  }
+
+  if (Array.isArray(copy.expertise)) {
+    out.expertise = copy.expertise
+      .map((e) => ({
+        eyebrow: cleanStr(e?.eyebrow, 48),
+        title: cleanStr(e?.title, 80) ?? "",
+        body: cleanStr(e?.body, 420) ?? "",
+        bullets: Array.isArray(e?.bullets)
+          ? e.bullets.map((b) => cleanStr(b, 90)).filter((b): b is string => !!b).slice(0, 5)
+          : undefined,
+      }))
+      .filter((e) => e.title && e.body)
+      .slice(0, 2);
+    if (!out.expertise.length) delete out.expertise;
+  }
+
+  if (Array.isArray(copy.stats)) {
+    out.stats = copy.stats
+      .map((s) => ({ value: cleanStr(s?.value, 12) ?? "", label: cleanStr(s?.label, 40) ?? "" }))
+      .filter((s) => s.value && s.label)
+      .slice(0, 4);
+    if (!out.stats.length) delete out.stats;
+  }
+
   return out;
 }
 
@@ -134,6 +183,10 @@ Return ONLY a JSON object with exactly these keys:
   "services": [{ "name": "...", "description": "one sentence, concrete", "price": "ONLY if the intake states a price, else omit this key" }],
   "whyUs": ["4-5 short differentiators grounded in the intake"],
   "faqs": [{ "q": "...", "a": "..." }],
+  "highlights": [{ "title": "≤80 chars", "body": "≤240 chars — a headline feature/differentiator of this business" }],
+  "solutions": [{ "title": "≤50 chars — a service/treatment category this business offers", "body": "one short sentence" }],
+  "expertise": [{ "eyebrow": "2-4 word label", "title": "≤80 chars", "body": "2-3 sentences on this area of their work", "bullets": ["3-4 short supporting points"] }],
+  "stats": [{ "value": "e.g. '10 ans' or '500+'", "label": "what it measures" }],
   "aiTone": "2-4 words describing how the AI receptionist should speak for this business",
   "aiGreeting": "the receptionist's first message, ≤140 chars, friendly, mentions the business name"
 }
@@ -142,7 +195,11 @@ Rules — these are hard constraints:
 - Write in ${lang}. Natural, professional, no hype words like "best" or "#1".
 - Use ONLY facts from the intake. NEVER invent prices, certifications, awards, review counts, years in business, or team size. If the intake gives prices, use them exactly.
 - faqs: write 5-6 covering what real customers in the "${draft.niche}" niche ask (booking, prices/quotes policy, location, first visit, emergencies/urgency if relevant). Answers must be honest for a business whose details you only partly know — prefer "contact us / ask the assistant" over invented specifics.
-- Keep every service the client listed; add descriptions for each. Do not add services they didn't mention.`;
+- Keep every service the client listed; add descriptions for each. Do not add services they didn't mention.
+- highlights: 2-3 real feature blocks drawn from the intake (a service they emphasise, a technology, a reassurance point). If the intake is too thin, return fewer or omit the key — do not invent capabilities.
+- solutions: 3-6 treatment/service categories THIS business actually offers (based on their services). Never list a service they didn't mention.
+- expertise: 1-2 in-depth blocks about their strongest area, grounded in the intake. Omit if you'd have to invent.
+- stats: ONLY include a stat if the intake states a real number (years in business, patients/clients served, locations). If the intake gives no real numbers, return an empty array — NEVER fabricate a statistic.`;
 
   try {
     const client = new Anthropic({ apiKey });
@@ -167,6 +224,19 @@ Rules — these are hard constraints:
       return { ...s, price: s.price ?? prev?.price };
     });
 
+    // Attach illustrative images to the AI-written visual blocks. The model
+    // supplies the words; we supply niche-appropriate stock imagery by position
+    // (dental only for now — other niches render image-less gradient variants).
+    const dental = isDentalNiche(draft.niche);
+    const highlights = copy.highlights?.map((h, i) => ({
+      ...h,
+      imageUrl: dental ? DENTAL_HIGHLIGHT_IMAGES[i % DENTAL_HIGHLIGHT_IMAGES.length] : undefined,
+    }));
+    const expertise = copy.expertise?.map((e, i) => ({
+      ...e,
+      imageUrl: dental ? DENTAL_EXPERTISE_IMAGES[i % DENTAL_EXPERTISE_IMAGES.length] : undefined,
+    }));
+
     const config: ClientSiteConfig = {
       ...draft,
       heroHeadline: copy.heroHeadline ?? draft.heroHeadline,
@@ -175,6 +245,10 @@ Rules — these are hard constraints:
       services: services?.length ? services : draft.services,
       whyUs: copy.whyUs ?? draft.whyUs,
       faqs: copy.faqs ?? draft.faqs,
+      highlights: highlights?.length ? highlights : draft.highlights,
+      solutions: copy.solutions?.length ? copy.solutions : draft.solutions,
+      expertise: expertise?.length ? expertise : draft.expertise,
+      stats: copy.stats?.length ? copy.stats : draft.stats,
       aiTone: copy.aiTone ?? draft.aiTone,
       aiGreeting: copy.aiGreeting ?? draft.aiGreeting,
     };

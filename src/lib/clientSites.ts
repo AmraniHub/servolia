@@ -12,7 +12,10 @@
  */
 
 import { supabaseAdmin } from "@/lib/supabase";
-import { isDentalNiche, DENTAL_WHY_US, DENTAL_FAQS, DENTAL_AI_TONE, dentalAiGreeting } from "@/lib/niches/dental";
+import {
+  isDentalNiche, DENTAL_WHY_US, DENTAL_FAQS, DENTAL_AI_TONE, dentalAiGreeting,
+  DENTAL_HERO_IMAGES, DENTAL_PAGE_BANNERS, DENTAL_PROCESS, DENTAL_VALUES, DENTAL_ADVICE, dentalTagline,
+} from "@/lib/niches/dental";
 
 export interface ClientService {
   name: string;
@@ -291,6 +294,24 @@ export function configFromIntake(src: IntakeSource): ClientSiteConfig {
         ];
 
   const phone = str(d.phone);
+  const intakeHero = str(d.heroImageUrl);
+
+  // Dental clients get the full professional multi-page layout by default:
+  // sub-page nav (Cabinet / Expertise / Conseils), photo banners, a patient-
+  // journey, clinic values and aftercare advice. All of it is generic-safe for
+  // any practice; the AI layer adds the clinic-specific richness on top.
+  const dentalLayout = isDental
+    ? {
+        expandedHeader: true,
+        multiPage: true,
+        tagline: dentalTagline(city, lang),
+        heroImages: intakeHero ? undefined : DENTAL_HERO_IMAGES,
+        pageBanners: DENTAL_PAGE_BANNERS,
+        process: DENTAL_PROCESS[lang],
+        values: DENTAL_VALUES[lang],
+        advice: DENTAL_ADVICE[lang],
+      }
+    : {};
 
   return {
     slug: slugify(businessName),
@@ -306,7 +327,8 @@ export function configFromIntake(src: IntakeSource): ClientSiteConfig {
     email: str(src.email) ?? undefined,
     bookingUrl: str(d.bookingUrl) ?? str(d.doctolibUrl) ?? str(d.planityUrl),
     logoUrl: str(d.logoUrl),
-    heroImageUrl: str(d.heroImageUrl),
+    heroImageUrl: intakeHero,
+    ...dentalLayout,
     heroHeadline,
     heroSub,
     about,
