@@ -14,9 +14,11 @@ function shade(hex: string, amt = -18): string {
 }
 
 const T = {
-  en: { book: "Book now", home: "Home", about: "About", services: "Services", why: "Why choose us", contact: "Get in touch", faq: "Questions", callUs: "Call us", emailUs: "Email us", visit: "Visit us", hours: "Hours", bookCta: "Book your appointment", bookSub: "Message our assistant or reach us directly — we respond fast.", chat: "Chat with us", team: "Meet the team" },
-  fr: { book: "Réserver", home: "Accueil", about: "Cabinet", services: "Services", why: "Pourquoi nous choisir", contact: "Nous contacter", faq: "Questions", callUs: "Appelez-nous", emailUs: "Écrivez-nous", visit: "Nous trouver", hours: "Horaires", bookCta: "Réservez votre rendez-vous", bookSub: "Écrivez à notre assistant ou contactez-nous directement — réponse rapide.", chat: "Discuter", team: "Notre équipe" },
+  en: { book: "Book now", home: "Home", about: "About", services: "Services", advice: "Advice", why: "Why choose us", contact: "Get in touch", faq: "Questions", callUs: "Call us", emailUs: "Email us", visit: "Visit us", hours: "Hours", bookCta: "Book your appointment", bookSub: "Message our assistant or reach us directly — we respond fast.", chat: "Chat with us", team: "Meet the team", backHome: "Home" },
+  fr: { book: "Réserver", home: "Accueil", about: "Cabinet", services: "Services", advice: "Conseils", why: "Pourquoi nous choisir", contact: "Nous contacter", faq: "Questions", callUs: "Appelez-nous", emailUs: "Écrivez-nous", visit: "Nous trouver", hours: "Horaires", bookCta: "Réservez votre rendez-vous", bookSub: "Écrivez à notre assistant ou contactez-nous directement — réponse rapide.", chat: "Discuter", team: "Notre équipe", backHome: "Accueil" },
 };
+
+export type ClientSitePage = "home" | "cabinet" | "services" | "conseils";
 
 /** Generic, widely-used minimalist glyphs for linking out to a client's own social profiles. */
 function SocialIcon({ platform }: { platform: string }) {
@@ -51,7 +53,7 @@ function HeroCtas({ c, t, accentDark }: { c: ClientSiteConfig; t: typeof T["en"]
   );
 }
 
-export default function ClientSite({ config }: { config: ClientSiteConfig }) {
+export default function ClientSite({ config, page = "home" }: { config: ClientSiteConfig; page?: ClientSitePage }) {
   const c = config;
   const accent = c.accent || "#36671E";
   const accentDark = shade(accent, -28);
@@ -63,13 +65,21 @@ export default function ClientSite({ config }: { config: ClientSiteConfig }) {
     ? { tag: "DÉMO", line: `Ceci est un aperçu créé pour ${c.businessName}. Essayez le chat en bas à droite — c'est votre réceptionniste IA.`, cta: "Je veux ce système →" }
     : { tag: "DEMO", line: `This is a preview built for ${c.businessName}. Try the chat, bottom-right — it's your AI receptionist.`, cta: "I want this system →" };
 
+  const basePath = `/sites/${c.slug}`;
   const navItems = [
-    { key: "home", label: t.home, href: "#" },
-    { key: "about", label: t.about, href: "#about", show: !!c.about },
-    { key: "services", label: t.services, href: "#services", show: c.services.length > 0 },
-    { key: "why", label: t.why, href: "#why", show: c.whyUs.length > 0 },
-    { key: "faq", label: t.faq, href: "#faq", show: c.faqs.length > 0 },
-  ].filter((n) => n.show !== false);
+    { key: "home", label: t.home, href: "#", mHref: basePath, show: true },
+    { key: "cabinet", label: t.about, href: "#about", mHref: `${basePath}/cabinet`, show: !!c.about || (!!c.team && c.team.length > 0) },
+    { key: "services", label: t.services, href: "#services", mHref: `${basePath}/services`, show: c.services.length > 0 },
+    { key: "conseils", label: t.advice, href: "#why", mHref: `${basePath}/conseils`, show: c.whyUs.length > 0 || c.faqs.length > 0 },
+  ]
+    .filter((n) => n.show !== false)
+    .map((n) => ({ key: n.key, label: n.label, href: c.multiPage ? n.mHref : n.href }));
+
+  const pageTitle = page === "cabinet" ? t.about : page === "services" ? t.services : page === "conseils" ? t.advice : "";
+  const showHome = page === "home";
+  const showCabinet = page === "home" || page === "cabinet";
+  const showServices = page === "home" || page === "services";
+  const showConseils = page === "home" || page === "conseils";
 
   return (
     <div className="min-h-screen bg-white text-[#18181B] flex flex-col">
@@ -137,8 +147,18 @@ export default function ClientSite({ config }: { config: ClientSiteConfig }) {
         </div>
       </header>
 
+      {/* Page-title banner for sub-pages of a multi-page site */}
+      {!showHome && (
+        <section className="relative overflow-hidden" style={{ background: `linear-gradient(135deg, ${accentDark}, ${accent})` }}>
+          <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-14 lg:py-20 text-center">
+            <a href={c.multiPage ? basePath : "#"} className="text-white/70 text-xs font-semibold hover:text-white transition-colors">{t.backHome}</a>
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight mt-2">{pageTitle}</h1>
+          </div>
+        </section>
+      )}
+
       {/* Hero — photo-driven variant when the client has a real hero photo, otherwise the flat gradient */}
-      {c.heroImageUrl ? (
+      {showHome && (c.heroImageUrl ? (
         <section className="relative overflow-hidden rounded-b-[40px] sm:mx-4 sm:mt-4 sm:rounded-[40px]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={c.heroImageUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
@@ -162,10 +182,10 @@ export default function ClientSite({ config }: { config: ClientSiteConfig }) {
             <HeroCtas c={c} t={t} accentDark={accentDark} />
           </div>
         </section>
-      )}
+      ))}
 
       {/* Highlights — full-bleed photo "story cards", one per differentiator. Purely additive. */}
-      {c.highlights && c.highlights.length > 0 && (
+      {showServices && c.highlights && c.highlights.length > 0 && (
         <section className="py-10 lg:py-14 bg-white">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
             {c.highlights.map((h, i) => (
@@ -191,7 +211,7 @@ export default function ClientSite({ config }: { config: ClientSiteConfig }) {
       )}
 
       {/* Team — humanizes the business. Purely additive; only ever real photos of real people. */}
-      {c.team && c.team.length > 0 && (
+      {showCabinet && c.team && c.team.length > 0 && (
         <section className="py-16 lg:py-20 bg-[#FAFAF9]">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
             <h2 className="text-3xl sm:text-4xl font-black text-center mb-12">{t.team}</h2>
@@ -215,7 +235,7 @@ export default function ClientSite({ config }: { config: ClientSiteConfig }) {
       )}
 
       {/* About */}
-      {c.about && (
+      {showCabinet && c.about && (
         <section id="about" className="py-16 lg:py-20 bg-white">
           <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <p className="text-lg leading-relaxed text-[#3F3F46]">{c.about}</p>
@@ -224,7 +244,7 @@ export default function ClientSite({ config }: { config: ClientSiteConfig }) {
       )}
 
       {/* Services */}
-      {c.services.length > 0 && (
+      {showServices && c.services.length > 0 && (
         <section id="services" className="py-16 lg:py-20 bg-[#FAFAF9]">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
             <h2 className="text-3xl sm:text-4xl font-black text-center mb-12">{t.services}</h2>
@@ -248,7 +268,7 @@ export default function ClientSite({ config }: { config: ClientSiteConfig }) {
       )}
 
       {/* Why us */}
-      {c.whyUs.length > 0 && (
+      {showConseils && c.whyUs.length > 0 && (
         <section id="why" className="py-16 lg:py-20 bg-white">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
             <h2 className="text-3xl sm:text-4xl font-black text-center mb-12">{t.why}</h2>
@@ -302,7 +322,7 @@ export default function ClientSite({ config }: { config: ClientSiteConfig }) {
       </section>
 
       {/* FAQ */}
-      {c.faqs.length > 0 && (
+      {showConseils && c.faqs.length > 0 && (
         <section id="faq" className="py-16 lg:py-20 bg-white">
           <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
             <h2 className="text-3xl font-black text-center mb-10">{t.faq}</h2>

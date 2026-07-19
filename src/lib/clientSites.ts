@@ -76,6 +76,10 @@ export interface ClientSiteConfig {
    * horizontal section nav + footer nav/social row. Off by default so every
    * existing site renders exactly as before — purely additive. */
   expandedHeader?: boolean;
+  /** Opt-in multi-page site: nav items link to real /sites/[slug]/[page]
+   * routes (cabinet, services, conseils) instead of in-page anchors. Off by
+   * default — existing single-page sites are unaffected. */
+  multiPage?: boolean;
   /** Links to the client's own real social profiles. */
   socialLinks?: { platform: "facebook" | "instagram" | "linkedin" | "x" | "tiktok" | "youtube"; url: string }[];
 
@@ -323,11 +327,15 @@ const DEMO_SITES: ClientSiteConfig[] = [
     hours: "Lun–Ven, 9h30–12h00 et 14h00–17h00 (fermé le mercredi)",
     tagline: "Cabinet d'implantologie à Lyon",
     expandedHeader: true,
+    multiPage: true,
+    // Demo only: social icons keep the design's look but route back to Servolia
+    // rather than the prospect's real accounts (this is our showcase, not their
+    // live site). A real client's site would point these at their own profiles.
     socialLinks: [
-      { platform: "facebook", url: "https://www.facebook.com/cabinetnicolasmetay/" },
-      { platform: "instagram", url: "https://www.instagram.com/cabinetnicolasmetay/" },
-      { platform: "linkedin", url: "https://www.linkedin.com/company/cabinetnicolasmetay/" },
-      { platform: "x", url: "https://twitter.com/cabinetmetay" },
+      { platform: "facebook", url: "https://servolia.com" },
+      { platform: "instagram", url: "https://servolia.com" },
+      { platform: "linkedin", url: "https://servolia.com" },
+      { platform: "x", url: "https://servolia.com" },
     ],
     heroImageUrl: "https://images.unsplash.com/photo-1629909613654-28e377c37b09?w=1600&q=80&auto=format&fit=crop",
     heroHeadline: "Des implants dentaires, sans l'appréhension.",
