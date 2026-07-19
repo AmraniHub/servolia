@@ -39,6 +39,46 @@ export interface ClientHighlight {
   ctaLabel?: string; // defaults to the page's "book" label if omitted
 }
 
+/** A single trust/proof stat, e.g. { value: "15 ans", label: "d'expérience" }. */
+export interface ClientStat {
+  value: string;
+  label: string;
+}
+
+/** A numbered process/consultation step. */
+export interface ClientStep {
+  title: string;
+  body: string;
+  meta?: string; // e.g. duration "45 min"
+}
+
+/** A rich, in-depth feature block for the Expertise page (alternating rows). */
+export interface ClientExpertiseBlock {
+  eyebrow?: string; // small label above the title
+  title: string;
+  body: string;
+  bullets?: string[]; // optional supporting points
+  imageUrl?: string;
+}
+
+/** A treatment/solution card (Expertise page grid). */
+export interface ClientSolution {
+  title: string;
+  body?: string;
+}
+
+/** A clinic value / reassurance point (Cabinet page). */
+export interface ClientValue {
+  title: string;
+  body: string;
+}
+
+/** A short advice/blog teaser card (Conseils page). */
+export interface ClientAdvice {
+  title: string;
+  body: string;
+}
+
 export interface ClientSiteConfig {
   slug: string;
   businessName: string;
@@ -82,6 +122,22 @@ export interface ClientSiteConfig {
   multiPage?: boolean;
   /** Links to the client's own real social profiles. */
   socialLinks?: { platform: "facebook" | "instagram" | "linkedin" | "x" | "tiktok" | "youtube"; url: string }[];
+
+  // Rich content blocks — all optional, purely additive. Render only when present.
+  /** Trust/proof band (years, implants placed, guarantee...). */
+  stats?: ClientStat[];
+  /** In-depth expertise blocks (alternating image/text) for the Expertise page. */
+  expertise?: ClientExpertiseBlock[];
+  /** Short lead-in shown at the top of the Expertise page. */
+  expertiseIntro?: string;
+  /** Treatment/solution grid on the Expertise page. */
+  solutions?: ClientSolution[];
+  /** Numbered consultation/treatment steps. */
+  process?: ClientStep[];
+  /** Clinic values / reassurance cards on the Cabinet page. */
+  values?: ClientValue[];
+  /** Advice/blog teaser cards on the Conseils page. */
+  advice?: ClientAdvice[];
 
   // Copy
   heroHeadline: string;
@@ -341,17 +397,70 @@ const DEMO_SITES: ClientSiteConfig[] = [
     heroHeadline: "Des implants dentaires, sans l'appréhension.",
     heroSub: "Cabinet spécialisé en implantologie à Lyon Monplaisir. Notre assistant répond à vos questions et prend vos coordonnées à tout moment — jour et nuit.",
     about: "Le Dr Nicolas Metay exerce à Monplaisir depuis 2009 et se consacre à l'implantologie : 15 ans d'expérience, des centaines d'implants posés, et une veille technologique constante (imagerie 3D, chirurgie guidée, empreinte numérique). L'équipe — Nadia, formée à l'hypnose ericksonienne, et Sabrina — accompagne aussi les patients les plus anxieux.",
+    stats: [
+      { value: "15 ans", label: "d'expérience en implantologie" },
+      { value: "500+", label: "implants posés" },
+      { value: "4 sem.", label: "premier rendez-vous garanti" },
+      { value: "3D", label: "imagerie & chirurgie guidée" },
+    ],
     highlights: [
       {
-        title: "Des implants de dernière génération",
-        body: "15 ans d'expérience, chirurgie guidée et imagerie 3D — un système implantaire éprouvé, posé dans une salle dédiée à la chirurgie.",
+        title: "L'implant dentaire : solide, invisible et indispensable",
+        body: "Un système implantaire éprouvé, posé dans une salle dédiée à la chirurgie. 15 ans d'expérience, chirurgie guidée et imagerie 3D pour un résultat naturel et durable.",
         imageUrl: "https://images.unsplash.com/photo-1593022356769-11f762e25ed9?w=1200&q=80&auto=format&fit=crop",
+        ctaLabel: "En savoir plus",
       },
       {
-        title: "Anesthésie générale : une solution pour les patients phobiques",
+        title: "Anesthésie générale : la solution pour les patients phobiques",
         body: "À la Clinique Protestante, pour vivre votre intervention sans appréhension — une option pensée pour les patients les plus anxieux.",
         imageUrl: "https://images.unsplash.com/photo-1579154491915-611e891d3a5b?w=1200&q=80&auto=format&fit=crop",
+        ctaLabel: "En savoir plus",
       },
+      {
+        title: "Nos technologies au service de votre bien-être",
+        body: "Radiographie 3D, empreinte numérique, systèmes de navigation et chirurgie guidée : un plateau technique moderne pour des interventions plus précises et plus confortables.",
+        imageUrl: "https://images.unsplash.com/photo-1629909615184-74f495363b67?w=1200&q=80&auto=format&fit=crop",
+        ctaLabel: "Voir notre expertise",
+      },
+    ],
+    expertiseIntro: "Nos technologies au service de votre bien-être. Une prise en charge complète, de la première consultation jusqu'au suivi, pensée autour du confort du patient.",
+    expertise: [
+      {
+        eyebrow: "Une prise en charge sur mesure",
+        title: "Des conseils personnalisés",
+        body: "Avant tout traitement complexe, nous prenons le temps de vous connaître : votre mode de vie, votre travail, votre famille, vos activités. C'est ce qui nous permet de construire un plan de traitement réellement adapté à vous.",
+        bullets: [
+          "1er rendez-vous : 45 minutes pour comprendre vos besoins",
+          "2e rendez-vous : 30–45 minutes de recommandations",
+          "3e rendez-vous : 30 minutes pour finaliser la stratégie et le financement",
+        ],
+        imageUrl: "https://images.unsplash.com/photo-1588776814546-1ffcf47267a5?w=1200&q=80&auto=format&fit=crop",
+      },
+      {
+        eyebrow: "Exigence, compétence, efficacité",
+        title: "L'implant dentaire, notre spécialité",
+        body: "15 ans d'expérience et des centaines d'implants posés. Une formation continue et des investissements réguliers dans un plateau technique moderne, pour des interventions précises et peu invasives.",
+        bullets: [
+          "Radiographie 3D et empreinte numérique",
+          "Systèmes de navigation et chirurgie guidée",
+          "Collaboration avec un laboratoire de prothèse régional expérimenté",
+          "Anesthésie générale possible à la Clinique Protestante",
+        ],
+        imageUrl: "https://images.unsplash.com/photo-1593022356769-11f762e25ed9?w=1200&q=80&auto=format&fit=crop",
+      },
+    ],
+    solutions: [
+      { title: "Dent unique manquante", body: "Antérieure ou postérieure, remplacée par un implant discret et durable." },
+      { title: "Mâchoire complète", body: "Reconstruction d'une arcade entière avec un plan de traitement personnalisé." },
+      { title: "Comblement osseux", body: "Préparation et augmentation osseuse pour poser l'implant dans les meilleures conditions." },
+      { title: "Reprise d'implants", body: "Prise en charge des anciens implants nécessitant un nouveau traitement." },
+      { title: "Esthétique du sourire", body: "Solutions pensées pour les dents visibles, avec un rendu naturel." },
+      { title: "Anesthésie générale", body: "Une option confortable pour les patients les plus anxieux." },
+    ],
+    process: [
+      { meta: "45 min", title: "Premier entretien", body: "On comprend vos besoins, vos craintes et votre situation — sans engagement." },
+      { meta: "30–45 min", title: "Recommandations", body: "On vous présente les solutions possibles et le plan de traitement adapté." },
+      { meta: "30 min", title: "Stratégie & financement", body: "On finalise ensemble la solution retenue et les modalités, avant de démarrer." },
     ],
     services: [
       { name: "Implant dentaire (dent unique)", description: "Remplacement d'une dent manquante par un implant, dans une salle dédiée à la chirurgie." },
@@ -367,6 +476,28 @@ const DEMO_SITES: ClientSiteConfig[] = [
       "Option anesthésie générale pour les patients anxieux",
       "Premier rendez-vous garanti sous 4 semaines",
       "Jusqu'à 3 entretiens personnalisés avant de démarrer un traitement",
+    ],
+    values: [
+      { title: "Consultations personnalisées", body: "Un premier rendez-vous de 45 minutes pour cerner vos attentes, votre mode de vie et vos éventuelles craintes." },
+      { title: "Des soins optimaux", body: "Des systèmes implantaires éprouvés et des techniques peu invasives pour réduire la gêne et le temps de récupération." },
+      { title: "Un environnement sûr", body: "Stérilisation rigoureusement contrôlée, salles dédiées à la chirurgie et traçabilité complète des interventions." },
+      { title: "L'expérience qui rassure", body: "Des centaines d'implants posés en 15 ans, une maîtrise clinique sur des cas très variés." },
+    ],
+    advice: [
+      { title: "Après la pose d'un implant", body: "Les bons réflexes les premiers jours : rinçage, alimentation, tabac — pour une cicatrisation optimale." },
+      { title: "Le jour de l'intervention", body: "Comment bien se préparer : repas, médicaments et petites précautions avant votre rendez-vous." },
+      { title: "Quand faut-il s'inquiéter ?", body: "Les signes qui doivent vous amener à recontacter le cabinet après une intervention." },
+      { title: "Après une extraction dentaire", body: "Préserver le caillot sanguin et favoriser une bonne cicatrisation, étape par étape." },
+      { title: "Bien se brosser les dents", body: "La méthode, la fréquence et les gestes qui font la différence au quotidien." },
+      { title: "Brossettes interdentaires", body: "Comment choisir la bonne taille et nettoyer les espaces que le fil ne suffit pas à atteindre." },
+    ],
+    // Team: real names/roles/bios (public professional info from the clinic's own
+    // site), deliberately WITHOUT photos — a stock face must never be captioned
+    // with a real person's name. Renders a clean monogram avatar instead.
+    team: [
+      { name: "Dr Nicolas Metay", role: "Chirurgien-dentiste", bio: "Diplômé de l'Université Lyon 1 (2006), DU d'implantologie et de chirurgie orale (2009). Formé à la chirurgie guidée et à la régénération osseuse." },
+      { name: "Nadia", role: "Assistante clinique", bio: "Diplômée depuis 2013, formée à l'hypnose ericksonienne (2017) et, plus récemment, aux aligneurs et à la chirurgie guidée." },
+      { name: "Sabrina", role: "Assistante administrative", bio: "Formée à l'assistanat dentaire, à la relation patient et à la cotation CCAM — votre premier contact au cabinet." },
     ],
     faqs: [
       { q: "Prenez-vous de nouveaux patients ?", a: "Oui — le cabinet accueille de nouveaux patients, avec un premier rendez-vous garanti sous 4 semaines maximum." },

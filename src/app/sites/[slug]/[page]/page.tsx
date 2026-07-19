@@ -10,6 +10,7 @@ export const dynamic = "force-dynamic";
 // equivalent so nav items lead to their own indexable page.
 const PAGES: Record<string, ClientSitePage> = {
   cabinet: "cabinet",
+  expertise: "expertise",
   services: "services",
   conseils: "conseils",
 };
@@ -17,6 +18,7 @@ const PAGES: Record<string, ClientSitePage> = {
 const PAGE_LABEL: Record<ClientSitePage, { en: string; fr: string }> = {
   home: { en: "", fr: "" },
   cabinet: { en: "About", fr: "Cabinet" },
+  expertise: { en: "Expertise", fr: "Expertise" },
   services: { en: "Services", fr: "Services" },
   conseils: { en: "Advice", fr: "Conseils" },
 };

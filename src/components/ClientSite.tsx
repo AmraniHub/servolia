@@ -1,6 +1,6 @@
 import ChatWidget from "@/components/ChatWidget";
-import { MapPin, Phone, Mail, Clock, CheckCircle, ArrowRight, Calendar } from "lucide-react";
-import type { ClientSiteConfig } from "@/lib/clientSites";
+import { MapPin, Phone, Mail, Clock, CheckCircle, ArrowRight, Calendar, Check } from "lucide-react";
+import type { ClientSiteConfig, ClientExpertiseBlock, ClientHighlight } from "@/lib/clientSites";
 
 /** Slightly darken a hex color for gradients/hovers. */
 function shade(hex: string, amt = -18): string {
@@ -14,11 +14,12 @@ function shade(hex: string, amt = -18): string {
 }
 
 const T = {
-  en: { book: "Book now", home: "Home", about: "About", services: "Services", advice: "Advice", why: "Why choose us", contact: "Get in touch", faq: "Questions", callUs: "Call us", emailUs: "Email us", visit: "Visit us", hours: "Hours", bookCta: "Book your appointment", bookSub: "Message our assistant or reach us directly — we respond fast.", chat: "Chat with us", team: "Meet the team", backHome: "Home" },
-  fr: { book: "Réserver", home: "Accueil", about: "Cabinet", services: "Services", advice: "Conseils", why: "Pourquoi nous choisir", contact: "Nous contacter", faq: "Questions", callUs: "Appelez-nous", emailUs: "Écrivez-nous", visit: "Nous trouver", hours: "Horaires", bookCta: "Réservez votre rendez-vous", bookSub: "Écrivez à notre assistant ou contactez-nous directement — réponse rapide.", chat: "Discuter", team: "Notre équipe", backHome: "Accueil" },
+  en: { book: "Book now", home: "Home", about: "About", expertise: "Expertise", services: "Services", advice: "Advice", contactShort: "Contact", why: "Why choose us", faq: "Questions", callUs: "Call us", emailUs: "Email us", visit: "Visit us", hours: "Hours", bookCta: "Book your appointment", bookSub: "Message our assistant or reach us directly — we respond fast.", chat: "Chat with us", team: "Meet the team", teamEyebrow: "The people behind your care", backHome: "Home", processTitle: "How it works", processEyebrow: "Your journey", solutionsTitle: "Treatment options", solutionsEyebrow: "What we treat", valuesTitle: "Our commitments", valuesEyebrow: "Why patients trust us", adviceTitle: "Advice & aftercare", adviceEyebrow: "We're with you", learnMore: "Learn more", ourExpertise: "Our expertise", expertiseEyebrow: "Our know-how" },
+  fr: { book: "Réserver", home: "Accueil", about: "Cabinet", expertise: "Expertise", services: "Services", advice: "Conseils", contactShort: "Contact", why: "Pourquoi nous choisir", faq: "Questions", callUs: "Appelez-nous", emailUs: "Écrivez-nous", visit: "Nous trouver", hours: "Horaires", bookCta: "Réservez votre rendez-vous", bookSub: "Écrivez à notre assistant ou contactez-nous directement — réponse rapide.", chat: "Discuter", team: "Notre équipe", teamEyebrow: "Les visages de votre prise en charge", backHome: "Accueil", processTitle: "Comment ça se passe", processEyebrow: "Votre parcours", solutionsTitle: "Nos solutions", solutionsEyebrow: "Ce que nous traitons", valuesTitle: "Nos engagements", valuesEyebrow: "Pourquoi nous faire confiance", adviceTitle: "Conseils & suivi", adviceEyebrow: "On vous accompagne", learnMore: "En savoir plus", ourExpertise: "Notre expertise", expertiseEyebrow: "Notre savoir-faire" },
 };
+type Dict = typeof T["en"];
 
-export type ClientSitePage = "home" | "cabinet" | "services" | "conseils";
+export type ClientSitePage = "home" | "cabinet" | "expertise" | "services" | "conseils";
 
 /** Generic, widely-used minimalist glyphs for linking out to a client's own social profiles. */
 function SocialIcon({ platform }: { platform: string }) {
@@ -38,7 +39,7 @@ function SocialIcon({ platform }: { platform: string }) {
 }
 
 /** Shared CTA row for both hero variants (photo and flat-gradient). */
-function HeroCtas({ c, t, accentDark }: { c: ClientSiteConfig; t: typeof T["en"]; accentDark: string }) {
+function HeroCtas({ c, t, accentDark }: { c: ClientSiteConfig; t: Dict; accentDark: string }) {
   return (
     <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-9">
       <a href="#book" className="group px-8 py-4 rounded-xl bg-white font-black text-base flex items-center gap-2 hover:bg-white/90 transition-colors" style={{ color: accentDark }}>
@@ -49,6 +50,53 @@ function HeroCtas({ c, t, accentDark }: { c: ClientSiteConfig; t: typeof T["en"]
           <Phone className="w-4 h-4" /> {c.phone}
         </a>
       )}
+    </div>
+  );
+}
+
+/** Consistent section header (eyebrow + title + optional subtitle). */
+function SectionHead({ eyebrow, title, subtitle, accent }: { eyebrow?: string; title: string; subtitle?: string; accent: string }) {
+  return (
+    <div className="text-center max-w-2xl mx-auto mb-12 lg:mb-14">
+      {eyebrow && <p className="text-xs font-black uppercase tracking-[0.22em] mb-3" style={{ color: accent }}>{eyebrow}</p>}
+      <h2 className="text-3xl sm:text-4xl font-black tracking-tight leading-tight">{title}</h2>
+      {subtitle && <p className="text-[#52525B] mt-4 leading-relaxed">{subtitle}</p>}
+    </div>
+  );
+}
+
+/** Alternating image/text feature row — used for homepage highlights and Expertise blocks. */
+function FeatureRow({ block, reverse, accent, accentDark, t }: { block: ClientExpertiseBlock | ClientHighlight; reverse: boolean; accent: string; accentDark: string; t: Dict }) {
+  const eyebrow = "eyebrow" in block ? block.eyebrow : undefined;
+  const bullets = "bullets" in block ? block.bullets : undefined;
+  const ctaLabel = "ctaLabel" in block ? block.ctaLabel : undefined;
+  return (
+    <div className="grid lg:grid-cols-2 gap-8 lg:gap-14 items-center">
+      <div className={`relative rounded-[32px] overflow-hidden aspect-[4/3] shadow-sm ${reverse ? "lg:order-2" : ""}`}>
+        {block.imageUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={block.imageUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
+        ) : (
+          <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${accentDark}, ${accent})` }} />
+        )}
+      </div>
+      <div className={reverse ? "lg:order-1" : ""}>
+        {eyebrow && <p className="text-xs font-black uppercase tracking-[0.22em] mb-3" style={{ color: accent }}>{eyebrow}</p>}
+        <h3 className="text-2xl sm:text-3xl font-black tracking-tight leading-tight">{block.title}</h3>
+        <p className="text-[#52525B] mt-4 leading-relaxed">{block.body}</p>
+        {bullets && bullets.length > 0 && (
+          <ul className="mt-5 space-y-2.5">
+            {bullets.map((b, i) => (
+              <li key={i} className="flex items-start gap-2.5 text-sm text-[#3F3F46]">
+                <Check className="w-4 h-4 mt-0.5 shrink-0" style={{ color: accent }} /> <span>{b}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+        <a href="#book" className="inline-flex items-center gap-2 mt-7 px-6 py-3 rounded-full font-bold text-sm text-white hover:opacity-90 transition-opacity" style={{ background: accent }}>
+          {ctaLabel ?? t.book} <ArrowRight className="w-4 h-4" />
+        </a>
+      </div>
     </div>
   );
 }
@@ -65,24 +113,36 @@ export default function ClientSite({ config, page = "home" }: { config: ClientSi
     ? { tag: "DÉMO", line: `Ceci est un aperçu créé pour ${c.businessName}. Essayez le chat en bas à droite — c'est votre réceptionniste IA.`, cta: "Je veux ce système →" }
     : { tag: "DEMO", line: `This is a preview built for ${c.businessName}. Try the chat, bottom-right — it's your AI receptionist.`, cta: "I want this system →" };
 
-  const basePath = `/sites/${c.slug}`;
-  const navItems = [
-    { key: "home", label: t.home, href: "#", mHref: basePath, show: true },
-    { key: "cabinet", label: t.about, href: "#about", mHref: `${basePath}/cabinet`, show: !!c.about || (!!c.team && c.team.length > 0) },
-    { key: "services", label: t.services, href: "#services", mHref: `${basePath}/services`, show: c.services.length > 0 },
-    { key: "conseils", label: t.advice, href: "#why", mHref: `${basePath}/conseils`, show: c.whyUs.length > 0 || c.faqs.length > 0 },
-  ]
-    .filter((n) => n.show !== false)
-    .map((n) => ({ key: n.key, label: n.label, href: c.multiPage ? n.mHref : n.href }));
+  const isMulti = !!c.multiPage;
+  const isHome = page === "home";
+  // On a single-page site every section renders on the one page; on a multi-page
+  // site each section is placed on the page(s) listed here.
+  const on = (...pages: ClientSitePage[]) => (isMulti ? pages.includes(page) : true);
 
-  const pageTitle = page === "cabinet" ? t.about : page === "services" ? t.services : page === "conseils" ? t.advice : "";
-  const showHome = page === "home";
-  const showCabinet = page === "home" || page === "cabinet";
-  const showServices = page === "home" || page === "services";
-  const showConseils = page === "home" || page === "conseils";
+  const hasTeam = !!c.team && c.team.length > 0;
+  const hasValues = !!c.values && c.values.length > 0;
+  const hasExpertise = !!c.expertise && c.expertise.length > 0;
+  const hasSolutions = !!c.solutions && c.solutions.length > 0;
+  const hasProcess = !!c.process && c.process.length > 0;
+  const hasAdvice = !!c.advice && c.advice.length > 0;
+  const hasStats = !!c.stats && c.stats.length > 0;
+  const hasHighlights = !!c.highlights && c.highlights.length > 0;
+
+  const basePath = `/sites/${c.slug}`;
+  const nav = [
+    { key: "home", label: t.home, anchor: "#top", route: basePath, show: true },
+    { key: "cabinet", label: t.about, anchor: "#about", route: `${basePath}/cabinet`, show: !!c.about || hasTeam || hasValues },
+    { key: "expertise", label: t.expertise, anchor: "#expertise", route: `${basePath}/expertise`, show: hasExpertise || hasSolutions },
+    { key: "conseils", label: t.advice, anchor: "#conseils", route: `${basePath}/conseils`, show: hasAdvice || c.whyUs.length > 0 || c.faqs.length > 0 },
+    { key: "contact", label: t.contactShort, anchor: "#book", route: "#book", show: true },
+  ].filter((n) => n.show);
+  const navHref = (n: { key: string; anchor: string; route: string }) =>
+    n.key === "contact" ? "#book" : isMulti ? n.route : n.anchor;
+
+  const pageTitle = page === "cabinet" ? t.about : page === "expertise" ? t.expertise : page === "services" ? t.services : page === "conseils" ? t.advice : "";
 
   return (
-    <div className="min-h-screen bg-white text-[#18181B] flex flex-col">
+    <div id="top" className="min-h-screen bg-white text-[#18181B] flex flex-col">
       {/* Prospect demo banner — the conversion hook while they play with the site */}
       {c.isDemo && (
         <div className="text-white text-sm" style={{ background: accentDark }}>
@@ -118,7 +178,7 @@ export default function ClientSite({ config, page = "home" }: { config: ClientSi
       {/* Header */}
       <header className="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-[#ECECEC]">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-2.5 min-w-0">
+          <a href={isMulti ? basePath : "#top"} className="flex items-center gap-2.5 min-w-0">
             {c.logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={c.logoUrl} alt={c.businessName} className="h-8 w-auto object-contain shrink-0" />
@@ -131,11 +191,11 @@ export default function ClientSite({ config, page = "home" }: { config: ClientSi
               <span className="font-black tracking-tight text-lg block truncate">{c.businessName}</span>
               {c.expandedHeader && c.tagline && <span className="text-[11px] text-[#71717A] block truncate leading-tight">{c.tagline}</span>}
             </div>
-          </div>
+          </a>
           {c.expandedHeader && (
             <nav className="hidden md:flex items-center gap-6 shrink-0">
-              {navItems.map((n) => (
-                <a key={n.key} href={n.href} className="text-sm font-semibold text-[#3F3F46] hover:opacity-70 transition-opacity">
+              {nav.filter((n) => n.key !== "contact").map((n) => (
+                <a key={n.key} href={navHref(n)} className={`text-sm font-semibold transition-opacity hover:opacity-70 ${n.key === page ? "" : "text-[#3F3F46]"}`} style={n.key === page ? { color: accent } : undefined}>
                   {n.label}
                 </a>
               ))}
@@ -148,17 +208,21 @@ export default function ClientSite({ config, page = "home" }: { config: ClientSi
       </header>
 
       {/* Page-title banner for sub-pages of a multi-page site */}
-      {!showHome && (
+      {!isHome && (
         <section className="relative overflow-hidden" style={{ background: `linear-gradient(135deg, ${accentDark}, ${accent})` }}>
+          <div className="absolute inset-0 opacity-25" style={{ background: "radial-gradient(600px 240px at 75% 0%, rgba(255,255,255,0.3), transparent)" }} />
           <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-14 lg:py-20 text-center">
-            <a href={c.multiPage ? basePath : "#"} className="text-white/70 text-xs font-semibold hover:text-white transition-colors">{t.backHome}</a>
+            <a href={isMulti ? basePath : "#top"} className="text-white/70 text-xs font-semibold hover:text-white transition-colors">← {t.backHome}</a>
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight mt-2">{pageTitle}</h1>
+            {page === "expertise" && c.expertiseIntro && (
+              <p className="text-white/85 max-w-2xl mx-auto mt-5 leading-relaxed">{c.expertiseIntro}</p>
+            )}
           </div>
         </section>
       )}
 
       {/* Hero — photo-driven variant when the client has a real hero photo, otherwise the flat gradient */}
-      {showHome && (c.heroImageUrl ? (
+      {isHome && (c.heroImageUrl ? (
         <section className="relative overflow-hidden rounded-b-[40px] sm:mx-4 sm:mt-4 sm:rounded-[40px]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={c.heroImageUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
@@ -184,49 +248,76 @@ export default function ClientSite({ config, page = "home" }: { config: ClientSi
         </section>
       ))}
 
-      {/* Highlights — full-bleed photo "story cards", one per differentiator. Purely additive. */}
-      {showServices && c.highlights && c.highlights.length > 0 && (
-        <section className="py-10 lg:py-14 bg-white">
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
-            {c.highlights.map((h, i) => (
-              <div key={i} className="relative overflow-hidden rounded-[40px] min-h-[280px] flex items-end">
-                {h.imageUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={h.imageUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
-                ) : (
-                  <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${accentDark}, ${accent})` }} />
-                )}
-                <div className="absolute inset-0" style={{ background: "linear-gradient(0deg, rgba(0,0,0,0.55), rgba(0,0,0,0.1) 60%)" }} />
-                <div className="relative p-7 sm:p-9">
-                  <h3 className="text-xl sm:text-2xl font-black text-white leading-tight max-w-md">{h.title}</h3>
-                  <p className="text-white/85 text-sm mt-2 max-w-md leading-relaxed">{h.body}</p>
-                  <a href="#book" className="inline-flex mt-5 px-5 py-2.5 rounded-full bg-white font-bold text-sm hover:bg-white/90 transition-colors" style={{ color: accentDark }}>
-                    {h.ctaLabel ?? t.book}
-                  </a>
-                </div>
+      {/* Stats / trust band */}
+      {hasStats && on("home", "cabinet") && (
+        <section className="bg-[#FAFAF9] border-y border-[#ECECEC]">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-2 lg:grid-cols-4">
+            {c.stats!.map((s, i) => (
+              <div key={i} className="py-8 lg:py-10 text-center border-[#ECECEC] [&:nth-child(odd)]:border-r lg:[&]:border-r lg:[&:last-child]:border-r-0 [&:nth-child(n+3)]:border-t lg:[&:nth-child(n+3)]:border-t-0">
+                <div className="text-3xl lg:text-4xl font-black tracking-tight" style={{ color: accentDark }}>{s.value}</div>
+                <div className="text-xs text-[#71717A] mt-1.5 px-2">{s.label}</div>
               </div>
             ))}
           </div>
         </section>
       )}
 
-      {/* Team — humanizes the business. Purely additive; only ever real photos of real people. */}
-      {showCabinet && c.team && c.team.length > 0 && (
-        <section className="py-16 lg:py-20 bg-[#FAFAF9]">
+      {/* Homepage feature rows (highlights) — alternating image/text */}
+      {hasHighlights && on("home") && (
+        <section id="expertise" className="py-16 lg:py-24 bg-white">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-16 lg:space-y-24">
+            {c.highlights!.map((h, i) => (
+              <FeatureRow key={i} block={h} reverse={i % 2 === 1} accent={accent} accentDark={accentDark} t={t} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Expertise page — in-depth alternating blocks */}
+      {hasExpertise && on("expertise") && (
+        <section className="py-16 lg:py-24 bg-white">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-16 lg:space-y-24">
+            {c.expertise!.map((b, i) => (
+              <FeatureRow key={i} block={b} reverse={i % 2 === 1} accent={accent} accentDark={accentDark} t={t} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Process / consultation timeline */}
+      {hasProcess && on("home", "expertise") && (
+        <section className="py-16 lg:py-24 bg-[#FAFAF9]">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 className="text-3xl sm:text-4xl font-black text-center mb-12">{t.team}</h2>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {c.team.map((member, i) => (
-                <div key={i} className="bg-white rounded-[28px] overflow-hidden border border-[#ECECEC]">
-                  {member.photoUrl && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={member.photoUrl} alt={member.name} className="w-full aspect-[4/3] object-cover" />
-                  )}
-                  <div className="p-5">
-                    <h3 className="font-black text-base">{member.name}</h3>
-                    <p className="text-xs font-bold uppercase tracking-widest mt-0.5" style={{ color: accent }}>{member.role}</p>
-                    {member.bio && <p className="text-sm text-[#71717A] leading-relaxed mt-2">{member.bio}</p>}
+            <SectionHead eyebrow={t.processEyebrow} title={t.processTitle} accent={accent} />
+            <div className="grid md:grid-cols-3 gap-5 lg:gap-6">
+              {c.process!.map((p, i) => (
+                <div key={i} className="relative bg-white rounded-[24px] p-7 border border-[#ECECEC]">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center font-black text-white text-sm" style={{ background: accent }}>{i + 1}</div>
+                    {p.meta && <span className="text-xs font-bold px-2.5 py-1 rounded-full" style={{ background: `${accent}14`, color: accentDark }}>{p.meta}</span>}
                   </div>
+                  <h3 className="font-black text-lg">{p.title}</h3>
+                  <p className="text-sm text-[#71717A] leading-relaxed mt-2">{p.body}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Solutions grid (Expertise page) */}
+      {hasSolutions && on("expertise") && (
+        <section className="py-16 lg:py-24 bg-white">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <SectionHead eyebrow={t.solutionsEyebrow} title={t.solutionsTitle} accent={accent} />
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              {c.solutions!.map((s, i) => (
+                <div key={i} className="bg-[#FAFAF9] rounded-2xl p-6 border border-[#ECECEC]">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-4" style={{ background: `${accent}14` }}>
+                    <CheckCircle className="w-5 h-5" style={{ color: accent }} />
+                  </div>
+                  <h3 className="text-base font-black">{s.title}</h3>
+                  {s.body && <p className="text-sm text-[#71717A] leading-relaxed mt-2">{s.body}</p>}
                 </div>
               ))}
             </div>
@@ -235,7 +326,7 @@ export default function ClientSite({ config, page = "home" }: { config: ClientSi
       )}
 
       {/* About */}
-      {showCabinet && c.about && (
+      {c.about && on("home", "cabinet") && (
         <section id="about" className="py-16 lg:py-20 bg-white">
           <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <p className="text-lg leading-relaxed text-[#3F3F46]">{c.about}</p>
@@ -243,11 +334,63 @@ export default function ClientSite({ config, page = "home" }: { config: ClientSi
         </section>
       )}
 
+      {/* Values / commitments (Cabinet page) */}
+      {hasValues && on("cabinet") && (
+        <section className="py-16 lg:py-24 bg-[#FAFAF9]">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+            <SectionHead eyebrow={t.valuesEyebrow} title={t.valuesTitle} accent={accent} />
+            <div className="grid sm:grid-cols-2 gap-5">
+              {c.values!.map((v, i) => (
+                <div key={i} className="flex items-start gap-4 bg-white rounded-2xl p-6 border border-[#ECECEC]">
+                  <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: `${accent}14` }}>
+                    <Check className="w-5 h-5" style={{ color: accent }} />
+                  </div>
+                  <div>
+                    <h3 className="font-black text-base">{v.title}</h3>
+                    <p className="text-sm text-[#71717A] leading-relaxed mt-1.5">{v.body}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Team — humanizes the business. Photos only ever of real people; otherwise a clean monogram avatar. */}
+      {hasTeam && on("cabinet") && (
+        <section className="py-16 lg:py-24 bg-white">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+            <SectionHead eyebrow={t.teamEyebrow} title={t.team} accent={accent} />
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {c.team!.map((member, i) => (
+                <div key={i} className="bg-[#FAFAF9] rounded-[24px] overflow-hidden border border-[#ECECEC] text-center">
+                  {member.photoUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={member.photoUrl} alt={member.name} className="w-full aspect-[4/3] object-cover" />
+                  ) : (
+                    <div className="w-full aspect-[4/3] flex items-center justify-center" style={{ background: `linear-gradient(135deg, ${accent}22, ${accent}0D)` }}>
+                      <div className="w-20 h-20 rounded-full flex items-center justify-center text-2xl font-black text-white" style={{ background: accent }}>
+                        {member.name.replace(/^Dr\.?\s*/i, "").split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase()}
+                      </div>
+                    </div>
+                  )}
+                  <div className="p-5">
+                    <h3 className="font-black text-base">{member.name}</h3>
+                    <p className="text-xs font-bold uppercase tracking-widest mt-0.5" style={{ color: accent }}>{member.role}</p>
+                    {member.bio && <p className="text-sm text-[#71717A] leading-relaxed mt-2.5">{member.bio}</p>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Services */}
-      {showServices && c.services.length > 0 && (
-        <section id="services" className="py-16 lg:py-20 bg-[#FAFAF9]">
+      {c.services.length > 0 && on("home", "services") && (
+        <section id="services" className="py-16 lg:py-24 bg-[#FAFAF9]">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 className="text-3xl sm:text-4xl font-black text-center mb-12">{t.services}</h2>
+            <SectionHead title={t.services} accent={accent} />
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
               {c.services.map((s, i) => (
                 <div key={i} className="bg-white rounded-2xl p-6 border border-[#ECECEC] hover:shadow-lg transition-shadow">
@@ -267,14 +410,34 @@ export default function ClientSite({ config, page = "home" }: { config: ClientSi
         </section>
       )}
 
+      {/* Advice / aftercare cards (Conseils page) */}
+      {hasAdvice && on("conseils") && (
+        <section id="conseils" className="py-16 lg:py-24 bg-white">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <SectionHead eyebrow={t.adviceEyebrow} title={t.adviceTitle} accent={accent} />
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {c.advice!.map((a, i) => (
+                <div key={i} className="flex flex-col bg-white rounded-[20px] border border-[#ECECEC] p-6 hover:shadow-lg transition-shadow">
+                  <h3 className="font-black text-base leading-snug">{a.title}</h3>
+                  <p className="text-sm text-[#71717A] leading-relaxed mt-2 flex-1">{a.body}</p>
+                  <a href="#book" className="inline-flex items-center gap-1.5 mt-4 text-sm font-bold hover:opacity-70 transition-opacity" style={{ color: accent }}>
+                    {t.learnMore} <ArrowRight className="w-3.5 h-3.5" />
+                  </a>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Why us */}
-      {showConseils && c.whyUs.length > 0 && (
-        <section id="why" className="py-16 lg:py-20 bg-white">
+      {c.whyUs.length > 0 && on("home", "conseils") && (
+        <section id="why" className="py-16 lg:py-24 bg-[#FAFAF9]">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 className="text-3xl sm:text-4xl font-black text-center mb-12">{t.why}</h2>
+            <SectionHead title={t.why} accent={accent} />
             <div className="grid sm:grid-cols-2 gap-4">
               {c.whyUs.map((w, i) => (
-                <div key={i} className="flex items-start gap-3 bg-[#FAFAF9] rounded-xl p-4 border border-[#ECECEC]">
+                <div key={i} className="flex items-start gap-3 bg-white rounded-xl p-4 border border-[#ECECEC]">
                   <CheckCircle className="w-5 h-5 mt-0.5 shrink-0" style={{ color: accent }} />
                   <span className="text-sm font-medium text-[#18181B]">{w}</span>
                 </div>
@@ -284,7 +447,27 @@ export default function ClientSite({ config, page = "home" }: { config: ClientSi
         </section>
       )}
 
-      {/* Book / Contact */}
+      {/* FAQ */}
+      {c.faqs.length > 0 && on("home", "conseils") && (
+        <section id="faq" className="py-16 lg:py-20 bg-white">
+          <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h2 className="text-3xl font-black text-center mb-10">{t.faq}</h2>
+            <div className="space-y-3">
+              {c.faqs.map((f, i) => (
+                <details key={i} className="group bg-[#FAFAF9] border border-[#ECECEC] rounded-xl overflow-hidden">
+                  <summary className="flex items-center justify-between px-6 py-4 cursor-pointer list-none">
+                    <span className="font-bold text-sm">{f.q}</span>
+                    <span className="text-[#71717A] transition-transform group-open:rotate-45 text-xl leading-none">+</span>
+                  </summary>
+                  <div className="px-6 pb-5 text-[#71717A] text-sm leading-relaxed border-t border-[#EFEFEF] pt-4">{f.a}</div>
+                </details>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Book / Contact — on every page (the conversion point) */}
       <section id="book" className="py-20 lg:py-24" style={{ background: `linear-gradient(135deg, ${accentDark}, ${accent})` }}>
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-3xl sm:text-4xl font-black text-white mb-3">{t.bookCta}</h2>
@@ -321,33 +504,13 @@ export default function ClientSite({ config, page = "home" }: { config: ClientSi
         </div>
       </section>
 
-      {/* FAQ */}
-      {showConseils && c.faqs.length > 0 && (
-        <section id="faq" className="py-16 lg:py-20 bg-white">
-          <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 className="text-3xl font-black text-center mb-10">{t.faq}</h2>
-            <div className="space-y-3">
-              {c.faqs.map((f, i) => (
-                <details key={i} className="group bg-[#FAFAF9] border border-[#ECECEC] rounded-xl overflow-hidden">
-                  <summary className="flex items-center justify-between px-6 py-4 cursor-pointer list-none">
-                    <span className="font-bold text-sm">{f.q}</span>
-                    <span className="text-[#71717A] transition-transform group-open:rotate-45 text-xl leading-none">+</span>
-                  </summary>
-                  <div className="px-6 pb-5 text-[#71717A] text-sm leading-relaxed border-t border-[#EFEFEF] pt-4">{f.a}</div>
-                </details>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
       {/* Footer */}
       <footer className="mt-auto border-t border-[#ECECEC] bg-white">
-        {c.expandedHeader && (navItems.length > 0 || (c.socialLinks && c.socialLinks.length > 0)) && (
+        {c.expandedHeader && (nav.length > 0 || (c.socialLinks && c.socialLinks.length > 0)) && (
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-[#ECECEC]">
             <nav className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
-              {navItems.map((n) => (
-                <a key={n.key} href={n.href} className="text-sm font-semibold text-[#3F3F46] hover:opacity-70 transition-opacity">
+              {nav.map((n) => (
+                <a key={n.key} href={navHref(n)} className="text-sm font-semibold text-[#3F3F46] hover:opacity-70 transition-opacity">
                   {n.label}
                 </a>
               ))}
@@ -355,7 +518,7 @@ export default function ClientSite({ config, page = "home" }: { config: ClientSi
             {c.socialLinks && c.socialLinks.length > 0 && (
               <div className="flex items-center gap-4">
                 {c.socialLinks.map((s, i) => (
-                  <a key={i} href={s.url} target="_blank" rel="noopener noreferrer" className="text-[#3F3F46] hover:opacity-70" aria-label={s.platform} style={{ color: accent }}>
+                  <a key={i} href={s.url} target="_blank" rel="noopener noreferrer" className="hover:opacity-70" aria-label={s.platform} style={{ color: accent }}>
                     <SocialIcon platform={s.platform} />
                   </a>
                 ))}
