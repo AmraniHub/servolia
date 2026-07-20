@@ -6,6 +6,7 @@ import Link from "next/link";
 import type { Build, Client } from "@/lib/supabase";
 import { toCsv } from "@/lib/csv";
 import AutoRefresh from "@/components/AutoRefresh";
+import { ADDONS } from "@/lib/pricing";
 import {
   LogOut, Send, MessageSquare, Clock, CreditCard, CheckCircle2, Users, CalendarCheck,
   Megaphone, ExternalLink, Sun, Moon, LayoutDashboard, KeyRound, Loader2, ShieldCheck, Trash2,
@@ -390,6 +391,29 @@ export default function PortalDashboard({
                 })}
               </div>
             )}
+
+            {/* Add-ons — extra managed modules the client can switch on anytime */}
+            <div className="rounded-2xl border border-[var(--p-border)] bg-[var(--p-surface)] p-4 sm:p-5" style={{ boxShadow: "var(--p-shadow)" }}>
+              <div className="flex items-center gap-2 mb-1">
+                <Sparkles className="w-4 h-4 text-[var(--p-accent)]" />
+                <h3 className="font-black text-[var(--p-text)] text-sm">Add-ons</h3>
+              </div>
+              <p className="text-xs text-[var(--p-muted)] mb-4">Extra modules we manage for you — switch any on and we&apos;ll set it up.</p>
+              <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-2.5">
+                {Object.values(ADDONS).map((a) => (
+                  <div key={a.key} className="flex items-center justify-between gap-3 rounded-xl border border-[var(--p-border)] bg-[var(--p-raised)] px-3.5 py-2.5">
+                    <span className="text-sm text-[var(--p-text)] min-w-0 truncate">{a.name}</span>
+                    <span className="text-xs font-black text-[var(--p-text)] whitespace-nowrap">
+                      €{a.priceEur}<span className="text-[var(--p-muted)] font-semibold">/{a.interval === "year" ? "yr" : a.per === "mailbox" ? "mailbox" : "mo"}</span>
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <button onClick={() => setTab("messages")}
+                className="mt-4 flex items-center justify-center gap-1.5 w-full sm:w-auto px-4 py-2.5 rounded-xl border border-[var(--p-border)] text-[var(--p-text)] text-sm font-bold hover:bg-[var(--p-raised)] transition-colors">
+                <MessageSquare className="w-3.5 h-3.5 text-[var(--p-accent)]" /> Message us to enable
+              </button>
+            </div>
           </div>
         )}
 

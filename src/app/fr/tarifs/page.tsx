@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import CheckoutButton from "@/components/CheckoutButton";
+import CarePlansSection from "@/components/CarePlansSection";
 import StickyMobileCTA from "@/components/StickyMobileCTA";
 import FrenchNav from "@/components/FrenchNav";
 import FrenchFooter from "@/components/FrenchFooter";
@@ -90,33 +91,6 @@ const tiers = [
   },
 ];
 
-const carePlans = [
-  {
-    plan: "care",
-    name: "Care",
-    price: "49 €",
-    desc: "Pour ceux qui veulent un système surveillé et à jour.",
-    features: ["Surveillance de disponibilité", "Modifications de contenu (1h/mois)", "Mises à jour de sécurité", "Support par email"],
-    popular: false,
-  },
-  {
-    plan: "care_growth",
-    name: "Growth",
-    price: "99 €",
-    desc: "Pour ceux qui veulent une IA réentraînée et des améliorations chaque mois.",
-    features: ["Tout Care", "Réentraînement du chatbot", "Rapport analytique mensuel", "2h d'améliorations/mois"],
-    popular: true,
-  },
-  {
-    plan: "care_scale",
-    name: "Scale",
-    price: "199 €",
-    desc: "Pour ceux qui traitent Servolia comme leur système d'acquisition complet.",
-    features: ["Tout Growth", "Améliorations A/B testées", "Évolutions CRM & workflows", "Appel stratégique mensuel"],
-    popular: false,
-  },
-];
-
 export default function FrenchPricingPage() {
   return (
     <main className="flex flex-col bg-white">
@@ -198,59 +172,8 @@ export default function FrenchPricingPage() {
         </div>
       </section>
 
-      {/* Care plans */}
-      <section className="py-16 lg:py-20 bg-white">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-10">
-            <p className="text-sm font-bold text-[#36671E] uppercase tracking-widest mb-2">Forfaits mensuels</p>
-            <h2 className="text-3xl font-black text-[#080E1C] mb-3">Votre système s&apos;améliore chaque mois</h2>
-            <p className="text-[#71717A] max-w-xl mx-auto text-sm">
-              Bien moins cher qu&apos;un salarié à temps partiel — et concentré sur une seule chose : plus de clients réservés. Résiliable à tout moment avec 30 jours de préavis.
-            </p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {carePlans.map((p, i) => (
-              <div key={i} className={`relative rounded-2xl p-7 border-2 flex flex-col ${
-                p.popular ? "border-[#36671E] bg-[#FAFAF7]" : "border-[#E8E6E0] bg-white"
-              }`}>
-                {p.popular && (
-                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-[#36671E] text-[#FAFAF7] text-[10px] font-black whitespace-nowrap">
-                    LE PLUS CHOISI
-                  </div>
-                )}
-                <div className="mb-5">
-                  <h3 className="text-lg font-black text-[#18181B] mb-1">{p.name}</h3>
-                  <div className="flex items-baseline gap-0.5 mb-2">
-                    <span className="text-4xl font-black text-[#18181B]">{p.price}</span>
-                    <span className="text-[#71717A] text-sm">/mois</span>
-                  </div>
-                  <p className="text-[#71717A] text-sm">{p.desc}</p>
-                </div>
-                <ul className="space-y-2.5 mb-7 flex-1">
-                  {p.features.map((f, j) => (
-                    <li key={j} className="flex items-center gap-2.5 text-sm text-[#18181B]">
-                      <CheckCircle className="w-4 h-4 text-[#36671E] shrink-0" />{f}
-                    </li>
-                  ))}
-                </ul>
-                <CheckoutButton
-                  plan={p.plan}
-                  endpoint="/api/checkout-subscription"
-                  label="S'abonner →"
-                  className={`block w-full text-center py-3 rounded-xl font-bold text-sm transition-all disabled:opacity-60 ${
-                    p.popular
-                      ? "bg-[#36671E] text-[#FAFAF7] hover:bg-[#295115]"
-                      : "border border-[#E8E6E0] text-[#18181B] hover:border-[#36671E] hover:text-[#36671E]"
-                  }`}
-                />
-              </div>
-            ))}
-          </div>
-          <p className="text-center text-[#A1A1AA] text-xs mt-6">
-            Facturation mensuelle via Stripe · Résiliation à tout moment (préavis 30 jours)
-          </p>
-        </div>
-      </section>
+      {/* Care plans (all-in, mensuel/annuel — 1 mois offert) */}
+      <CarePlansSection lang="fr" />
 
       {/* Guarantee */}
       <section className="py-14 bg-[#FAFAF7]">

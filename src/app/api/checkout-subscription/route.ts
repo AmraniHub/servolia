@@ -1,12 +1,6 @@
 import Stripe from "stripe";
 import { NextRequest, NextResponse } from "next/server";
-import { CARE_PLANS as CARE_PRICING } from "@/lib/pricing";
-
-// Monthly Care Plan amounts in cents (EUR) — prices come from src/lib/pricing.ts
-const CARE_PLANS: Record<string, { name: string; amount: number }> =
-  Object.fromEntries(
-    Object.values(CARE_PRICING).map((p) => [p.key, { name: p.name, amount: p.monthlyEur * 100 }])
-  );
+import { CARE_PLANS, careAmountCents } from "@/lib/pricing";
 
 export async function POST(req: NextRequest) {
   const key = process.env.STRIPE_SECRET_KEY;
@@ -16,14 +10,24 @@ export async function POST(req: NextRequest) {
   const stripe = new Stripe(key);
 
   try {
-    const { plan, email } = await req.json() as { plan: string; email?: string };
+    const { plan, email, billing } = await req.json() as {
+      plan: string; email?: string; billing?: "monthly" | "annual";
+    };
     const p = CARE_PLANS[plan];
-
     if (!p) {
       return NextResponse.json({ error: "Unknown care plan" }, { status: 400 });
     }
 
+    const interval: "month" | "year" = billing === "annual" ? "year" : "month";
+    const amount = careAmountCents(p, interval === "year" ? "annual" : "monthly");
     const origin = req.headers.get("origin") ?? "https://servolia.com";
+
+    const productName = interval === "year"
+      ? `Servolia ${p.name} Plan — Annual (1 month free)`
+      : `Servolia ${p.name} Plan — Monthly`;
+    const submitMsg = interval === "year"
+      ? "Billed yearly · one month free · renews annually"
+      : "Billed monthly · Cancel anytime with 30 days notice";
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
@@ -33,21 +37,21 @@ export async function POST(req: NextRequest) {
           price_data: {
             currency: "eur",
             product_data: {
-              name: `Servolia ${p.name} Plan — Monthly`,
-              description: "Hosting, maintenance, and monthly optimization. Cancel anytime with 30 days notice.",
+              name: productName,
+              description: "All-in: domain, hosting, professional email, your AI receptionist, and monthly reports.",
             },
-            unit_amount: p.amount,
-            recurring: { interval: "month" },
+            unit_amount: amount,
+            recurring: { interval },
           },
           quantity: 1,
         },
       ],
       mode: "subscription",
-      success_url: `${origin}/billing?subscribed=1&plan=${plan}`,
+      success_url: `${origin}/billing?subscribed=1&plan=${plan}&billing=${interval === "year" ? "annual" : "monthly"}`,
       cancel_url: `${origin}/pricing`,
-      metadata: { plan, kind: "care_plan", source: "servolia-website" },
+      metadata: { plan, kind: "care_plan", billing: interval === "year" ? "annual" : "monthly", source: "servolia-website" },
       custom_text: {
-        submit: { message: "Billed monthly · Cancel anytime with 30 days notice" },
+        submit: { message: submitMsg },
       },
     });
 

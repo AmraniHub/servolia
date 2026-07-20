@@ -9,9 +9,11 @@ interface Props {
   endpoint?: string;
   /** Ties the Stripe checkout session (and the build it creates) back to an existing lead. */
   leadId?: string;
+  /** For care-plan subscriptions: monthly (default) or annual (one month free). */
+  billing?: "monthly" | "annual";
 }
 
-export default function CheckoutButton({ plan, label, className, endpoint = "/api/checkout", leadId }: Props) {
+export default function CheckoutButton({ plan, label, className, endpoint = "/api/checkout", leadId, billing }: Props) {
   const [loading, setLoading] = useState(false);
 
   async function handleClick() {
@@ -20,7 +22,7 @@ export default function CheckoutButton({ plan, label, className, endpoint = "/ap
       const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan, leadId }),
+        body: JSON.stringify({ plan, leadId, billing }),
       });
       const data = await res.json() as { url?: string };
       if (data.url) window.location.href = data.url;

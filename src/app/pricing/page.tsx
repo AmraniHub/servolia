@@ -1,6 +1,7 @@
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import CheckoutButton from "@/components/CheckoutButton";
+import CarePlansSection from "@/components/CarePlansSection";
 import Guarantee from "@/components/Guarantee";
 import Link from "next/link";
 import {
@@ -102,33 +103,6 @@ const tiers = [
       "Unlimited revisions (first month)",
     ],
     notIncluded: [],
-  },
-];
-
-const carePlans = [
-  {
-    plan: "care",
-    name: "Care",
-    price: "€49/mo",
-    desc: "Maintenance, small edits, and uptime monitoring.",
-    features: ["Uptime monitoring", "Content edits (1h/mo)", "Security updates", "Email support"],
-    popular: false,
-  },
-  {
-    plan: "care_growth",
-    name: "Growth",
-    price: "€99/mo",
-    desc: "Analytics, chatbot updates, and monthly improvements.",
-    features: ["Everything in Care", "Chatbot retraining", "Monthly analytics report", "2h of improvements/mo"],
-    popular: true,
-  },
-  {
-    plan: "care_scale",
-    name: "Scale",
-    price: "€199/mo",
-    desc: "Full monthly optimization: A/B testing, CRM, conversion review.",
-    features: ["Everything in Growth", "A/B test improvements", "CRM workflow updates", "Monthly strategy call"],
-    popular: false,
   },
 ];
 
@@ -316,54 +290,8 @@ export default function PricingPage() {
         </div>
       </section>
 
-      {/* ── MONTHLY CARE PLANS ── */}
-      <section className="py-16 lg:py-20 bg-[#FAFAF7]">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-10">
-            <p className="text-sm font-bold text-[#10B981] uppercase tracking-widest mb-3">Monthly Care Plans</p>
-            <h2 className="text-2xl sm:text-3xl font-black text-[#080E1C] mb-3">Keep your system growing every month</h2>
-            <p className="text-[#71717A] max-w-lg mx-auto text-sm">
-              Optional monthly plans to maintain, optimize, and improve your system after launch. Cancel anytime.
-            </p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {carePlans.map((p, i) => (
-              <div key={i} className={`rounded-2xl p-6 border-2 relative flex flex-col ${
-                p.popular
-                  ? "border-[#10B981] bg-white shadow-lg shadow-emerald-500/8"
-                  : "border-[#E8E6E0] bg-white"
-              }`}>
-                {p.popular && (
-                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-gradient-to-r from-[#10B981] to-[#34D399] text-[#18181B] text-xs font-black whitespace-nowrap">
-                    MOST POPULAR
-                  </div>
-                )}
-                <h3 className="text-lg font-black text-[#080E1C] mb-1">{p.name}</h3>
-                <div className="text-3xl font-black text-[#080E1C] mb-2">{p.price}</div>
-                <p className="text-[#71717A] text-sm mb-5">{p.desc}</p>
-                <ul className="flex flex-col gap-2.5 mb-6 flex-1">
-                  {p.features.map((f, j) => (
-                    <li key={j} className="flex items-center gap-2 text-sm text-[#374151]">
-                      <CheckCircle className="w-4 h-4 text-[#10B981] flex-shrink-0" />{f}
-                    </li>
-                  ))}
-                </ul>
-                <CheckoutButton
-                  plan={p.plan}
-                  endpoint="/api/checkout-subscription"
-                  label="Subscribe →"
-                  className={`block w-full text-center py-3 rounded-xl font-bold text-sm transition-all disabled:opacity-60 ${
-                    p.popular
-                      ? "bg-gradient-to-r from-[#10B981] to-[#34D399] text-[#18181B] hover:opacity-90"
-                      : "border border-[#E8E6E0] text-[#080E1C] hover:border-[#10B981] hover:text-[#10B981]"
-                  }`}
-                />
-              </div>
-            ))}
-          </div>
-          <p className="text-center text-[#52525B] text-xs mt-6">Cancel anytime with 30 days notice · Billed monthly via Stripe</p>
-        </div>
-      </section>
+      {/* ── CARE PLANS (all-in, monthly/annual) ── */}
+      <CarePlansSection lang="en" />
 
       {/* ── APP DEVELOPMENT ── */}
       <section className="py-16 lg:py-20 bg-[#FAFAF7]">
