@@ -79,13 +79,17 @@ export interface AddOn {
   priceEur: number;
   interval: "month" | "year";
   per?: string; // e.g. "mailbox"
+  /** Self-serve = the client can enable + pay in one click (billing auto,
+   *  fulfilment is within our system). Others need a short conversation first
+   *  (which domain? how many mailboxes?) so they stay "message us". */
+  selfServe?: boolean;
 }
 
 export const ADDONS: Record<string, AddOn> = {
   domain:  { key: "domain",  name: "Domain + DNS management",      nameFr: "Nom de domaine + DNS gérés",         priceEur: 39, interval: "year" },
   email:   { key: "email",   name: "Professional email",          nameFr: "Email professionnel @votre-domaine", priceEur: 12, interval: "month", per: "mailbox" },
-  sms:     { key: "sms",     name: "SMS / WhatsApp reminders",     nameFr: "Rappels SMS / WhatsApp",             priceEur: 19, interval: "month" },
-  reviews: { key: "reviews", name: "Google reviews automation",    nameFr: "Automatisation des avis Google",     priceEur: 39, interval: "month" },
+  sms:     { key: "sms",     name: "SMS / WhatsApp reminders",     nameFr: "Rappels SMS / WhatsApp",             priceEur: 19, interval: "month", selfServe: true },
+  reviews: { key: "reviews", name: "Google reviews automation",    nameFr: "Automatisation des avis Google",     priceEur: 39, interval: "month", selfServe: true },
 };
 
 /** iOS add-on for the mobile plan, EUR. */

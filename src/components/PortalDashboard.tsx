@@ -215,6 +215,21 @@ export default function PortalDashboard({
     } finally { setDeletingChat(false); }
   }
 
+  const [addonBusy, setAddonBusy] = useState<string | null>(null);
+  async function enableAddon(key: string) {
+    if (addonBusy) return;
+    setAddonBusy(key);
+    try {
+      const res = await fetch("/api/checkout-addon", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ addon: key, email }),
+      });
+      const data = await res.json();
+      if (data.url) { window.location.href = data.url; return; }
+    } catch { /* fall through */ }
+    setAddonBusy(null);
+  }
+
   async function openBillingPortal() {
     if (billingBusy) return;
     setBillingBusy(true); setBillingError("");
@@ -398,21 +413,30 @@ export default function PortalDashboard({
                 <Sparkles className="w-4 h-4 text-[var(--p-accent)]" />
                 <h3 className="font-black text-[var(--p-text)] text-sm">Add-ons</h3>
               </div>
-              <p className="text-xs text-[var(--p-muted)] mb-4">Extra modules we manage for you — switch any on and we&apos;ll set it up.</p>
-              <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-2.5">
+              <p className="text-xs text-[var(--p-muted)] mb-4">Extra managed modules. Enable the one-click ones instantly, or message us for the rest.</p>
+              <div className="grid grid-cols-1 min-[520px]:grid-cols-2 gap-2.5">
                 {Object.values(ADDONS).map((a) => (
                   <div key={a.key} className="flex items-center justify-between gap-3 rounded-xl border border-[var(--p-border)] bg-[var(--p-raised)] px-3.5 py-2.5">
-                    <span className="text-sm text-[var(--p-text)] min-w-0 truncate">{a.name}</span>
-                    <span className="text-xs font-black text-[var(--p-text)] whitespace-nowrap">
-                      €{a.priceEur}<span className="text-[var(--p-muted)] font-semibold">/{a.interval === "year" ? "yr" : a.per === "mailbox" ? "mailbox" : "mo"}</span>
-                    </span>
+                    <div className="min-w-0">
+                      <p className="text-sm text-[var(--p-text)] truncate">{a.name}</p>
+                      <p className="text-xs font-black text-[var(--p-text)]">
+                        €{a.priceEur}<span className="text-[var(--p-muted)] font-semibold">/{a.interval === "year" ? "yr" : a.per === "mailbox" ? "mailbox" : "mo"}</span>
+                      </p>
+                    </div>
+                    {a.selfServe ? (
+                      <button onClick={() => enableAddon(a.key)} disabled={!!addonBusy}
+                        className="shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[var(--p-accent)] text-[var(--p-accent-fg)] text-xs font-black hover:bg-[var(--p-accent-hover)] transition-colors disabled:opacity-50">
+                        {addonBusy === a.key ? <Loader2 className="w-3 h-3 animate-spin" /> : <>Enable <ArrowRight className="w-3 h-3" /></>}
+                      </button>
+                    ) : (
+                      <button onClick={() => setTab("messages")}
+                        className="shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-lg border border-[var(--p-border)] text-[var(--p-text)] text-xs font-bold hover:bg-[var(--p-bg)] transition-colors">
+                        <MessageSquare className="w-3 h-3 text-[var(--p-accent)]" /> Ask us
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
-              <button onClick={() => setTab("messages")}
-                className="mt-4 flex items-center justify-center gap-1.5 w-full sm:w-auto px-4 py-2.5 rounded-xl border border-[var(--p-border)] text-[var(--p-text)] text-sm font-bold hover:bg-[var(--p-raised)] transition-colors">
-                <MessageSquare className="w-3.5 h-3.5 text-[var(--p-accent)]" /> Message us to enable
-              </button>
             </div>
           </div>
         )}

@@ -27,10 +27,10 @@ Two things make this a moat, not just markup:
 | Annual prepay | — | 11× monthly (1 month free) | **live** (annual checkout) |
 | AI receptionist | pennies/convo | inside Care tiers | live |
 | Hosting | ~€0 (shared Vercel/Supabase) | inside Care | live |
-| Domain + DNS mgmt | ~€8–10/yr (Cloudflare/OpenSRS reseller) | €39/yr add-on | **model live** (`ADDONS`), provisioning manual |
-| Professional email | Workspace reseller ~€5/seat | €12/mo per mailbox | **model live**, provisioning manual |
-| SMS / WhatsApp reminders | Twilio ~€0.04/msg | €19/mo pack | **model live**, provisioning manual |
-| Google reviews automation | automation hooks | €39/mo | **model live**, provisioning manual |
+| Domain + DNS mgmt | ~€8–10/yr (Cloudflare/OpenSRS reseller) | €39/yr add-on | sold; fulfilment = founder task ("Ask us") until Cloudflare connected |
+| Professional email | Workspace reseller ~€5/seat | €12/mo per mailbox | sold; fulfilment = founder task until Workspace reseller connected |
+| SMS / WhatsApp reminders | Twilio ~€0.04/msg | €19/mo pack | **self-serve** (one-click Stripe); auto-provisions when Twilio connected |
+| Google reviews automation | automation hooks | €39/mo | **self-serve** (one-click Stripe); provisioned in-system |
 | Ads Management | our time + Meta CAPI (built) | from €390/mo + 12% of spend | **model live** (`ADS_MANAGEMENT`) |
 | Patient deposit collection | Stripe Connect fee | ~1% + flat per deposit | future |
 
@@ -81,13 +81,24 @@ patient deposits) is never spent on anything else — that's fraud, not OPM.
   param → `interval: "year"`, amount = 11× monthly).
 - Pricing UI: `src/components/CarePlansSection.tsx` (monthly/annual toggle,
   all-in inclusions, Ads Management card, add-ons row) on `/pricing` + `/fr/tarifs`.
-- Portal: Add-ons card in `src/components/PortalDashboard.tsx` ("Message us to
-  enable" — provisioning is manual until reseller APIs are wired).
+- Add-on billing: `src/app/api/checkout-addon/route.ts` (self-serve recurring
+  Stripe subscription per add-on).
+- Provisioning dispatch: `src/lib/provisioning.ts` (`provisionAddon` +
+  `PROVIDERS` readiness checks) — auto when a provider is connected, else a
+  structured founder task via Telegram. Called from the Stripe webhook's
+  `kind: "addon"` branch.
+- Portal: Add-ons card in `src/components/PortalDashboard.tsx` — self-serve
+  add-ons show "Enable" (one-click Stripe), the rest show "Ask us".
 
 ## Next to build (highest leverage first)
 
-1. Wire real reseller provisioning: Cloudflare Registrar (domains), Google
-   Workspace reseller (email), Twilio (SMS) — turn the manual add-ons automatic.
+1. **Connect the reseller accounts** to flip the domain/email add-ons from
+   founder-task to fully automatic. Each is just env keys + a small adapter in
+   `provisioning.ts` (`PROVIDERS`):
+   - Twilio (`TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`) → SMS auto-provisions.
+   - Cloudflare Registrar (`CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`) → domains.
+   - Google Workspace reseller (`GOOGLE_WORKSPACE_RESELLER_TOKEN`, needs partner
+     approval) → mailboxes.
 2. Ads Management as a productized subscription (retainer via Stripe + spend
    reported in the monthly report).
 3. B2B financing partner for builds.

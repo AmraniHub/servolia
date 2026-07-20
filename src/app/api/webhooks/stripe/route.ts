@@ -6,6 +6,7 @@ import { sendEmail, depositReceivedEmail } from "@/lib/email";
 import { sendMetaCapiEvent } from "@/lib/metaCapi";
 import { generateScopeDocument } from "@/lib/scopeDocument";
 import { BUILD_PLANS } from "@/lib/pricing";
+import { provisionAddon } from "@/lib/provisioning";
 
 export const runtime = "nodejs";
 
@@ -45,6 +46,19 @@ export async function POST(req: NextRequest) {
   try {
     if (event.type === "checkout.session.completed") {
       const session = event.data.object as Stripe.Checkout.Session;
+
+      // ── ADD-ON branch: a managed add-on subscription → provision it ──────
+      if (session.mode === "subscription" && session.metadata?.kind === "addon") {
+        const customerEmail = session.customer_details?.email ?? session.customer_email ?? null;
+        const amount = (session.amount_total ?? 0) / 100;
+        await provisionAddon({
+          addonKey: session.metadata?.addon ?? "unknown",
+          email: customerEmail,
+          siteSlug: session.metadata?.siteSlug || null,
+          amountEur: amount,
+        });
+        return NextResponse.json({ received: true });
+      }
 
       // ── CARE PLAN branch: recurring subscription, not a one-time deposit ──
       if (session.mode === "subscription") {
