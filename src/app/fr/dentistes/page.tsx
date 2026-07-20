@@ -275,6 +275,13 @@ export default function FrenchDentistsPage() {
       <Guarantee lang="fr" />
 
       <footer className="bg-[#FAFAF7] border-t border-[#E8E6E0] py-8 text-center text-xs text-[#71717A]">
+        <p className="mb-3">
+          Aussi disponible pour les cabinets{" "}
+          <Link href="/fr/pays/suisse" className="hover:text-[#36671E] underline">suisses</Link>,{" "}
+          <Link href="/fr/pays/belgique" className="hover:text-[#36671E] underline">belges</Link>,{" "}
+          <Link href="/fr/pays/luxembourg" className="hover:text-[#36671E] underline">luxembourgeois</Link>{" "}
+          et <Link href="/fr/pays/monaco" className="hover:text-[#36671E] underline">monégasques</Link>.
+        </p>
         © {new Date().getFullYear()} Servolia ·{" "}
         <a href="mailto:hello@servolia.com" className="hover:text-[#36671E]">hello@servolia.com</a> ·{" "}
         <Link href="/legal/privacy" className="hover:text-[#36671E]">Confidentialité</Link>

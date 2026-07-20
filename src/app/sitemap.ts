@@ -1,6 +1,7 @@
 import { MetadataRoute } from "next";
 import { SOLUTION_SLUGS, INDUSTRY_SLUGS } from "@/lib/content/pages";
 import { getAllPosts } from "@/lib/content/dynamicPosts";
+import { COUNTRY_SLUGS } from "@/lib/content/countries";
 
 const base = "https://servolia.com";
 
@@ -12,6 +13,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }));
   const industryRoutes = INDUSTRY_SLUGS.map((slug) => ({
     url: `${base}/niches/${slug}`, lastModified: now, changeFrequency: "monthly" as const, priority: 0.8,
+  }));
+  const countryRoutes = COUNTRY_SLUGS.map((slug) => ({
+    url: `${base}/fr/pays/${slug}`, lastModified: now, changeFrequency: "monthly" as const, priority: 0.8,
   }));
   const allPosts = await getAllPosts();
   const blogRoutes = allPosts.map((p) => ({
@@ -43,6 +47,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${base}/niches/home-services`,        lastModified: now, changeFrequency: "monthly", priority: 0.8 },
     ...solutionRoutes,
     ...industryRoutes,
+    ...countryRoutes,
     ...blogRoutes,
     { url: `${base}/billing`,                     lastModified: now, changeFrequency: "yearly",  priority: 0.4 },
     { url: `${base}/legal/privacy`,               lastModified: now, changeFrequency: "yearly",  priority: 0.3 },

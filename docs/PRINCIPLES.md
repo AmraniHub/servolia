@@ -36,14 +36,20 @@ or paying for ads without a system. ~200–500 reachable practices.
      zero AI-qualification competitors building for it — this is the sharpest open door on the
      entire ladder). Pricing may pilot pay-per-booked-consultation here (non-physician-run
      businesses only — see P6 note).
-  3. **Dental + aesthetic, Belgium & Switzerland** (same language, same playbook). Platform:
-     DentAdmin (syncs with Doctena) for Belgian dental.
+  3. **Dental + aesthetic, Belgium, Switzerland & Luxembourg** (same language, same playbook).
+     Platform: DentAdmin (syncs with Doctena) for Belgian dental. Added 2026-07-19 — all three are
+     francophone, geographically adjacent, same GDPR-family compliance posture (Swiss nFADP is the
+     one variance), and reuse the identical French copy/qualification playbook with zero rebuild.
+     SEO: dedicated `/fr/pays/{suisse,belgique,luxembourg}` landing pages, same funnel as rung 1.
   4. Other high-value service verticals (arrive with 30 case studies, not a pitch)
   - Explicitly excluded: legal, recruitment, real estate, low-budget solo practitioners.
-  - **Opportunistic side-lane, not a rung:** Swiss premium hair-transplant clinics (<100 total,
-    FMH/MedReg registries). Highest ticket size on the ladder (€9–14k), but too small a market and
-    a different regulator (Swiss nFADP) to be a *first* market. Activate only once rung 1 or 2 has
-    produced real case studies — hand-pick outreach, don't systematize it like a rung.
+  - **Opportunistic side-lanes, not a rung (hand-pick outreach, don't systematize):**
+    - Swiss premium hair-transplant clinics (<100 total, FMH/MedReg registries). Highest ticket size
+      on the ladder (€9–14k), but too small a market to be a *first* market.
+    - Monaco (dental/aesthetic). Handful of practices in the Principality — too small a TAM to be a
+      rung, but same francophone playbook, so an SEO page (`/fr/pays/monaco`) costs nothing to keep
+      live for the rare inbound search; no outbound effort spent here until rung 1–3 have case studies.
+    - Both activate only once an earlier rung has produced real case studies.
 
 ## P3 — 10x on one dimension, not 20% on many
 
@@ -135,8 +141,8 @@ Map every roadmap item to at least one of Thiel's four monopoly features:
 
 ---
 
-*Last updated: 2026-07-15 — sharpened P2/P3/P6 after reviewing an external micro-monopoly research
-report (Planity platform intel, named competitor weaknesses, sharper secret framing, pay-per-booking
-legal boundary). Ladder unchanged; execution detail added. See memory:
-micro-monopoly-research-2026-07 for the full analysis. Change this file deliberately, with a reason,
-in a commit.*
+*Last updated: 2026-07-19 — added Luxembourg to rung 3 (Belgium & Switzerland), added Monaco as an
+SEO-only side-lane. Both are francophone-adjacency extensions of the existing ladder, not new
+verticals — no change to P1/P3. Previous update 2026-07-15 sharpened P2/P3/P6 after reviewing an
+external micro-monopoly research report; see memory: micro-monopoly-research-2026-07. Change this
+file deliberately, with a reason, in a commit.*
