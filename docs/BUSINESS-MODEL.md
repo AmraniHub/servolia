@@ -31,7 +31,6 @@ Two things make this a moat, not just markup:
 | Professional email | Workspace reseller ~€5/seat | €12/mo per mailbox | sold; fulfilment = founder task until Workspace reseller connected |
 | SMS / WhatsApp reminders | Twilio ~€0.04/msg | €19/mo pack | **self-serve** (one-click Stripe); auto-provisions when Twilio connected |
 | Google reviews automation | automation hooks | €39/mo | **self-serve** (one-click Stripe); provisioned in-system |
-| Ads Management | our time + Meta CAPI (built) | from €390/mo + 12% of spend | **model live** (`ADS_MANAGEMENT`) |
 | Patient deposit collection | Stripe Connect fee | ~1% + flat per deposit | future |
 
 **Packaging rule:** Care tiers are ALL-IN bundles — domain, hosting, email, AI
@@ -42,8 +41,6 @@ client never sees the €10 domain cost. Add-ons are à-la-carte on top.
 
 - **Annual prepay float** — a year of Care billed up front (1 month free) funds
   growth. Implemented in the subscription checkout.
-- **Ad-spend leverage** — managing €X/mo of budget across many clinics = OPM
-  flowing through us; we take retainer + 12% without risking our own capital.
 - **B2B financing partner** (future) — "€0 upfront, €X/mo": a financier pays the
   build price today, the client pays them monthly. Cash now, lower barrier.
 - **Deposits** — 50% upfront on builds (already live).
@@ -76,11 +73,11 @@ patient deposits) is never spent on anything else — that's fraud, not OPM.
 ## Where it lives in the code
 
 - Prices & products: `src/lib/pricing.ts` (`CARE_PLANS` with `annualEur`,
-  `ADS_MANAGEMENT`, `ADDONS`, `careAmountCents`).
+  `ADDONS`, `careAmountCents`).
 - Annual checkout: `src/app/api/checkout-subscription/route.ts` (`billing`
   param → `interval: "year"`, amount = 11× monthly).
 - Pricing UI: `src/components/CarePlansSection.tsx` (monthly/annual toggle,
-  all-in inclusions, Ads Management card, add-ons row) on `/pricing` + `/fr/tarifs`.
+  all-in inclusions, add-ons row) on `/pricing` + `/fr/tarifs`.
 - Add-on billing: `src/app/api/checkout-addon/route.ts` (self-serve recurring
   Stripe subscription per add-on).
 - Provisioning dispatch: `src/lib/provisioning.ts` (`provisionAddon` +
@@ -99,7 +96,5 @@ patient deposits) is never spent on anything else — that's fraud, not OPM.
    - Cloudflare Registrar (`CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`) → domains.
    - Google Workspace reseller (`GOOGLE_WORKSPACE_RESELLER_TOKEN`, needs partner
      approval) → mailboxes.
-2. Ads Management as a productized subscription (retainer via Stripe + spend
-   reported in the monthly report).
-3. B2B financing partner for builds.
-4. White-label / multi-tenant for other agencies.
+2. B2B financing partner for builds.
+3. White-label / multi-tenant for other agencies.

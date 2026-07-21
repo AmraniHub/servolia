@@ -58,18 +58,6 @@ export const CARE_PLANS: Record<string, CarePlan> = {
   care_scale:  withAnnual("care_scale",  "Scale",  199),
 };
 
-/** Ads Management — Servolia runs the client's Meta/Google ads. Management
- *  retainer + a percentage of ad spend (the client funds the budget: OPM). The
- *  Meta CAPI closed loop proves ROI so spend compounds. */
-export const ADS_MANAGEMENT = {
-  key: "ads_management",
-  name: "Ads Management",
-  nameFr: "Gestion Publicitaire",
-  retainerEur: 390, // monthly management retainer
-  spendPct: 12,     // % of monthly ad spend, on top of the retainer
-  minSpendEur: 500, // recommended minimum monthly ad budget
-};
-
 /** À-la-carte recurring add-ons (resold infrastructure with managed markup).
  *  Surfaced in the portal; provisioned by Servolia. `per` describes the unit. */
 export interface AddOn {
@@ -114,13 +102,11 @@ export function careAmountCents(plan: CarePlan, billing: "monthly" | "annual"): 
 export function pricingPromptLines(): string {
   const p = BUILD_PLANS;
   const c = CARE_PLANS;
-  const a = ADS_MANAGEMENT;
   return [
     `1. AI Website System — €${p.starter.totalEur}, ${p.starter.delivery}. Conversion-focused website.`,
     `2. AI Booking System — €${p.growth.totalEur}, ${p.growth.delivery}. Website + AI receptionist + booking.`,
     `3. Ads Landing System — €${p.landing.totalEur} + €${p.landing.monthlyEur}/mo. High-converting landing page with full tracking.`,
     `4. AI Client System — €${p.pro.totalEur}, ${p.pro.delivery}. Complete: site + chatbot + admin dashboard + CRM + monthly reports.`,
     `5. Care Plans (all-in monthly: domain + hosting + pro email + AI receptionist + reports) — €${c.care.monthlyEur} / €${c.care_growth.monthlyEur} / €${c.care_scale.monthlyEur} per month. Pay yearly and get one month free.`,
-    `6. Ads Management — from €${a.retainerEur}/mo + ${a.spendPct}% of ad spend. We run and optimise your Meta/Google ads with full ROI tracking.`,
   ].join("\n");
 }

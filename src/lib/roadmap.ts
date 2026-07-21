@@ -65,7 +65,6 @@ export const ROADMAP: RoadmapItem[] = [
   { title: "Land the first real clients", priority: 1, status: "in_progress", detail: "The whole machine exists (demo → generate → publish → Care + add-ons). Outbound to the dental-France beachhead; country pages catch SEO inbound." },
   { title: "Connect Twilio → SMS add-on auto-provisions", priority: 2, status: "todo", needs: "TWILIO_ACCOUNT_SID + TWILIO_AUTH_TOKEN" },
   { title: "Open Cloudflare Registrar → domain add-on automatic", priority: 2, status: "todo", needs: "CLOUDFLARE_API_TOKEN (+ account id)" },
-  { title: "Productize Ads Management", priority: 2, status: "todo", detail: "Retainer via Stripe + ad-spend line in the monthly report. Biggest recurring line + the OPM engine." },
   { title: "Legal check: pay-per-booking before dental/medical", priority: 2, status: "blocked", needs: "French lawyer review", detail: "Flagged in the micro-monopoly research note — regulated for medical." },
   { title: "Google Workspace reseller → email add-on automatic", priority: 3, status: "todo", needs: "Google partner approval + GOOGLE_WORKSPACE_RESELLER_TOKEN" },
   { title: "B2B financing partner for builds", priority: 3, status: "todo", detail: "€0 upfront / €X/mo — financier pays us today, client pays them monthly." },

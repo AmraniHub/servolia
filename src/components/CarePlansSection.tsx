@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { CheckCircle, Megaphone, Globe, Mail, MessageSquare, Star } from "lucide-react";
+import { CheckCircle, Globe, Mail, MessageSquare, Star } from "lucide-react";
 import CheckoutButton from "@/components/CheckoutButton";
-import { CARE_PLANS, ADS_MANAGEMENT, ADDONS } from "@/lib/pricing";
+import { CARE_PLANS, ADDONS } from "@/lib/pricing";
 
 type Billing = "monthly" | "annual";
 
@@ -20,10 +20,6 @@ const T = {
     perMo: "/mo", perYr: "/yr", effMo: (n: number) => `≈ €${n}/mo · 1 month free`,
     subscribe: "Subscribe →", popular: "MOST POPULAR",
     foot: "All-in via Stripe · cancel anytime with 30 days notice · yearly plans renew annually",
-    adsEyebrow: "Add-on service",
-    adsTitle: "Ads Management",
-    adsBody: "We run and optimise your Meta & Google ads with full ROI tracking. You fund the budget — we turn it into booked appointments.",
-    adsPrice: `from €${ADS_MANAGEMENT.retainerEur}/mo + ${ADS_MANAGEMENT.spendPct}% of ad spend`,
     addonsTitle: "Optional add-ons",
     perMailbox: "/mailbox", perYrShort: "/yr", perMoShort: "/mo",
     plans: {
@@ -40,10 +36,6 @@ const T = {
     perMo: "/mois", perYr: "/an", effMo: (n: number) => `≈ €${n}/mois · 1 mois offert`,
     subscribe: "S'abonner →", popular: "LE PLUS CHOISI",
     foot: "Tout-en-un via Stripe · sans engagement (préavis 30 jours) · les forfaits annuels se renouvellent chaque année",
-    adsEyebrow: "Service en option",
-    adsTitle: "Gestion Publicitaire",
-    adsBody: "Nous lançons et optimisons vos publicités Meta & Google avec un suivi ROI complet. Vous financez le budget — nous le transformons en rendez-vous.",
-    adsPrice: `à partir de ${ADS_MANAGEMENT.retainerEur} €/mois + ${ADS_MANAGEMENT.spendPct}% du budget publicitaire`,
     addonsTitle: "Modules à la carte",
     perMailbox: "/boîte", perYrShort: "/an", perMoShort: "/mois",
     plans: {
@@ -137,23 +129,8 @@ export default function CarePlansSection({ lang = "en" }: { lang?: "en" | "fr" }
         </div>
         <p className="text-center text-[#52525B] text-xs mt-6">{t.foot}</p>
 
-        {/* Ads Management — retainer + % of spend (OPM: client funds the budget) */}
-        <div className="mt-10 rounded-2xl border-2 border-[#E8E6E0] bg-white p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center gap-5">
-          <div className="w-12 h-12 rounded-xl bg-[#10B981]/12 flex items-center justify-center shrink-0">
-            <Megaphone className="w-6 h-6 text-[#0F9D6B]" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-bold text-[#10B981] uppercase tracking-widest mb-1">{t.adsEyebrow}</p>
-            <h3 className="text-lg font-black text-[#080E1C]">{t.adsTitle}</h3>
-            <p className="text-[#71717A] text-sm mt-1 max-w-xl">{t.adsBody}</p>
-          </div>
-          <div className="text-left sm:text-right shrink-0">
-            <p className="text-sm font-black text-[#080E1C] max-w-[220px]">{t.adsPrice}</p>
-          </div>
-        </div>
-
         {/* À-la-carte add-ons (resold infrastructure, managed) */}
-        <div className="mt-6">
+        <div className="mt-10">
           <p className="text-xs font-bold text-[#52525B] uppercase tracking-widest text-center mb-4">{t.addonsTitle}</p>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             {Object.values(ADDONS).map((a) => {

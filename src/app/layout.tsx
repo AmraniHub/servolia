@@ -3,7 +3,6 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import CookieBanner from "@/components/CookieBanner";
 import Analytics from "@/components/Analytics";
-import ExitIntentPopup from "@/components/ExitIntentPopup";
 import ScrollToTop from "@/components/ScrollToTop";
 import { OrgSchema, WebSiteSchema } from "@/components/StructuredData";
 
@@ -64,7 +63,6 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <body className="min-h-full flex flex-col">
         {children}
         <CookieBanner />
-        <ExitIntentPopup />
         <ScrollToTop />
         <Analytics />
       </body>
