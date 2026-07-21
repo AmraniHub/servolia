@@ -10,11 +10,113 @@ import { ADDONS } from "@/lib/pricing";
 import {
   LogOut, Send, MessageSquare, Clock, CreditCard, CheckCircle2, Users, CalendarCheck,
   Megaphone, ExternalLink, Sun, Moon, LayoutDashboard, KeyRound, Loader2, ShieldCheck, Trash2,
-  Image as ImageIcon, X, Globe, BarChart3, Search, Download, HelpCircle, FileText, Sparkles, ArrowRight,
+  Image as ImageIcon, X, Globe, BarChart3, Search, Download, HelpCircle, FileText, Sparkles, ArrowRight, Languages,
 } from "lucide-react";
 
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
 const ACCEPTED_IMAGE_TYPES = "image/jpeg,image/png,image/webp,image/gif";
+
+type Lang = "en" | "fr";
+
+const T = {
+  en: {
+    signOut: "Sign out", toggleTheme: "Toggle theme", toggleLang: "Switch to French",
+    greeting: (n: string) => `Welcome back, ${n} 👋`,
+    tabs: { overview: "Overview", leads: "My leads", reports: "Reports", messages: "Messages", account: "Account" },
+    // subscription
+    planSuffix: "plan", perMo: "/mo",
+    subManageDesc: "Update payment method, download invoices, or change your plan.",
+    billingTitle: "Billing & invoices", billingDesc: "Manage payment methods and download your invoices.",
+    manageSub: "Manage subscription", opening: "Opening…",
+    billingErr: "Could not open the billing portal.", connErr: "Connection error — please try again.",
+    statusActive: "active", statusPaused: "paused",
+    // stats
+    stEnquiries: "Enquiries this month", stBookings: "Booking requests", stContacts: "Contacts captured",
+    // build statuses
+    stIntake: "Awaiting your intake", stBuilding: "In progress", stReview: "Ready for your review", stDelivered: "Delivered", stLive: "Live",
+    paid: (a: string) => `€${a} paid`, dueOnDelivery: (a: string) => `€${a} due on delivery`,
+    targetDelivery: (d: string) => `Target delivery: ${d}`, liveSince: (d: string) => `Live since ${d}`,
+    needsScopeMsg: "Please review and confirm your project scope — what's included, the price, and the delivery deadline in writing.",
+    confirmScope: "Confirm your scope",
+    needsIntakeMsg: "One last step before we start building — tell us about your business, branding, and services. Takes about 8 minutes.",
+    completeIntake: "Complete your intake form",
+    viewLiveSite: "View my live site", previewSite: "Preview my site",
+    // add-ons
+    addonsTitle: "Add-ons", addonsDesc: "Extra managed modules. Enable the one-click ones instantly, or message us for the rest.",
+    enable: "Enable", askUs: "Ask us", perYr: "yr", perMailbox: "mailbox", perMoShort: "mo",
+    // leads
+    yourLeads: "Your leads", yourLeadsSub: "— every enquiry your assistant handled", exportCsv: "Export", search: "Search…",
+    fAll: "All time", fMonth: "30 days", fWeek: "7 days",
+    noLeads: "No enquiries captured yet — they'll appear here as they arrive.", noMatch: "No leads match your search.",
+    booking: "Booking", enquiry: "Enquiry", fromAds: " · from your ads", conversation: "(conversation)",
+    // reports
+    monthlyReports: "Monthly reports", reportsSub: "— the same numbers we email you on the 1st",
+    loading: "Loading…", noReports: "No reports yet — your first one lands after your first full month live.",
+    emailed: (d: string) => `Emailed ${d}`,
+    rEnq: "Enquiries", rBook: "Bookings", rAfter: "After-hours", rAds: "From ads", pipelineValue: "Estimated pipeline value:",
+    // messages
+    messageUs: "Message us", messageUsSub: "— we usually reply within a few hours", delete: "Delete",
+    confirmDelete: "Delete this conversation? It'll disappear from your view — Servolia can still see and restore it if needed.",
+    noMessages: "No messages yet — say hello 👋", imageReady: "Image ready — add a caption or just send.", typeMsg: "Type a message…",
+    onlyImages: "Only JPEG, PNG, WEBP, or GIF images.", imgTooBig: "Image must be under 4MB.", uploadFailed: "Upload failed",
+    // account
+    yourAccount: "Your account", accountDesc: "This is your login and where we send your reports and receipts.",
+    emailAddress: "Email address", changeEmailNote: "To change your email, message us from the Messages tab — we'll move your account over.",
+    changePassword: "Change password", setPassword: "Set a password",
+    changePwDesc: "Update the password you use to log in.", setPwDesc: "Optional — set a password so you can log in without the email link every time.",
+    currentPw: "Current password", newPw: "New password", confirmPw: "Confirm new password", pwHint: "At least 8 characters",
+    pwTooShort: "Password must be at least 8 characters.", pwMismatch: "Passwords don't match.",
+    pwUpdated: "Password updated ✅", pwSet: "Password set ✅ — you can now log in with it.", pwSaveErr: "Could not save.",
+    saving: "Saving…", updatePw: "Update password", setPwBtn: "Set password",
+    resources: "Resources", resourcesDesc: "Quick answers before you message us.",
+    resHow: "How the process works", resTerms: "Your delivery guarantee & terms", resPrivacy: "Privacy policy",
+  },
+  fr: {
+    signOut: "Déconnexion", toggleTheme: "Changer le thème", toggleLang: "Passer en anglais",
+    greeting: (n: string) => `Bon retour, ${n} 👋`,
+    tabs: { overview: "Aperçu", leads: "Mes leads", reports: "Rapports", messages: "Messages", account: "Compte" },
+    planSuffix: "forfait", perMo: "/mois",
+    subManageDesc: "Modifiez le moyen de paiement, téléchargez vos factures ou changez de forfait.",
+    billingTitle: "Facturation & factures", billingDesc: "Gérez vos moyens de paiement et téléchargez vos factures.",
+    manageSub: "Gérer l'abonnement", opening: "Ouverture…",
+    billingErr: "Impossible d'ouvrir le portail de facturation.", connErr: "Erreur de connexion — réessayez.",
+    statusActive: "actif", statusPaused: "en pause",
+    stEnquiries: "Demandes ce mois-ci", stBookings: "Demandes de RDV", stContacts: "Coordonnées captées",
+    stIntake: "En attente de vos infos", stBuilding: "En cours", stReview: "Prêt pour votre relecture", stDelivered: "Livré", stLive: "En ligne",
+    paid: (a: string) => `${a} € payés`, dueOnDelivery: (a: string) => `${a} € à la livraison`,
+    targetDelivery: (d: string) => `Livraison prévue : ${d}`, liveSince: (d: string) => `En ligne depuis le ${d}`,
+    needsScopeMsg: "Merci de relire et de confirmer le périmètre de votre projet — ce qui est inclus, le prix et le délai de livraison, par écrit.",
+    confirmScope: "Confirmer le périmètre",
+    needsIntakeMsg: "Une dernière étape avant de commencer — parlez-nous de votre activité, votre identité et vos services. Environ 8 minutes.",
+    completeIntake: "Compléter le formulaire",
+    viewLiveSite: "Voir mon site en ligne", previewSite: "Prévisualiser mon site",
+    addonsTitle: "Modules", addonsDesc: "Modules gérés en plus. Activez les modules en un clic, ou écrivez-nous pour les autres.",
+    enable: "Activer", askUs: "Nous demander", perYr: "an", perMailbox: "boîte", perMoShort: "mois",
+    yourLeads: "Vos leads", yourLeadsSub: "— chaque demande traitée par votre assistant", exportCsv: "Exporter", search: "Rechercher…",
+    fAll: "Tout", fMonth: "30 jours", fWeek: "7 jours",
+    noLeads: "Aucune demande captée pour l'instant — elles apparaîtront ici dès leur arrivée.", noMatch: "Aucun lead ne correspond à votre recherche.",
+    booking: "RDV", enquiry: "Demande", fromAds: " · via vos pubs", conversation: "(conversation)",
+    monthlyReports: "Rapports mensuels", reportsSub: "— les mêmes chiffres que nous vous envoyons le 1er",
+    loading: "Chargement…", noReports: "Pas encore de rapport — le premier arrive après votre premier mois complet en ligne.",
+    emailed: (d: string) => `Envoyé le ${d}`,
+    rEnq: "Demandes", rBook: "RDV", rAfter: "Hors horaires", rAds: "Via pubs", pipelineValue: "Valeur estimée du pipeline :",
+    messageUs: "Écrivez-nous", messageUsSub: "— nous répondons généralement en quelques heures", delete: "Supprimer",
+    confirmDelete: "Supprimer cette conversation ? Elle disparaîtra de votre vue — Servolia peut toujours la voir et la restaurer si besoin.",
+    noMessages: "Aucun message — dites bonjour 👋", imageReady: "Image prête — ajoutez une légende ou envoyez.", typeMsg: "Écrivez un message…",
+    onlyImages: "Uniquement des images JPEG, PNG, WEBP ou GIF.", imgTooBig: "L'image doit faire moins de 4 Mo.", uploadFailed: "Échec de l'envoi",
+    yourAccount: "Votre compte", accountDesc: "C'est votre identifiant et l'adresse où nous envoyons vos rapports et reçus.",
+    emailAddress: "Adresse email", changeEmailNote: "Pour changer d'email, écrivez-nous depuis l'onglet Messages — nous transférerons votre compte.",
+    changePassword: "Changer le mot de passe", setPassword: "Définir un mot de passe",
+    changePwDesc: "Mettez à jour le mot de passe que vous utilisez pour vous connecter.", setPwDesc: "Optionnel — définissez un mot de passe pour vous connecter sans le lien email à chaque fois.",
+    currentPw: "Mot de passe actuel", newPw: "Nouveau mot de passe", confirmPw: "Confirmer le mot de passe", pwHint: "Au moins 8 caractères",
+    pwTooShort: "Le mot de passe doit faire au moins 8 caractères.", pwMismatch: "Les mots de passe ne correspondent pas.",
+    pwUpdated: "Mot de passe mis à jour ✅", pwSet: "Mot de passe défini ✅ — vous pouvez maintenant l'utiliser.", pwSaveErr: "Impossible d'enregistrer.",
+    saving: "Enregistrement…", updatePw: "Mettre à jour", setPwBtn: "Définir le mot de passe",
+    resources: "Ressources", resourcesDesc: "Des réponses rapides avant de nous écrire.",
+    resHow: "Comment se déroule le processus", resTerms: "Votre garantie de livraison & CGV", resPrivacy: "Politique de confidentialité",
+  },
+};
+type Dict = typeof T["en"];
 
 interface Message { id: string; sender: "client" | "admin"; body: string; created_at: string; attachment_url?: string | null; attachment_type?: string | null }
 interface PortalLead { created_at: string; qualified: boolean; contact: string | null; excerpt: string; fromAds: boolean }
@@ -22,22 +124,24 @@ interface PortalStats { monthEnquiries: number; monthBookings: number; monthCont
 interface ReportMetrics { enquiries: number; bookings: number; afterHours: number; fromAds: number; estValue: number; perClient: number }
 interface PortalReport { period: string; metrics: ReportMetrics; sent_at: string | null }
 
-const STATUS_LABEL: Record<Build["status"], { label: string; color: string; bg: string }> = {
-  intake:   { label: "Awaiting your intake", color: "#92400E", bg: "#FEF3C7" },
-  building: { label: "In progress",           color: "#1D4ED8", bg: "#DBEAFE" },
-  review:   { label: "Ready for your review", color: "#5B21B6", bg: "#EDE9FE" },
-  delivered:{ label: "Delivered",             color: "#0369A1", bg: "#E0F2FE" },
-  live:     { label: "Live",                  color: "#166534", bg: "#DCFCE7" },
-};
-
-function formatDate(iso?: string | null) {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+function statusMeta(status: Build["status"], t: Dict): { label: string; color: string; bg: string } {
+  switch (status) {
+    case "building":  return { label: t.stBuilding,  color: "#1D4ED8", bg: "#DBEAFE" };
+    case "review":    return { label: t.stReview,    color: "#5B21B6", bg: "#EDE9FE" };
+    case "delivered": return { label: t.stDelivered, color: "#0369A1", bg: "#E0F2FE" };
+    case "live":      return { label: t.stLive,      color: "#166534", bg: "#DCFCE7" };
+    default:          return { label: t.stIntake,    color: "#92400E", bg: "#FEF3C7" };
+  }
 }
 
-function formatPeriod(period: string) {
+const locale = (lang: Lang) => (lang === "fr" ? "fr-FR" : "en-GB");
+function formatDate(iso: string | null | undefined, lang: Lang) {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleDateString(locale(lang), { day: "numeric", month: "short", year: "numeric" });
+}
+function formatPeriod(period: string, lang: Lang) {
   const [y, m] = period.split("-").map(Number);
-  return new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+  return new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString(locale(lang), { month: "long", year: "numeric" });
 }
 
 type Tab = "overview" | "leads" | "reports" | "messages" | "account";
@@ -47,6 +151,8 @@ export default function PortalDashboard({
 }: { email: string; builds: Build[]; subscription?: Client | null; siteSlugs?: Record<string, string>; scopesByLeadId?: Record<string, { token: string; accepted: boolean }> }) {
   const router = useRouter();
   const [theme, setTheme] = useState<"light" | "dark">("light");
+  const [lang, setLang] = useState<Lang>("en");
+  const t = T[lang];
   const [tab, setTab] = useState<Tab>("overview");
 
   const [messages, setMessages] = useState<Message[]>([]);
@@ -80,9 +186,23 @@ export default function PortalDashboard({
     else if (window.matchMedia?.("(prefers-color-scheme: dark)").matches) setTheme("dark");
   }, []);
   const toggleTheme = () => {
-    setTheme((t) => {
-      const next = t === "light" ? "dark" : "light";
+    setTheme((v) => {
+      const next = v === "light" ? "dark" : "light";
       localStorage.setItem("servolia_portal_theme", next);
+      return next;
+    });
+  };
+
+  // Language init: saved preference → browser language → English.
+  useEffect(() => {
+    const saved = localStorage.getItem("servolia_portal_lang");
+    if (saved === "fr" || saved === "en") setLang(saved);
+    else if (navigator.language?.toLowerCase().startsWith("fr")) setLang("fr");
+  }, []);
+  const toggleLang = () => {
+    setLang((v) => {
+      const next: Lang = v === "en" ? "fr" : "en";
+      localStorage.setItem("servolia_portal_lang", next);
       return next;
     });
   };
@@ -125,8 +245,6 @@ export default function PortalDashboard({
   }
 
   // Read-only unread badge — polls regardless of which tab is open, never marks anything read.
-  // Fetching the real conversation (below) is what marks messages read, so this must stay separate
-  // or the badge would reset to 0 the instant the dashboard loads, before the client ever looks.
   useEffect(() => {
     const poll = async () => {
       const res = await fetch("/api/portal/messages/unread-count");
@@ -137,8 +255,7 @@ export default function PortalDashboard({
     return () => clearInterval(id);
   }, []);
 
-  // Load the full thread the first time the Messages tab is opened, then poll for new replies
-  // while it stays open. This is what marks admin replies as read (see the GET route).
+  // Load the full thread the first time the Messages tab is opened, then poll for new replies.
   useEffect(() => {
     if (tab !== "messages") return;
     if (!messagesLoaded) {
@@ -168,8 +285,8 @@ export default function PortalDashboard({
 
   function pickImage(file: File) {
     setImageError("");
-    if (!ACCEPTED_IMAGE_TYPES.split(",").includes(file.type)) { setImageError("Only JPEG, PNG, WEBP, or GIF images."); return; }
-    if (file.size > MAX_IMAGE_BYTES) { setImageError("Image must be under 4MB."); return; }
+    if (!ACCEPTED_IMAGE_TYPES.split(",").includes(file.type)) { setImageError(t.onlyImages); return; }
+    if (file.size > MAX_IMAGE_BYTES) { setImageError(t.imgTooBig); return; }
     setPendingImage(file);
     setPendingPreview(URL.createObjectURL(file));
   }
@@ -191,7 +308,7 @@ export default function PortalDashboard({
         form.append("file", pendingImage);
         const up = await fetch("/api/portal/messages/upload", { method: "POST", body: form });
         const upData = await up.json();
-        if (!up.ok) { setImageError(upData.error ?? "Upload failed"); setSending(false); return; }
+        if (!up.ok) { setImageError(upData.error ?? t.uploadFailed); setSending(false); return; }
         attachmentUrl = upData.url; attachmentType = upData.type;
       }
       setInput(""); clearPendingImage();
@@ -207,7 +324,7 @@ export default function PortalDashboard({
   const [deletingChat, setDeletingChat] = useState(false);
   async function deleteChat() {
     if (deletingChat) return;
-    if (!confirm("Delete this conversation? It'll disappear from your view — Servolia can still see and restore it if needed.")) return;
+    if (!confirm(t.confirmDelete)) return;
     setDeletingChat(true);
     try {
       const res = await fetch("/api/portal/messages", { method: "DELETE" });
@@ -237,8 +354,8 @@ export default function PortalDashboard({
       const res = await fetch("/api/billing-portal", { method: "POST" });
       const data = await res.json();
       if (res.ok) { window.location.href = data.url; return; }
-      setBillingError(data.error ?? "Could not open the billing portal.");
-    } catch { setBillingError("Connection error — please try again."); }
+      setBillingError(data.error ?? t.billingErr);
+    } catch { setBillingError(t.connErr); }
     setBillingBusy(false);
   }
 
@@ -248,6 +365,7 @@ export default function PortalDashboard({
   }
 
   const firstName = email.split("@")[0];
+  const subStatusLabel = (s?: string) => s === "active" ? t.statusActive : s === "paused" ? t.statusPaused : (s ?? "");
 
   return (
     <div data-portal-theme={theme} className="min-h-screen bg-[var(--p-bg)] text-[var(--p-text)] transition-colors">
@@ -259,13 +377,17 @@ export default function PortalDashboard({
             Serv<span className="text-[var(--p-accent)]">olia</span>
           </Link>
           <div className="flex items-center gap-2">
-            <button onClick={toggleTheme} aria-label="Toggle theme"
+            <button onClick={toggleLang} aria-label={t.toggleLang} title={t.toggleLang}
+              className="h-9 px-2.5 rounded-lg border border-[var(--p-border)] flex items-center gap-1.5 text-[var(--p-muted)] text-xs font-black hover:text-[var(--p-text)] hover:bg-[var(--p-raised)] transition-colors">
+              <Languages className="w-4 h-4" /> {lang === "en" ? "FR" : "EN"}
+            </button>
+            <button onClick={toggleTheme} aria-label={t.toggleTheme}
               className="w-9 h-9 rounded-lg border border-[var(--p-border)] flex items-center justify-center text-[var(--p-muted)] hover:text-[var(--p-text)] hover:bg-[var(--p-raised)] transition-colors">
               {theme === "light" ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
             </button>
-            <button onClick={handleLogout} aria-label="Sign out"
+            <button onClick={handleLogout} aria-label={t.signOut}
               className="flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-lg border border-[var(--p-border)] text-[var(--p-muted)] text-sm font-semibold hover:bg-[var(--p-raised)] hover:text-[var(--p-text)] transition-colors">
-              <LogOut className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Sign out</span>
+              <LogOut className="w-3.5 h-3.5" /> <span className="hidden sm:inline">{t.signOut}</span>
             </button>
           </div>
         </div>
@@ -274,25 +396,25 @@ export default function PortalDashboard({
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-5 sm:py-8">
         {/* Greeting */}
         <div className="mb-6">
-          <h1 className="text-xl sm:text-2xl font-black text-[var(--p-text)] break-words">Welcome back, {firstName} 👋</h1>
+          <h1 className="text-xl sm:text-2xl font-black text-[var(--p-text)] break-words">{t.greeting(firstName)}</h1>
           <p className="text-sm text-[var(--p-muted)] break-all">{email}</p>
         </div>
 
         {/* Tabs */}
         <div className="flex gap-1 p-1 rounded-xl bg-[var(--p-raised)] border border-[var(--p-border)] mb-6 w-full sm:w-fit overflow-x-auto">
           {([
-            { key: "overview", label: "Overview", icon: LayoutDashboard },
-            { key: "leads", label: "My leads", icon: Users },
-            { key: "reports", label: "Reports", icon: BarChart3 },
-            { key: "messages", label: "Messages", icon: MessageSquare },
-            { key: "account", label: "Account", icon: KeyRound },
-          ] as const).map((t) => (
-            <button key={t.key} onClick={() => setTab(t.key)}
+            { key: "overview", label: t.tabs.overview, icon: LayoutDashboard },
+            { key: "leads", label: t.tabs.leads, icon: Users },
+            { key: "reports", label: t.tabs.reports, icon: BarChart3 },
+            { key: "messages", label: t.tabs.messages, icon: MessageSquare },
+            { key: "account", label: t.tabs.account, icon: KeyRound },
+          ] as const).map((it) => (
+            <button key={it.key} onClick={() => setTab(it.key)}
               className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap transition-colors ${
-                tab === t.key ? "bg-[var(--p-accent)] text-[var(--p-accent-fg)]" : "text-[var(--p-muted)] hover:text-[var(--p-text)]"
+                tab === it.key ? "bg-[var(--p-accent)] text-[var(--p-accent-fg)]" : "text-[var(--p-muted)] hover:text-[var(--p-text)]"
               }`}>
-              <t.icon className="w-4 h-4" /> {t.label}
-              {t.key === "messages" && unreadCount > 0 && (
+              <it.icon className="w-4 h-4" /> {it.label}
+              {it.key === "messages" && unreadCount > 0 && (
                 <span className={`ml-0.5 text-[10px] font-black px-1.5 py-0.5 rounded-full ${tab === "messages" ? "bg-[var(--p-accent-fg)]/20 text-[var(--p-accent-fg)]" : "bg-[var(--p-accent)] text-[var(--p-accent-fg)]"}`}>
                   {unreadCount > 9 ? "9+" : unreadCount}
                 </span>
@@ -313,25 +435,25 @@ export default function PortalDashboard({
                 {subscription ? (
                   <>
                     <p className="font-black text-[var(--p-text)] text-sm capitalize">
-                      {subscription.plan} plan · €{Number(subscription.monthly_amount).toLocaleString()}/mo
+                      {subscription.plan} {t.planSuffix} · €{Number(subscription.monthly_amount).toLocaleString()}{t.perMo}
                       <span className={`ml-2 text-[10px] font-black px-2 py-0.5 rounded-full align-middle ${
                         subscription.status === "active" ? "bg-[#DCFCE7] text-[#166534]" :
                         subscription.status === "paused" ? "bg-[#FEF3C7] text-[#92400E]" : "bg-[#FEE2E2] text-[#B91C1C]"
-                      }`}>{subscription.status}</span>
+                      }`}>{subStatusLabel(subscription.status)}</span>
                     </p>
-                    <p className="text-xs text-[var(--p-muted)] mt-0.5">Update payment method, download invoices, or change your plan.</p>
+                    <p className="text-xs text-[var(--p-muted)] mt-0.5">{t.subManageDesc}</p>
                   </>
                 ) : (
                   <>
-                    <p className="font-black text-[var(--p-text)] text-sm">Billing & invoices</p>
-                    <p className="text-xs text-[var(--p-muted)] mt-0.5">Manage payment methods and download your invoices.</p>
+                    <p className="font-black text-[var(--p-text)] text-sm">{t.billingTitle}</p>
+                    <p className="text-xs text-[var(--p-muted)] mt-0.5">{t.billingDesc}</p>
                   </>
                 )}
                 {billingError && <p className="text-xs text-[#EF4444] mt-1">{billingError}</p>}
               </div>
               <button onClick={openBillingPortal} disabled={billingBusy}
                 className="flex w-full sm:w-auto items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-[var(--p-accent)] text-[var(--p-accent-fg)] text-sm font-bold hover:bg-[var(--p-accent-hover)] transition-colors disabled:opacity-50 flex-shrink-0">
-                {billingBusy ? "Opening…" : "Manage subscription"} <ExternalLink className="w-3.5 h-3.5" />
+                {billingBusy ? t.opening : t.manageSub} <ExternalLink className="w-3.5 h-3.5" />
               </button>
             </div>
 
@@ -339,9 +461,9 @@ export default function PortalDashboard({
             {stats && (
               <div className="grid grid-cols-1 min-[420px]:grid-cols-3 gap-3">
                 {[
-                  { icon: Users, label: "Enquiries this month", value: stats.monthEnquiries },
-                  { icon: CalendarCheck, label: "Booking requests", value: stats.monthBookings, accent: true },
-                  { icon: Megaphone, label: "Contacts captured", value: stats.monthContacts },
+                  { icon: Users, label: t.stEnquiries, value: stats.monthEnquiries },
+                  { icon: CalendarCheck, label: t.stBookings, value: stats.monthBookings, accent: true },
+                  { icon: Megaphone, label: t.stContacts, value: stats.monthContacts },
                 ].map((s) => (
                   <div key={s.label} className="rounded-2xl border border-[var(--p-border)] p-4 flex min-[420px]:block items-center gap-3"
                     style={{ background: s.accent ? "var(--p-accent-soft)" : "var(--p-surface)", boxShadow: "var(--p-shadow)" }}>
@@ -357,7 +479,7 @@ export default function PortalDashboard({
             {builds.length > 0 && (
               <div className="grid sm:grid-cols-2 gap-4">
                 {builds.map((b) => {
-                  const st = STATUS_LABEL[b.status] ?? STATUS_LABEL.intake;
+                  const st = statusMeta(b.status, t);
                   const slug = siteSlugs?.[b.id];
                   const needsIntake = b.status === "intake";
                   const scope = b.lead_id ? scopesByLeadId?.[b.lead_id] : undefined;
@@ -371,34 +493,34 @@ export default function PortalDashboard({
                       <div className="space-y-2 text-sm text-[var(--p-muted)]">
                         <div className="flex items-center gap-2">
                           <CreditCard className="w-3.5 h-3.5 text-[var(--p-faint)]" />
-                          €{Number(b.deposit_paid).toLocaleString()} paid
-                          {b.balance_due > 0 && <span className="text-[var(--p-faint)]">· €{Number(b.balance_due).toLocaleString()} due on delivery</span>}
+                          {t.paid(Number(b.deposit_paid).toLocaleString())}
+                          {b.balance_due > 0 && <span className="text-[var(--p-faint)]">· {t.dueOnDelivery(Number(b.balance_due).toLocaleString())}</span>}
                         </div>
-                        {b.deadline && <div className="flex items-center gap-2"><Clock className="w-3.5 h-3.5 text-[var(--p-faint)]" /> Target delivery: {formatDate(b.deadline)}</div>}
-                        {b.live_at && <div className="flex items-center gap-2 text-[#22C55E]"><CheckCircle2 className="w-3.5 h-3.5" /> Live since {formatDate(b.live_at)}</div>}
+                        {b.deadline && <div className="flex items-center gap-2"><Clock className="w-3.5 h-3.5 text-[var(--p-faint)]" /> {t.targetDelivery(formatDate(b.deadline, lang))}</div>}
+                        {b.live_at && <div className="flex items-center gap-2 text-[#22C55E]"><CheckCircle2 className="w-3.5 h-3.5" /> {t.liveSince(formatDate(b.live_at, lang))}</div>}
                       </div>
                       {needsScope && (
                         <>
-                          <p className="text-xs text-[#92400E] mt-3 leading-relaxed">Please review and confirm your project scope — what's included, the price, and the delivery deadline in writing.</p>
+                          <p className="text-xs text-[#92400E] mt-3 leading-relaxed">{t.needsScopeMsg}</p>
                           <a href={`/scope/${scope.token}`}
                             className="mt-3 flex items-center justify-center gap-1.5 py-2.5 rounded-xl border-2 border-[#D97706] text-[#92400E] text-sm font-black hover:bg-[#FEF3C7] transition-colors">
-                            <FileText className="w-3.5 h-3.5" /> Confirm your scope
+                            <FileText className="w-3.5 h-3.5" /> {t.confirmScope}
                           </a>
                         </>
                       )}
                       {needsIntake && (
                         <>
-                          <p className="text-xs text-[#92400E] mt-3 leading-relaxed">One last step before we start building — tell us about your business, branding, and services. Takes about 8 minutes.</p>
+                          <p className="text-xs text-[#92400E] mt-3 leading-relaxed">{t.needsIntakeMsg}</p>
                           <a href={`/onboarding?plan=${b.plan}${b.checkout_session_id ? `&session_id=${b.checkout_session_id}` : ""}`}
                             className="mt-3 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-gradient-to-r from-[#F59E0B] to-[#D97706] text-white text-sm font-black hover:opacity-90 transition-opacity">
-                            Complete your intake form <ArrowRight className="w-3.5 h-3.5" />
+                            {t.completeIntake} <ArrowRight className="w-3.5 h-3.5" />
                           </a>
                         </>
                       )}
                       {slug && (
                         <a href={`/sites/${slug}`} target="_blank" rel="noopener noreferrer"
                           className="mt-4 flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-[var(--p-border)] text-[var(--p-text)] text-sm font-bold hover:bg-[var(--p-raised)] transition-colors">
-                          <Globe className="w-3.5 h-3.5 text-[var(--p-accent)]" /> {b.status === "live" ? "View my live site" : "Preview my site"} <ExternalLink className="w-3 h-3" />
+                          <Globe className="w-3.5 h-3.5 text-[var(--p-accent)]" /> {b.status === "live" ? t.viewLiveSite : t.previewSite} <ExternalLink className="w-3 h-3" />
                         </a>
                       )}
                     </div>
@@ -407,31 +529,31 @@ export default function PortalDashboard({
               </div>
             )}
 
-            {/* Add-ons — extra managed modules the client can switch on anytime */}
+            {/* Add-ons */}
             <div className="rounded-2xl border border-[var(--p-border)] bg-[var(--p-surface)] p-4 sm:p-5" style={{ boxShadow: "var(--p-shadow)" }}>
               <div className="flex items-center gap-2 mb-1">
                 <Sparkles className="w-4 h-4 text-[var(--p-accent)]" />
-                <h3 className="font-black text-[var(--p-text)] text-sm">Add-ons</h3>
+                <h3 className="font-black text-[var(--p-text)] text-sm">{t.addonsTitle}</h3>
               </div>
-              <p className="text-xs text-[var(--p-muted)] mb-4">Extra managed modules. Enable the one-click ones instantly, or message us for the rest.</p>
+              <p className="text-xs text-[var(--p-muted)] mb-4">{t.addonsDesc}</p>
               <div className="grid grid-cols-1 min-[520px]:grid-cols-2 gap-2.5">
                 {Object.values(ADDONS).map((a) => (
                   <div key={a.key} className="flex items-center justify-between gap-3 rounded-xl border border-[var(--p-border)] bg-[var(--p-raised)] px-3.5 py-2.5">
                     <div className="min-w-0">
-                      <p className="text-sm text-[var(--p-text)] truncate">{a.name}</p>
+                      <p className="text-sm text-[var(--p-text)] truncate">{lang === "fr" ? a.nameFr : a.name}</p>
                       <p className="text-xs font-black text-[var(--p-text)]">
-                        €{a.priceEur}<span className="text-[var(--p-muted)] font-semibold">/{a.interval === "year" ? "yr" : a.per === "mailbox" ? "mailbox" : "mo"}</span>
+                        €{a.priceEur}<span className="text-[var(--p-muted)] font-semibold">/{a.interval === "year" ? t.perYr : a.per === "mailbox" ? t.perMailbox : t.perMoShort}</span>
                       </p>
                     </div>
                     {a.selfServe ? (
                       <button onClick={() => enableAddon(a.key)} disabled={!!addonBusy}
                         className="shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[var(--p-accent)] text-[var(--p-accent-fg)] text-xs font-black hover:bg-[var(--p-accent-hover)] transition-colors disabled:opacity-50">
-                        {addonBusy === a.key ? <Loader2 className="w-3 h-3 animate-spin" /> : <>Enable <ArrowRight className="w-3 h-3" /></>}
+                        {addonBusy === a.key ? <Loader2 className="w-3 h-3 animate-spin" /> : <>{t.enable} <ArrowRight className="w-3 h-3" /></>}
                       </button>
                     ) : (
                       <button onClick={() => setTab("messages")}
                         className="shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-lg border border-[var(--p-border)] text-[var(--p-text)] text-xs font-bold hover:bg-[var(--p-bg)] transition-colors">
-                        <MessageSquare className="w-3 h-3 text-[var(--p-accent)]" /> Ask us
+                        <MessageSquare className="w-3 h-3 text-[var(--p-accent)]" /> {t.askUs}
                       </button>
                     )}
                   </div>
@@ -447,12 +569,12 @@ export default function PortalDashboard({
             <div className="px-5 py-4 border-b border-[var(--p-border)] bg-[var(--p-raised)]">
               <div className="flex items-center gap-2 mb-3">
                 <Users className="w-4 h-4 text-[var(--p-accent)]" />
-                <h2 className="font-black text-[var(--p-text)] text-sm">Your leads</h2>
-                <span className="hidden sm:inline text-xs text-[var(--p-faint)]">— every enquiry your assistant handled</span>
+                <h2 className="font-black text-[var(--p-text)] text-sm">{t.yourLeads}</h2>
+                <span className="hidden sm:inline text-xs text-[var(--p-faint)]">{t.yourLeadsSub}</span>
                 {leads.length > 0 && (
-                  <button onClick={exportLeadsCsv} title="Export as CSV"
+                  <button onClick={exportLeadsCsv} title={t.exportCsv}
                     className="ml-auto flex items-center gap-1.5 text-xs text-[var(--p-faint)] hover:text-[var(--p-text)] transition-colors">
-                    <Download className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Export</span>
+                    <Download className="w-3.5 h-3.5" /> <span className="hidden sm:inline">{t.exportCsv}</span>
                   </button>
                 )}
               </div>
@@ -460,11 +582,11 @@ export default function PortalDashboard({
                 <div className="flex flex-wrap items-center gap-2">
                   <div className="relative flex-1 min-w-[160px]">
                     <Search className="w-3.5 h-3.5 text-[var(--p-faint)] absolute left-2.5 top-1/2 -translate-y-1/2" />
-                    <input value={leadSearch} onChange={(e) => setLeadSearch(e.target.value)} placeholder="Search…"
+                    <input value={leadSearch} onChange={(e) => setLeadSearch(e.target.value)} placeholder={t.search}
                       className="w-full pl-8 pr-3 py-1.5 rounded-lg bg-[var(--p-bg)] border border-[var(--p-border)] text-xs text-[var(--p-text)] placeholder-[var(--p-faint)] focus:outline-none focus:border-[var(--p-accent)]" />
                   </div>
                   <div className="flex gap-1">
-                    {([["all", "All time"], ["month", "30 days"], ["week", "7 days"]] as const).map(([k, label]) => (
+                    {([["all", t.fAll], ["month", t.fMonth], ["week", t.fWeek]] as const).map(([k, label]) => (
                       <button key={k} onClick={() => setLeadFilter(k)}
                         className={`px-2.5 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-colors ${leadFilter === k ? "bg-[var(--p-accent)] text-[var(--p-accent-fg)]" : "text-[var(--p-muted)] hover:bg-[var(--p-bg)]"}`}>
                         {label}
@@ -475,20 +597,20 @@ export default function PortalDashboard({
               )}
             </div>
             {leads.length === 0 ? (
-              <p className="text-sm text-[var(--p-faint)] text-center py-12">No enquiries captured yet — they&apos;ll appear here as they arrive.</p>
+              <p className="text-sm text-[var(--p-faint)] text-center py-12">{t.noLeads}</p>
             ) : filteredLeads.length === 0 ? (
-              <p className="text-sm text-[var(--p-faint)] text-center py-12">No leads match your search.</p>
+              <p className="text-sm text-[var(--p-faint)] text-center py-12">{t.noMatch}</p>
             ) : (
               <div className="max-h-[540px] overflow-y-auto divide-y divide-[var(--p-border)]">
                 {filteredLeads.map((l, i) => (
                   <div key={i} className="px-4 sm:px-5 py-3 flex items-start gap-3">
                     <span className={`mt-1 text-[10px] font-black px-2 py-0.5 rounded-full whitespace-nowrap ${l.qualified ? "bg-[#DCFCE7] text-[#166534]" : "bg-[var(--p-raised)] text-[var(--p-muted)]"}`}>
-                      {l.qualified ? "Booking" : "Enquiry"}
+                      {l.qualified ? t.booking : t.enquiry}
                     </span>
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm text-[var(--p-text)] truncate">{l.excerpt || "(conversation)"}</p>
+                      <p className="text-sm text-[var(--p-text)] truncate">{l.excerpt || t.conversation}</p>
                       <p className="text-[11px] text-[var(--p-faint)] mt-0.5">
-                        {formatDate(l.created_at)}{l.contact ? ` · ${l.contact}` : ""}{l.fromAds ? " · from your ads" : ""}
+                        {formatDate(l.created_at, lang)}{l.contact ? ` · ${l.contact}` : ""}{l.fromAds ? t.fromAds : ""}
                       </p>
                     </div>
                   </div>
@@ -503,27 +625,27 @@ export default function PortalDashboard({
           <div className="rounded-2xl border border-[var(--p-border)] bg-[var(--p-surface)] overflow-hidden" style={{ boxShadow: "var(--p-shadow)" }}>
             <div className="px-5 py-4 border-b border-[var(--p-border)] flex items-center gap-2 bg-[var(--p-raised)]">
               <BarChart3 className="w-4 h-4 text-[var(--p-accent)]" />
-              <h2 className="font-black text-[var(--p-text)] text-sm">Monthly reports</h2>
-              <span className="hidden sm:inline text-xs text-[var(--p-faint)]">— the same numbers we email you on the 1st</span>
+              <h2 className="font-black text-[var(--p-text)] text-sm">{t.monthlyReports}</h2>
+              <span className="hidden sm:inline text-xs text-[var(--p-faint)]">{t.reportsSub}</span>
             </div>
             {loadingReports ? (
-              <p className="text-sm text-[var(--p-faint)] text-center py-12">Loading…</p>
+              <p className="text-sm text-[var(--p-faint)] text-center py-12">{t.loading}</p>
             ) : reports.length === 0 ? (
-              <p className="text-sm text-[var(--p-faint)] text-center py-12">No reports yet — your first one lands after your first full month live.</p>
+              <p className="text-sm text-[var(--p-faint)] text-center py-12">{t.noReports}</p>
             ) : (
               <div className="divide-y divide-[var(--p-border)]">
                 {reports.map((r) => (
                   <div key={r.period} className="px-4 sm:px-5 py-4">
                     <div className="flex items-center justify-between mb-3">
-                      <h3 className="font-black text-[var(--p-text)] text-sm">{formatPeriod(r.period)}</h3>
-                      {r.sent_at && <span className="text-[10px] text-[var(--p-faint)]">Emailed {formatDate(r.sent_at)}</span>}
+                      <h3 className="font-black text-[var(--p-text)] text-sm">{formatPeriod(r.period, lang)}</h3>
+                      {r.sent_at && <span className="text-[10px] text-[var(--p-faint)]">{t.emailed(formatDate(r.sent_at, lang))}</span>}
                     </div>
                     <div className="grid grid-cols-2 min-[420px]:grid-cols-4 gap-2">
                       {[
-                        { label: "Enquiries", value: r.metrics.enquiries },
-                        { label: "Bookings", value: r.metrics.bookings, accent: true },
-                        { label: "After-hours", value: r.metrics.afterHours },
-                        { label: "From ads", value: r.metrics.fromAds },
+                        { label: t.rEnq, value: r.metrics.enquiries },
+                        { label: t.rBook, value: r.metrics.bookings, accent: true },
+                        { label: t.rAfter, value: r.metrics.afterHours },
+                        { label: t.rAds, value: r.metrics.fromAds },
                       ].map((s) => (
                         <div key={s.label} className="rounded-xl p-3" style={{ background: s.accent ? "var(--p-accent-soft)" : "var(--p-raised)" }}>
                           <p className={`text-lg font-black ${s.accent ? "text-[var(--p-accent)]" : "text-[var(--p-text)]"}`}>{s.value}</p>
@@ -533,7 +655,7 @@ export default function PortalDashboard({
                     </div>
                     {r.metrics.estValue > 0 && (
                       <p className="text-xs text-[var(--p-muted)] mt-3">
-                        Estimated pipeline value: <span className="font-black text-[var(--p-text)]">€{r.metrics.estValue.toLocaleString()}</span>
+                        {t.pipelineValue} <span className="font-black text-[var(--p-text)]">€{r.metrics.estValue.toLocaleString()}</span>
                       </p>
                     )}
                   </div>
@@ -548,20 +670,20 @@ export default function PortalDashboard({
           <div className="rounded-2xl border border-[var(--p-border)] bg-[var(--p-surface)] overflow-hidden flex flex-col" style={{ height: "560px", boxShadow: "var(--p-shadow)" }}>
             <div className="px-5 py-4 border-b border-[var(--p-border)] flex items-center gap-2 bg-[var(--p-raised)]">
               <MessageSquare className="w-4 h-4 text-[var(--p-accent)]" />
-              <h2 className="font-black text-[var(--p-text)] text-sm">Message us</h2>
-              <span className="hidden sm:inline text-xs text-[var(--p-faint)]">— we usually reply within a few hours</span>
+              <h2 className="font-black text-[var(--p-text)] text-sm">{t.messageUs}</h2>
+              <span className="hidden sm:inline text-xs text-[var(--p-faint)]">{t.messageUsSub}</span>
               {messages.length > 0 && (
-                <button onClick={deleteChat} disabled={deletingChat} title="Delete conversation"
+                <button onClick={deleteChat} disabled={deletingChat} title={t.delete}
                   className="ml-auto flex items-center gap-1.5 text-xs text-[var(--p-faint)] hover:text-red-500 transition-colors disabled:opacity-40">
-                  <Trash2 className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Delete</span>
+                  <Trash2 className="w-3.5 h-3.5" /> <span className="hidden sm:inline">{t.delete}</span>
                 </button>
               )}
             </div>
             <div className="flex-1 overflow-y-auto p-4 sm:p-5 flex flex-col gap-3">
               {loadingMsgs ? (
-                <p className="text-sm text-[var(--p-faint)] text-center mt-8">Loading…</p>
+                <p className="text-sm text-[var(--p-faint)] text-center mt-8">{t.loading}</p>
               ) : messages.length === 0 ? (
-                <p className="text-sm text-[var(--p-faint)] text-center mt-8">No messages yet — say hello 👋</p>
+                <p className="text-sm text-[var(--p-faint)] text-center mt-8">{t.noMessages}</p>
               ) : (
                 messages.map((m) => (
                   <div key={m.id} className={`flex ${m.sender === "client" ? "justify-end" : "justify-start"}`}>
@@ -575,7 +697,7 @@ export default function PortalDashboard({
                       )}
                       {m.body}
                       <div className={`text-[10px] mt-1 ${m.sender === "client" ? "opacity-60" : "text-[var(--p-faint)]"}`}>
-                        {new Date(m.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                        {new Date(m.created_at).toLocaleString(locale(lang), { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
                       </div>
                     </div>
                   </div>
@@ -593,11 +715,11 @@ export default function PortalDashboard({
                       <X className="w-3 h-3" />
                     </button>
                   </div>
-                  <span className="text-xs text-[var(--p-faint)]">Image ready — add a caption or just send.</span>
+                  <span className="text-xs text-[var(--p-faint)]">{t.imageReady}</span>
                 </div>
               )}
               <div className="p-3 flex gap-2">
-                <button onClick={() => fileInputRef.current?.click()} title="Attach an image"
+                <button onClick={() => fileInputRef.current?.click()} title="Image"
                   className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 border border-[var(--p-border)] text-[var(--p-faint)] hover:bg-[var(--p-raised)] transition-colors">
                   <ImageIcon className="w-4 h-4" />
                 </button>
@@ -605,7 +727,7 @@ export default function PortalDashboard({
                   onChange={(e) => { const f = e.target.files?.[0]; if (f) pickImage(f); }} />
                 <input value={input} onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
-                  placeholder="Type a message…"
+                  placeholder={t.typeMsg}
                   className="flex-1 bg-[var(--p-bg)] text-[var(--p-text)] placeholder-[var(--p-faint)] text-sm rounded-xl px-4 py-2.5 border border-[var(--p-border)] focus:outline-none focus:border-[var(--p-accent)] transition-colors" />
                 <button onClick={sendMessage} disabled={(!input.trim() && !pendingImage) || sending}
                   className="w-10 h-10 rounded-xl bg-[var(--p-accent)] flex items-center justify-center disabled:opacity-40 hover:bg-[var(--p-accent-hover)] transition-colors flex-shrink-0">
@@ -617,7 +739,7 @@ export default function PortalDashboard({
         )}
 
         {/* ── ACCOUNT ── */}
-        {tab === "account" && <AccountTab email={email} onLogout={handleLogout} />}
+        {tab === "account" && <AccountTab email={email} onLogout={handleLogout} t={t} />}
       </div>
     </div>
   );
@@ -625,7 +747,7 @@ export default function PortalDashboard({
 
 /* ───────────────────────── Account tab ───────────────────────── */
 
-function AccountTab({ email, onLogout }: { email: string; onLogout: () => void }) {
+function AccountTab({ email, onLogout, t }: { email: string; onLogout: () => void; t: Dict }) {
   const [hasPassword, setHasPassword] = useState<boolean | null>(null);
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
@@ -641,8 +763,8 @@ function AccountTab({ email, onLogout }: { email: string; onLogout: () => void }
 
   async function submit() {
     setMsg(null);
-    if (next.length < 8) { setMsg({ ok: false, text: "Password must be at least 8 characters." }); return; }
-    if (next !== confirm) { setMsg({ ok: false, text: "Passwords don't match." }); return; }
+    if (next.length < 8) { setMsg({ ok: false, text: t.pwTooShort }); return; }
+    if (next !== confirm) { setMsg({ ok: false, text: t.pwMismatch }); return; }
     setBusy(true);
     try {
       const res = await fetch("/api/portal/set-password", {
@@ -651,9 +773,9 @@ function AccountTab({ email, onLogout }: { email: string; onLogout: () => void }
       });
       const data = await res.json();
       if (res.ok) {
-        setMsg({ ok: true, text: hasPassword ? "Password updated ✅" : "Password set ✅ — you can now log in with it." });
+        setMsg({ ok: true, text: hasPassword ? t.pwUpdated : t.pwSet });
         setCurrent(""); setNext(""); setConfirm(""); setHasPassword(true);
-      } else setMsg({ ok: false, text: data.error ?? "Could not save." });
+      } else setMsg({ ok: false, text: data.error ?? t.pwSaveErr });
     } finally { setBusy(false); }
   }
 
@@ -665,53 +787,49 @@ function AccountTab({ email, onLogout }: { email: string; onLogout: () => void }
     <div className="space-y-4 max-w-xl">
       {/* Email / account */}
       <div className={card} style={{ boxShadow: "var(--p-shadow)" }}>
-        <h2 className="font-black text-[var(--p-text)] text-sm mb-1 flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-[var(--p-accent)]" /> Your account</h2>
-        <p className="text-xs text-[var(--p-muted)] mb-4">This is your login and where we send your reports and receipts.</p>
-        <label className={label}>Email address</label>
+        <h2 className="font-black text-[var(--p-text)] text-sm mb-1 flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-[var(--p-accent)]" /> {t.yourAccount}</h2>
+        <p className="text-xs text-[var(--p-muted)] mb-4">{t.accountDesc}</p>
+        <label className={label}>{t.emailAddress}</label>
         <input value={email} readOnly className={`${inp} opacity-70 cursor-not-allowed`} />
-        <p className="text-[11px] text-[var(--p-faint)] mt-2">To change your email, message us from the Messages tab — we&apos;ll move your account over.</p>
+        <p className="text-[11px] text-[var(--p-faint)] mt-2">{t.changeEmailNote}</p>
       </div>
 
       {/* Password */}
       <div className={card} style={{ boxShadow: "var(--p-shadow)" }}>
-        <h2 className="font-black text-[var(--p-text)] text-sm mb-1 flex items-center gap-2"><KeyRound className="w-4 h-4 text-[var(--p-accent)]" /> {hasPassword ? "Change password" : "Set a password"}</h2>
-        <p className="text-xs text-[var(--p-muted)] mb-4">
-          {hasPassword
-            ? "Update the password you use to log in."
-            : "Optional — set a password so you can log in without the email link every time."}
-        </p>
+        <h2 className="font-black text-[var(--p-text)] text-sm mb-1 flex items-center gap-2"><KeyRound className="w-4 h-4 text-[var(--p-accent)]" /> {hasPassword ? t.changePassword : t.setPassword}</h2>
+        <p className="text-xs text-[var(--p-muted)] mb-4">{hasPassword ? t.changePwDesc : t.setPwDesc}</p>
         <div className="space-y-3">
           {hasPassword && (
             <div>
-              <label className={label}>Current password</label>
+              <label className={label}>{t.currentPw}</label>
               <input type="password" value={current} onChange={(e) => setCurrent(e.target.value)} className={inp} autoComplete="current-password" />
             </div>
           )}
           <div>
-            <label className={label}>New password</label>
-            <input type="password" value={next} onChange={(e) => setNext(e.target.value)} className={inp} placeholder="At least 8 characters" autoComplete="new-password" />
+            <label className={label}>{t.newPw}</label>
+            <input type="password" value={next} onChange={(e) => setNext(e.target.value)} className={inp} placeholder={t.pwHint} autoComplete="new-password" />
           </div>
           <div>
-            <label className={label}>Confirm new password</label>
+            <label className={label}>{t.confirmPw}</label>
             <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} className={inp} autoComplete="new-password" />
           </div>
         </div>
         {msg && <p className={`text-sm mt-3 ${msg.ok ? "text-[#22C55E]" : "text-[#EF4444]"}`}>{msg.text}</p>}
         <button onClick={submit} disabled={busy || !next}
           className="mt-4 flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[var(--p-accent)] text-[var(--p-accent-fg)] text-sm font-bold hover:bg-[var(--p-accent-hover)] transition-colors disabled:opacity-40">
-          {busy ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving…</> : hasPassword ? "Update password" : "Set password"}
+          {busy ? <><Loader2 className="w-4 h-4 animate-spin" /> {t.saving}</> : hasPassword ? t.updatePw : t.setPwBtn}
         </button>
       </div>
 
       {/* Resources */}
       <div className={card} style={{ boxShadow: "var(--p-shadow)" }}>
-        <h2 className="font-black text-[var(--p-text)] text-sm mb-1 flex items-center gap-2"><HelpCircle className="w-4 h-4 text-[var(--p-accent)]" /> Resources</h2>
-        <p className="text-xs text-[var(--p-muted)] mb-4">Quick answers before you message us.</p>
+        <h2 className="font-black text-[var(--p-text)] text-sm mb-1 flex items-center gap-2"><HelpCircle className="w-4 h-4 text-[var(--p-accent)]" /> {t.resources}</h2>
+        <p className="text-xs text-[var(--p-muted)] mb-4">{t.resourcesDesc}</p>
         <div className="space-y-1">
           {[
-            { href: "/how-it-works", icon: Sparkles, label: "How the process works" },
-            { href: "/legal/cgv", icon: FileText, label: "Your delivery guarantee & terms" },
-            { href: "/legal/privacy", icon: ShieldCheck, label: "Privacy policy" },
+            { href: "/how-it-works", icon: Sparkles, label: t.resHow },
+            { href: "/legal/cgv", icon: FileText, label: t.resTerms },
+            { href: "/legal/privacy", icon: ShieldCheck, label: t.resPrivacy },
           ].map((r) => (
             <a key={r.href} href={r.href} target="_blank" rel="noopener noreferrer"
               className="flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl hover:bg-[var(--p-raised)] transition-colors group">
@@ -724,7 +842,7 @@ function AccountTab({ email, onLogout }: { email: string; onLogout: () => void }
 
       {/* Sign out */}
       <button onClick={onLogout} className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[var(--p-border)] text-[var(--p-muted)] text-sm font-bold hover:bg-[var(--p-raised)] hover:text-[var(--p-text)] transition-colors">
-        <LogOut className="w-4 h-4" /> Sign out
+        <LogOut className="w-4 h-4" /> {t.signOut}
       </button>
     </div>
   );
