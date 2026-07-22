@@ -32,6 +32,13 @@ const T = {
     statusActive: "active", statusPaused: "paused",
     // stats
     stEnquiries: "Enquiries this month", stBookings: "Booking requests", stContacts: "Contacts captured",
+    // lifetime value
+    ltTitle: "Since you joined",
+    ltSince: (d: string) => `Working for you since ${d}`,
+    ltEnquiries: "enquiries captured",
+    ltBookings: "booking requests",
+    ltAfterHours: "came in outside opening hours",
+    ltNote: "Every one of these reached you because your assistant was answering — including nights and weekends.",
     // build statuses
     stIntake: "Awaiting your intake", stBuilding: "In progress", stReview: "Ready for your review", stDelivered: "Delivered", stLive: "Live",
     paid: (a: string) => `€${a} paid`, dueOnDelivery: (a: string) => `€${a} due on delivery`,
@@ -82,6 +89,12 @@ const T = {
     billingErr: "Impossible d'ouvrir le portail de facturation.", connErr: "Erreur de connexion — réessayez.",
     statusActive: "actif", statusPaused: "en pause",
     stEnquiries: "Demandes ce mois-ci", stBookings: "Demandes de RDV", stContacts: "Coordonnées captées",
+    ltTitle: "Depuis votre arrivée",
+    ltSince: (d: string) => `À votre service depuis le ${d}`,
+    ltEnquiries: "demandes captées",
+    ltBookings: "demandes de rendez-vous",
+    ltAfterHours: "reçues en dehors des horaires d'ouverture",
+    ltNote: "Chacune vous est parvenue parce que votre assistant répondait — y compris les soirs et les week-ends.",
     stIntake: "En attente de vos infos", stBuilding: "En cours", stReview: "Prêt pour votre relecture", stDelivered: "Livré", stLive: "En ligne",
     paid: (a: string) => `${a} € payés`, dueOnDelivery: (a: string) => `${a} € à la livraison`,
     targetDelivery: (d: string) => `Livraison prévue : ${d}`, liveSince: (d: string) => `En ligne depuis le ${d}`,
@@ -121,6 +134,7 @@ type Dict = typeof T["en"];
 interface Message { id: string; sender: "client" | "admin"; body: string; created_at: string; attachment_url?: string | null; attachment_type?: string | null }
 interface PortalLead { created_at: string; qualified: boolean; contact: string | null; excerpt: string; fromAds: boolean }
 interface PortalStats { monthEnquiries: number; monthBookings: number; monthContacts: number }
+interface PortalLifetime { enquiries: number; bookings: number; afterHours: number; since: string | null }
 interface ReportMetrics { enquiries: number; bookings: number; afterHours: number; fromAds: number; estValue: number; perClient: number }
 interface PortalReport { period: string; metrics: ReportMetrics; sent_at: string | null }
 
@@ -163,6 +177,7 @@ export default function PortalDashboard({
   const [sending, setSending] = useState(false);
   const [leads, setLeads] = useState<PortalLead[]>([]);
   const [stats, setStats] = useState<PortalStats | null>(null);
+  const [lifetime, setLifetime] = useState<PortalLifetime | null>(null);
   const [leadSearch, setLeadSearch] = useState("");
   const [leadFilter, setLeadFilter] = useState<"all" | "week" | "month">("all");
 
@@ -208,7 +223,9 @@ export default function PortalDashboard({
   };
 
   useEffect(() => {
-    fetch("/api/portal/leads").then((r) => r.json()).then((d) => { setLeads(d.leads ?? []); setStats(d.stats ?? null); }).catch(() => {});
+    fetch("/api/portal/leads").then((r) => r.json()).then((d) => {
+      setLeads(d.leads ?? []); setStats(d.stats ?? null); setLifetime(d.lifetime ?? null);
+    }).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -426,6 +443,32 @@ export default function PortalDashboard({
         {/* ── OVERVIEW ── */}
         {tab === "overview" && (
           <div className="space-y-4">
+            {/* Lifetime value — the retention number. First thing they see. */}
+            {lifetime && lifetime.enquiries > 0 && (
+              <div className="rounded-2xl border p-5 sm:p-6" style={{ borderColor: "var(--p-accent)", background: "var(--p-accent-soft)" }}>
+                <div className="flex items-center gap-2 mb-4">
+                  <Sparkles className="w-4 h-4 text-[var(--p-accent)]" />
+                  <h3 className="font-black text-[var(--p-text)] text-sm">{t.ltTitle}</h3>
+                  {lifetime.since && (
+                    <span className="text-[11px] text-[var(--p-muted)] ml-auto">{t.ltSince(formatDate(lifetime.since, lang))}</span>
+                  )}
+                </div>
+                <div className="grid grid-cols-1 min-[420px]:grid-cols-3 gap-4">
+                  {[
+                    { value: lifetime.enquiries, label: t.ltEnquiries },
+                    { value: lifetime.bookings, label: t.ltBookings },
+                    { value: lifetime.afterHours, label: t.ltAfterHours },
+                  ].map((s) => (
+                    <div key={s.label}>
+                      <p className="text-3xl font-black text-[var(--p-accent)] leading-none">{s.value}</p>
+                      <p className="text-[11px] text-[var(--p-muted)] mt-1.5 leading-snug">{s.label}</p>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-[var(--p-muted)] mt-4 leading-relaxed">{t.ltNote}</p>
+              </div>
+            )}
+
             {/* Subscription */}
             <div className="rounded-2xl border border-[var(--p-border)] bg-[var(--p-surface)] p-4 sm:p-5 flex flex-wrap items-center gap-4" style={{ boxShadow: "var(--p-shadow)" }}>
               <div className="w-10 h-10 rounded-xl bg-[var(--p-accent-soft)] flex items-center justify-center flex-shrink-0">

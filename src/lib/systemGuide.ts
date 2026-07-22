@@ -205,6 +205,36 @@ export const FEATURES: SystemFeature[] = [
     code: "src/components/admin/OpenInClaudeCode.tsx",
   },
   {
+    name: "Retention — the 'Since you joined' number",
+    summary: "The first thing a client sees in their portal: the cumulative value delivered since day one. This is the anti-churn artifact.",
+    how: [
+      "The portal totals every enquiry their assistant handled since they joined — not just this month.",
+      "It splits out booking requests and, crucially, how many arrived outside opening hours (before 08:00, after 19:00, or at the weekend).",
+      "Shown at the very top of Overview, in their language.",
+    ],
+    use: [
+      "Nothing to run — it fills itself from their real data.",
+      "Reference it when a client asks 'is this worth it?'. The after-hours number is the one that answers.",
+      "Push annual prepay (one month free): a year paid up front is a year retained.",
+    ],
+    cost: "None — reuses data already captured.",
+    value: "Churn happens when a client stops seeing value, not when value stops. A monthly report can look thin; a lifetime total rarely does.",
+    code: "src/components/PortalDashboard.tsx · /api/portal/leads (lifetime)",
+  },
+  {
+    name: "Homepage showcase slider",
+    summary: "Shows the four parts of the system — site, AI receptionist, bookings, dashboard — as small mocks of the real UI, on both homepages.",
+    how: [
+      "Four slides, auto-advancing every 6s, pausing on hover/focus and stopping entirely for prefers-reduced-motion.",
+      "Arrows, dots and left/right keys all work; the copy is announced politely to screen readers.",
+      "Each slide links straight to the live demo.",
+    ],
+    use: ["Runs itself on / and /fr. Edit the copy in ShowcaseSlider's T dictionary."],
+    cost: "None — pure CSS mocks, no images to load.",
+    value: "Shows the product instead of describing it, without stock photos pretending to be product or invented testimonials.",
+    code: "src/components/ShowcaseSlider.tsx",
+  },
+  {
     name: "Email your list (broadcast)",
     summary: "Send a one-off email from the admin to your newsletter subscribers or your leads, with a real unsubscribe and opt-out protection.",
     how: [

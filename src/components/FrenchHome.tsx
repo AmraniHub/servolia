@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 import HeroProduct from "@/components/HeroProduct";
 import AIReceptionistDemo from "@/components/AIReceptionistDemo";
+import ShowcaseSlider from "@/components/ShowcaseSlider";
 import ROICalculator from "@/components/ROICalculator";
 import StickyMobileCTA from "@/components/StickyMobileCTA";
 import FrenchNav from "@/components/FrenchNav";
@@ -239,6 +240,8 @@ export default function FrenchHome() {
           </div>
         </div>
       </section>
+
+      <ShowcaseSlider lang="fr" />
 
       {/* ══════════════════════════════════════════════════════════════
           JOURNEY FLOW

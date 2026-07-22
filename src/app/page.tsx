@@ -8,6 +8,7 @@ import Footer from "@/components/Footer";
 import ChatWidget from "@/components/ChatWidget";
 import HeroProduct from "@/components/HeroProduct";
 import AIReceptionistDemo from "@/components/AIReceptionistDemo";
+import ShowcaseSlider from "@/components/ShowcaseSlider";
 import ROICalculator from "@/components/ROICalculator";
 import StickyMobileCTA from "@/components/StickyMobileCTA";
 import { FaqSchema } from "@/components/StructuredData";
@@ -297,6 +298,8 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      <ShowcaseSlider lang="en" />
 
       {/* ══════════════════════════════════════════════════════════════
           JOURNEY FLOW

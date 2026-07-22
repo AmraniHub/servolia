@@ -65,5 +65,34 @@ export async function GET() {
     monthContacts: thisMonth.filter((r) => r.email_captured || r.phone_captured).length,
   };
 
-  return NextResponse.json({ leads, stats });
+  // Lifetime totals — the retention number. When a client wonders whether the
+  // plan is worth it, this is what answers them. Deliberately unbounded (the
+  // list above is capped at 100) and kept light: two columns only.
+  let lifetime: { enquiries: number; bookings: number; afterHours: number; since: string | null } | null = null;
+  try {
+    const { data: all } = await db
+      .from("chat_sessions")
+      .select("created_at, qualified")
+      .in("site_slug", slugs);
+    const every = (all as { created_at: string; qualified: boolean | null }[] | null) ?? [];
+    if (every.length) {
+      // "After hours" = outside 08:00–19:00, or any time at the weekend.
+      const afterHours = every.filter((r) => {
+        const d = new Date(r.created_at);
+        const h = d.getHours(), day = d.getDay();
+        return h < 8 || h >= 19 || day === 0 || day === 6;
+      }).length;
+      const since = every.reduce<string | null>(
+        (min, r) => (!min || r.created_at < min ? r.created_at : min), null
+      );
+      lifetime = {
+        enquiries: every.length,
+        bookings: every.filter((r) => r.qualified).length,
+        afterHours,
+        since,
+      };
+    }
+  } catch { /* keep the dashboard working even if this fails */ }
+
+  return NextResponse.json({ leads, stats, lifetime });
 }
