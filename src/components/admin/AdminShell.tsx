@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard, Users, Hammer, UserCircle, MessageSquare, Mail,
-  TrendingUp, Settings, LogOut, Menu, X, BarChart3, Kanban, Search, Globe, Sparkles, RefreshCcw, Wand2, CalendarClock, Target, Star, Bot, Sun, Moon, Database, BookOpen, Send,
+  TrendingUp, Settings, LogOut, Menu, X, BarChart3, Kanban, Search, Globe, Sparkles, RefreshCcw, Wand2, CalendarClock, Target, Star, Bot, Sun, Moon, Database, BookOpen, Send, Eye,
 } from "lucide-react";
 import CommandPalette from "./CommandPalette";
 import AutoRefresh from "@/components/AutoRefresh";
@@ -29,6 +29,7 @@ const nav = [
   { label: "Case Studies", href: "/admin/case-studies", icon: Star },
   { label: "Content Engine", href: "/admin/content", icon: Sparkles },
   { label: "Analytics",   href: "/admin/analytics", icon: BarChart3 },
+  { label: "Traffic",     href: "/admin/traffic",   icon: Eye },
   { label: "Revenue",     href: "/admin/revenue",   icon: TrendingUp },
   { label: "Data Room",   href: "/admin/data-room", icon: Database },
   { label: "System guide", href: "/admin/system",   icon: BookOpen },

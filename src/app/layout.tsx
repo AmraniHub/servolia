@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import CookieBanner from "@/components/CookieBanner";
 import Analytics from "@/components/Analytics";
+import PageTracker from "@/components/PageTracker";
 import ScrollToTop from "@/components/ScrollToTop";
 import { OrgSchema, WebSiteSchema } from "@/components/StructuredData";
 
@@ -65,6 +66,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <CookieBanner />
         <ScrollToTop />
         <Analytics />
+        <PageTracker />
       </body>
     </html>
   );

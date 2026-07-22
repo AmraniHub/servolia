@@ -602,3 +602,36 @@ create table if not exists client_profiles (
 drop trigger if exists client_profiles_updated_at on client_profiles;
 create trigger client_profiles_updated_at before update on client_profiles
   for each row execute function set_updated_at();
+
+
+-- PAGE VIEWS: first-party traffic analytics for servolia.com AND every client site.
+-- Deliberately cookie-free: a visitor is identified by a daily-rotating salted hash
+-- of (ip + user-agent), so nothing persists across days and no consent is required
+-- under GDPR/CNIL. This is what powers /admin/traffic and the portal Traffic tab —
+-- and unlike GA it lives in the same database as leads and bookings, so a client
+-- can see visitors → enquiries → bookings as one funnel.
+create table if not exists page_views (
+  id            uuid primary key default gen_random_uuid(),
+  created_at    timestamptz default now(),
+
+  site_slug     text,                     -- null = servolia.com itself; else the client site
+  path          text not null,
+  referrer_host text,                     -- host only, never the full referring URL
+  utm_source    text,
+  utm_medium    text,
+  utm_campaign  text,
+
+  country       text,
+  city          text,
+  device        text,                     -- mobile, tablet, desktop
+  browser       text,
+
+  visitor_hash  text,                     -- sha256(ip + ua + day + salt) — rotates daily
+  session_id    text,                     -- random per browser tab session
+  is_entry      boolean default false     -- first view of the session (a "visit")
+);
+
+create index if not exists page_views_created_idx  on page_views(created_at desc);
+create index if not exists page_views_site_idx     on page_views(site_slug, created_at desc);
+create index if not exists page_views_visitor_idx  on page_views(visitor_hash);
+create index if not exists page_views_session_idx  on page_views(session_id);

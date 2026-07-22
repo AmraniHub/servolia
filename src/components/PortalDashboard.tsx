@@ -11,6 +11,7 @@ import {
   LogOut, Send, MessageSquare, Clock, CreditCard, CheckCircle2, Users, CalendarCheck,
   Megaphone, ExternalLink, Sun, Moon, LayoutDashboard, KeyRound, Loader2, ShieldCheck, Trash2,
   Image as ImageIcon, X, Globe, BarChart3, Search, Download, HelpCircle, FileText, Sparkles, ArrowRight, Languages, UserCircle,
+  Eye, Monitor, Link2, TrendingUp,
 } from "lucide-react";
 
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
@@ -22,7 +23,21 @@ const T = {
   en: {
     signOut: "Sign out", toggleTheme: "Toggle theme", toggleLang: "Switch to French",
     greeting: (n: string) => `Welcome back, ${n} 👋`,
-    tabs: { overview: "Overview", leads: "My leads", reports: "Reports", messages: "Messages", account: "Account" },
+    tabs: { overview: "Overview", leads: "My leads", traffic: "Visitors", reports: "Reports", messages: "Messages", account: "Account" },
+    tf: {
+      title: "Website visitors",
+      subtitle: "Who is looking at your site, where they came from, and what they read.",
+      visitors: "Visitors", views: "Pages viewed", visits: "Visits", enquiries: "Enquiries",
+      perVisit: "pages per visit", bounced: "left after one page", ofVisitors: "of visitors enquired",
+      funnel: "Your funnel", funnelNote: "Out of everyone who visited, this many got in touch.",
+      perDay: "Visitors per day", topPages: "Most-read pages", sources: "Where they came from",
+      countries: "Countries", devices: "Devices", direct: "Direct",
+      empty: "No visits recorded yet.",
+      emptyBody: "As soon as your site is live and someone opens it, their visit shows up here — usually within seconds.",
+      loading: "Loading your visitors…",
+      privacy: "Cookie-free and GDPR-friendly: we count visits without tracking anyone across the web.",
+      last: (d: number) => `Last ${d} days`,
+    },
     // subscription
     planSuffix: "plan", perMo: "/mo",
     subManageDesc: "Update payment method, download invoices, or change your plan.",
@@ -89,7 +104,21 @@ const T = {
   fr: {
     signOut: "Déconnexion", toggleTheme: "Changer le thème", toggleLang: "Passer en anglais",
     greeting: (n: string) => `Bon retour, ${n} 👋`,
-    tabs: { overview: "Aperçu", leads: "Mes leads", reports: "Rapports", messages: "Messages", account: "Compte" },
+    tabs: { overview: "Aperçu", leads: "Mes leads", traffic: "Visiteurs", reports: "Rapports", messages: "Messages", account: "Compte" },
+    tf: {
+      title: "Visiteurs du site",
+      subtitle: "Qui consulte votre site, d'où ils viennent et ce qu'ils lisent.",
+      visitors: "Visiteurs", views: "Pages vues", visits: "Visites", enquiries: "Demandes",
+      perVisit: "pages par visite", bounced: "repartis après une page", ofVisitors: "des visiteurs vous ont contacté",
+      funnel: "Votre tunnel", funnelNote: "Sur l'ensemble des visiteurs, voici combien vous ont contacté.",
+      perDay: "Visiteurs par jour", topPages: "Pages les plus lues", sources: "D'où ils viennent",
+      countries: "Pays", devices: "Appareils", direct: "Direct",
+      empty: "Aucune visite enregistrée pour l'instant.",
+      emptyBody: "Dès que votre site est en ligne et qu'une personne l'ouvre, sa visite apparaît ici — en quelques secondes.",
+      loading: "Chargement de vos visiteurs…",
+      privacy: "Sans cookie et conforme RGPD : nous comptons les visites sans suivre personne à travers le web.",
+      last: (d: number) => `${d} derniers jours`,
+    },
     planSuffix: "forfait", perMo: "/mois",
     subManageDesc: "Modifiez le moyen de paiement, téléchargez vos factures ou changez de forfait.",
     billingTitle: "Facturation & factures", billingDesc: "Gérez vos moyens de paiement et téléchargez vos factures.",
@@ -173,7 +202,17 @@ function formatPeriod(period: string, lang: Lang) {
   return new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString(locale(lang), { month: "long", year: "numeric" });
 }
 
-type Tab = "overview" | "leads" | "reports" | "messages" | "account";
+type Tab = "overview" | "leads" | "traffic" | "reports" | "messages" | "account";
+
+/** Mirrors TrafficSummary in src/lib/traffic.ts — only the fields the portal renders. */
+interface PortalTraffic {
+  views: number; visitors: number; visits: number; bounceRate: number; viewsPerVisit: number;
+  days: { label: string; views: number; visitors: number }[];
+  topPages: [string, number][];
+  referrers: [string, number][];
+  countries: [string, number][];
+  devices: [string, number][];
+}
 
 export default function PortalDashboard({
   email, builds, subscription, siteSlugs, scopesByLeadId,
@@ -195,6 +234,12 @@ export default function PortalDashboard({
   const [lifetime, setLifetime] = useState<PortalLifetime | null>(null);
   const [leadSearch, setLeadSearch] = useState("");
   const [leadFilter, setLeadFilter] = useState<"all" | "week" | "month">("all");
+
+  const [traffic, setTraffic] = useState<PortalTraffic | null>(null);
+  const [trafficEnquiries, setTrafficEnquiries] = useState(0);
+  const [trafficDays, setTrafficDays] = useState(30);
+  const [loadingTraffic, setLoadingTraffic] = useState(false);
+  const [trafficLoaded, setTrafficLoaded] = useState(false);
 
   const [reports, setReports] = useState<PortalReport[]>([]);
   const [reportsLoaded, setReportsLoaded] = useState(false);
@@ -242,6 +287,22 @@ export default function PortalDashboard({
       setLeads(d.leads ?? []); setStats(d.stats ?? null); setLifetime(d.lifetime ?? null);
     }).catch(() => {});
   }, []);
+
+  // Loads when the tab is first opened, and again whenever the range changes.
+  useEffect(() => {
+    if (tab !== "traffic") return;
+    if (trafficLoaded && traffic?.days.length === trafficDays) return;
+    setLoadingTraffic(true);
+    fetch(`/api/portal/traffic?days=${trafficDays}`)
+      .then((r) => r.json())
+      .then((d) => {
+        setTraffic(d.traffic ?? null);
+        setTrafficEnquiries(d.enquiries ?? 0);
+        setTrafficLoaded(true);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingTraffic(false));
+  }, [tab, trafficDays, trafficLoaded, traffic?.days.length]);
 
   useEffect(() => {
     if (tab !== "reports" || reportsLoaded) return;
@@ -437,6 +498,7 @@ export default function PortalDashboard({
           {([
             { key: "overview", label: t.tabs.overview, icon: LayoutDashboard },
             { key: "leads", label: t.tabs.leads, icon: Users },
+            { key: "traffic", label: t.tabs.traffic, icon: Eye },
             { key: "reports", label: t.tabs.reports, icon: BarChart3 },
             { key: "messages", label: t.tabs.messages, icon: MessageSquare },
             { key: "account", label: t.tabs.account, icon: KeyRound },
@@ -679,6 +741,74 @@ export default function PortalDashboard({
         )}
 
         {/* ── REPORTS ── */}
+        {tab === "traffic" && (
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-black text-[var(--p-text)]">{t.tf.title}</h2>
+                <p className="text-xs text-[var(--p-muted)] mt-0.5">{t.tf.subtitle}</p>
+              </div>
+              <div className="flex gap-1 p-1 rounded-xl bg-[var(--p-raised)] border border-[var(--p-border)]">
+                {[7, 30, 90].map((d) => (
+                  <button key={d} onClick={() => { setTrafficDays(d); setTrafficLoaded(false); }}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                      trafficDays === d ? "bg-[var(--p-accent)] text-[var(--p-accent-fg)]" : "text-[var(--p-muted)] hover:text-[var(--p-text)]"
+                    }`}>
+                    {d}d
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {loadingTraffic && !traffic ? (
+              <p className="text-sm text-[var(--p-faint)] text-center py-12">{t.tf.loading}</p>
+            ) : !traffic || traffic.views === 0 ? (
+              <div className="bg-[var(--p-card)] border border-[var(--p-border)] rounded-2xl p-8 text-center">
+                <Eye className="w-8 h-8 text-[var(--p-faint)] mx-auto mb-3" />
+                <p className="font-black text-[var(--p-text)] mb-1.5">{t.tf.empty}</p>
+                <p className="text-sm text-[var(--p-muted)] max-w-sm mx-auto leading-relaxed">{t.tf.emptyBody}</p>
+              </div>
+            ) : (
+              <>
+                {/* Headline numbers */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                  <PStat icon={<Users className="w-4 h-4" />} label={t.tf.visitors} value={traffic.visitors} accent />
+                  <PStat icon={<Eye className="w-4 h-4" />} label={t.tf.views} value={traffic.views} sub={`${traffic.viewsPerVisit} ${t.tf.perVisit}`} />
+                  <PStat icon={<TrendingUp className="w-4 h-4" />} label={t.tf.visits} value={traffic.visits} sub={`${traffic.bounceRate}% ${t.tf.bounced}`} />
+                  <PStat icon={<MessageSquare className="w-4 h-4" />} label={t.tf.enquiries} value={trafficEnquiries}
+                    sub={traffic.visitors ? `${Math.round((trafficEnquiries / traffic.visitors) * 100)}% ${t.tf.ofVisitors}` : undefined} />
+                </div>
+
+                {/* Visitors per day */}
+                <div className="bg-[var(--p-card)] border border-[var(--p-border)] rounded-2xl p-5">
+                  <h3 className="text-sm font-black text-[var(--p-text)] mb-0.5">{t.tf.perDay}</h3>
+                  <p className="text-xs text-[var(--p-faint)] mb-3">{t.tf.last(trafficDays)}</p>
+                  <PChart days={traffic.days} />
+                </div>
+
+                <div className="grid lg:grid-cols-2 gap-4">
+                  <PPanel icon={<FileText className="w-4 h-4" />} title={t.tf.topPages}>
+                    <PBars rows={traffic.topPages} total={traffic.views} mono />
+                  </PPanel>
+                  <PPanel icon={<Link2 className="w-4 h-4" />} title={t.tf.sources}>
+                    <PBars rows={traffic.referrers.map(([k, v]) => [k === "Direct" ? t.tf.direct : k, v] as [string, number])} total={traffic.views} accent />
+                  </PPanel>
+                  <PPanel icon={<Globe className="w-4 h-4" />} title={t.tf.countries}>
+                    <PBars rows={traffic.countries} total={traffic.views} />
+                  </PPanel>
+                  <PPanel icon={<Monitor className="w-4 h-4" />} title={t.tf.devices}>
+                    <PBars rows={traffic.devices} total={traffic.views} accent />
+                  </PPanel>
+                </div>
+
+                <p className="text-[11px] text-[var(--p-faint)] text-center flex items-center justify-center gap-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5" /> {t.tf.privacy}
+                </p>
+              </>
+            )}
+          </div>
+        )}
+
         {tab === "reports" && (
           <div className="rounded-2xl border border-[var(--p-border)] bg-[var(--p-surface)] overflow-hidden" style={{ boxShadow: "var(--p-shadow)" }}>
             <div className="px-5 py-4 border-b border-[var(--p-border)] flex items-center gap-2 bg-[var(--p-raised)]">
@@ -1034,6 +1164,79 @@ function AccountTab({ email, onLogout, t }: { email: string; onLogout: () => voi
       <button onClick={onLogout} className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[var(--p-border)] text-[var(--p-muted)] text-sm font-bold hover:bg-[var(--p-raised)] hover:text-[var(--p-text)] transition-colors">
         <LogOut className="w-4 h-4" /> {t.signOut}
       </button>
+    </div>
+  );
+}
+
+/* ───────────────────── Traffic tab presentation ───────────────────── */
+
+function PStat({ icon, label, value, sub, accent }: {
+  icon: React.ReactNode; label: string; value: number; sub?: string; accent?: boolean;
+}) {
+  return (
+    <div className={`p-4 rounded-2xl border ${accent ? "border-[var(--p-accent)]/40 bg-[var(--p-accent)]/10" : "border-[var(--p-border)] bg-[var(--p-card)]"}`}>
+      <div className="flex items-center justify-between">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--p-muted)]">{label}</p>
+        <span className={accent ? "text-[var(--p-accent)]" : "text-[var(--p-faint)]"}>{icon}</span>
+      </div>
+      <p className={`text-xl font-black mt-1 ${accent ? "text-[var(--p-accent)]" : "text-[var(--p-text)]"}`}>{value.toLocaleString()}</p>
+      {sub && <p className="text-[10px] text-[var(--p-faint)] mt-0.5">{sub}</p>}
+    </div>
+  );
+}
+
+function PPanel({ icon, title, children }: { icon: React.ReactNode; title: string; children: React.ReactNode }) {
+  return (
+    <div className="bg-[var(--p-card)] border border-[var(--p-border)] rounded-2xl p-5">
+      <div className="flex items-center gap-2 mb-1">
+        <span className="text-[var(--p-accent)]">{icon}</span>
+        <h3 className="text-sm font-black text-[var(--p-text)]">{title}</h3>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function PBars({ rows, total, accent, mono }: {
+  rows: [string, number][]; total: number; accent?: boolean; mono?: boolean;
+}) {
+  if (rows.length === 0) return <p className="text-sm text-[var(--p-faint)] py-6 text-center">—</p>;
+  const max = Math.max(...rows.map((r) => r[1]), 1);
+  return (
+    <div className="space-y-2.5 mt-3">
+      {rows.map(([label, n]) => (
+        <div key={label}>
+          <div className="flex items-center justify-between text-xs mb-1 gap-3">
+            <span className={`font-semibold text-[var(--p-text)] truncate ${mono ? "font-mono text-[11px]" : "capitalize"}`}>{label}</span>
+            <span className="text-[var(--p-muted)] shrink-0">
+              {n}{total > 0 && <span className="text-[var(--p-faint)]"> · {Math.round((n / total) * 100)}%</span>}
+            </span>
+          </div>
+          <div className="h-2 rounded-full bg-[var(--p-raised)]">
+            <div className={`h-full rounded-full ${accent ? "bg-[#BEF264]" : "bg-[var(--p-accent)]"}`}
+              style={{ width: `${(n / max) * 100}%` }} />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function PChart({ days }: { days: { label: string; views: number; visitors: number }[] }) {
+  const max = Math.max(...days.map((d) => d.visitors), 1);
+  const step = days.length > 45 ? 7 : days.length > 14 ? 3 : 1;
+  return (
+    <div className="flex items-end justify-between gap-[2px] h-36">
+      {days.map((d, i) => (
+        <div key={d.label + i} className="flex-1 flex flex-col items-center gap-1 group min-w-0">
+          <span className="text-[10px] font-bold text-[var(--p-accent)] opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+            {d.visitors}
+          </span>
+          <div className="w-full rounded-t-sm bg-[var(--p-accent)] transition-all min-h-[2px] hover:opacity-75"
+            style={{ height: `${Math.max((d.visitors / max) * 100, 2)}%` }} />
+          <span className="text-[8px] text-[var(--p-faint)] whitespace-nowrap">{i % step === 0 ? d.label : ""}</span>
+        </div>
+      ))}
     </div>
   );
 }

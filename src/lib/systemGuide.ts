@@ -32,6 +32,7 @@ export const SCHEMA: SchemaTable[] = [
   { name: "prospects", group: "Acquisition & CRM", purpose: "Hand-researched outbound targets before they become leads.", key: "business, city, rating, notes" },
   { name: "bookings", group: "Acquisition & CRM", purpose: "Discovery calls booked with you via /call.", key: "slot_start, status, lead_id" },
   { name: "email_subscribers", group: "Acquisition & CRM", purpose: "Newsletter / lead-magnet list.", key: "email, source" },
+  { name: "page_views", group: "Acquisition & CRM", purpose: "Every pageview on servolia.com AND on each client site. Cookie-free, no IP stored.", key: "site_slug (null = servolia.com), path, referrer_host, visitor_hash, session_id, is_entry" },
   { name: "reactivation_contacts", group: "Acquisition & CRM", purpose: "Dormant leads targeted by reactivation campaigns.", key: "lead_id, campaign, sent_at" },
   { name: "case_studies", group: "Acquisition & CRM", purpose: "Published proof used on the marketing site.", key: "business, result, published" },
 
@@ -70,6 +71,24 @@ export interface SystemFeature {
 }
 
 export const FEATURES: SystemFeature[] = [
+  {
+    name: "Traffic analytics (first-party)",
+    summary: "Our own visitor analytics for servolia.com and for every client site — living in the same database as leads and bookings.",
+    how: [
+      "PageTracker (in the root layout) posts one row to /api/track on every route change.",
+      "A client site is served at /sites/{slug}, so the tracker tags those views with that slug — one tracker covers every client automatically.",
+      "No cookie is set and no IP is stored: a visitor is sha256(ip + user-agent + today + ANALYTICS_SALT), which rotates daily and can't be reversed.",
+      "Bots are dropped at the endpoint by user-agent, and /admin pages are never counted.",
+      "/admin/traffic reads rows where site_slug is null (servolia.com). The portal's Visitors tab reads the slugs owned by that client.",
+    ],
+    use: [
+      "Check /admin/traffic after publishing content or launching an ad — referrers and utm_campaign tell you what actually landed.",
+      "In a renewal conversation, open the client's Visitors tab: visitors → enquiries in one screen is the whole argument for the care plan.",
+    ],
+    cost: "None — no third-party analytics bill, just Supabase rows.",
+    value: "GA can tell a client how many people visited. It can't tell them how many of those became enquiries, because it doesn't know what a booking is. Ours can, because traffic and leads sit in the same database. That funnel is the retention story.",
+    code: "src/lib/traffic.ts · src/app/api/track · src/components/PageTracker.tsx · src/app/admin/traffic · src/app/api/portal/traffic",
+  },
   {
     name: "Ad landing page (free audit)",
     summary: "Where paid traffic lands and becomes a lead. Pain-led page: names the three leaks, shows the live demo as proof, then asks for 3 fields.",
