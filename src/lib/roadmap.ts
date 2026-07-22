@@ -63,6 +63,7 @@ export interface RoadmapItem {
 export const ROADMAP: RoadmapItem[] = [
   { title: "Switch Stripe to LIVE keys", priority: 1, status: "blocked", needs: "sk_live_… in Vercel", detail: "Production is on test keys — nothing charges real money until live keys are set." },
   { title: "Land the first real clients", priority: 1, status: "in_progress", detail: "The whole machine exists (demo → generate → publish → Care + add-ons). Outbound to the dental-France beachhead; country pages catch SEO inbound." },
+  { title: "Create the custom_requests table in Supabase", priority: 1, status: "todo", needs: "run the SQL block at the end of supabase/schema.sql", detail: "Powers Custom requests on the build page (personalized extra work + its one-off payment link). The admin panel warns until it exists." },
   { title: "Connect Twilio → SMS add-on auto-provisions", priority: 2, status: "todo", needs: "TWILIO_ACCOUNT_SID + TWILIO_AUTH_TOKEN" },
   { title: "Open Cloudflare Registrar → domain add-on automatic", priority: 2, status: "todo", needs: "CLOUDFLARE_API_TOKEN (+ account id)" },
   { title: "Legal check: pay-per-booking before dental/medical", priority: 2, status: "blocked", needs: "French lawyer review", detail: "Flagged in the micro-monopoly research note — regulated for medical." },

@@ -4,6 +4,12 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { ArrowLeft, Calendar, CreditCard, User } from "lucide-react";
 import BuildStatusActions from "@/components/admin/BuildStatusActions";
 import ClientMessageThread from "@/components/admin/ClientMessageThread";
+import CustomRequests from "@/components/admin/CustomRequests";
+import OpenInClaudeCode from "@/components/admin/OpenInClaudeCode";
+
+/** Where the repo lives on the founder's laptop (for the Claude Code command). */
+const LOCAL_PROJECT_PATH =
+  process.env.NEXT_PUBLIC_LOCAL_PROJECT_PATH || "C:\\Users\\Elamr\\Music\\APPS\\servolia";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +24,13 @@ export default async function BuildDetailPage({ params }: { params: Promise<{ id
   const { data: lead } = build.lead_id
     ? await db.from("leads").select("id, business, email").eq("id", build.lead_id).maybeSingle()
     : { data: null };
+
+  // The generated site for this build (if any) — used to scope the local edit command.
+  let siteSlug: string | null = null;
+  try {
+    const { data: site } = await db.from("client_sites").select("slug").eq("build_id", build.id).maybeSingle();
+    siteSlug = (site as { slug?: string } | null)?.slug ?? null;
+  } catch { /* table may not exist yet */ }
 
   return (
     <div className="px-4 sm:px-6 lg:px-8 py-6 lg:py-8 max-w-4xl mx-auto">
@@ -70,6 +83,19 @@ export default async function BuildDetailPage({ params }: { params: Promise<{ id
           </Link>
         </div>
       )}
+
+      <div className="mb-6">
+        <CustomRequests buildId={build.id} />
+      </div>
+
+      <div className="mb-6">
+        <OpenInClaudeCode
+          buildId={build.id}
+          business={build.business}
+          slug={siteSlug}
+          projectPath={LOCAL_PROJECT_PATH}
+        />
+      </div>
 
       {build.email && (
         <div className="mb-6">

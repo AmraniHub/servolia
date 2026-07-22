@@ -543,3 +543,27 @@ select
   (select count(*) from clients where status = 'active')       as live_clients,
   (select coalesce(sum(monthly_amount), 0) from clients where status = 'active') as mrr,
   (select coalesce(sum(deposit_paid), 0) from builds where created_at > now() - interval '30 days') as deposits_30d;
+
+
+-- CUSTOM REQUESTS: personalized/extra work a client asks for beyond their plan.
+-- Records both the ask (data) and the one-off payment for it.
+create table if not exists custom_requests (
+  id          uuid primary key default gen_random_uuid(),
+  created_at  timestamptz default now(),
+
+  build_id    uuid references builds(id) on delete cascade,
+  email       text,                       -- who to bill (snapshot of build.email)
+
+  title       text not null,              -- "Add a second language", "Custom booking rules"
+  description text,                       -- the full ask, in the client's words
+  amount_eur  numeric not null default 0, -- one-off price quoted for this work
+
+  status      text not null default 'quoted', -- quoted, paid, done
+  checkout_session_id text,
+  payment_url text,                       -- Stripe link to send the client
+  paid_at     timestamptz,
+  done_at     timestamptz
+);
+
+create index if not exists custom_requests_build_idx on custom_requests(build_id);
+create index if not exists custom_requests_status_idx on custom_requests(status);

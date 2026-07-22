@@ -100,6 +100,32 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ received: true });
       }
 
+      // ── CUSTOM REQUEST branch: a one-off payment for personalized extra work.
+      // Must run before the build-deposit logic below, or it would be mistaken
+      // for a deposit on the client's original build.
+      if (session.metadata?.kind === "custom_request") {
+        const requestId = session.metadata?.requestId;
+        const amount = (session.amount_total ?? 0) / 100;
+        if (requestId) {
+          try {
+            await db.from("custom_requests")
+              .update({ status: "paid", paid_at: new Date().toISOString() })
+              .eq("id", requestId);
+          } catch { /* table may not exist yet — never drop the webhook */ }
+        }
+        const tgToken = process.env.TELEGRAM_BOT_TOKEN;
+        const tgChatId = process.env.TELEGRAM_CHAT_ID;
+        if (tgToken && tgChatId) {
+          const msg = `🧾 *Custom work paid — €${amount}*\n${session.customer_details?.email ?? "no email"}` +
+            (session.metadata?.buildId ? `\n\n[Open build](https://servolia.com/admin/builds/${session.metadata.buildId})` : "");
+          fetch(`https://api.telegram.org/bot${tgToken}/sendMessage`, {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ chat_id: tgChatId, text: msg, parse_mode: "Markdown" }),
+          }).catch(() => {});
+        }
+        return NextResponse.json({ received: true });
+      }
+
       const sessionId = session.id;
       const customerEmail = session.customer_details?.email ?? session.customer_email ?? null;
       const amountPaid = (session.amount_total ?? 0) / 100;
