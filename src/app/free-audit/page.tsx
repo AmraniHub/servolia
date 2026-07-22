@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import AuditForm from "@/components/AuditForm";
+import ValueStack from "@/components/ValueStack";
 
 export const metadata: Metadata = {
   title: "Free Audit",
@@ -24,6 +25,7 @@ export default function FreeAuditPage() {
       <main>
         <AuditForm lang="en" />
       </main>
+      <ValueStack />
       <Footer />
     </>
   );

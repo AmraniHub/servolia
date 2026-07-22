@@ -5,6 +5,8 @@ import Footer from "@/components/Footer";
 import ChatWidget from "@/components/ChatWidget";
 import { SOLUTIONS, INDUSTRIES } from "@/lib/content/pages";
 import { Globe, Bot, Calendar, LayoutDashboard, ArrowRight } from "lucide-react";
+import ValueStack from "@/components/ValueStack";
+import Guarantee from "@/components/Guarantee";
 
 export const metadata: Metadata = {
   title: "Solutions — AI Client Systems for Service Businesses | Servolia",
@@ -106,6 +108,8 @@ export default function SolutionsHub() {
           </div>
         </section>
       </main>
+      <ValueStack />
+      <Guarantee />
       <Footer />
       <ChatWidget />
     </>

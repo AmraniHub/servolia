@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import AuditForm from "@/components/AuditForm";
+import ValueStack from "@/components/ValueStack";
 
 export const metadata: Metadata = {
   title: "Audit gratuit — Servolia",
@@ -35,6 +36,7 @@ export default function FrenchAuditPage() {
 
       <AuditForm lang="fr" />
 
+      <ValueStack lang="fr" />
       <footer className="bg-[#FAFAF7] border-t border-[#E8E6E0] py-8 text-center text-xs text-[#71717A]">
         © {new Date().getFullYear()} Servolia ·{" "}
         <a href="mailto:hello@servolia.com" className="hover:text-[#36671E]">hello@servolia.com</a> ·{" "}

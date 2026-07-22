@@ -4,6 +4,8 @@ import VideoEmbed from "@/components/VideoEmbed";
 import Link from "next/link";
 import { ArrowRight, FileText, Video, CreditCard, ClipboardList, Hammer, Eye, Rocket, BarChart3, MessageSquare, CheckCircle } from "lucide-react";
 import type { Metadata } from "next";
+import ValueStack from "@/components/ValueStack";
+import Guarantee from "@/components/Guarantee";
 
 const DEMO_VIDEO_ID = process.env.NEXT_PUBLIC_DEMO_VIDEO_ID;
 
@@ -218,7 +220,7 @@ export default function HowItWorksPage() {
                 { q: "Can I request changes after seeing the draft?", a: "Yes — one full round of revisions is included in every package. Major scope additions are quoted separately." },
                 { q: "What language is the site built in?", a: "Your choice: French, English, or both. We're bilingual and have delivered sites in both." },
                 { q: "Who hosts the website?", a: "We host it on Vercel (the same infrastructure powering major global platforms) through your monthly care plan." },
-                { q: "What if you miss the deadline?", a: "Our CGV guarantees 10% of your payment back per day late if we miss through our own fault. We've never had to pay it out." },
+                { q: "What if you miss the deadline?", a: "Our CGV guarantees 10% of your payment back per day late if we miss through our own fault." },
               ].map((faq, i) => (
                 <div key={i} className="p-5 rounded-2xl bg-[#FAFAF7] border border-[#E8E6E0]">
                   <h3 className="text-sm font-black text-[#080E1C] mb-2">{faq.q}</h3>
@@ -242,6 +244,8 @@ export default function HowItWorksPage() {
           </div>
         </section>
       </main>
+      <ValueStack />
+      <Guarantee />
       <Footer />
     </>
   );

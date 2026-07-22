@@ -5,6 +5,7 @@ import StickyMobileCTA from "@/components/StickyMobileCTA";
 import Guarantee from "@/components/Guarantee";
 import { CheckCircle, ArrowRight, Bot, Calendar, BarChart3, Clock, Lock, TrendingUp } from "lucide-react";
 import { COUNTRIES, COUNTRY_SLUGS } from "@/lib/content/countries";
+import ValueStack from "@/components/ValueStack";
 
 export function generateStaticParams() {
   return COUNTRY_SLUGS.map((pays) => ({ pays }));
@@ -144,6 +145,7 @@ export default async function CountryPage({ params }: { params: Promise<{ pays: 
 
       <StickyMobileCTA label="Recevoir mon audit gratuit" sub="Gratuit · Livré en 24h · Sans appel" href="/fr/audit" />
 
+      <ValueStack lang="fr" />
       <Guarantee lang="fr" />
 
       <footer className="bg-[#FAFAF7] border-t border-[#E8E6E0] py-8 text-center text-xs text-[#71717A]">

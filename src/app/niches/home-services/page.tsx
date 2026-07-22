@@ -3,6 +3,8 @@ import Footer from "@/components/Footer";
 import Link from "next/link";
 import { CheckCircle, ArrowRight, Bot, Phone, MapPin, Zap, XCircle, Clock } from "lucide-react";
 import type { Metadata } from "next";
+import ValueStack from "@/components/ValueStack";
+import Guarantee from "@/components/Guarantee";
 
 export const metadata: Metadata = {
   title: "AI Booking System for HVAC, Plumbing & Home Services — Servolia",
@@ -295,6 +297,8 @@ export default function HomeServicesPage() {
           </div>
         </section>
       </main>
+      <ValueStack niche="home-services" />
+      <Guarantee />
       <Footer />
     </>
   );

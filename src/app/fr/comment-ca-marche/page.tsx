@@ -4,6 +4,8 @@ import VideoEmbed from "@/components/VideoEmbed";
 import Link from "next/link";
 import { ArrowRight, FileText, Video, CreditCard, ClipboardList, Hammer, Eye, Rocket, BarChart3, MessageSquare, CheckCircle } from "lucide-react";
 import type { Metadata } from "next";
+import ValueStack from "@/components/ValueStack";
+import Guarantee from "@/components/Guarantee";
 
 const DEMO_VIDEO_ID = process.env.NEXT_PUBLIC_DEMO_VIDEO_ID;
 
@@ -238,6 +240,8 @@ export default function FrenchHowItWorksPage() {
           </div>
         </section>
       </main>
+      <ValueStack lang="fr" />
+      <Guarantee lang="fr" />
       <FrenchFooter />
     </>
   );

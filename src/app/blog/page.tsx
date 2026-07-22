@@ -7,6 +7,7 @@ import CoverImage from "@/components/CoverImage";
 import { formatDate } from "@/lib/content/posts";
 import { getAllPosts } from "@/lib/content/dynamicPosts";
 import { Clock, ArrowRight } from "lucide-react";
+import ValueStack from "@/components/ValueStack";
 
 export const dynamic = "force-dynamic";
 
@@ -123,6 +124,7 @@ export default async function BlogIndex() {
           </div>
         </section>
       </main>
+      <ValueStack />
       <Footer />
       <ChatWidget />
     </>

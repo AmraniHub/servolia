@@ -4,6 +4,7 @@ import { useState } from "react";
 import FrenchNav from "@/components/FrenchNav";
 import FrenchFooter from "@/components/FrenchFooter";
 import { Mail, Clock, Shield, CheckCircle, ArrowRight, Zap } from "lucide-react";
+import ValueStack from "@/components/ValueStack";
 
 const plans = ["Pas encore sûr — audit d'abord", "Système Site Web (290 €)", "Système Réservation (590 €)", "Système Client (990 €)", "Sur mesure / Option"];
 const industries = ["Cabinet dentaire", "Clinique esthétique / Med spa", "Immobilier", "Services à domicile (CVC, toiture…)", "Restaurant / Alimentation", "Juridique / Comptabilité", "Autre"];
@@ -193,6 +194,7 @@ export default function FrenchContactPage() {
         </div>
       </section>
 
+      <ValueStack lang="fr" />
       <FrenchFooter />
     </main>
   );

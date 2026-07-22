@@ -4,6 +4,7 @@ import { useState } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Mail, Clock, Shield, CheckCircle, ArrowRight, Zap } from "lucide-react";
+import ValueStack from "@/components/ValueStack";
 
 const plans = ["Not sure yet — audit first", "Website System (€290)", "Booking System (€590)", "Client System (€990)", "Custom / Add-on"];
 const industries = ["Dental Clinic", "Aesthetic / Med Spa", "Real Estate", "Home Services (HVAC, Roofing…)", "Restaurant / Food", "Legal / Accounting", "Other"];
@@ -201,6 +202,7 @@ export default function ContactPage() {
         </div>
       </section>
 
+      <ValueStack />
       <Footer />
     </main>
   );

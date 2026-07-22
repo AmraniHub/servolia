@@ -5,6 +5,7 @@ import Guarantee from "@/components/Guarantee";
 import Link from "next/link";
 import { CheckCircle, ArrowRight, Bot, Calendar, BarChart3, Globe, Clock, Lock, TrendingUp } from "lucide-react";
 import type { Metadata } from "next";
+import ValueStack from "@/components/ValueStack";
 
 export const metadata: Metadata = {
   title: "AI Booking System for Dental Clinics — Servolia",
@@ -254,6 +255,7 @@ export default function DentistsPage() {
         </div>
       </section>
 
+      <ValueStack niche="dental" />
       <Guarantee lang="en" />
 
       <StickyMobileCTA label="Get My Free Clinic Audit" sub="Free · 24h delivery · No call required" />

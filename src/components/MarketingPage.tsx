@@ -4,6 +4,9 @@ import Footer from "@/components/Footer";
 import ChatWidget from "@/components/ChatWidget";
 import type { MarketingContent, IconName } from "@/lib/content/pages";
 import { FaqSchema } from "@/components/StructuredData";
+import ValueStack from "@/components/ValueStack";
+import Guarantee from "@/components/Guarantee";
+import { nicheForSlug } from "@/lib/valueEquation";
 import {
   Globe, Bot, Calendar, LayoutDashboard, BarChart3, Shield, Zap, Clock,
   Users, Phone, MessageSquare, TrendingUp, Lock, FileText, Scale,
@@ -159,6 +162,9 @@ export default function MarketingPage({ data }: { data: MarketingContent }) {
             </div>
           </div>
         </section>
+
+        <ValueStack niche={nicheForSlug(data.slug)} />
+        <Guarantee />
 
         {/* CTA */}
         <section className="py-24 bg-[#0A1F14] relative overflow-hidden">

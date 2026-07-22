@@ -3,6 +3,8 @@ import Footer from "@/components/Footer";
 import Link from "next/link";
 import { CheckCircle, ArrowRight, Bot, Calendar, BarChart3, Globe, Clock, TrendingUp, XCircle } from "lucide-react";
 import type { Metadata } from "next";
+import ValueStack from "@/components/ValueStack";
+import Guarantee from "@/components/Guarantee";
 
 export const metadata: Metadata = {
   title: "AI Client System for Aesthetic Clinics — Servolia",
@@ -305,6 +307,8 @@ export default function AestheticClinicsPage() {
           </div>
         </section>
       </main>
+      <ValueStack niche="aesthetic" />
+      <Guarantee />
       <Footer />
     </>
   );

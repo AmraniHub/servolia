@@ -3,6 +3,7 @@ import FrenchFooter from "@/components/FrenchFooter";
 import Link from "next/link";
 import { ArrowRight, CheckCircle, Target, Heart, Zap } from "lucide-react";
 import type { Metadata } from "next";
+import ValueStack from "@/components/ValueStack";
 
 export const metadata: Metadata = {
   title: "À propos de Servolia — Construit par un opérateur, pour des opérateurs",
@@ -127,6 +128,7 @@ export default function FrenchAboutPage() {
           </div>
         </section>
       </main>
+      <ValueStack lang="fr" />
       <FrenchFooter />
     </>
   );

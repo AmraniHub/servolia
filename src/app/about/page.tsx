@@ -3,6 +3,7 @@ import Footer from "@/components/Footer";
 import Link from "next/link";
 import { ArrowRight, CheckCircle, Target, Heart, Zap } from "lucide-react";
 import type { Metadata } from "next";
+import ValueStack from "@/components/ValueStack";
 
 export const metadata: Metadata = {
   title: "About Servolia — Built by an operator, for operators",
@@ -126,6 +127,7 @@ export default function AboutPage() {
           </div>
         </section>
       </main>
+      <ValueStack />
       <Footer />
     </>
   );

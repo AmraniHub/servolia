@@ -12,6 +12,7 @@ import ShowcaseSlider from "@/components/ShowcaseSlider";
 import ROICalculator from "@/components/ROICalculator";
 import StickyMobileCTA from "@/components/StickyMobileCTA";
 import { FaqSchema } from "@/components/StructuredData";
+import ValueStack from "@/components/ValueStack";
 import {
   Bot, Globe, CheckCircle, ArrowRight,
   Shield, Clock, TrendingUp, MessageSquare,
@@ -70,7 +71,7 @@ export default function HomePage() {
   const [faqOpen, setFaqOpen] = useState<number | null>(null);
 
   const faqs = [
-    { q: "How fast do you really deliver?", a: "3–7 business days depending on the package. The clock starts when you submit your intake form and deposit clears. We've never missed a deadline — our CGV guarantees 10% refund per day late if we do." },
+    { q: "How fast do you really deliver?", a: "3–7 business days depending on the package. The clock starts when you submit your intake form and deposit clears. The date is committed in writing, and our CGV guarantees 10% back per day late if we miss it." },
     { q: "Do I need to write my own content?", a: "No. You fill a 10-minute intake form. We write everything — headlines, copy, service descriptions, GDPR pages. You review and approve before anything goes live." },
     { q: "Can I pay in installments?", a: "Yes — 50% deposit via Stripe to start, 50% on delivery day. Monthly retainers are charged automatically and cancel anytime with 30 days notice." },
     { q: "Do you work in French?", a: "Yes. We serve clients in France, Belgium, Switzerland, Monaco, and the US. All communication, copy, and legal pages can be in French or English — your choice." },
@@ -153,9 +154,9 @@ export default function HomePage() {
             transition={{ duration: 0.75, ease: [0.22, 1, 0.36, 1], delay: 0.1 }}
             className="text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-black text-[#FAFAF7] leading-[1.02] tracking-tight mb-7"
           >
-            Turn your website into a{" "}
+            Stop losing clients to{" "}
             <span className="bg-gradient-to-r from-[#BEF264] via-[#ABDF90] to-[#BEF264] bg-clip-text text-transparent">
-              24/7 client acquisition system.
+              the enquiries you never answered.
             </span>
           </motion.h1>
 
@@ -166,7 +167,7 @@ export default function HomePage() {
             transition={{ duration: 0.65, delay: 0.25 }}
             className="text-[#ABDF90]/80 text-lg sm:text-xl max-w-2xl mx-auto mb-3 leading-relaxed"
           >
-            Servolia builds AI websites, booking systems, and lead funnels for dentists, clinics, real estate agents, and home service businesses in Europe and the US.
+            Every enquiry answered in seconds, day or night, and booked straight into your calendar. Servolia builds the AI website, receptionist and booking system that does it — for clinics, dentists, real estate agents and home services across Europe and the US.
           </motion.p>
           <motion.p
             initial={{ opacity: 0, y: 12 }}
@@ -840,7 +841,7 @@ export default function HomePage() {
               <p className="text-[#52525B] text-sm leading-relaxed mb-8 max-w-xl mx-auto">
                 If we miss our agreed delivery deadline through our own fault, you get{" "}
                 <strong className="text-[#18181B]">10% of your payment back for every day we&apos;re late</strong>{" "}
-                — automatically, no questions asked. We&apos;ve never had to pay this out.
+                — automatically, no questions asked.
               </p>
               <div className="grid sm:grid-cols-3 gap-4">
                 {[
@@ -1037,6 +1038,7 @@ export default function HomePage() {
         </div>
       </section>
 
+      <ValueStack />
       <StickyMobileCTA />
       <Footer />
       <ChatWidget />

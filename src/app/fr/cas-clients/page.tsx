@@ -3,6 +3,8 @@ import FrenchFooter from "@/components/FrenchFooter";
 import Link from "next/link";
 import { ArrowRight, Clock, CheckCircle } from "lucide-react";
 import type { Metadata } from "next";
+import ValueStack from "@/components/ValueStack";
+import Guarantee from "@/components/Guarantee";
 
 export const metadata: Metadata = {
   title: "Exemples de déploiements — Ce qu'un système Servolia est conçu pour livrer",
@@ -238,6 +240,8 @@ export default function FrenchCaseStudiesPage() {
           </div>
         </section>
       </main>
+      <ValueStack lang="fr" />
+      <Guarantee lang="fr" />
       <FrenchFooter />
     </>
   );

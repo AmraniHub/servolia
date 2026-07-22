@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import BookingWidget from "@/components/BookingWidget";
+import ValueStack from "@/components/ValueStack";
+import Guarantee from "@/components/Guarantee";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +18,8 @@ export default function CallPage() {
     <main className="min-h-screen bg-[#FAFAF7]">
       <Navbar />
       <BookingWidget />
+      <ValueStack />
+      <Guarantee />
       <Footer />
     </main>
   );

@@ -1,30 +1,35 @@
 import { ShieldCheck, RefreshCw, CalendarCheck } from "lucide-react";
 
 /**
- * Results guarantee — the risk-reversal that makes the offer a no-brainer.
- * Honest and deliverable: a setup-refund window + a performance floor the
- * system genuinely controls (it answers every enquiry 24/7). No medical claims.
+ * Risk-reversal — the "perceived likelihood" lever of the value equation.
+ *
+ * Every claim here must match src/app/legal/refund and the CGV exactly. The
+ * deposit is non-refundable once work has begun, so we do NOT promise a
+ * no-questions setup refund; we promise the two things the policy genuinely
+ * grants (10%/day for lateness, full refund if we never deliver) plus a
+ * performance floor the system itself controls. No medical claims, and no
+ * track-record claims until there are real delivered clients to point at.
  */
 
 const COPY = {
   en: {
     badge: "Our guarantee",
     h: "You risk nothing. We only win when you do.",
-    sub: "We're so sure your system will pay for itself that we put our fee on the line.",
+    sub: "The deadline, the price, and the scope are committed in writing before you pay a cent.",
     cards: [
-      { icon: CalendarCheck, title: "Live in 7 days or it's free", body: "We commit your delivery date in writing. Miss it and you get 10% back per day late — we've never had to." },
-      { icon: ShieldCheck, title: "It answers every enquiry — guaranteed", body: "If your assistant isn't capturing patient enquiries 24/7 in month one, we fix it free until it does." },
-      { icon: RefreshCw, title: "14-day setup refund", body: "Not convinced in the first two weeks? We refund your setup fee. No forms, no argument." },
+      { icon: CalendarCheck, title: "Live in 7 days — or you're paid back", body: "Your delivery date is committed in writing. If we miss it through our own fault, you get 10% of the project price back for every day we're late." },
+      { icon: ShieldCheck, title: "It answers every enquiry — guaranteed", body: "If your assistant isn't capturing enquiries 24/7 in month one, we keep fixing it free until it does." },
+      { icon: RefreshCw, title: "We don't deliver, you don't pay", body: "If we can't deliver the scope we agreed, you get a full refund of your deposit. The scope is signed off before any work starts." },
     ],
   },
   fr: {
     badge: "Notre garantie",
     h: "Vous ne risquez rien. On ne gagne que si vous gagnez.",
-    sub: "Nous sommes tellement sûrs que votre système sera rentable que nous engageons nos honoraires.",
+    sub: "Le délai, le prix et le périmètre sont engagés par écrit avant le moindre paiement.",
     cards: [
-      { icon: CalendarCheck, title: "En ligne en 7 jours, ou c'est gratuit", body: "Date de livraison engagée par écrit. En retard ? 10% remboursés par jour — ça n'est jamais arrivé." },
-      { icon: ShieldCheck, title: "Chaque demande répondue — garanti", body: "Si votre assistant ne capte pas vos demandes 24h/24 le premier mois, on corrige gratuitement." },
-      { icon: RefreshCw, title: "Remboursé sous 14 jours", body: "Pas convaincu en deux semaines ? On rembourse les frais d'installation. Sans discuter." },
+      { icon: CalendarCheck, title: "En ligne en 7 jours — ou vous êtes remboursé", body: "Votre date de livraison est engagée par écrit. Si nous la manquons de notre fait, vous récupérez 10 % du prix par jour de retard." },
+      { icon: ShieldCheck, title: "Chaque demande répondue — garanti", body: "Si votre assistant ne capte pas vos demandes 24h/24 le premier mois, nous corrigeons gratuitement jusqu'à ce que ce soit le cas." },
+      { icon: RefreshCw, title: "Pas livré, pas payé", body: "Si nous ne pouvons pas livrer le périmètre convenu, votre acompte est intégralement remboursé. Le périmètre est validé avant tout début de travaux." },
     ],
   },
 };

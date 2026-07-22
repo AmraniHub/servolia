@@ -3,6 +3,8 @@ import Footer from "@/components/Footer";
 import Link from "next/link";
 import { CheckCircle, ArrowRight, Bot, Calendar, BarChart3, Globe, XCircle } from "lucide-react";
 import type { Metadata } from "next";
+import ValueStack from "@/components/ValueStack";
+import Guarantee from "@/components/Guarantee";
 
 export const metadata: Metadata = {
   title: "AI Lead System for Real Estate Agents — Servolia",
@@ -265,6 +267,8 @@ export default function RealEstatePage() {
           </div>
         </section>
       </main>
+      <ValueStack niche="real-estate" />
+      <Guarantee />
       <Footer />
     </>
   );

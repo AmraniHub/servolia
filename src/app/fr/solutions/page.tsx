@@ -3,6 +3,8 @@ import type { Metadata } from "next";
 import FrenchNav from "@/components/FrenchNav";
 import FrenchFooter from "@/components/FrenchFooter";
 import { Globe, Bot, Calendar, LayoutDashboard, ArrowRight } from "lucide-react";
+import ValueStack from "@/components/ValueStack";
+import Guarantee from "@/components/Guarantee";
 
 export const metadata: Metadata = {
   title: "Solutions — Systèmes clients IA pour entreprises de services | Servolia",
@@ -134,6 +136,8 @@ export default function FrenchSolutionsHub() {
           </div>
         </section>
       </main>
+      <ValueStack lang="fr" />
+      <Guarantee lang="fr" />
       <FrenchFooter />
     </>
   );

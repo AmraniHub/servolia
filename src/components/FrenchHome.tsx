@@ -10,6 +10,7 @@ import ROICalculator from "@/components/ROICalculator";
 import StickyMobileCTA from "@/components/StickyMobileCTA";
 import FrenchNav from "@/components/FrenchNav";
 import FrenchFooter from "@/components/FrenchFooter";
+import ValueStack from "@/components/ValueStack";
 import {
   Bot, Globe, CheckCircle, ArrowRight,
   Shield, Clock, TrendingUp, MessageSquare,
@@ -68,7 +69,7 @@ export default function FrenchHome() {
   const [faqOpen, setFaqOpen] = useState<number | null>(null);
 
   const faqs = [
-    { q: "En combien de temps livrez-vous vraiment ?", a: "3 à 7 jours ouvrés selon la formule. Le délai démarre dès la réception de votre formulaire et de l'acompte. Notre contrat garantit 10 % de remboursement par jour de retard — nous n'avons jamais manqué une échéance." },
+    { q: "En combien de temps livrez-vous vraiment ?", a: "3 à 7 jours ouvrés selon la formule. Le délai démarre dès la réception de votre formulaire et de l'acompte. La date est engagée par écrit, et notre contrat garantit 10 % de remboursement par jour de retard si nous la manquons." },
     { q: "Dois-je rédiger mon propre contenu ?", a: "Non. Vous remplissez un formulaire de 10 minutes. Nous rédigeons tout — titres, textes, descriptions de services, pages RGPD. Vous validez avant toute mise en ligne." },
     { q: "Puis-je payer en plusieurs fois ?", a: "Oui — 50 % d'acompte via Stripe pour démarrer, 50 % à la livraison. Les abonnements mensuels sont prélevés automatiquement et résiliables à tout moment avec 30 jours de préavis." },
     { q: "Travaillez-vous en français ?", a: "Oui. Nous servons des clients en France, Belgique, Suisse, Monaco et aux États-Unis. Toute la communication, les textes et les pages légales peuvent être en français ou en anglais — au choix." },
@@ -133,9 +134,9 @@ export default function FrenchHome() {
             initial={{ opacity: 0, y: 32 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.75, ease: [0.22, 1, 0.36, 1], delay: 0.1 }}
             className="text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-black text-[#FAFAF7] leading-[1.02] tracking-tight mb-7"
           >
-            Transformez votre site en{" "}
+            Ne perdez plus de clients{" "}
             <span className="bg-gradient-to-r from-[#BEF264] via-[#ABDF90] to-[#BEF264] bg-clip-text text-transparent">
-              machine à clients 24h/24.
+              faute d&apos;avoir répondu à temps.
             </span>
           </motion.h1>
 
@@ -143,7 +144,7 @@ export default function FrenchHome() {
             initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.65, delay: 0.25 }}
             className="text-[#ABDF90]/80 text-lg sm:text-xl max-w-2xl mx-auto mb-3 leading-relaxed"
           >
-            Servolia crée des sites IA, des systèmes de réservation et des tunnels de leads pour <a href="/fr/dentistes" className="underline decoration-[#BEF264]/50 underline-offset-2 hover:decoration-[#BEF264]">cabinets dentaires</a>, cliniques, agents immobiliers et entreprises de services en Europe.
+            Chaque demande traitée en quelques secondes, jour et nuit, et le rendez-vous posé directement dans votre agenda. Servolia crée le site IA, le réceptionniste et le système de réservation qui s&apos;en chargent — pour <a href="/fr/dentistes" className="underline decoration-[#BEF264]/50 underline-offset-2 hover:decoration-[#BEF264]">cabinets dentaires</a>, cliniques, agents immobiliers et entreprises de services en Europe.
           </motion.p>
           <motion.p
             initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.35 }}
@@ -949,6 +950,7 @@ export default function FrenchHome() {
       </section>
 
       {/* FOOTER (French, shared) */}
+      <ValueStack lang="fr" />
       <StickyMobileCTA label="Réservez votre audit gratuit" sub="Gratuit · Livré en 24h · Sans appel" href="/fr/audit" />
       <FrenchFooter />
     </main>

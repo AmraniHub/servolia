@@ -3,6 +3,7 @@ import Link from "next/link";
 import StickyMobileCTA from "@/components/StickyMobileCTA";
 import Guarantee from "@/components/Guarantee";
 import { CheckCircle, ArrowRight, Bot, Calendar, BarChart3, Globe, Clock, Lock, TrendingUp } from "lucide-react";
+import ValueStack from "@/components/ValueStack";
 
 export const metadata: Metadata = {
   title: "Système de réservation IA pour cabinets dentaires — Servolia",
@@ -272,6 +273,7 @@ export default function FrenchDentistsPage() {
 
       <StickyMobileCTA label="Recevoir mon audit gratuit" sub="Gratuit · Livré en 24h · Sans appel" href="/fr/audit" />
 
+      <ValueStack lang="fr" niche="dental" />
       <Guarantee lang="fr" />
 
       <footer className="bg-[#FAFAF7] border-t border-[#E8E6E0] py-8 text-center text-xs text-[#71717A]">
