@@ -567,3 +567,19 @@ create table if not exists custom_requests (
 
 create index if not exists custom_requests_build_idx on custom_requests(build_id);
 create index if not exists custom_requests_status_idx on custom_requests(status);
+
+
+-- EMAIL CAMPAIGNS: record of every broadcast sent from the admin.
+create table if not exists email_campaigns (
+  id          uuid primary key default gen_random_uuid(),
+  created_at  timestamptz default now(),
+
+  subject     text not null,
+  body_html   text not null,
+  audience    text not null,              -- subscribers, leads
+  sent_count  int default 0,
+  failed_count int default 0,
+  skipped_count int default 0             -- unsubscribed / no email
+);
+
+create index if not exists email_campaigns_created_idx on email_campaigns(created_at desc);

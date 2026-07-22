@@ -205,6 +205,24 @@ export const FEATURES: SystemFeature[] = [
     code: "src/components/admin/OpenInClaudeCode.tsx",
   },
   {
+    name: "Email your list (broadcast)",
+    summary: "Send a one-off email from the admin to your newsletter subscribers or your leads, with a real unsubscribe and opt-out protection.",
+    how: [
+      "Pick the audience — subscribers (opted in via the site) or leads (people who contacted you). The live count is shown for each.",
+      "Write a subject and an HTML body. Send yourself a test first to see the real thing.",
+      "On send, anyone who ever unsubscribed is removed, addresses are de-duplicated, and each email gets its own signed one-click unsubscribe link.",
+      "Sends go out in small batches, capped per click, and the campaign is recorded in email_campaigns.",
+    ],
+    use: [
+      "Admin → Email your list. Always send the test to yourself before the real send.",
+      "Send from Resend on the send.servolia.com subdomain — NOT from Google Workspace. Bulk sending from your main domain would damage the reputation of hello@servolia.com.",
+      "Keep it relevant and easy to opt out of — B2B outreach in the EU still needs a working unsubscribe.",
+    ],
+    cost: "Resend's per-email cost — free tier covers early volume.",
+    value: "Reactivates dormant leads and keeps your list warm without another tool or subscription.",
+    code: "src/components/admin/BroadcastComposer.tsx · /api/admin/broadcast · src/lib/unsubscribe.ts · /unsubscribe",
+  },
+  {
     name: "Monthly client reports",
     summary: "An automated monthly results email + portal report per client.",
     how: ["A cron runs monthly, aggregates each client's chat_sessions into metrics, stores a client_reports row and emails it."],

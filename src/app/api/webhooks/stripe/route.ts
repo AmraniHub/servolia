@@ -47,6 +47,16 @@ export async function POST(req: NextRequest) {
     if (event.type === "checkout.session.completed") {
       const session = event.data.object as Stripe.Checkout.Session;
 
+      // Never trust "completed" alone. A session can complete while the money
+      // is still pending (delayed methods like bank transfer / SEPA), so we
+      // only fulfil when Stripe says the money is actually there. Stripe sends
+      // checkout.session.async_payment_succeeded later for those.
+      const paid = session.payment_status === "paid" || session.payment_status === "no_payment_required";
+      if (!paid) {
+        console.log(`Checkout ${session.id} completed but payment_status=${session.payment_status} — not fulfilling yet.`);
+        return NextResponse.json({ received: true, pending: true });
+      }
+
       // ── ADD-ON branch: a managed add-on subscription → provision it ──────
       if (session.mode === "subscription" && session.metadata?.kind === "addon") {
         const customerEmail = session.customer_details?.email ?? session.customer_email ?? null;

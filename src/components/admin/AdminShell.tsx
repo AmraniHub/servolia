@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard, Users, Hammer, UserCircle, MessageSquare, Mail,
-  TrendingUp, Settings, LogOut, Menu, X, BarChart3, Kanban, Search, Globe, Sparkles, RefreshCcw, Wand2, CalendarClock, Target, Star, Bot, Sun, Moon, Database, BookOpen,
+  TrendingUp, Settings, LogOut, Menu, X, BarChart3, Kanban, Search, Globe, Sparkles, RefreshCcw, Wand2, CalendarClock, Target, Star, Bot, Sun, Moon, Database, BookOpen, Send,
 } from "lucide-react";
 import CommandPalette from "./CommandPalette";
 import AutoRefresh from "@/components/AutoRefresh";
@@ -15,6 +15,7 @@ const nav = [
   { label: "Dashboard",   href: "/admin",           icon: LayoutDashboard },
   { label: "Leads",       href: "/admin/leads",     icon: Users },
   { label: "Email audience", href: "/admin/subscribers", icon: Mail },
+  { label: "Email your list", href: "/admin/broadcast", icon: Send },
   { label: "Pipeline",    href: "/admin/pipeline",  icon: Kanban },
   { label: "Prospects",   href: "/admin/prospects", icon: Target },
   { label: "Calls",       href: "/admin/bookings",  icon: CalendarClock },
