@@ -235,6 +235,19 @@ export const FEATURES: SystemFeature[] = [
     code: "src/components/ShowcaseSlider.tsx",
   },
   {
+    name: "Client profile + marketing opt-in",
+    summary: "In the portal, a client sets their photo, name and phone — and decides for themselves whether to receive marketing email.",
+    how: [
+      "Account tab → Your profile. The photo goes through the same validated image pipeline as chat attachments and saves immediately.",
+      "The marketing toggle is real consent: switching it on adds them to email_subscribers with a consent timestamp; switching it off unsubscribes them.",
+      "That's the same table the broadcast tool reads, so a client can always remove themselves.",
+    ],
+    use: ["Nothing to run. Clients who opt in appear in the 'subscribers' audience under Email your list."],
+    cost: "Image storage only.",
+    value: "Grows a consented marketing list from people who already pay you — the warmest audience there is — without you asking manually.",
+    code: "src/components/PortalDashboard.tsx (ProfileCard) · /api/portal/profile · /api/portal/profile/avatar",
+  },
+  {
     name: "Email your list (broadcast)",
     summary: "Send a one-off email from the admin to your newsletter subscribers or your leads, with a real unsubscribe and opt-out protection.",
     how: [

@@ -10,7 +10,7 @@ import { ADDONS } from "@/lib/pricing";
 import {
   LogOut, Send, MessageSquare, Clock, CreditCard, CheckCircle2, Users, CalendarCheck,
   Megaphone, ExternalLink, Sun, Moon, LayoutDashboard, KeyRound, Loader2, ShieldCheck, Trash2,
-  Image as ImageIcon, X, Globe, BarChart3, Search, Download, HelpCircle, FileText, Sparkles, ArrowRight, Languages,
+  Image as ImageIcon, X, Globe, BarChart3, Search, Download, HelpCircle, FileText, Sparkles, ArrowRight, Languages, UserCircle,
 } from "lucide-react";
 
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
@@ -67,6 +67,14 @@ const T = {
     noMessages: "No messages yet — say hello 👋", imageReady: "Image ready — add a caption or just send.", typeMsg: "Type a message…",
     onlyImages: "Only JPEG, PNG, WEBP, or GIF images.", imgTooBig: "Image must be under 4MB.", uploadFailed: "Upload failed",
     // account
+    // profile
+    profileTitle: "Your profile", profileDesc: "How you appear to us, and how we reach you.",
+    photo: "Profile photo", changePhoto: "Change photo", uploading: "Uploading…", photoHint: "JPEG, PNG, WEBP or GIF · max 4MB",
+    displayName: "Your name", displayNamePh: "Dr. Marie Dupont",
+    phoneLabel: "Phone", phonePh: "+33 6 12 34 56 78",
+    marketingTitle: "Marketing emails", marketingDesc: "Get occasional tips and product news. We'll never share your address, and you can turn this off any time.",
+    marketingOn: "You're subscribed", marketingOff: "You're not subscribed",
+    saveProfile: "Save profile", savedProfile: "Profile saved ✅",
     yourAccount: "Your account", accountDesc: "This is your login and where we send your reports and receipts.",
     emailAddress: "Email address", changeEmailNote: "To change your email, message us from the Messages tab — we'll move your account over.",
     changePassword: "Change password", setPassword: "Set a password",
@@ -117,6 +125,13 @@ const T = {
     confirmDelete: "Supprimer cette conversation ? Elle disparaîtra de votre vue — Servolia peut toujours la voir et la restaurer si besoin.",
     noMessages: "Aucun message — dites bonjour 👋", imageReady: "Image prête — ajoutez une légende ou envoyez.", typeMsg: "Écrivez un message…",
     onlyImages: "Uniquement des images JPEG, PNG, WEBP ou GIF.", imgTooBig: "L'image doit faire moins de 4 Mo.", uploadFailed: "Échec de l'envoi",
+    profileTitle: "Votre profil", profileDesc: "Comment vous apparaissez et comment vous joindre.",
+    photo: "Photo de profil", changePhoto: "Changer la photo", uploading: "Envoi…", photoHint: "JPEG, PNG, WEBP ou GIF · 4 Mo max",
+    displayName: "Votre nom", displayNamePh: "Dr Marie Dupont",
+    phoneLabel: "Téléphone", phonePh: "+33 6 12 34 56 78",
+    marketingTitle: "Emails marketing", marketingDesc: "Recevez occasionnellement des conseils et des nouveautés. Nous ne partageons jamais votre adresse, et vous pouvez vous désinscrire à tout moment.",
+    marketingOn: "Vous êtes inscrit", marketingOff: "Vous n'êtes pas inscrit",
+    saveProfile: "Enregistrer le profil", savedProfile: "Profil enregistré ✅",
     yourAccount: "Votre compte", accountDesc: "C'est votre identifiant et l'adresse où nous envoyons vos rapports et reçus.",
     emailAddress: "Adresse email", changeEmailNote: "Pour changer d'email, écrivez-nous depuis l'onglet Messages — nous transférerons votre compte.",
     changePassword: "Changer le mot de passe", setPassword: "Définir un mot de passe",
@@ -788,6 +803,136 @@ export default function PortalDashboard({
   );
 }
 
+/* ───────────────────────── Profile card ───────────────────────── */
+
+function ProfileCard({ email, t }: { email: string; t: Dict }) {
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [avatar, setAvatar] = useState("");
+  const [optIn, setOptIn] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    fetch("/api/portal/profile").then((r) => r.json()).then((d) => {
+      const p = d.profile ?? {};
+      setName(p.display_name ?? "");
+      setPhone(p.phone ?? "");
+      setAvatar(p.avatar_url ?? "");
+      setOptIn(!!p.marketing_opt_in);
+    }).catch(() => {});
+  }, []);
+
+  async function pickPhoto(file: File) {
+    setUploading(true);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const res = await fetch("/api/portal/profile/avatar", { method: "POST", body: form });
+      const d = await res.json();
+      if (d.url) {
+        setAvatar(d.url);
+        // Persist immediately so the photo isn't lost if they navigate away.
+        await fetch("/api/portal/profile", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ avatarUrl: d.url }),
+        });
+      }
+    } finally { setUploading(false); }
+  }
+
+  async function save(next?: { marketingOptIn?: boolean }) {
+    setBusy(true); setSaved(false);
+    try {
+      await fetch("/api/portal/profile", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          displayName: name, phone,
+          marketingOptIn: next?.marketingOptIn ?? optIn,
+        }),
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } finally { setBusy(false); }
+  }
+
+  const initials = (name || email).replace(/^Dr\.?\s*/i, "").split(/[\s@.]+/).slice(0, 2)
+    .map((w) => w[0]).join("").toUpperCase();
+  const inp = "w-full bg-[var(--p-bg)] border border-[var(--p-border)] rounded-xl px-3.5 py-2.5 text-sm text-[var(--p-text)] placeholder-[var(--p-faint)] focus:outline-none focus:border-[var(--p-accent)]";
+  const label = "block text-xs font-bold text-[var(--p-muted)] uppercase tracking-widest mb-1.5";
+
+  return (
+    <div className="rounded-2xl border border-[var(--p-border)] bg-[var(--p-surface)] p-6" style={{ boxShadow: "var(--p-shadow)" }}>
+      <h2 className="font-black text-[var(--p-text)] text-sm mb-1 flex items-center gap-2">
+        <UserCircle className="w-4 h-4 text-[var(--p-accent)]" /> {t.profileTitle}
+      </h2>
+      <p className="text-xs text-[var(--p-muted)] mb-5">{t.profileDesc}</p>
+
+      {/* Photo */}
+      <div className="flex items-center gap-4 mb-5">
+        {avatar ? (
+          <img src={avatar} alt="" className="w-16 h-16 rounded-full object-cover border border-[var(--p-border)]" />
+        ) : (
+          <div className="w-16 h-16 rounded-full flex items-center justify-center text-lg font-black bg-[var(--p-accent)] text-[var(--p-accent-fg)]">
+            {initials}
+          </div>
+        )}
+        <div>
+          <input ref={fileRef} type="file" accept={ACCEPTED_IMAGE_TYPES} className="hidden"
+            onChange={(e) => { const f = e.target.files?.[0]; if (f) pickPhoto(f); }} />
+          <button onClick={() => fileRef.current?.click()} disabled={uploading}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-[var(--p-border)] text-[var(--p-text)] text-sm font-bold hover:bg-[var(--p-raised)] transition-colors disabled:opacity-50">
+            {uploading ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> {t.uploading}</> : <><ImageIcon className="w-3.5 h-3.5" /> {t.changePhoto}</>}
+          </button>
+          <p className="text-[11px] text-[var(--p-faint)] mt-1.5">{t.photoHint}</p>
+        </div>
+      </div>
+
+      {/* Name + phone */}
+      <div className="space-y-3 mb-5">
+        <div>
+          <label className={label}>{t.displayName}</label>
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder={t.displayNamePh} className={inp} />
+        </div>
+        <div>
+          <label className={label}>{t.phoneLabel}</label>
+          <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder={t.phonePh} className={inp} />
+        </div>
+      </div>
+
+      {/* Marketing opt-in — explicit, reversible consent */}
+      <div className="rounded-xl border border-[var(--p-border)] bg-[var(--p-raised)] p-4 mb-5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-sm font-bold text-[var(--p-text)]">{t.marketingTitle}</p>
+            <p className="text-xs text-[var(--p-muted)] mt-1 leading-relaxed">{t.marketingDesc}</p>
+            <p className="text-xs font-bold mt-2" style={{ color: optIn ? "var(--p-accent)" : "var(--p-faint)" }}>
+              {optIn ? t.marketingOn : t.marketingOff}
+            </p>
+          </div>
+          <button
+            role="switch" aria-checked={optIn} aria-label={t.marketingTitle}
+            onClick={() => { const v = !optIn; setOptIn(v); save({ marketingOptIn: v }); }}
+            className="shrink-0 w-12 h-7 rounded-full transition-colors relative"
+            style={{ background: optIn ? "var(--p-accent)" : "var(--p-border)" }}>
+            <span className={`absolute top-1 w-5 h-5 rounded-full bg-white transition-all ${optIn ? "left-6" : "left-1"}`} />
+          </button>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-3">
+        <button onClick={() => save()} disabled={busy}
+          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[var(--p-accent)] text-[var(--p-accent-fg)] text-sm font-bold hover:bg-[var(--p-accent-hover)] transition-colors disabled:opacity-40">
+          {busy ? <><Loader2 className="w-4 h-4 animate-spin" /> {t.saving}</> : t.saveProfile}
+        </button>
+        {saved && <span className="text-sm text-[#22C55E]">{t.savedProfile}</span>}
+      </div>
+    </div>
+  );
+}
+
 /* ───────────────────────── Account tab ───────────────────────── */
 
 function AccountTab({ email, onLogout, t }: { email: string; onLogout: () => void; t: Dict }) {
@@ -828,6 +973,8 @@ function AccountTab({ email, onLogout, t }: { email: string; onLogout: () => voi
 
   return (
     <div className="space-y-4 max-w-xl">
+      <ProfileCard email={email} t={t} />
+
       {/* Email / account */}
       <div className={card} style={{ boxShadow: "var(--p-shadow)" }}>
         <h2 className="font-black text-[var(--p-text)] text-sm mb-1 flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-[var(--p-accent)]" /> {t.yourAccount}</h2>

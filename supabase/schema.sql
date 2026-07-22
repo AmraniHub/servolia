@@ -583,3 +583,22 @@ create table if not exists email_campaigns (
 );
 
 create index if not exists email_campaigns_created_idx on email_campaigns(created_at desc);
+
+
+-- CLIENT PROFILES: what a portal client can edit about themselves.
+-- Separate from client_auth because magic-link users have no auth row.
+create table if not exists client_profiles (
+  email             text primary key,
+  created_at        timestamptz default now(),
+  updated_at        timestamptz default now(),
+
+  display_name      text,
+  phone             text,
+  avatar_url        text,
+  marketing_opt_in  boolean default false,   -- explicit consent for marketing emails
+  opt_in_at         timestamptz
+);
+
+drop trigger if exists client_profiles_updated_at on client_profiles;
+create trigger client_profiles_updated_at before update on client_profiles
+  for each row execute function set_updated_at();

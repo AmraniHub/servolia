@@ -78,6 +78,14 @@ export default function FrenchNav({ heroDark = false, enHref = "/" }: { heroDark
               EN
             </Link>
             <Link
+              href="/portal"
+              className={`text-sm font-medium transition-colors ${
+                light ? "text-[#52525B] hover:text-[#18181B]" : "text-[#FAFAF7]/70 hover:text-[#FAFAF7]"
+              }`}
+            >
+              Espace client
+            </Link>
+            <Link
               href="/fr/contact"
               className={`text-sm font-medium transition-colors ${
                 light ? "text-[#52525B] hover:text-[#18181B]" : "text-[#FAFAF7]/70 hover:text-[#FAFAF7]"
@@ -117,6 +125,13 @@ export default function FrenchNav({ heroDark = false, enHref = "/" }: { heroDark
               {l.label}
             </Link>
           ))}
+          <Link
+            href="/portal"
+            onClick={() => setOpen(false)}
+            className="text-sm font-medium text-[#52525B] hover:text-[#18181B] transition-colors py-2"
+          >
+            Espace client
+          </Link>
           <Link
             href="/fr/contact"
             onClick={() => setOpen(false)}
