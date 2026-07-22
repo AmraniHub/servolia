@@ -36,7 +36,7 @@ export default function AestheticClinicsPage() {
         "Before/after gallery section",
         "Lead capture form with qualification",
         "AI chatbot for visitor questions",
-        "Google Analytics + Meta Pixel",
+        "Google Analytics 4",
         "Delivered in 7 days",
       ],
     },

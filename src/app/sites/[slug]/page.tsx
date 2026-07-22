@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import ClientSite from "@/components/ClientSite";
+import ClientAnalytics from "@/components/ClientAnalytics";
 import { getClientSite } from "@/lib/clientSites";
 import { isHiddenDraft, DraftPreviewRibbon } from "@/lib/draftGate";
 
@@ -35,6 +36,7 @@ export default async function ClientSitePage({ params }: { params: Promise<{ slu
     <>
       {isDraft && <DraftPreviewRibbon lang={config.language === "fr" ? "fr" : "en"} />}
       <ClientSite config={config} />
+      <ClientAnalytics ga4Id={config.ga4Id} metaPixelId={config.metaPixelId} />
     </>
   );
 }

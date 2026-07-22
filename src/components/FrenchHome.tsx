@@ -11,7 +11,7 @@ import StickyMobileCTA from "@/components/StickyMobileCTA";
 import FrenchNav from "@/components/FrenchNav";
 import FrenchFooter from "@/components/FrenchFooter";
 import {
-  Bot, BarChart3, Globe, CheckCircle, ArrowRight,
+  Bot, Globe, CheckCircle, ArrowRight,
   Shield, Clock, TrendingUp, MessageSquare,
   Users, Building2, Sparkles, ChevronDown, Zap, XCircle,
   BadgeCheck, Lock, Calendar, LayoutDashboard, FileText, Phone,
@@ -88,18 +88,11 @@ export default function FrenchHome() {
       num: "02", icon: <Bot className="w-5 h-5" />,
       title: "Système de Réservation IA", price: "590 €", delivery: "5 jours",
       desc: "Réceptionniste IA + site + suivi complet. Prend les rendez-vous, capture les leads, répond aux questions 24h/24.",
-      features: ["Tout le Système Site Web", "Chatbot réceptionniste IA", "Capture de leads + synchro CRM", "Pixel Meta + GA4"],
+      features: ["Tout le Système Site Web", "Chatbot réceptionniste IA", "Capture de leads + synchro CRM", "Google Analytics 4"],
       accent: true,
     },
     {
-      num: "03", icon: <BarChart3 className="w-5 h-5" />,
-      title: "Système Landing Pub", price: "290 € + 99 €/mois", delivery: "4 jours",
-      desc: "Page d'atterrissage à haute conversion avec tracking Meta + GA4 complet. Sachez exactement quelle pub génère du chiffre.",
-      features: ["Page orientée conversion", "Pixel Meta + CAPI", "Suivi d'événements GA4", "Alertes leads instantanées"],
-      accent: false,
-    },
-    {
-      num: "04", icon: <Building2 className="w-5 h-5" />,
+      num: "03", icon: <Building2 className="w-5 h-5" />,
       title: "Système Client", price: "Dès 990 €", delivery: "7 jours",
       desc: "Système IA complet — site, chatbot, tableau de bord, pipeline de leads, automatisations et rapports mensuels.",
       features: ["Tout le Système Réservation", "Tableau de bord de gestion", "Pipeline de leads + historique", "Rapport analytique mensuel"],
@@ -533,7 +526,7 @@ export default function FrenchHome() {
                 { item: "Site de conversion 10 pages", value: "2 500 €" },
                 { item: "Chatbot réceptionniste IA (24h/24)", value: "1 500 €" },
                 { item: "Parcours de prise de rendez-vous", value: "800 €" },
-                { item: "Tracking Pixel Meta + CAPI", value: "600 €" },
+                { item: "Configuration du suivi de conversions", value: "600 €" },
                 { item: "Configuration Google Analytics 4", value: "300 €" },
                 { item: "CRM de leads (synchro Google Sheets)", value: "400 €" },
                 { item: "Pages RGPD / Confidentialité / CGV", value: "350 €" },
@@ -824,7 +817,7 @@ export default function FrenchHome() {
           <div className="grid md:grid-cols-3 gap-5">
             {[
               { name: "Système Site Web", price: "290 €", delivery: "3 jours", desc: "Pour les entreprises qui ont besoin d'une présence en ligne fiable", features: ["Site 5 pages", "Formulaire de contact", "Google Analytics", "Conforme RGPD", "Optimisé mobile"], popular: false },
-              { name: "Système Réservation", price: "590 €", delivery: "5 jours", desc: "Pour les entreprises qui veulent leads et rendez-vous en automatique", features: ["Site 10 pages", "Chatbot IA", "Parcours de réservation", "Synchro CRM", "Pixel Meta + GA4", "Conforme RGPD"], popular: true },
+              { name: "Système Réservation", price: "590 €", delivery: "5 jours", desc: "Pour les entreprises qui veulent leads et rendez-vous en automatique", features: ["Site 10 pages", "Chatbot IA", "Parcours de réservation", "Synchro CRM", "Google Analytics 4", "Conforme RGPD"], popular: true },
               { name: "Système Client", price: "990 €", delivery: "7 jours", desc: "Pour les entreprises qui veulent suivi complet et gestion clients", features: ["Tout le Système Réservation", "Tableau de bord", "Pipeline de leads", "Notifications automatiques", "Rapport mensuel"], popular: false },
             ].map((p, i) => (
               <FadeUp key={i} delay={i * 0.1}>

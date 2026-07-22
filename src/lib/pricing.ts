@@ -19,17 +19,26 @@ export interface BuildPlan {
   nameFr: string;
   totalEur: number;   // full price in EUR
   delivery: string;   // e.g. "3 days"
-  monthlyEur?: number; // optional recurring component (e.g. Ads Landing)
+  monthlyEur?: number; // optional recurring component
+  /**
+   * Retired plans are no longer sold: they're hidden from every public page and
+   * refused at checkout. They stay defined so builds and leads that were sold
+   * under them still render their real name in the admin instead of "undefined".
+   */
+  retired?: boolean;
 }
 
 export const BUILD_PLANS: Record<string, BuildPlan> = {
   starter: { key: "starter", name: "Website System", nameFr: "Système Site Web",        totalEur: 290, delivery: "3 days" },
   growth:  { key: "growth",  name: "Booking System", nameFr: "Système de Réservation",  totalEur: 590, delivery: "5 days" },
   pro:     { key: "pro",     name: "Client System",  nameFr: "Système Client",          totalEur: 990, delivery: "7 days" },
-  landing: { key: "landing", name: "Ads Landing",    nameFr: "Système Landing Pub",     totalEur: 290, delivery: "4 days", monthlyEur: 99 },
+  landing: { key: "landing", name: "Ads Landing",    nameFr: "Système Landing Pub",     totalEur: 290, delivery: "4 days", monthlyEur: 99, retired: true },
   webapp:  { key: "webapp",  name: "Web App / SaaS", nameFr: "Web App / SaaS",          totalEur: 290, delivery: "7–14 days" },
   mobile:  { key: "mobile",  name: "Mobile App",     nameFr: "Application Mobile",      totalEur: 490, delivery: "10–15 days" },
 };
+
+/** The plans actually on sale — use this anywhere a customer chooses a plan. */
+export const SELLABLE_BUILD_PLANS = Object.values(BUILD_PLANS).filter((p) => !p.retired);
 
 /**
  * CARE PLANS — the recurring core of the business. Each tier is an ALL-IN
@@ -105,8 +114,7 @@ export function pricingPromptLines(): string {
   return [
     `1. AI Website System — €${p.starter.totalEur}, ${p.starter.delivery}. Conversion-focused website.`,
     `2. AI Booking System — €${p.growth.totalEur}, ${p.growth.delivery}. Website + AI receptionist + booking.`,
-    `3. Ads Landing System — €${p.landing.totalEur} + €${p.landing.monthlyEur}/mo. High-converting landing page with full tracking.`,
-    `4. AI Client System — €${p.pro.totalEur}, ${p.pro.delivery}. Complete: site + chatbot + admin dashboard + CRM + monthly reports.`,
-    `5. Care Plans (all-in monthly: domain + hosting + pro email + AI receptionist + reports) — €${c.care.monthlyEur} / €${c.care_growth.monthlyEur} / €${c.care_scale.monthlyEur} per month. Pay yearly and get one month free.`,
+    `3. AI Client System — €${p.pro.totalEur}, ${p.pro.delivery}. Complete: site + chatbot + admin dashboard + CRM + monthly reports.`,
+    `4. Care Plans (all-in monthly: domain + hosting + pro email + AI receptionist + reports) — €${c.care.monthlyEur} / €${c.care_growth.monthlyEur} / €${c.care_scale.monthlyEur} per month. Pay yearly and get one month free.`,
   ].join("\n");
 }

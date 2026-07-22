@@ -108,7 +108,7 @@ const steps = [
     who: "You",
     time: "Day 5–7",
     desc: "Once you're happy with the draft, we send a Stripe Payment Link for the remaining 50%. Payment clears → we go live within 24 hours.",
-    detail: "Going live includes: domain connection, SSL setup, final testing on mobile and desktop, Google Analytics activation, Meta Pixel firing check (if included), and chatbot activation.",
+    detail: "Going live includes: domain connection, SSL setup, final testing on mobile and desktop, Google Analytics activation, and chatbot activation.",
     color: "from-[#059669] to-[#10B981]",
   },
   {

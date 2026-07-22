@@ -13,7 +13,7 @@ import ROICalculator from "@/components/ROICalculator";
 import StickyMobileCTA from "@/components/StickyMobileCTA";
 import { FaqSchema } from "@/components/StructuredData";
 import {
-  Bot, BarChart3, Globe, CheckCircle, ArrowRight,
+  Bot, Globe, CheckCircle, ArrowRight,
   Shield, Clock, TrendingUp, MessageSquare,
   Users, Building2, Sparkles, ChevronDown, Zap, XCircle,
   BadgeCheck, Lock, Calendar, LayoutDashboard, FileText, Phone,
@@ -90,18 +90,11 @@ export default function HomePage() {
       num: "02", icon: <Bot className="w-5 h-5" />,
       title: "AI Booking System", price: "€590", delivery: "5 days",
       desc: "AI receptionist + website + full tracking. Books appointments, captures leads, answers FAQs 24/7.",
-      features: ["Everything in Website System", "AI receptionist chatbot", "Lead capture + CRM sync", "Meta Pixel + GA4"],
+      features: ["Everything in Website System", "AI receptionist chatbot", "Lead capture + CRM sync", "Google Analytics 4"],
       accent: true,
     },
     {
-      num: "03", icon: <BarChart3 className="w-5 h-5" />,
-      title: "Ads Landing System", price: "€290 + €99/mo", delivery: "4 days",
-      desc: "High-converting landing page with full Meta + GA4 tracking. Know exactly which ad drives revenue.",
-      features: ["Conversion-focused page", "Meta Pixel + CAPI", "GA4 event tracking", "Instant lead alerts"],
-      accent: false,
-    },
-    {
-      num: "04", icon: <Building2 className="w-5 h-5" />,
+      num: "03", icon: <Building2 className="w-5 h-5" />,
       title: "Client System", price: "From €990", delivery: "7 days",
       desc: "Complete AI system — website, chatbot, admin dashboard, lead pipeline, automations, and monthly reports.",
       features: ["Everything in Booking System", "Admin dashboard", "Lead pipeline + history", "Monthly analytics report"],
@@ -379,7 +372,7 @@ export default function HomePage() {
                   {[
                     ["Client calls at 8pm. No answer.", "They book with your competitor."],
                     ["Your website gets visitors.", "Zero leads captured. Zero follow-up."],
-                    ["You spend €500/mo on ads.", "No idea which ad actually works."],
+                    ["Your Google listing sends people to you.", "They land on a page that doesn't convert."],
                     ["Interested clients reach out.", "Never followed up. Lost forever."],
                     ["You're doing everything manually.", "10+ hours/week on admin work."],
                   ].map(([a, b], i) => (
@@ -406,7 +399,7 @@ export default function HomePage() {
                   {[
                     ["Client messages at 2am.", "AI answers instantly. Appointment booked."],
                     ["Visitor lands on your page.", "Lead captured, email sent to you in seconds."],
-                    ["You run Meta ads.", "Full tracking: source, cost, ROI per campaign."],
+                    ["Someone finds you on Google.", "Lands on a page built to convert them."],
                     ["Lead doesn't book immediately.", "Automated follow-up email sent at 48h."],
                     ["Your system runs itself.", "You focus on delivering — not chasing clients."],
                   ].map(([a, b], i) => (
@@ -606,7 +599,7 @@ export default function HomePage() {
                 { item: "10-page conversion website", value: "€2,500" },
                 { item: "AI receptionist chatbot (24/7)", value: "€1,500" },
                 { item: "Appointment booking flow", value: "€800" },
-                { item: "Meta Pixel + CAPI tracking", value: "€600" },
+                { item: "Conversion tracking setup", value: "€600" },
                 { item: "Google Analytics 4 setup", value: "€300" },
                 { item: "Lead CRM (Google Sheets sync)", value: "€400" },
                 { item: "GDPR / Privacy / CGV pages", value: "€350" },
@@ -906,7 +899,7 @@ export default function HomePage() {
           <div className="grid md:grid-cols-3 gap-5">
             {[
               { name: "Website System", price: "€290", delivery: "3 days", desc: "For businesses that need a trusted online presence", features: ["5-page website", "Contact form", "Google Analytics", "GDPR compliant", "Mobile optimized"], popular: false },
-              { name: "Booking System", price: "€590", delivery: "5 days", desc: "For businesses that want leads and appointments automatically", features: ["10-page website", "AI chatbot", "Booking flow", "CRM sync", "Meta Pixel + GA4", "GDPR compliant"], popular: true },
+              { name: "Booking System", price: "€590", delivery: "5 days", desc: "For businesses that want leads and appointments automatically", features: ["10-page website", "AI chatbot", "Booking flow", "CRM sync", "Google Analytics 4", "GDPR compliant"], popular: true },
               { name: "Client System", price: "€990", delivery: "7 days", desc: "For businesses that want full tracking and client management", features: ["Everything in Booking", "Admin dashboard", "Lead pipeline", "Auto notifications", "Monthly reporting"], popular: false },
             ].map((p, i) => (
               <FadeUp key={i} delay={i * 0.1}>

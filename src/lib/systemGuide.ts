@@ -12,7 +12,7 @@
 export interface FlowStep { step: string; detail: string }
 
 export const MAIN_FLOW: FlowStep[] = [
-  { step: "1. Attention", detail: "Ads, SEO (niche + country landing pages) and outbound bring a clinic owner to the site." },
+  { step: "1. Attention", detail: "SEO (niche + country landing pages) and outbound bring a clinic owner to the site." },
   { step: "2. Capture", detail: "They land on /free-audit (or /fr/audit) or talk to Solia, the site chatbot. Either way a lead row is created and you get a Telegram ping." },
   { step: "3. Qualify", detail: "You work the lead in the Pipeline. A written scope document is generated and sent for e-signature." },
   { step: "4. Payment", detail: "They pay a 50% deposit through Stripe Checkout. Buyers from a /fr/ page get a French-language Stripe page and lang:\"fr\" in the session metadata. The webhook creates/updates the build and marks the lead deposit_paid." },
@@ -88,6 +88,23 @@ export const FEATURES: SystemFeature[] = [
     cost: "None — no third-party analytics bill, just Supabase rows.",
     value: "GA can tell a client how many people visited. It can't tell them how many of those became enquiries, because it doesn't know what a booking is. Ours can, because traffic and leads sit in the same database. That funnel is the retention story.",
     code: "src/lib/traffic.ts · src/app/api/track · src/components/PageTracker.tsx · src/app/admin/traffic · src/app/api/portal/traffic",
+  },
+  {
+    name: "Analytics separation (Servolia vs client sites)",
+    summary: "Servolia's GA4/Pixel never fire on a client site, and a client's own tags fire only on theirs.",
+    how: [
+      "Client sites are served at /sites/{slug} and inherit the root layout, so they used to load Servolia's GA4 property and Meta Pixel — mixing their visitors into our numbers and sending their traffic to an account they don't own.",
+      "Analytics.tsx now returns null on any /sites/ path.",
+      "ClientAnalytics.tsx fires the client's own ga4Id / metaPixelId from their site config, and nothing at all when they have neither.",
+      "ga4Id is filled automatically from the 'Existing Google Analytics ID' answer in the intake form.",
+    ],
+    use: [
+      "If a client asks for Google Analytics, put their G-XXXXXXXX in the site config — nothing else is needed.",
+      "A client with no GA still gets full numbers in their portal Visitors tab, because first-party tracking is independent of GA.",
+    ],
+    cost: "None.",
+    value: "Keeps Servolia's own traffic data honest, and avoids piping a client's visitor data into our Google account — which would be hard to defend under GDPR.",
+    code: "src/components/Analytics.tsx · src/components/ClientAnalytics.tsx · src/lib/clientSites.ts (ga4Id)",
   },
   {
     name: "Ad landing page (free audit)",

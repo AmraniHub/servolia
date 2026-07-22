@@ -2,12 +2,13 @@ import Stripe from "stripe";
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { sendMetaCapiEvent } from "@/lib/metaCapi";
-import { BUILD_PLANS, depositCents, balanceCents } from "@/lib/pricing";
+import { SELLABLE_BUILD_PLANS, depositCents, balanceCents } from "@/lib/pricing";
 
 // 50% deposit amounts in cents (EUR) — prices come from src/lib/pricing.ts
+// Retired plans are deliberately absent, so a stale link to one can't be paid for.
 const PLANS: Record<string, { name: string; nameFr: string; deposit: number; balance: number }> =
   Object.fromEntries(
-    Object.values(BUILD_PLANS).map((p) => [
+    SELLABLE_BUILD_PLANS.map((p) => [
       p.key,
       { name: p.name, nameFr: p.nameFr, deposit: depositCents(p), balance: balanceCents(p) },
     ])

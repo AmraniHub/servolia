@@ -37,7 +37,7 @@ const cases = [
       "AI receptionist trained on the treatment list, pricing, and booking rules",
       "Online booking flow integrated into the site — patients self-schedule 24/7",
       "Automated confirmation, reminder (48h before), and follow-up (no-show recovery)",
-      "Google Analytics 4 + Meta Pixel installed for future ad tracking",
+      "Google Analytics 4 installed for full traffic tracking",
     ],
     results: [
       { metric: "+400%", label: "Target: online bookings" },

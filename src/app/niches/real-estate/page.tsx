@@ -35,7 +35,7 @@ export default function RealEstatePage() {
         "5-page professional website",
         "Property listing showcase section",
         "Lead capture form (name, phone, property interest)",
-        "Google Analytics 4 + Meta Pixel",
+        "Google Analytics 4",
         "Mobile-first, fast loading",
         "GDPR compliant",
       ],

@@ -60,7 +60,7 @@ const packages = [
       "Parcours de réservation en ligne",
       "Capture des demandes patients",
       "Notification email au cabinet",
-      "Meta Pixel + GA4",
+      "Google Analytics 4",
       "Pages RGPD conformes",
       "Synchronisation CRM",
     ],
@@ -186,7 +186,7 @@ export default function FrenchDentistsPage() {
               { icon: <Globe className="w-5 h-5" />, title: "Site professionnel", desc: "Rapide, mobile-first, conforme RGPD — un site qui inspire confiance immédiatement.", color: "from-[#36671E] to-[#143424]" },
               { icon: <Bot className="w-5 h-5" />, title: "Réceptionniste IA", desc: "Formée sur vos soins et tarifs. Répond aux patients 24h/24, en français et en anglais.", color: "from-[#295115] to-[#6B8439]" },
               { icon: <Calendar className="w-5 h-5" />, title: "Réservation en ligne", desc: "Demandes de rendez-vous en ligne avec confirmation automatique par email.", color: "from-[#059669] to-[#10B981]" },
-              { icon: <BarChart3 className="w-5 h-5" />, title: "Suivi des demandes", desc: "Meta Pixel + GA4. Vous savez exactement d'où vient chaque patient.", color: "from-[#F59E0B] to-[#EF4444]" },
+              { icon: <BarChart3 className="w-5 h-5" />, title: "Suivi des demandes", desc: "Google Analytics 4. Vous savez exactement d'où vient chaque patient.", color: "from-[#F59E0B] to-[#EF4444]" },
             ].map((item, i) => (
               <div key={i} className="border border-[#E8E6E0] rounded-xl p-5 hover:shadow-md transition-shadow">
                 <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${item.color} flex items-center justify-center text-[#FAFAF7] mb-3`}>

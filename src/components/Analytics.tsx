@@ -1,17 +1,31 @@
+"use client";
+
 import Script from "next/script";
+import { usePathname } from "next/navigation";
 
 /**
- * Site-wide analytics: GA4 + Meta Pixel.
+ * Servolia's OWN analytics: GA4 + Meta Pixel.
  * IDs default to the live Servolia properties, and can be overridden per-env
  * via NEXT_PUBLIC_GA4_ID / NEXT_PUBLIC_META_PIXEL_ID (e.g. a staging property).
+ *
+ * Client sites are served by this same app under /sites/{slug} and inherit the
+ * root layout, so without the guard below every client's visitors were being
+ * counted in Servolia's GA property — polluting our numbers and leaking their
+ * traffic into an account they don't own. Client sites get their own GA4 tag
+ * instead (see ClientAnalytics), and always get first-party tracking via
+ * PageTracker regardless.
  */
 
 const DEFAULT_GA4 = "G-L64925WGDH";          // Servolia GA4 (Measurement ID)
 const DEFAULT_PIXEL = "1394909005810177";     // Servolia Meta Pixel / dataset id
 
 export default function Analytics() {
+  const pathname = usePathname();
   const ga = process.env.NEXT_PUBLIC_GA4_ID || DEFAULT_GA4;
   const pixel = process.env.NEXT_PUBLIC_META_PIXEL_ID || DEFAULT_PIXEL;
+
+  // Never fire Servolia's properties on a client's site.
+  if (pathname?.startsWith("/sites/")) return null;
   if (!ga && !pixel) return null;
 
   return (

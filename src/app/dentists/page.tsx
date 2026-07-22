@@ -62,7 +62,7 @@ export default function DentistsPage() {
         "Online booking flow",
         "Patient lead capture",
         "Email notification to clinic",
-        "Meta Pixel + GA4",
+        "Google Analytics 4",
         "GDPR compliant pages",
         "CRM Google Sheet sync",
       ],
@@ -172,7 +172,7 @@ export default function DentistsPage() {
               { icon: <Globe className="w-5 h-5" />, title: "Professional Website", desc: "Fast, mobile-first, GDPR-compliant site that builds trust instantly.", color: "from-[#36671E] to-[#143424]" },
               { icon: <Bot className="w-5 h-5" />, title: "AI Receptionist", desc: "Trained on your services. Answers patients 24/7 in French or English.", color: "from-[#295115] to-[#6B8439]" },
               { icon: <Calendar className="w-5 h-5" />, title: "Booking System", desc: "Online appointment requests with automatic confirmation emails.", color: "from-[#059669] to-[#10B981]" },
-              { icon: <BarChart3 className="w-5 h-5" />, title: "Lead Tracking", desc: "Meta Pixel + GA4. See exactly where every patient came from.", color: "from-[#F59E0B] to-[#EF4444]" },
+              { icon: <BarChart3 className="w-5 h-5" />, title: "Lead Tracking", desc: "Google Analytics 4. See exactly where every patient came from.", color: "from-[#F59E0B] to-[#EF4444]" },
             ].map((item, i) => (
               <div key={i} className="border border-[#E8E6E0] rounded-xl p-5 hover:shadow-md transition-shadow">
                 <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${item.color} flex items-center justify-center text-[#FAFAF7] mb-3`}>

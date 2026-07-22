@@ -7,7 +7,7 @@ import Link from "next/link";
 import {
   CheckCircle, ArrowRight, Shield, Clock, Zap,
   Globe, Smartphone, LayoutDashboard, Bot, BarChart3,
-  Building2, Star, AlertCircle,
+  Building2, Star,
 } from "lucide-react";
 import type { Metadata } from "next";
 
@@ -37,18 +37,15 @@ const tiers = [
     icon: <Globe className="w-5 h-5" />,
     color: "from-[#36671E] to-[#143424]",
     popular: false,
-    mainFeatures: [
+    features: [
       "5-page professional website",
       "Booking & contact CTA",
       "Mobile-first responsive design",
       "GDPR pages included",
-    ],
-    technicalSetup: [
       "Google Analytics 4",
       "SSL & fast hosting setup",
       "2 revision rounds",
     ],
-    notIncluded: ["AI chatbot", "CRM integration", "Ad tracking"],
   },
   {
     plan: "growth",
@@ -62,20 +59,16 @@ const tiers = [
     icon: <Bot className="w-5 h-5" />,
     color: "from-[#295115] to-[#6B8439]",
     popular: true,
-    mainFeatures: [
+    features: [
       "10-page professional website",
       "AI receptionist chatbot (24/7)",
       "Lead capture + email notification",
       "Appointment booking flow",
       "Google Sheets CRM integration",
-    ],
-    technicalSetup: [
-      "Meta Pixel + CAPI setup",
       "Google Analytics 4",
       "GDPR compliant pages",
       "3 revision rounds",
     ],
-    notIncluded: ["Admin dashboard", "Custom automations"],
   },
   {
     plan: "pro",
@@ -89,20 +82,16 @@ const tiers = [
     icon: <Building2 className="w-5 h-5" />,
     color: "from-[#F59E0B] to-[#EF4444]",
     popular: false,
-    mainFeatures: [
+    features: [
       "Everything in Booking System",
       "Admin business dashboard",
       "Lead pipeline with statuses",
       "Client notes & history",
       "Automated email notifications",
-    ],
-    technicalSetup: [
-      "A/B landing page sections",
       "WhatsApp lead notification",
       "Monthly analytics report",
       "Unlimited revisions (first month)",
     ],
-    notIncluded: [],
   },
 ];
 
@@ -200,39 +189,14 @@ export default function PricingPage() {
                   <p className="text-[#71717A] text-sm leading-relaxed">{t.desc}</p>
                 </div>
 
-                {/* Main features */}
-                <div className="mb-4 flex-1">
-                  <ul className="flex flex-col gap-2.5">
-                    {t.mainFeatures.map((f, j) => (
-                      <li key={j} className="flex items-start gap-2 text-sm text-[#374151]">
-                        <CheckCircle className="w-4 h-4 text-[#10B981] flex-shrink-0 mt-0.5" />{f}
-                      </li>
-                    ))}
-                  </ul>
-
-                  {t.technicalSetup.length > 0 && (
-                    <div className="mt-4 pt-4 border-t border-[#F1F5F9]">
-                      <p className="text-xs font-bold text-[#52525B] uppercase tracking-wide mb-2">Technical setup included</p>
-                      <ul className="flex flex-col gap-2">
-                        {t.technicalSetup.map((f, j) => (
-                          <li key={j} className="flex items-start gap-2 text-sm text-[#71717A]">
-                            <CheckCircle className="w-4 h-4 text-[#3F3F46] flex-shrink-0 mt-0.5" />{f}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-
-                  {t.notIncluded.length > 0 && (
-                    <ul className="mt-3 flex flex-col gap-1.5">
-                      {t.notIncluded.map((f, j) => (
-                        <li key={j} className="flex items-start gap-2 text-sm text-[#52525B]">
-                          <span className="w-4 h-4 flex-shrink-0 mt-0.5 text-center leading-4">—</span>{f}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
+                {/* Features — one ticked list, same as /fr/tarifs */}
+                <ul className="flex flex-col gap-2.5 mb-6 flex-1">
+                  {t.features.map((f, j) => (
+                    <li key={j} className="flex items-start gap-2 text-sm text-[#374151]">
+                      <CheckCircle className="w-4 h-4 text-[#10B981] flex-shrink-0 mt-0.5" />{f}
+                    </li>
+                  ))}
+                </ul>
 
                 {/* CTA */}
                 <CheckoutButton
@@ -251,14 +215,7 @@ export default function PricingPage() {
             ))}
           </div>
 
-          {/* Disclaimer */}
-          <div className="mt-8 flex items-start gap-2.5 bg-amber-50 border border-amber-200 rounded-xl p-4 max-w-3xl mx-auto">
-            <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
-            <p className="text-sm text-amber-800">
-              <strong>Paid ad budget and third-party tools are not included.</strong> We set up tracking and landing pages, but ad spend (Meta Ads, Google Ads) is paid directly by you to the platform.
-            </p>
-          </div>
-          <p className="text-center text-[#52525B] text-sm mt-4">
+          <p className="text-center text-[#52525B] text-sm mt-8">
             All prices exclude VAT · Prices in EUR · US clients quoted in USD separately
           </p>
         </div>
@@ -349,7 +306,6 @@ export default function PricingPage() {
             {[
               { q: "How does payment work?", a: "50% upfront via Stripe to start the project. The remaining 50% is due on delivery day — before we transfer domain ownership and all assets to you." },
               { q: "Are there any hidden fees?", a: "Never. The price quoted is the price you pay. Third-party tools (hosting, domain, Stripe fees) are extra and disclosed upfront. Our service fee has no surprises." },
-              { q: "Are paid ads included?", a: "No. Paid ad budget (Meta, Google) is paid directly by you to the platform. We can set up full tracking and landing pages, but we don't manage ad spend — we're clear about this upfront." },
               { q: "Do you offer refunds?", a: "If we miss the agreed delivery deadline, we refund 10% per day of delay. If we fail to deliver at all, full refund. See our full refund policy in the CGV." },
               { q: "Can I upgrade plans after delivery?", a: "Yes. If you start on Website System and want to add AI chatbot or a dashboard later, we quote an upgrade price — never the full plan price." },
               { q: "Does the mobile app work on both Android and iOS?", a: "We build with React Native so the same code runs on both. Android app and Play Store submission is included. iOS version is +€100, App Store submission +€100 extra." },

@@ -66,7 +66,7 @@ const solutions: MarketingContent[] = [
     features: [
       { icon: "globe", title: "Conversion-first build", body: "5–10 pages structured around a single goal: turn the visitor into a booked enquiry, with clear CTAs on every screen." },
       { icon: "bot", title: "Built-in AI receptionist", body: "An assistant trained on your services and prices that answers questions and books appointments around the clock." },
-      { icon: "chart", title: "Tracking from day one", body: "Google Analytics 4 and Meta Pixel installed and tested, so you know exactly what drives every lead." },
+      { icon: "chart", title: "Tracking from day one", body: "Google Analytics 4 installed and tested, so you know exactly what drives every lead." },
       { icon: "shield", title: "GDPR & legal pages", body: "Privacy policy, cookie consent, and terms written and included — compliant for the EU and US out of the box." },
     ],
     steps: [

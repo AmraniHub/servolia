@@ -171,6 +171,9 @@ export interface ClientSiteConfig {
   googleReviewUrl?: string; // "leave us a review" link (g.page/r/...)
   metaPixelId?: string; // client's own Meta pixel — CAPI Lead events fire on bookings
   metaCapiToken?: string; // client's CAPI access token (paired with metaPixelId)
+  /** The client's OWN GA4 Measurement ID (G-XXXXXXXX), collected at intake.
+   *  Servolia's property never fires on a client site — see Analytics.tsx. */
+  ga4Id?: string;
 
   // Meta
   status?: "draft" | "published";
@@ -327,6 +330,10 @@ export function configFromIntake(src: IntakeSource): ClientSiteConfig {
     email: str(src.email) ?? undefined,
     bookingUrl: str(d.bookingUrl) ?? str(d.doctolibUrl) ?? str(d.planityUrl),
     logoUrl: str(d.logoUrl),
+    // The client's own GA4 property, if they gave one at intake. Servolia's
+    // property never fires on their site, so without this they simply get
+    // first-party numbers in the portal instead.
+    ga4Id: str(d.googleAnalyticsId),
     heroImageUrl: intakeHero,
     ...dentalLayout,
     heroHeadline,
