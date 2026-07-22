@@ -5,11 +5,11 @@ import { sendMetaCapiEvent } from "@/lib/metaCapi";
 import { BUILD_PLANS, depositCents, balanceCents } from "@/lib/pricing";
 
 // 50% deposit amounts in cents (EUR) — prices come from src/lib/pricing.ts
-const PLANS: Record<string, { name: string; deposit: number; balance: number }> =
+const PLANS: Record<string, { name: string; nameFr: string; deposit: number; balance: number }> =
   Object.fromEntries(
     Object.values(BUILD_PLANS).map((p) => [
       p.key,
-      { name: p.name, deposit: depositCents(p), balance: balanceCents(p) },
+      { name: p.name, nameFr: p.nameFr, deposit: depositCents(p), balance: balanceCents(p) },
     ])
   );
 
@@ -21,7 +21,8 @@ export async function POST(req: NextRequest) {
   const stripe = new Stripe(key);
 
   try {
-    const { plan, leadId } = await req.json() as { plan: string; leadId?: string };
+    const { plan, leadId, lang } = await req.json() as { plan: string; leadId?: string; lang?: "en" | "fr" };
+    const fr = lang === "fr";
     const p = PLANS[plan];
 
     if (!p) {
@@ -37,8 +38,10 @@ export async function POST(req: NextRequest) {
           price_data: {
             currency: "eur",
             product_data: {
-              name: `${p.name} — 50% Deposit`,
-              description: `Balance of €${(p.balance / 100).toLocaleString()} due on delivery. Fixed price, fixed deadline.`,
+              name: fr ? `${p.nameFr} — acompte de 50 %` : `${p.name} — 50% Deposit`,
+              description: fr
+                ? `Solde de ${(p.balance / 100).toLocaleString("fr-FR")} € à la livraison. Prix fixe, délai fixe.`
+                : `Balance of €${(p.balance / 100).toLocaleString()} due on delivery. Fixed price, fixed deadline.`,
               images: ["https://servolia.com/og-image.png"],
             },
             unit_amount: p.deposit,
@@ -47,11 +50,18 @@ export async function POST(req: NextRequest) {
         },
       ],
       mode: "payment",
-      success_url: `${origin}/onboarding?plan=${plan}&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/pricing`,
-      metadata: { plan, source: "servolia-website", lead_id: leadId ?? "" },
+      locale: fr ? "fr" : "en",
+      // French buyers land on the French intake — the language they answer in is
+      // the language their generated site comes out in.
+      success_url: `${origin}${fr ? "/fr/demarrage" : "/onboarding"}?plan=${plan}&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${origin}${fr ? "/fr/tarifs" : "/pricing"}`,
+      metadata: { plan, source: "servolia-website", lead_id: leadId ?? "", lang: fr ? "fr" : "en" },
       custom_text: {
-        submit: { message: "50% now · Balance on delivery · Fixed deadline in writing" },
+        submit: {
+          message: fr
+            ? "50 % maintenant · Solde à la livraison · Délai fixé par écrit"
+            : "50% now · Balance on delivery · Fixed deadline in writing",
+        },
       },
     });
 

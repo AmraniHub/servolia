@@ -569,7 +569,7 @@ export default function PortalDashboard({
                       {needsIntake && (
                         <>
                           <p className="text-xs text-[#92400E] mt-3 leading-relaxed">{t.needsIntakeMsg}</p>
-                          <a href={`/onboarding?plan=${b.plan}${b.checkout_session_id ? `&session_id=${b.checkout_session_id}` : ""}`}
+                          <a href={`${lang === "fr" ? "/fr/demarrage" : "/onboarding"}?plan=${b.plan}${b.checkout_session_id ? `&session_id=${b.checkout_session_id}` : ""}`}
                             className="mt-3 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-gradient-to-r from-[#F59E0B] to-[#D97706] text-white text-sm font-black hover:opacity-90 transition-opacity">
                             {t.completeIntake} <ArrowRight className="w-3.5 h-3.5" />
                           </a>

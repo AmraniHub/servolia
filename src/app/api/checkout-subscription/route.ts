@@ -10,9 +10,10 @@ export async function POST(req: NextRequest) {
   const stripe = new Stripe(key);
 
   try {
-    const { plan, email, billing } = await req.json() as {
-      plan: string; email?: string; billing?: "monthly" | "annual";
+    const { plan, email, billing, lang } = await req.json() as {
+      plan: string; email?: string; billing?: "monthly" | "annual"; lang?: "en" | "fr";
     };
+    const fr = lang === "fr";
     const p = CARE_PLANS[plan];
     if (!p) {
       return NextResponse.json({ error: "Unknown care plan" }, { status: 400 });
@@ -47,8 +48,9 @@ export async function POST(req: NextRequest) {
         },
       ],
       mode: "subscription",
+      locale: fr ? "fr" : "en",
       success_url: `${origin}/billing?subscribed=1&plan=${plan}&billing=${interval === "year" ? "annual" : "monthly"}`,
-      cancel_url: `${origin}/pricing`,
+      cancel_url: `${origin}${fr ? "/fr/tarifs" : "/pricing"}`,
       metadata: { plan, kind: "care_plan", billing: interval === "year" ? "annual" : "monthly", source: "servolia-website" },
       custom_text: {
         submit: { message: submitMsg },

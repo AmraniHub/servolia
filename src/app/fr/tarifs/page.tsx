@@ -153,6 +153,7 @@ export default function FrenchPricingPage() {
                 </ul>
                 <CheckoutButton
                   plan={t.plan}
+                  lang="fr"
                   label={`Payer l'acompte de ${t.deposit} →`}
                   className={`w-full py-3.5 rounded-xl font-bold text-sm transition-all disabled:opacity-60 ${
                     t.popular

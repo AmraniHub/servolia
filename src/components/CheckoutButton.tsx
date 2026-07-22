@@ -11,9 +11,11 @@ interface Props {
   leadId?: string;
   /** For care-plan subscriptions: monthly (default) or annual (one month free). */
   billing?: "monthly" | "annual";
+  /** Language of the page the buyer clicked from — drives the Stripe locale and the intake page they land on. */
+  lang?: "en" | "fr";
 }
 
-export default function CheckoutButton({ plan, label, className, endpoint = "/api/checkout", leadId, billing }: Props) {
+export default function CheckoutButton({ plan, label, className, endpoint = "/api/checkout", leadId, billing, lang = "en" }: Props) {
   const [loading, setLoading] = useState(false);
 
   async function handleClick() {
@@ -22,7 +24,7 @@ export default function CheckoutButton({ plan, label, className, endpoint = "/ap
       const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan, leadId, billing }),
+        body: JSON.stringify({ plan, leadId, billing, lang }),
       });
       const data = await res.json() as { url?: string };
       if (data.url) window.location.href = data.url;

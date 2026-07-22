@@ -115,6 +115,7 @@ export default function CarePlansSection({ lang = "en" }: { lang?: "en" | "fr" }
                 <CheckoutButton
                   plan={plan.key}
                   billing={billing}
+                  lang={lang}
                   endpoint="/api/checkout-subscription"
                   label={t.subscribe}
                   className={`block w-full text-center py-3 rounded-xl font-bold text-sm transition-all disabled:opacity-60 ${
