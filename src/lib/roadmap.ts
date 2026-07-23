@@ -43,6 +43,7 @@ export const INTEGRATIONS: Integration[] = [
   { label: "Meta Conversions API token", envVars: ["META_CAPI_ACCESS_TOKEN"], category: "Growth & ads", required: false, note: "server-side ad conversion tracking" },
   { label: "GA4 service account", envVars: ["GOOGLE_SERVICE_ACCOUNT_KEY"], category: "Growth & ads", required: false, note: "Daily Stats + Weekly SEO" },
   { label: "GA4 property id", envVars: ["GA4_PROPERTY_ID"], category: "Growth & ads", required: false },
+  { label: "LinkedIn (auto-post to Company Page)", envVars: ["LINKEDIN_CLIENT_ID", "LINKEDIN_CLIENT_SECRET", "LINKEDIN_ACCESS_TOKEN", "LINKEDIN_ORGANIZATION_URN"], category: "Growth & ads", required: false, note: "content engine drafts → approve → auto-posts. Token expires ~60 days, see roadmap" },
   // Add-on providers (the reseller layer — mostly NOT set yet)
   { label: "Twilio (SMS add-on)", envVars: ["TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN"], category: "Add-on providers", required: false, note: "auto-provisions the SMS reminders add-on" },
   { label: "Cloudflare Registrar (domain add-on)", envVars: ["CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID"], category: "Add-on providers", required: false, note: "auto-registers client domains" },
@@ -83,6 +84,8 @@ export const ROADMAP: RoadmapItem[] = [
   { title: "B2B financing partner for builds", priority: 3, status: "todo", detail: "€0 upfront / €X/mo — financier pays us today, client pays them monthly." },
   { title: "White-label / multi-tenant for other agencies", priority: 3, status: "todo", detail: "Sell the platform to everyone who sells to clinics — the picks-and-shovels play." },
   { title: "GDPR DPA per client", priority: 3, status: "todo", detail: "We now process patient data across clinics — needs a data-processing agreement." },
+  { title: "LinkedIn Company Page auto-posting", priority: 3, status: "done", detail: "LINKEDIN_CLIENT_ID/SECRET/ACCESS_TOKEN/ORGANIZATION_URN set in Vercel (2026-07-23). Content engine drafts a post → approve via Telegram or /admin/content → postLinkedInDraft() publishes to the Servolia Company Page automatically." },
+  { title: "Redo the LinkedIn OAuth connect flow", priority: 2, status: "todo", needs: "recurring, every ~60 days", detail: "LinkedIn access tokens on the Development Tier expire in ~60 days and can't be refreshed silently — visit /api/admin/linkedin-oauth/start again, then paste the new LINKEDIN_ACCESS_TOKEN into Vercel. Until this is redone periodically, auto-posting silently falls back to 'copy the text and post manually' (see postLinkedInDraft in src/lib/contentActions.ts)." },
 ];
 
 export const STATUS_META: Record<RoadmapStatus, { label: string; color: string; bg: string }> = {
