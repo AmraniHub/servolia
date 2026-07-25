@@ -224,51 +224,6 @@ const solutions: MarketingContent[] = [
 
 const industries: MarketingContent[] = [
   {
-    slug: "lawyers",
-    kind: "industry",
-    eyebrow: "For Law Firms",
-    title: "AI client systems for",
-    highlight: "law firms.",
-    sub: "Qualified case enquiries answered instantly, screened against your criteria, and booked for a consultation — so no high-value client slips away to a faster firm.",
-    heroBullets: ["Instant case intake 24/7", "Conflict-aware qualification", "Consultations booked automatically"],
-    metaTitle: "AI Lead Systems for Law Firms — Servolia",
-    metaDescription: "Servolia builds AI client acquisition systems for law firms: instant case intake, AI qualification, consultation booking, and a CRM pipeline. Fixed price, 7-day delivery.",
-    withoutTitle: "How firms lose clients",
-    without: [
-      "A potential client calls after hours and gets voicemail",
-      "Intake takes days, so they retain a faster firm",
-      "Qualified enquiries get no structured follow-up",
-      "No view of which marketing drives real cases",
-    ],
-    withTitle: "With a Servolia system",
-    with: [
-      "Case enquiries answered and screened instantly",
-      "Consultations booked directly into your diary",
-      "Every enquiry tracked and followed up on time",
-      "Clear reporting on cost per qualified case",
-    ],
-    featuresTitle: "Built for legal client acquisition",
-    features: [
-      { icon: "scale", title: "Structured intake", body: "The AI gathers the matter type, urgency, and key facts up front, so consultations start with the information you need." },
-      { icon: "bot", title: "Screening & qualification", body: "Filters enquiries against your practice areas and criteria, flagging the matters worth your time." },
-      { icon: "calendar", title: "Consultation booking", body: "Books qualified prospects straight into your calendar with confirmations and reminders." },
-      { icon: "lock", title: "Confidential & compliant", body: "GDPR-ready intake with secure handling of sensitive enquiry data, and clear privacy terms included." },
-    ],
-    steps: [
-      { title: "Free audit", body: "We review how enquiries reach your firm today and show where high-value clients are being lost." },
-      { title: "We build your system", body: "Website, AI intake, booking, and CRM — configured for your practice areas in 7 days, fixed price." },
-      { title: "Cases come to you", body: "Qualified consultations land in your diary and a monthly report shows your cost per acquired case." },
-    ],
-    faqs: [
-      { q: "Can it handle multiple practice areas?", a: "Yes — the AI routes enquiries by matter type so family, corporate, or property leads each follow the right intake." },
-      { q: "Is sensitive data handled securely?", a: "Yes. Intake is GDPR-ready with secure data handling and clear privacy terms; we don't ask for unnecessary detail." },
-      { q: "Does it replace my staff?", a: "No — it handles first response and qualification so your team spends time on cases, not phone tag." },
-      { q: "How fast is it live?", a: "A full firm system is typically delivered in 7 business days." },
-    ],
-    ctaHeadline: "Stop losing cases to faster firms.",
-    ctaSub: "Get an AI intake and booking system built for your practice areas. Start with a free audit.",
-  },
-  {
     slug: "accountants",
     kind: "industry",
     eyebrow: "For Accounting Firms",

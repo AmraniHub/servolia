@@ -14,7 +14,6 @@ const niches = [
   { label: "Dental Clinics", href: "/dentists" },
   { label: "Aesthetic Clinics", href: "/niches/aesthetic-clinics" },
   { label: "Home Services", href: "/niches/home-services" },
-  { label: "Law Firms", href: "/niches/lawyers" },
   { label: "Accountants", href: "/niches/accountants" },
   { label: "Consultants", href: "/niches/consultants" },
 ];

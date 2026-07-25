@@ -18,8 +18,6 @@ export const CLUSTERS: KeywordCluster[] = [
   { niche: "aesthetic", category: "Aesthetic Clinics", keyword: "aesthetic clinic lead qualification", angle: "How to filter high-intent aesthetic clinic leads from tyre-kickers before they reach the front desk" },
   { niche: "home-services", category: "Home Services", keyword: "HVAC emergency call answering service", angle: "Why home-service businesses lose emergency jobs to whoever answers first, and how AI dispatch fixes it" },
   { niche: "home-services", category: "Home Services", keyword: "contractor booking software", angle: "How online quote requests and automated follow-up fill a contractor's schedule without more ad spend" },
-  { niche: "law-firm", category: "Law Firms", keyword: "law firm client intake automation", angle: "How structured AI intake screens case enquiries before they reach a lawyer's desk" },
-  { niche: "law-firm", category: "Law Firms", keyword: "law firm missed consultation calls", angle: "Why a slow intake process loses high-value clients to a faster competing firm" },
   { niche: "accountants", category: "Accounting", keyword: "accounting firm client acquisition", angle: "How accounting firms handle the year-end enquiry surge without hiring more front-desk staff" },
   { niche: "accountants", category: "Accounting", keyword: "bookkeeping firm discovery call booking", angle: "Why an AI-qualified discovery call converts better than a generic contact form for accounting firms" },
   { niche: "consultants", category: "Consulting", keyword: "consultant lead qualification ICP", angle: "How to filter for ideal-client-profile fit automatically so strategy calls aren't wasted on poor fits" },

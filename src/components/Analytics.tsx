@@ -22,10 +22,12 @@ const DEFAULT_PIXEL = "1394909005810177";     // Servolia Meta Pixel / dataset i
 /**
  * Servolia's own Google Ads client acquisition (decided 2026-07-25 — the ads
  * pixel/tag stays, this is NOT the retired paid-ads-as-a-service OFFERING,
- * see roadmap.ts). Set NEXT_PUBLIC_GOOGLE_ADS_ID to the AW-XXXXXXXXXX
- * conversion ID from Google Ads → Tools → Conversions to enable.
+ * see roadmap.ts). AW-9742210978 = customer id 974-221-0978 (dashes removed,
+ * "AW-" prefix — Google Ads' account-level tag id is always derived this way).
+ * Override via NEXT_PUBLIC_GOOGLE_ADS_ID for a different property (e.g. staging).
  */
-const GOOGLE_ADS_ID = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID || "";
+const DEFAULT_GOOGLE_ADS_ID = "AW-9742210978";
+const GOOGLE_ADS_ID = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID || DEFAULT_GOOGLE_ADS_ID;
 
 export default function Analytics() {
   const pathname = usePathname();
