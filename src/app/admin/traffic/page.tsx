@@ -1,9 +1,17 @@
 import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabase";
-import { fetchTraffic, summarize, countryName } from "@/lib/traffic";
+import { fetchTraffic, fetchTrafficDay, summarize, countryName } from "@/lib/traffic";
 import { Users, Eye, MousePointerClick, Globe, Monitor, Link2, Megaphone, FileText, TrendingUp, TrendingDown, CalendarDays } from "lucide-react";
 
 export const dynamic = "force-dynamic";
+
+const RANGES = [
+  { key: "today", label: "Today" },
+  { key: "yesterday", label: "Yesterday" },
+  { key: "7", label: "7d" },
+  { key: "30", label: "30d" },
+  { key: "90", label: "90d" },
+];
 
 /** Who is on servolia.com right now, where they came from, and what they read. */
 export default async function TrafficPage({
@@ -12,7 +20,9 @@ export default async function TrafficPage({
   searchParams: Promise<{ days?: string }>;
 }) {
   const sp = await searchParams;
-  const days = [7, 30, 90].includes(Number(sp.days)) ? Number(sp.days) : 30;
+  const range = RANGES.some((r) => r.key === sp.days) ? sp.days! : "30";
+  const isDay = range === "today" || range === "yesterday";
+  const days = isDay ? 1 : Number(range);
 
   const db = supabaseAdmin();
   if (!db) {
@@ -22,10 +32,24 @@ export default async function TrafficPage({
   let current: Awaited<ReturnType<typeof fetchTraffic>>["current"] = [];
   let previous: typeof current = [];
   let tableMissing = false;
+  // "Today"/"Yesterday" need a specific calendar day, not a rolling N-day
+  // window — fetchTrafficDay() also lets the day-bucket chart anchor on the
+  // right date instead of always assuming "today" is right now.
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const yesterdayDate = new Date();
+  yesterdayDate.setUTCDate(yesterdayDate.getUTCDate() - 1);
+  const yesterdayIso = yesterdayDate.toISOString().slice(0, 10);
+  const anchor = range === "yesterday" ? new Date(`${yesterdayIso}T12:00:00.000Z`) : new Date();
   try {
-    const res = await fetchTraffic(db, { days, slugs: null });
-    current = res.current;
-    previous = res.previous;
+    if (isDay) {
+      const res = await fetchTrafficDay(db, { dayIso: range === "yesterday" ? yesterdayIso : todayIso, slugs: null });
+      current = res.current;
+      previous = res.previous;
+    } else {
+      const res = await fetchTraffic(db, { days, slugs: null });
+      current = res.current;
+      previous = res.previous;
+    }
   } catch {
     tableMissing = true;
   }
@@ -39,28 +63,29 @@ export default async function TrafficPage({
     );
   }
 
-  const s = summarize(current, days, previous);
+  const s = summarize(current, days, previous, anchor);
+  const rangeLabel = range === "today" ? "today" : range === "yesterday" ? "yesterday" : `last ${days} days`;
 
   return (
     <div className="px-4 sm:px-6 lg:px-8 py-6 lg:py-8 max-w-7xl mx-auto">
       <div className="flex flex-wrap items-end justify-between gap-3 mb-1">
         <h1 className="text-2xl font-black text-[#18181B]">Traffic</h1>
         <div className="flex gap-1 p-1 rounded-xl bg-[#F5F4EF] border border-[#E8E6E0]">
-          {[7, 30, 90].map((d) => (
+          {RANGES.map((r) => (
             <Link
-              key={d}
-              href={`/admin/traffic?days=${d}`}
+              key={r.key}
+              href={`/admin/traffic?days=${r.key}`}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
-                days === d ? "bg-white text-[#36671E] shadow-sm" : "text-[#71717A] hover:text-[#18181B]"
+                range === r.key ? "bg-white text-[#36671E] shadow-sm" : "text-[#71717A] hover:text-[#18181B]"
               }`}
             >
-              {d}d
+              {r.label}
             </Link>
           ))}
         </div>
       </div>
       <p className="text-sm text-[#71717A] mb-6">
-        servolia.com · last {days} days · cookie-free first-party tracking (client sites are in each client&apos;s portal)
+        servolia.com · {rangeLabel} · cookie-free first-party tracking (client sites are in each client&apos;s portal)
       </p>
 
       {s.views === 0 ? (
@@ -78,16 +103,22 @@ export default async function TrafficPage({
             <Kpi icon={<Megaphone className="w-4 h-4" />} label="From ads" value={s.fromAds} sub={s.views ? `${Math.round((s.fromAds / s.views) * 100)}% of views` : undefined} />
           </div>
 
-          {/* Today / yesterday — exact numbers at a glance, no hovering the chart */}
-          <div className="grid grid-cols-2 gap-3 mb-6">
-            <Kpi icon={<CalendarDays className="w-4 h-4" />} label="Today" value={s.today.visitors} sub={`${s.today.views} pageviews`} />
-            <Kpi icon={<CalendarDays className="w-4 h-4" />} label="Yesterday" value={s.yesterday.visitors} sub={`${s.yesterday.views} pageviews`} />
-          </div>
+          {/* Today / yesterday at a glance — only useful when the main KPI strip
+              above is itself a rolling window; redundant when the range picker
+              is already scoped to a single one of those two days. */}
+          {!isDay && (
+            <div className="grid grid-cols-2 gap-3 mb-6">
+              <Kpi icon={<CalendarDays className="w-4 h-4" />} label="Today" value={s.today.visitors} sub={`${s.today.views} pageviews`} />
+              <Kpi icon={<CalendarDays className="w-4 h-4" />} label="Yesterday" value={s.yesterday.visitors} sub={`${s.yesterday.views} pageviews`} />
+            </div>
+          )}
 
           {/* Traffic over time */}
-          <Panel icon={<TrendingUp className="w-4 h-4" />} title="Visitors per day" subtitle={`Last ${days} days`} className="mb-6">
-            <Chart days={s.days} />
-          </Panel>
+          {!isDay && (
+            <Panel icon={<TrendingUp className="w-4 h-4" />} title="Visitors per day" subtitle={`Last ${days} days`} className="mb-6">
+              <Chart days={s.days} />
+            </Panel>
+          )}
 
           <div className="grid lg:grid-cols-2 gap-6 mb-6">
             <Panel icon={<FileText className="w-4 h-4" />} title="Top pages" subtitle="What people actually read">

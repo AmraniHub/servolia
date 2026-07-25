@@ -79,8 +79,11 @@ const AD_RE = /facebook|instagram|fb|ig|meta|google|adwords|tiktok|linkedin|cpc|
  * Rolls raw rows into everything both dashboards render.
  * `previous` is the same-length window immediately before `rows`, used only for
  * the trend arrows — pass an empty array to hide them.
+ * `anchor` is the "today" the day-bucket series counts back from — defaults to
+ * the real current time, but pass a fixed date to summarize a single past day
+ * (e.g. "yesterday" specifically) so its one bucket carries the right label.
  */
-export function summarize(rows: PageViewRow[], days: number, previous: PageViewRow[] = []): TrafficSummary {
+export function summarize(rows: PageViewRow[], days: number, previous: PageViewRow[] = [], anchor: Date = new Date()): TrafficSummary {
   const views = rows.length;
   const visitors = uniq(rows.map((r) => r.visitor_hash));
   const visits = rows.filter((r) => r.is_entry).length || uniq(rows.map((r) => r.session_id));
@@ -98,9 +101,8 @@ export function summarize(rows: PageViewRow[], days: number, previous: PageViewR
 
   // Day-by-day series, oldest first, with no gaps (a quiet day must show as zero).
   const buckets: { label: string; iso: string; views: number; visitors: number }[] = [];
-  const now = new Date();
   for (let i = days - 1; i >= 0; i--) {
-    const d = new Date(now);
+    const d = new Date(anchor);
     d.setDate(d.getDate() - i);
     const iso = d.toISOString().slice(0, 10);
     const dayRows = rows.filter((r) => r.created_at.slice(0, 10) === iso);
@@ -172,6 +174,40 @@ export async function fetchTraffic(
   const { data } = await q.order("created_at", { ascending: false }).limit(50000);
   const all = (data as unknown as PageViewRow[] | null) ?? [];
   const cut = cutoff.toISOString();
+
+  return {
+    current: all.filter((r) => r.created_at >= cut),
+    previous: all.filter((r) => r.created_at < cut),
+  };
+}
+
+/**
+ * Fetches exactly one calendar day (UTC) plus the day before it (for the
+ * trend arrow) — the "Today" / "Yesterday" quick filters, as opposed to
+ * fetchTraffic()'s rolling N-day window. `dayIso` is "YYYY-MM-DD".
+ */
+export async function fetchTrafficDay(
+  db: SupabaseClient,
+  { dayIso, slugs }: { dayIso: string; slugs?: string[] | null }
+): Promise<{ current: PageViewRow[]; previous: PageViewRow[] }> {
+  const dayStart = new Date(`${dayIso}T00:00:00.000Z`);
+  const dayEnd = new Date(dayStart.getTime() + 86400000);
+  const prevStart = new Date(dayStart.getTime() - 86400000);
+
+  let q = db.from("page_views").select(COLS)
+    .gte("created_at", prevStart.toISOString())
+    .lt("created_at", dayEnd.toISOString());
+
+  if (slugs) {
+    if (!slugs.length) return { current: [], previous: [] };
+    q = q.in("site_slug", slugs);
+  } else {
+    q = q.is("site_slug", null);
+  }
+
+  const { data } = await q.order("created_at", { ascending: false }).limit(50000);
+  const all = (data as unknown as PageViewRow[] | null) ?? [];
+  const cut = dayStart.toISOString();
 
   return {
     current: all.filter((r) => r.created_at >= cut),
