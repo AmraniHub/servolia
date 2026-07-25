@@ -635,3 +635,47 @@ create index if not exists page_views_created_idx  on page_views(created_at desc
 create index if not exists page_views_site_idx     on page_views(site_slug, created_at desc);
 create index if not exists page_views_visitor_idx  on page_views(visitor_hash);
 create index if not exists page_views_session_idx  on page_views(session_id);
+
+
+-- PAY-PER-BOOKING BILLING: aesthetic/med-spa clients only (see
+-- payPerBookingEligible() in src/lib/pricing.ts) — charge per attended
+-- AI-booked consultation instead of a flat Care plan. Never enable this
+-- billing_mode for a dental/medical client without a French lawyer's
+-- sign-off on "compérage" rules (see roadmap.ts).
+
+-- Which clients are billed this way, and at what rate. Most clients stay
+-- billing_mode = 'flat' (existing Care plan, monthly_amount as-is).
+alter table clients add column if not exists billing_mode text not null default 'flat';
+alter table clients add column if not exists per_booking_rate_eur numeric;
+  -- Snapshot of PAY_PER_BOOKING.perBookingEur at signup, so a later price
+  -- change in pricing.ts doesn't retroactively re-price an existing client.
+
+create index if not exists clients_billing_mode_idx on clients(billing_mode);
+
+-- Marks a booking as already billed, so the monthly cron never charges the
+-- same booking twice. Set the moment it's rolled into a
+-- pay_per_booking_invoices row below.
+alter table chat_sessions add column if not exists billed_at timestamptz;
+
+create index if not exists chat_sessions_site_unbilled_idx on chat_sessions(site_slug) where billed_at is null;
+
+-- One row per client per billed period — the invoice ledger. Mirrors the
+-- client_reports pattern (one row per client per period) so it's easy to
+-- read in the admin CRM.
+create table if not exists pay_per_booking_invoices (
+  id            uuid primary key default gen_random_uuid(),
+  created_at    timestamptz default now(),
+
+  client_id     uuid not null references clients(id) on delete cascade,
+  period        text not null,                    -- "2026-07"
+  booking_count int not null,
+  rate_eur      numeric not null,                  -- rate actually applied this period
+  amount_eur    numeric not null,                  -- booking_count * rate_eur
+
+  stripe_invoice_id text,                          -- Stripe Invoice id, once created
+  status        text not null default 'pending',   -- pending, invoiced, paid, failed
+
+  unique (client_id, period)
+);
+
+create index if not exists ppb_invoices_client_idx on pay_per_booking_invoices(client_id, period desc);
