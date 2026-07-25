@@ -6,6 +6,12 @@ import type {
 import {
   isDentalNiche, dentalCopyPlaybook, DENTAL_HIGHLIGHT_IMAGES, DENTAL_EXPERTISE_IMAGES,
 } from "@/lib/niches/dental";
+import {
+  isAestheticNiche, aestheticCopyPlaybook, AESTHETIC_HIGHLIGHT_IMAGES, AESTHETIC_EXPERTISE_IMAGES,
+} from "@/lib/niches/aesthetic";
+import {
+  isHomeServicesNiche, homeServicesCopyPlaybook, HOME_SERVICES_HIGHLIGHT_IMAGES, HOME_SERVICES_EXPERTISE_IMAGES,
+} from "@/lib/niches/homeServices";
 
 /**
  * AI enrichment for client-site generation.
@@ -160,7 +166,10 @@ export async function aiEnrichConfig(
     .join("\n");
 
   const nicheLang = draft.language;
-  const nichePlaybook = isDentalNiche(draft.niche) ? dentalCopyPlaybook(nicheLang) : "";
+  const nichePlaybook = isDentalNiche(draft.niche) ? dentalCopyPlaybook(nicheLang)
+    : isAestheticNiche(draft.niche) ? aestheticCopyPlaybook(nicheLang)
+    : isHomeServicesNiche(draft.niche) ? homeServicesCopyPlaybook(nicheLang)
+    : "";
 
   const prompt = `You are the senior copywriter at Servolia, an agency that delivers websites with AI receptionists for service businesses (dental clinics, aesthetic clinics, real estate, home services, law firms...).
 
@@ -226,15 +235,22 @@ Rules — these are hard constraints:
 
     // Attach illustrative images to the AI-written visual blocks. The model
     // supplies the words; we supply niche-appropriate stock imagery by position
-    // (dental only for now — other niches render image-less gradient variants).
-    const dental = isDentalNiche(draft.niche);
+    // (niches without a template render image-less gradient variants).
+    const highlightImages = isDentalNiche(draft.niche) ? DENTAL_HIGHLIGHT_IMAGES
+      : isAestheticNiche(draft.niche) ? AESTHETIC_HIGHLIGHT_IMAGES
+      : isHomeServicesNiche(draft.niche) ? HOME_SERVICES_HIGHLIGHT_IMAGES
+      : null;
+    const expertiseImages = isDentalNiche(draft.niche) ? DENTAL_EXPERTISE_IMAGES
+      : isAestheticNiche(draft.niche) ? AESTHETIC_EXPERTISE_IMAGES
+      : isHomeServicesNiche(draft.niche) ? HOME_SERVICES_EXPERTISE_IMAGES
+      : null;
     const highlights = copy.highlights?.map((h, i) => ({
       ...h,
-      imageUrl: dental ? DENTAL_HIGHLIGHT_IMAGES[i % DENTAL_HIGHLIGHT_IMAGES.length] : undefined,
+      imageUrl: highlightImages ? highlightImages[i % highlightImages.length] : undefined,
     }));
     const expertise = copy.expertise?.map((e, i) => ({
       ...e,
-      imageUrl: dental ? DENTAL_EXPERTISE_IMAGES[i % DENTAL_EXPERTISE_IMAGES.length] : undefined,
+      imageUrl: expertiseImages ? expertiseImages[i % expertiseImages.length] : undefined,
     }));
 
     const config: ClientSiteConfig = {

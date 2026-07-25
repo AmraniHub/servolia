@@ -19,6 +19,14 @@ import { usePathname } from "next/navigation";
 const DEFAULT_GA4 = "G-L64925WGDH";          // Servolia GA4 (Measurement ID)
 const DEFAULT_PIXEL = "1394909005810177";     // Servolia Meta Pixel / dataset id
 
+/**
+ * Servolia's own Google Ads client acquisition (decided 2026-07-25 — the ads
+ * pixel/tag stays, this is NOT the retired paid-ads-as-a-service OFFERING,
+ * see roadmap.ts). Set NEXT_PUBLIC_GOOGLE_ADS_ID to the AW-XXXXXXXXXX
+ * conversion ID from Google Ads → Tools → Conversions to enable.
+ */
+const GOOGLE_ADS_ID = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID || "";
+
 export default function Analytics() {
   const pathname = usePathname();
   const ga = process.env.NEXT_PUBLIC_GA4_ID || DEFAULT_GA4;
@@ -26,7 +34,7 @@ export default function Analytics() {
 
   // Never fire Servolia's properties on a client's site.
   if (pathname?.startsWith("/sites/")) return null;
-  if (!ga && !pixel) return null;
+  if (!ga && !pixel && !GOOGLE_ADS_ID) return null;
 
   return (
     <>
@@ -37,7 +45,19 @@ export default function Analytics() {
             {`window.dataLayer = window.dataLayer || [];
               function gtag(){dataLayer.push(arguments);}
               gtag('js', new Date());
-              gtag('config', '${ga}', { anonymize_ip: true });`}
+              gtag('config', '${ga}', { anonymize_ip: true });
+              ${GOOGLE_ADS_ID ? `gtag('config', '${GOOGLE_ADS_ID}');` : ""}`}
+          </Script>
+        </>
+      )}
+      {!ga && GOOGLE_ADS_ID && (
+        <>
+          <Script async src={`https://www.googletagmanager.com/gtag/js?id=${GOOGLE_ADS_ID}`} strategy="afterInteractive" />
+          <Script id="google-ads-init" strategy="afterInteractive">
+            {`window.dataLayer = window.dataLayer || [];
+              function gtag(){dataLayer.push(arguments);}
+              gtag('js', new Date());
+              gtag('config', '${GOOGLE_ADS_ID}');`}
           </Script>
         </>
       )}

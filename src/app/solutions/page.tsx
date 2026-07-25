@@ -83,7 +83,6 @@ export default function SolutionsHub() {
               {[
                 { label: "Dentists", href: "/dentists" },
                 { label: "Aesthetic clinics", href: "/niches/aesthetic-clinics" },
-                { label: "Real estate", href: "/niches/real-estate" },
                 { label: "Home services", href: "/niches/home-services" },
                 ...INDUSTRIES.map((i) => ({ label: i.highlight.replace(".", ""), href: `/niches/${i.slug}` })),
               ].map((n) => (

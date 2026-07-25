@@ -119,30 +119,62 @@ export const auditInProgressEmail = (firstName: string) => ({
 });
 
 /** Sent post-payment, immediately after Stripe checkout completes. */
-export const depositReceivedEmail = (firstName: string, planName: string, amount: number) => {
-  const wa = businessWaLink(`Hi, I just paid my deposit for the ${planName} — excited to get started!`);
+export const depositReceivedEmail = (firstName: string, planName: string, amount: number, lang: "en" | "fr" = "en") => {
+  const wa = businessWaLink(
+    lang === "fr"
+      ? `Bonjour, je viens de payer mon acompte pour le ${planName} — hâte de commencer !`
+      : `Hi, I just paid my deposit for the ${planName} — excited to get started!`
+  );
+  const intakeUrl = lang === "fr" ? "https://servolia.com/fr/demarrage" : "https://servolia.com/onboarding";
+
+  if (lang === "fr") {
+    return {
+      subject: `Acompte reçu — votre ${planName} est en cours de création`,
+      html: wrapper(`
+        <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">Bienvenue chez Servolia 🎉</h1>
+        <p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#3F3F46;">Bonjour ${firstName},</p>
+        <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#3F3F46;">
+          Votre acompte de ${amount.toLocaleString()} € pour le <strong>${planName}</strong> vient d'être validé. La création démarre maintenant.
+        </p>
+        <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#3F3F46;">
+          <strong>Votre planning :</strong>
+        </p>
+        <ul style="margin:0 0 16px;padding-left:20px;font-size:15px;line-height:1.7;color:#3F3F46;">
+          <li><strong>Jour 1 (aujourd'hui) :</strong> Complétez le formulaire d'intake en 8 minutes (lien ci-dessous)</li>
+          <li><strong>Jour 3–5 :</strong> Vous recevez une vidéo Loom présentant votre brouillon</li>
+          <li><strong>Jour 5–7 :</strong> Paiement final → mise en ligne sous 24h</li>
+        </ul>
+        ${btn(intakeUrl, "Compléter le formulaire →")}
+        ${wa ? waBtn(wa, "Discuter sur WhatsApp 💬") : ""}
+        <p style="margin:24px 0 0;font-size:14px;line-height:1.6;color:#71717A;">
+          Des questions ? Répondez directement à cet email${wa ? " ou écrivez-nous sur WhatsApp" : ""} — je lis chaque message.
+        </p>
+      `),
+    };
+  }
+
   return {
-  subject: `Deposit received — your ${planName} is being built`,
-  html: wrapper(`
-    <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">Welcome to Servolia 🎉</h1>
-    <p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#3F3F46;">Hi ${firstName},</p>
-    <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#3F3F46;">
-      Your €${amount.toLocaleString()} deposit for the <strong>${planName}</strong> just cleared. The build officially starts now.
-    </p>
-    <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#3F3F46;">
-      <strong>Your timeline:</strong>
-    </p>
-    <ul style="margin:0 0 16px;padding-left:20px;font-size:15px;line-height:1.7;color:#3F3F46;">
-      <li><strong>Day 1 (today):</strong> Complete your 8-minute intake form (link below)</li>
-      <li><strong>Day 3–5:</strong> You get a Loom walkthrough of your draft</li>
-      <li><strong>Day 5–7:</strong> Final payment → we go live within 24 hours</li>
-    </ul>
-    ${btn("https://servolia.com/onboarding", "Complete intake form →")}
-    ${wa ? waBtn(wa, "Chat on WhatsApp 💬") : ""}
-    <p style="margin:24px 0 0;font-size:14px;line-height:1.6;color:#71717A;">
-      Questions? Reply directly${wa ? " or message us on WhatsApp" : ""} — I read every message.
-    </p>
-  `),
+    subject: `Deposit received — your ${planName} is being built`,
+    html: wrapper(`
+      <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">Welcome to Servolia 🎉</h1>
+      <p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#3F3F46;">Hi ${firstName},</p>
+      <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#3F3F46;">
+        Your €${amount.toLocaleString()} deposit for the <strong>${planName}</strong> just cleared. The build officially starts now.
+      </p>
+      <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#3F3F46;">
+        <strong>Your timeline:</strong>
+      </p>
+      <ul style="margin:0 0 16px;padding-left:20px;font-size:15px;line-height:1.7;color:#3F3F46;">
+        <li><strong>Day 1 (today):</strong> Complete your 8-minute intake form (link below)</li>
+        <li><strong>Day 3–5:</strong> You get a Loom walkthrough of your draft</li>
+        <li><strong>Day 5–7:</strong> Final payment → we go live within 24 hours</li>
+      </ul>
+      ${btn(intakeUrl, "Complete intake form →")}
+      ${wa ? waBtn(wa, "Chat on WhatsApp 💬") : ""}
+      <p style="margin:24px 0 0;font-size:14px;line-height:1.6;color:#71717A;">
+        Questions? Reply directly${wa ? " or message us on WhatsApp" : ""} — I read every message.
+      </p>
+    `),
   };
 };
 

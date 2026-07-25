@@ -213,10 +213,12 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // Send deposit received email to client
+      // Send deposit received email to client, in the language they bought in
+      // (set at checkout — see /api/checkout's metadata.lang).
       if (customerEmail && build) {
         const firstName = customerEmail.split("@")[0];
-        const tpl = depositReceivedEmail(firstName, build.plan_name ?? "system", amountPaid);
+        const emailLang = session.metadata?.lang === "fr" ? "fr" : "en";
+        const tpl = depositReceivedEmail(firstName, build.plan_name ?? "system", amountPaid, emailLang);
         sendEmail(customerEmail, tpl.subject, tpl.html).catch(() => {});
       }
 

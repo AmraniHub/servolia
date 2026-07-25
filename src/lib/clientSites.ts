@@ -16,6 +16,14 @@ import {
   isDentalNiche, DENTAL_WHY_US, DENTAL_FAQS, DENTAL_AI_TONE, dentalAiGreeting,
   DENTAL_HERO_IMAGES, DENTAL_PAGE_BANNERS, DENTAL_PROCESS, DENTAL_VALUES, DENTAL_ADVICE, dentalTagline,
 } from "@/lib/niches/dental";
+import {
+  isAestheticNiche, AESTHETIC_WHY_US, AESTHETIC_FAQS, AESTHETIC_AI_TONE, aestheticAiGreeting,
+  AESTHETIC_HERO_IMAGES, AESTHETIC_PAGE_BANNERS, AESTHETIC_PROCESS, AESTHETIC_VALUES, AESTHETIC_ADVICE, aestheticTagline,
+} from "@/lib/niches/aesthetic";
+import {
+  isHomeServicesNiche, HOME_SERVICES_WHY_US, HOME_SERVICES_FAQS, HOME_SERVICES_AI_TONE, homeServicesAiGreeting,
+  HOME_SERVICES_HERO_IMAGES, HOME_SERVICES_PAGE_BANNERS, HOME_SERVICES_PROCESS, HOME_SERVICES_VALUES, HOME_SERVICES_ADVICE, homeServicesTagline,
+} from "@/lib/niches/homeServices";
 
 export interface ClientService {
   name: string;
@@ -277,13 +285,21 @@ export function configFromIntake(src: IntakeSource): ClientSiteConfig {
       .filter(Boolean)
       .join(" ");
 
-  // Servolia's beachhead niche (docs/PRINCIPLES.md P2) gets a real domain-grounded
-  // default instead of generic filler — see src/lib/niches/dental.ts. Every other
-  // niche keeps the fully generic fallback until it gets its own template.
-  const isDental = isDentalNiche(niche);
+  // Servolia's beachhead + ladder-rung-2/marketed niches get a real domain-
+  // grounded default instead of generic filler — see src/lib/niches/. Every
+  // other niche keeps the fully generic fallback until it gets its own template.
+  const nicheKind = isDentalNiche(niche)
+    ? "dental"
+    : isAestheticNiche(niche)
+    ? "aesthetic"
+    : isHomeServicesNiche(niche)
+    ? "home-services"
+    : null;
 
-  const whyUs = isDental
-    ? DENTAL_WHY_US[lang]
+  const whyUs =
+    nicheKind === "dental" ? DENTAL_WHY_US[lang]
+    : nicheKind === "aesthetic" ? AESTHETIC_WHY_US[lang]
+    : nicheKind === "home-services" ? HOME_SERVICES_WHY_US[lang]
     : lang === "fr"
       ? [
           "Réponse instantanée, jour et nuit",
@@ -299,22 +315,33 @@ export function configFromIntake(src: IntakeSource): ClientSiteConfig {
   const phone = str(d.phone);
   const intakeHero = str(d.heroImageUrl);
 
-  // Dental clients get the full professional multi-page layout by default:
-  // sub-page nav (Cabinet / Expertise / Conseils), photo banners, a patient-
-  // journey, clinic values and aftercare advice. All of it is generic-safe for
-  // any practice; the AI layer adds the clinic-specific richness on top.
-  const dentalLayout = isDental
-    ? {
-        expandedHeader: true,
-        multiPage: true,
-        tagline: dentalTagline(city, lang),
-        heroImages: intakeHero ? undefined : DENTAL_HERO_IMAGES,
-        pageBanners: DENTAL_PAGE_BANNERS,
-        process: DENTAL_PROCESS[lang],
-        values: DENTAL_VALUES[lang],
-        advice: DENTAL_ADVICE[lang],
-      }
-    : {};
+  // Niches with a template get the full professional multi-page layout by
+  // default: sub-page nav (Cabinet / Expertise / Conseils), photo banners, a
+  // process journey, values and advice. All of it is generic-safe for any
+  // business in that niche; the AI layer adds the client-specific richness on top.
+  const nicheLayout =
+    nicheKind === "dental"
+      ? {
+          expandedHeader: true, multiPage: true, tagline: dentalTagline(city, lang),
+          heroImages: intakeHero ? undefined : DENTAL_HERO_IMAGES,
+          pageBanners: DENTAL_PAGE_BANNERS, process: DENTAL_PROCESS[lang],
+          values: DENTAL_VALUES[lang], advice: DENTAL_ADVICE[lang],
+        }
+      : nicheKind === "aesthetic"
+      ? {
+          expandedHeader: true, multiPage: true, tagline: aestheticTagline(city, lang),
+          heroImages: intakeHero ? undefined : AESTHETIC_HERO_IMAGES,
+          pageBanners: AESTHETIC_PAGE_BANNERS, process: AESTHETIC_PROCESS[lang],
+          values: AESTHETIC_VALUES[lang], advice: AESTHETIC_ADVICE[lang],
+        }
+      : nicheKind === "home-services"
+      ? {
+          expandedHeader: true, multiPage: true, tagline: homeServicesTagline(city, lang),
+          heroImages: intakeHero ? undefined : HOME_SERVICES_HERO_IMAGES,
+          pageBanners: HOME_SERVICES_PAGE_BANNERS, process: HOME_SERVICES_PROCESS[lang],
+          values: HOME_SERVICES_VALUES[lang], advice: HOME_SERVICES_ADVICE[lang],
+        }
+      : {};
 
   return {
     slug: slugify(businessName),
@@ -335,16 +362,26 @@ export function configFromIntake(src: IntakeSource): ClientSiteConfig {
     // first-party numbers in the portal instead.
     ga4Id: str(d.googleAnalyticsId),
     heroImageUrl: intakeHero,
-    ...dentalLayout,
+    ...nicheLayout,
     heroHeadline,
     heroSub,
     about,
     services,
     whyUs,
-    faqs: isDental ? DENTAL_FAQS[lang] : [],
-    aiTone: isDental ? DENTAL_AI_TONE[lang] : (lang === "fr" ? "chaleureux et professionnel" : "warm and professional"),
-    aiGreeting: isDental
-      ? dentalAiGreeting(businessName, lang)
+    faqs:
+      nicheKind === "dental" ? DENTAL_FAQS[lang]
+      : nicheKind === "aesthetic" ? AESTHETIC_FAQS[lang]
+      : nicheKind === "home-services" ? HOME_SERVICES_FAQS[lang]
+      : [],
+    aiTone:
+      nicheKind === "dental" ? DENTAL_AI_TONE[lang]
+      : nicheKind === "aesthetic" ? AESTHETIC_AI_TONE[lang]
+      : nicheKind === "home-services" ? HOME_SERVICES_AI_TONE[lang]
+      : (lang === "fr" ? "chaleureux et professionnel" : "warm and professional"),
+    aiGreeting:
+      nicheKind === "dental" ? dentalAiGreeting(businessName, lang)
+      : nicheKind === "aesthetic" ? aestheticAiGreeting(businessName, lang)
+      : nicheKind === "home-services" ? homeServicesAiGreeting(businessName, lang)
       : lang === "fr"
         ? `Bonjour 👋 Bienvenue chez ${businessName}. Comment puis-je vous aider ?`
         : `Hi 👋 Welcome to ${businessName}. How can I help you today?`,

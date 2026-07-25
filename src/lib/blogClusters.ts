@@ -16,8 +16,6 @@ export const CLUSTERS: KeywordCluster[] = [
   { niche: "dental", category: "Dental", keyword: "dental clinic missed calls cost", angle: "The real revenue lost per missed call at a dental practice, with a simple way to estimate it" },
   { niche: "aesthetic", category: "Aesthetic Clinics", keyword: "med spa booking system", angle: "Why online booking with AI qualification converts more consultations for aesthetic clinics" },
   { niche: "aesthetic", category: "Aesthetic Clinics", keyword: "aesthetic clinic lead qualification", angle: "How to filter high-intent aesthetic clinic leads from tyre-kickers before they reach the front desk" },
-  { niche: "real-estate", category: "Real Estate", keyword: "real estate agent lead response time", angle: "Why response speed decides who wins a real estate lead, and how AI cuts it to seconds" },
-  { niche: "real-estate", category: "Real Estate", keyword: "real estate CRM for agents", angle: "What a lightweight CRM with lead scoring actually changes for a solo or small-team agent" },
   { niche: "home-services", category: "Home Services", keyword: "HVAC emergency call answering service", angle: "Why home-service businesses lose emergency jobs to whoever answers first, and how AI dispatch fixes it" },
   { niche: "home-services", category: "Home Services", keyword: "contractor booking software", angle: "How online quote requests and automated follow-up fill a contractor's schedule without more ad spend" },
   { niche: "law-firm", category: "Law Firms", keyword: "law firm client intake automation", angle: "How structured AI intake screens case enquiries before they reach a lawyer's desk" },

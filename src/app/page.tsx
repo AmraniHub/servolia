@@ -484,7 +484,6 @@ export default function HomePage() {
             {[
               { emoji: "🦷", title: "Dental & Implant Clinics", pain: "After-hours bookings going to competitors", avg: "€1.5k–€5k per patient", href: "/dentists" },
               { emoji: "💉", title: "Aesthetic & Med Spas", pain: "Instagram DMs converting at 5%", avg: "€500–€3k per visit", href: "/niches/aesthetic-clinics" },
-              { emoji: "🏠", title: "Luxury Real Estate", pain: "10-min response time loses €M+ mandates", avg: "€10k–€100k commission", href: "/niches/real-estate" },
               { emoji: "🌬️", title: "HVAC & Home Services", pain: "Phone-only intake costs 10h/week", avg: "$3k–$30k per job", href: "/niches/home-services" },
               { emoji: "🔬", title: "Cosmetic Surgery", pain: "Consultations booked 6 weeks out", avg: "$5k–$25k per procedure", href: "/contact" },
               { emoji: "🐾", title: "Veterinary Specialty", pain: "Referrals stuck in phone tag", avg: "$1k–$10k per case", href: "/contact" },

@@ -89,6 +89,54 @@ export const ADDONS: Record<string, AddOn> = {
   reviews: { key: "reviews", name: "Google reviews automation",    nameFr: "Automatisation des avis Google",     priceEur: 39, interval: "month", selfServe: true },
 };
 
+/**
+ * PAY-PER-BOOKING — charge only for attended AI-booked consultations, on top
+ * of a smaller setup fee. Commercially the strongest close for a skeptical
+ * clinic owner (Servolia only gets paid when the system produces a result),
+ * per the "Strategic Blueprint for European Micro-Monopolies" research review
+ * (2026-07-15, see memory: micro-monopoly-research-2026-07).
+ *
+ * LEGAL GATE — do not remove without re-checking: French deontological rules
+ * (Ordre des Chirurgiens-Dentistes / Médecins) restrict "compérage"-style fee
+ * arrangements tied to patient volume for regulated medical professions. This
+ * is cleared to pilot with non-physician-run aesthetic/med-spa businesses
+ * ONLY. Dental/medical stays on flat pricing until a French lawyer signs off
+ * (see roadmap.ts). `payPerBookingEligible()` is the single gate to check
+ * before ever offering or quoting this — never bypass it inline.
+ */
+export interface PayPerBookingPlan {
+  key: string;
+  name: string;
+  nameFr: string;
+  setupEur: number;       // one-time setup fee (smaller than the flat plans — the trade is lower upfront, ongoing per-result fee)
+  perBookingEur: number;  // charged per attended AI-booked consultation
+}
+
+export const PAY_PER_BOOKING: PayPerBookingPlan = {
+  key: "pay_per_booking",
+  name: "Pay-per-booking",
+  nameFr: "Paiement à la réservation",
+  setupEur: 990,
+  perBookingEur: 60,
+};
+
+/** Niches legally cleared to pilot pay-per-booking (non-physician-run only). */
+const PAY_PER_BOOKING_ELIGIBLE = /aesthetic|med-?spa|beaut/i;
+
+/** Niches where this must NEVER be offered without a French lawyer's sign-off. */
+const PAY_PER_BOOKING_REGULATED = /dental|dentist|dentaire|implant|medical|m[ée]dec|chirurg|physician|docteur/i;
+
+/**
+ * The single gate to check before ever quoting or offering pay-per-booking.
+ * Defaults to false for anything not explicitly cleared — an unrecognised or
+ * ambiguous niche should never fall through to "eligible".
+ */
+export function payPerBookingEligible(niche?: string | null): boolean {
+  const n = niche ?? "";
+  if (PAY_PER_BOOKING_REGULATED.test(n)) return false;
+  return PAY_PER_BOOKING_ELIGIBLE.test(n);
+}
+
 /** iOS add-on for the mobile plan, EUR. */
 export const MOBILE_IOS_ADDON_EUR = 100;
 

@@ -13,7 +13,6 @@ const services = [
 const niches = [
   { label: "Dental Clinics", href: "/dentists" },
   { label: "Aesthetic Clinics", href: "/niches/aesthetic-clinics" },
-  { label: "Real Estate Agents", href: "/niches/real-estate" },
   { label: "Home Services", href: "/niches/home-services" },
   { label: "Law Firms", href: "/niches/lawyers" },
   { label: "Accountants", href: "/niches/accountants" },
