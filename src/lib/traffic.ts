@@ -31,6 +31,11 @@ export interface TrafficSummary {
   viewsPerVisit: number;
   fromAds: number;
   days: { label: string; iso: string; views: number; visitors: number }[];
+  /** Today's and yesterday's numbers, pulled straight out of `days` — always
+   *  its last two entries regardless of the window size, so callers get an
+   *  at-a-glance figure without hovering the chart. */
+  today: { views: number; visitors: number };
+  yesterday: { views: number; visitors: number };
   topPages: [string, number][];
   referrers: [string, number][];
   countries: [string, number][];
@@ -39,6 +44,18 @@ export interface TrafficSummary {
   campaigns: [string, number][];
   /** Change vs the equivalent preceding window, in % (null when there's no baseline). */
   trend: { views: number | null; visitors: number | null };
+}
+
+/** "FR" -> "France". Falls back to the raw code for anything Intl doesn't recognise. */
+let _regionNames: Intl.DisplayNames | null = null;
+export function countryName(code: string): string {
+  if (!code || code === "unknown") return "Unknown";
+  try {
+    _regionNames ??= new Intl.DisplayNames(["en"], { type: "region" });
+    return _regionNames.of(code.toUpperCase()) ?? code;
+  } catch {
+    return code;
+  }
 }
 
 const count = <T extends string>(rows: (T | null)[], limit?: number): [string, number][] => {
@@ -99,6 +116,9 @@ export function summarize(rows: PageViewRow[], days: number, previous: PageViewR
     (r) => AD_RE.test(`${r.utm_source ?? ""} ${r.utm_medium ?? ""}`) || AD_RE.test(r.referrer_host ?? "")
   ).length;
 
+  const today = buckets.at(-1) ?? { views: 0, visitors: 0 };
+  const yesterday = buckets.at(-2) ?? { views: 0, visitors: 0 };
+
   return {
     views,
     visitors,
@@ -107,6 +127,8 @@ export function summarize(rows: PageViewRow[], days: number, previous: PageViewR
     viewsPerVisit: visits ? Math.round((views / visits) * 10) / 10 : 0,
     fromAds,
     days: buckets,
+    today: { views: today.views, visitors: today.visitors },
+    yesterday: { views: yesterday.views, visitors: yesterday.visitors },
     topPages: count(rows.map((r) => r.path), 10),
     // "unknown" referrer = typed the URL or came from an app — that's direct traffic.
     referrers: count(rows.map((r) => r.referrer_host), 8).map(([k, v]) => [k === "unknown" ? "Direct" : k, v] as [string, number]),

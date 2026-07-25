@@ -7,6 +7,7 @@ import type { Build, Client } from "@/lib/supabase";
 import { toCsv } from "@/lib/csv";
 import AutoRefresh from "@/components/AutoRefresh";
 import { ADDONS } from "@/lib/pricing";
+import { countryName } from "@/lib/traffic";
 import {
   LogOut, Send, MessageSquare, Clock, CreditCard, CheckCircle2, Users, CalendarCheck,
   Megaphone, ExternalLink, Sun, Moon, LayoutDashboard, KeyRound, Loader2, ShieldCheck, Trash2,
@@ -794,7 +795,7 @@ export default function PortalDashboard({
                     <PBars rows={traffic.referrers.map(([k, v]) => [k === "Direct" ? t.tf.direct : k, v] as [string, number])} total={traffic.views} accent />
                   </PPanel>
                   <PPanel icon={<Globe className="w-4 h-4" />} title={t.tf.countries}>
-                    <PBars rows={traffic.countries} total={traffic.views} />
+                    <PBars rows={traffic.countries.map(([code, n]) => [countryName(code), n] as [string, number])} total={traffic.views} />
                   </PPanel>
                   <PPanel icon={<Monitor className="w-4 h-4" />} title={t.tf.devices}>
                     <PBars rows={traffic.devices} total={traffic.views} accent />

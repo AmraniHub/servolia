@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabase";
-import { fetchTraffic, summarize } from "@/lib/traffic";
-import { Users, Eye, MousePointerClick, Globe, Monitor, Link2, Megaphone, FileText, TrendingUp, TrendingDown } from "lucide-react";
+import { fetchTraffic, summarize, countryName } from "@/lib/traffic";
+import { Users, Eye, MousePointerClick, Globe, Monitor, Link2, Megaphone, FileText, TrendingUp, TrendingDown, CalendarDays } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -71,11 +71,17 @@ export default async function TrafficPage({
       ) : (
         <>
           {/* KPI strip */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
             <Kpi icon={<Users className="w-4 h-4" />} label="Visitors" value={s.visitors} trend={s.trend.visitors} accent />
             <Kpi icon={<Eye className="w-4 h-4" />} label="Pageviews" value={s.views} trend={s.trend.views} sub={`${s.viewsPerVisit} per visit`} />
             <Kpi icon={<MousePointerClick className="w-4 h-4" />} label="Visits" value={s.visits} sub={`${s.bounceRate}% bounced`} />
             <Kpi icon={<Megaphone className="w-4 h-4" />} label="From ads" value={s.fromAds} sub={s.views ? `${Math.round((s.fromAds / s.views) * 100)}% of views` : undefined} />
+          </div>
+
+          {/* Today / yesterday — exact numbers at a glance, no hovering the chart */}
+          <div className="grid grid-cols-2 gap-3 mb-6">
+            <Kpi icon={<CalendarDays className="w-4 h-4" />} label="Today" value={s.today.visitors} sub={`${s.today.views} pageviews`} />
+            <Kpi icon={<CalendarDays className="w-4 h-4" />} label="Yesterday" value={s.yesterday.visitors} sub={`${s.yesterday.views} pageviews`} />
           </div>
 
           {/* Traffic over time */}
@@ -94,7 +100,7 @@ export default async function TrafficPage({
 
           <div className="grid lg:grid-cols-3 gap-6">
             <Panel icon={<Globe className="w-4 h-4" />} title="Countries">
-              <Bars rows={s.countries} total={s.views} />
+              <Bars rows={s.countries.map(([code, n]) => [countryName(code), n] as [string, number])} total={s.views} />
             </Panel>
             <Panel icon={<Monitor className="w-4 h-4" />} title="Devices & browsers">
               <Bars rows={s.devices} total={s.views} accent />
