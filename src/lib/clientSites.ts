@@ -174,6 +174,11 @@ export interface ClientSiteConfig {
   isDemo?: boolean;
   demoContactUrl?: string; // where the demo's "Book a call / Get this" CTA points
 
+  // Plan template — which pricing tier this site was generated under, and the
+  // feature switches that tier grants (see planFeatures()). Absent = all-on.
+  planKey?: string;
+  features?: { chat?: boolean };
+
   // Business economics & growth loop
   avgTreatmentValue?: number; // avg € per new client — used in the monthly ROI report
   googleReviewUrl?: string; // "leave us a review" link (g.page/r/...)
@@ -233,6 +238,23 @@ export interface IntakeSource {
   business?: string | null;
   niche?: string | null;
   email?: string | null;
+  /** The build's plan key — selects the PLAN TEMPLATE (feature set). */
+  plan?: string | null;
+}
+
+/**
+ * PLAN TEMPLATES — what each pricing tier actually ships on the client site.
+ * Niche templates (src/lib/niches/) decide the CONTENT; this decides the
+ * FEATURES, so delivery always matches what the pricing page promised.
+ *   starter (€290 Website System): site + booking/contact form, NO AI chat.
+ *   growth/pro/pay_per_booking:   everything incl. the AI receptionist.
+ * Absent/unknown plans default to all-on (existing rows, demos — demos must
+ * always show the full product, it's the pitch).
+ */
+export function planFeatures(plan?: string | null): { chat: boolean } {
+  const p = (plan ?? "").toLowerCase();
+  if (p === "starter" || p === "website") return { chat: false };
+  return { chat: true };
 }
 
 /**
@@ -347,6 +369,8 @@ export function configFromIntake(src: IntakeSource): ClientSiteConfig {
     slug: slugify(businessName),
     businessName,
     niche,
+    planKey: src.plan ?? undefined,
+    features: planFeatures(src.plan),
     language: lang,
     accent: normalizeHex(d.primaryColor),
     city,

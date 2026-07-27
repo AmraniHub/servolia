@@ -43,6 +43,7 @@ export async function POST(req: NextRequest) {
     business: b.business,
     niche,
     email: b.email,
+    plan: b.plan, // selects the plan template (feature set) — see planFeatures()
   });
   const { config, ai } = await aiEnrichConfig(draft, b.intake_data ?? {});
 

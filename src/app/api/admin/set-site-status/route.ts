@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { isAdminAuthed } from "@/lib/auth";
+import { archiveSite } from "@/lib/siteArchive";
 
 export const runtime = "nodejs";
 
@@ -18,5 +19,14 @@ export async function POST(req: NextRequest) {
   }
 
   await db.from("client_sites").update({ status }).eq("slug", slug);
+
+  // Publishing = delivery → snapshot the site to the GitHub archive.
+  // Fire-and-forget: archiving must never block or fail a publish.
+  if (status === "published") {
+    archiveSite(slug).then((r) => {
+      if (!r.ok) console.warn(`Archive on publish skipped for ${slug}: ${r.reason}`);
+    }).catch(() => {});
+  }
+
   return NextResponse.json({ ok: true, slug, status });
 }

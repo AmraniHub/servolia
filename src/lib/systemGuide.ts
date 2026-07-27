@@ -201,6 +201,24 @@ export const FEATURES: SystemFeature[] = [
     code: "src/components/ClientSite.tsx · src/lib/clientPrompt.ts · /api/sites/[slug]/lead",
   },
   {
+    name: "Delivery pipeline — niche template × plan template × GitHub archive",
+    summary: "How a paid build becomes exactly what the pricing page sold, fast: the niche template writes the content, the plan template switches the features, and every published site is version-archived to GitHub for reuse or restore.",
+    how: [
+      "Generation = niche template × plan template. Niche (src/lib/niches/: dental, aesthetic, home-services) decides structure, tone and imagery. Plan (planFeatures() in clientSites.ts) decides features: Website System €290 ships the site + booking/contact form WITHOUT the AI receptionist; Booking €590, Client €990 and pay-per-booking ship everything.",
+      "The plan gate is enforced twice: the ChatWidget isn't rendered, AND /api/chat returns 403 for that slug — a starter client can't consume inference by calling the API directly. Prospect demos always show the full product (the demo IS the pitch).",
+      "Archive: the moment you hit Publish, the full site row (config + business + niche + build link) is committed to the private archive repo as sites/{slug}.json — fire-and-forget, a GitHub outage can never block a delivery. Updating the same file on each publish means the repo's git history is the site's version history.",
+      "Restore / reuse: POST /api/admin/archive-site {slug, restore: true} pulls the snapshot back into client_sites as a DRAFT (never auto-publishes). To reuse a great site as a starting template for a new client, restore it, change the slug/business, regenerate copy.",
+    ],
+    use: [
+      "One-time setup: create a PRIVATE repo (client configs contain contact details), make a fine-grained PAT with Contents read/write on just that repo, set GITHUB_ARCHIVE_TOKEN + GITHUB_ARCHIVE_REPO in Vercel.",
+      "Nothing to do per client — publish as usual and the snapshot happens. GET /api/admin/archive-site lists what's archived.",
+      "After a bad edit: restore the slug, review the draft, republish.",
+    ],
+    cost: "Free — a private GitHub repo and a few KB of JSON per client.",
+    value: "Delivery always matches the invoice (no more giving €990 features to €290 clients), and no client's site can ever be lost to a fat-fingered edit or a database accident. The archive doubles as a growing template library — every delivered site is a reusable starting point.",
+    code: "src/lib/clientSites.ts (planFeatures) · src/components/ClientSite.tsx · /api/chat (gate) · src/lib/siteArchive.ts · /api/admin/archive-site · /api/admin/set-site-status (auto-archive)",
+  },
+  {
     name: "Security model — logins, rate limits, 2FA",
     summary: "How the admin and client doors are locked: fail-closed JWT secrets, constant-time checks, cross-instance rate limiting, optional TOTP 2FA for the admin, and site-wide security headers.",
     how: [

@@ -177,6 +177,12 @@ export async function POST(req: NextRequest) {
     // ── CLIENT SITE branch: speak AS the client's business ────────────────
     if (siteSlug) {
       const config = await getClientSite(siteSlug);
+      // Plan-template gate: a site whose tier doesn't include the AI
+      // receptionist (Website System) must not consume inference even if
+      // someone calls the API directly — the widget is already hidden.
+      if (config && config.features?.chat === false) {
+        return NextResponse.json({ error: "Chat is not enabled for this site." }, { status: 403 });
+      }
       const systemContent = config ? buildReceptionistPrompt(config) : SYSTEM_PROMPT;
       const rawReply = (await runAssistant(messages, systemContent)).trim();
       const isBooking = /\[BOOKING\]/i.test(rawReply);

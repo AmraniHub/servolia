@@ -567,15 +567,19 @@ export default function ClientSite({ config, page = "home" }: { config: ClientSi
         </div>
       </footer>
 
-      {/* The client's own AI receptionist */}
-      <ChatWidget
-        siteSlug={c.slug}
-        brandName={`${c.businessName}`}
-        botName={c.businessName}
-        accent={accent}
-        greeting={c.aiGreeting}
-        poweredBy={false}
-      />
+      {/* The client's own AI receptionist — gated by the plan template:
+          the €290 Website System ships without chat (see planFeatures()).
+          Absent features (older rows, demos) default to on. */}
+      {(c.features?.chat ?? true) && (
+        <ChatWidget
+          siteSlug={c.slug}
+          brandName={`${c.businessName}`}
+          botName={c.businessName}
+          accent={accent}
+          greeting={c.aiGreeting}
+          poweredBy={false}
+        />
+      )}
     </div>
   );
 }
