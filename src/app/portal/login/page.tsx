@@ -94,7 +94,7 @@ function LoginForm() {
     try {
       const res = await fetch("/api/portal/request-link", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, lang }),
       });
       const data = await res.json();
       if (!res.ok) {

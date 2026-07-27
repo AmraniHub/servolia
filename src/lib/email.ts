@@ -76,28 +76,54 @@ const waBtn = (href: string, label: string) =>
   `<a href="${href}" style="display:inline-block;background:#25D366;color:#FFFFFF;text-decoration:none;padding:12px 24px;border-radius:10px;font-weight:600;font-size:14px;margin-top:12px;margin-left:8px;">${label}</a>`;
 
 /** Sent immediately when someone submits the free-audit form. */
-export const auditConfirmationEmail = (firstName: string) => ({
-  subject: "Your Servolia audit is on the way 🎯",
-  html: wrapper(`
-    <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">We received your audit request.</h1>
-    <p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#3F3F46;">Hi ${firstName},</p>
-    <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#3F3F46;">
-      Thanks for trusting Servolia. We'll record a personalized 5-minute Loom audit of your current online presence and send it within <strong>24 hours</strong>.
-    </p>
-    <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#3F3F46;">
-      <strong>What's next:</strong>
-    </p>
-    <ul style="margin:0 0 16px;padding-left:20px;font-size:15px;line-height:1.7;color:#3F3F46;">
-      <li>We study your site + Google Maps + competitors</li>
-      <li>We record a screen-share Loom showing exactly what's losing you clients</li>
-      <li>You watch it on your time — no call needed</li>
-    </ul>
-    <p style="margin:0 0 16px;font-size:14px;line-height:1.6;color:#71717A;">
-      If you have questions in the meantime, just reply to this email.
-    </p>
-    ${btn("https://servolia.com/case-studies", "See case studies →")}
-  `),
-});
+export const auditConfirmationEmail = (firstName: string, lang: "en" | "fr" = "en") => {
+  if (lang === "fr") {
+    return {
+      subject: "Votre audit Servolia est en préparation 🎯",
+      html: wrapper(`
+        <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">Nous avons bien reçu votre demande d'audit.</h1>
+        <p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#3F3F46;">Bonjour ${firstName},</p>
+        <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#3F3F46;">
+          Merci de votre confiance. Nous préparons un audit vidéo Loom personnalisé de 5 minutes sur votre présence en ligne, livré sous <strong>24 heures</strong>.
+        </p>
+        <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#3F3F46;">
+          <strong>La suite :</strong>
+        </p>
+        <ul style="margin:0 0 16px;padding-left:20px;font-size:15px;line-height:1.7;color:#3F3F46;">
+          <li>Nous étudions votre site + Google Maps + vos concurrents</li>
+          <li>Nous enregistrons une vidéo montrant exactement ce qui vous fait perdre des clients</li>
+          <li>Vous la regardez quand vous voulez — aucun appel nécessaire</li>
+        </ul>
+        <p style="margin:0 0 16px;font-size:14px;line-height:1.6;color:#71717A;">
+          Une question entre-temps ? Répondez simplement à cet email.
+        </p>
+        ${btn("https://servolia.com/fr/cas-clients", "Voir les cas clients →")}
+      `),
+    };
+  }
+  return {
+    subject: "Your Servolia audit is on the way 🎯",
+    html: wrapper(`
+      <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">We received your audit request.</h1>
+      <p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#3F3F46;">Hi ${firstName},</p>
+      <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#3F3F46;">
+        Thanks for trusting Servolia. We'll record a personalized 5-minute Loom audit of your current online presence and send it within <strong>24 hours</strong>.
+      </p>
+      <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#3F3F46;">
+        <strong>What's next:</strong>
+      </p>
+      <ul style="margin:0 0 16px;padding-left:20px;font-size:15px;line-height:1.7;color:#3F3F46;">
+        <li>We study your site + Google Maps + competitors</li>
+        <li>We record a screen-share Loom showing exactly what's losing you clients</li>
+        <li>You watch it on your time — no call needed</li>
+      </ul>
+      <p style="margin:0 0 16px;font-size:14px;line-height:1.6;color:#71717A;">
+        If you have questions in the meantime, just reply to this email.
+      </p>
+      ${btn("https://servolia.com/case-studies", "See case studies →")}
+    `),
+  };
+};
 
 /** Sent 24h after audit request if no follow-up. Reminds them you're working on it. */
 export const auditInProgressEmail = (firstName: string) => ({
@@ -179,32 +205,64 @@ export const depositReceivedEmail = (firstName: string, planName: string, amount
 };
 
 /** Sent when a client requests to log into their portal (magic link). */
-export const portalLoginEmail = (loginUrl: string) => ({
-  subject: "Your Servolia login link",
-  html: wrapper(`
-    <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">Log in to your portal</h1>
-    <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#3F3F46;">
-      Click below to securely log in — no password needed. This link expires in 15 minutes.
-    </p>
-    ${btn(loginUrl, "Log in to Servolia →")}
-    <p style="margin:24px 0 0;font-size:13px;line-height:1.6;color:#71717A;">
-      Didn't request this? You can safely ignore this email.
-    </p>
-  `),
-});
+export const portalLoginEmail = (loginUrl: string, lang: "en" | "fr" = "en") => {
+  if (lang === "fr") {
+    return {
+      subject: "Votre lien de connexion Servolia",
+      html: wrapper(`
+        <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">Connectez-vous à votre espace</h1>
+        <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#3F3F46;">
+          Cliquez ci-dessous pour vous connecter en toute sécurité — sans mot de passe. Ce lien expire dans 15 minutes.
+        </p>
+        ${btn(loginUrl, "Me connecter à Servolia →")}
+        <p style="margin:24px 0 0;font-size:13px;line-height:1.6;color:#71717A;">
+          Vous n'êtes pas à l'origine de cette demande ? Ignorez simplement cet email.
+        </p>
+      `),
+    };
+  }
+  return {
+    subject: "Your Servolia login link",
+    html: wrapper(`
+      <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">Log in to your portal</h1>
+      <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#3F3F46;">
+        Click below to securely log in — no password needed. This link expires in 15 minutes.
+      </p>
+      ${btn(loginUrl, "Log in to Servolia →")}
+      <p style="margin:24px 0 0;font-size:13px;line-height:1.6;color:#71717A;">
+        Didn't request this? You can safely ignore this email.
+      </p>
+    `),
+  };
+};
 
 /** Sent to a client when the founder replies to their portal message. */
-export const newPortalMessageEmail = (firstName: string, preview: string) => ({
-  subject: "New reply from Servolia",
-  html: wrapper(`
-    <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">You have a new message</h1>
-    <p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#3F3F46;">Hi ${firstName},</p>
-    <p style="margin:0 0 16px;padding:16px;background:#FAFAF7;border-left:3px solid #36671E;font-size:15px;line-height:1.6;color:#18181B;">
-      ${preview}
-    </p>
-    ${btn("https://servolia.com/portal", "View & reply →")}
-  `),
-});
+export const newPortalMessageEmail = (firstName: string, preview: string, lang: "en" | "fr" = "en") => {
+  if (lang === "fr") {
+    return {
+      subject: "Nouvelle réponse de Servolia",
+      html: wrapper(`
+        <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">Vous avez un nouveau message</h1>
+        <p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#3F3F46;">Bonjour ${firstName},</p>
+        <p style="margin:0 0 16px;padding:16px;background:#FAFAF7;border-left:3px solid #36671E;font-size:15px;line-height:1.6;color:#18181B;">
+          ${preview}
+        </p>
+        ${btn("https://servolia.com/portal", "Voir et répondre →")}
+      `),
+    };
+  }
+  return {
+    subject: "New reply from Servolia",
+    html: wrapper(`
+      <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">You have a new message</h1>
+      <p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#3F3F46;">Hi ${firstName},</p>
+      <p style="margin:0 0 16px;padding:16px;background:#FAFAF7;border-left:3px solid #36671E;font-size:15px;line-height:1.6;color:#18181B;">
+        ${preview}
+      </p>
+      ${btn("https://servolia.com/portal", "View & reply →")}
+    `),
+  };
+};
 
 function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -301,23 +359,47 @@ export const monthlyReportEmail = (input: {
   };
 };
 
-/** Sent to client when their build goes live. */
-export const liveEmail = (firstName: string, url: string) => ({
-  subject: "🚀 Your system is live",
-  html: wrapper(`
-    <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">You're live.</h1>
-    <p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#3F3F46;">Hi ${firstName},</p>
-    <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#3F3F46;">
-      Your AI system is live at <a href="${url}" style="color:#36671E;">${url}</a> and already accepting traffic.
-    </p>
-    <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#3F3F46;">
-      <strong>What to do today:</strong>
-    </p>
-    <ul style="margin:0 0 16px;padding-left:20px;font-size:15px;line-height:1.7;color:#3F3F46;">
-      <li>Share the URL on Instagram, Google Maps, your email signature</li>
-      <li>Watch the dashboard — first leads usually arrive within 48 hours</li>
-      <li>If anything looks off, just reply to this email</li>
-    </ul>
-    ${btn(url, "View your live system →")}
-  `),
-});
+/** Sent to client when their build goes live.
+ *  NOTE: not wired to any route yet — see roadmap ("wire the go-live email"). */
+export const liveEmail = (firstName: string, url: string, lang: "en" | "fr" = "en") => {
+  if (lang === "fr") {
+    return {
+      subject: "🚀 Votre système est en ligne",
+      html: wrapper(`
+        <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">Vous êtes en ligne.</h1>
+        <p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#3F3F46;">Bonjour ${firstName},</p>
+        <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#3F3F46;">
+          Votre système IA est en ligne sur <a href="${url}" style="color:#36671E;">${url}</a> et reçoit déjà du trafic.
+        </p>
+        <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#3F3F46;">
+          <strong>À faire aujourd'hui :</strong>
+        </p>
+        <ul style="margin:0 0 16px;padding-left:20px;font-size:15px;line-height:1.7;color:#3F3F46;">
+          <li>Partagez l'adresse sur Instagram, Google Maps et votre signature email</li>
+          <li>Surveillez votre tableau de bord — les premières demandes arrivent en général sous 48 h</li>
+          <li>Quelque chose ne va pas ? Répondez simplement à cet email</li>
+        </ul>
+        ${btn(url, "Voir mon système en ligne →")}
+      `),
+    };
+  }
+  return {
+    subject: "🚀 Your system is live",
+    html: wrapper(`
+      <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">You're live.</h1>
+      <p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#3F3F46;">Hi ${firstName},</p>
+      <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#3F3F46;">
+        Your AI system is live at <a href="${url}" style="color:#36671E;">${url}</a> and already accepting traffic.
+      </p>
+      <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#3F3F46;">
+        <strong>What to do today:</strong>
+      </p>
+      <ul style="margin:0 0 16px;padding-left:20px;font-size:15px;line-height:1.7;color:#3F3F46;">
+        <li>Share the URL on Instagram, Google Maps, your email signature</li>
+        <li>Watch the dashboard — first leads usually arrive within 48 hours</li>
+        <li>If anything looks off, just reply to this email</li>
+      </ul>
+      ${btn(url, "View your live system →")}
+    `),
+  };
+};

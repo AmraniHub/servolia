@@ -6,7 +6,7 @@ export const runtime = "nodejs";
 
 /** Client requests a magic login link. Always returns success — never reveals whether an email has an account. */
 export async function POST(req: NextRequest) {
-  const { email } = (await req.json().catch(() => ({}))) as { email?: string };
+  const { email, lang } = (await req.json().catch(() => ({}))) as { email?: string; lang?: string };
   if (!email || !/^[\w.+-]+@[\w-]+\.[\w.-]+$/.test(email)) {
     return NextResponse.json({ error: "Enter a valid email address" }, { status: 400 });
   }
@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
   const origin = req.headers.get("origin") ?? "https://servolia.com";
   const loginUrl = `${origin}/api/portal/verify?token=${encodeURIComponent(token)}`;
 
-  const tpl = portalLoginEmail(loginUrl);
+  const tpl = portalLoginEmail(loginUrl, lang === "fr" ? "fr" : "en");
   const sent = await sendEmail(email, tpl.subject, tpl.html);
 
   return NextResponse.json({ ok: true, emailSent: sent });

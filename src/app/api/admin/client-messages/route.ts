@@ -77,7 +77,14 @@ export async function POST(req: NextRequest) {
   if (notify !== false) {
     const firstName = email.split("@")[0];
     const preview = text || "📷 Sent a photo";
-    sendEmail(email, newPortalMessageEmail(firstName, preview).subject, newPortalMessageEmail(firstName, preview).html).catch(() => {});
+    // Notify in the language of the client's own site (their intake language).
+    let lang: "en" | "fr" = "en";
+    if (buildId) {
+      const { data: site } = await db.from("client_sites").select("config").eq("build_id", buildId).maybeSingle();
+      if ((site?.config as { language?: string } | null)?.language === "fr") lang = "fr";
+    }
+    const tpl = newPortalMessageEmail(firstName, preview, lang);
+    sendEmail(email, tpl.subject, tpl.html).catch(() => {});
   }
 
   return NextResponse.json({ ok: true, message: inserted });

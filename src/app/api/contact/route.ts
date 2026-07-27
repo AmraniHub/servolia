@@ -131,7 +131,8 @@ export async function POST(req: NextRequest) {
     // ── 4. Send confirmation email (fire and forget) ─────────────────────
     if (email && (type === "free-audit" || type === "contact" || type === "lead-magnet")) {
       const firstName = (name || body.ownerName || (business || businessName) || "there").split(" ")[0];
-      const tpl = auditConfirmationEmail(firstName);
+      const emailLang = /fr|français|french/i.test(String(language ?? "")) ? "fr" : "en";
+      const tpl = auditConfirmationEmail(firstName, emailLang);
       sendEmail(email, tpl.subject, tpl.html).catch(() => {});
     }
 
