@@ -94,6 +94,12 @@ export interface Client {
   subscription_id?: string | null;
   started_at: string;
   churned_at?: string | null;
+  payment_status?: "ok" | "past_due" | "suspended";
+  past_due_since?: string | null;
+  suspend_at?: string | null;
+  suspended_at?: string | null;
+  last_payment_failure_reason?: string | null;
+  open_invoice_url?: string | null;
 }
 
 export interface ClientSiteRow {
@@ -146,17 +152,15 @@ export function estimateLeadValue(niche?: string | null, plan?: string | null): 
   }
 
   // Niche-based defaults if no plan specified
+  // Excluded niches (real-estate, legal, wealth) pruned 2026-07-27 — a lead
+  // that self-identifies as one of those just gets the default estimate.
   const nicheValues: Record<string, number> = {
     dental: 590,
     aesthetic: 990,
     "med-spa": 990,
-    "real-estate": 590,
     "home-services": 590,
-    "luxury-real-estate": 990,
     "cosmetic-surgery": 990,
     veterinary: 590,
-    "law-firm": 990,
-    "wealth-management": 990,
   };
 
   if (niche) {

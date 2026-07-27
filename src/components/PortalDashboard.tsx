@@ -12,8 +12,9 @@ import {
   LogOut, Send, MessageSquare, Clock, CreditCard, CheckCircle2, Users, CalendarCheck,
   Megaphone, ExternalLink, Sun, Moon, LayoutDashboard, KeyRound, Loader2, ShieldCheck, Trash2,
   Image as ImageIcon, X, Globe, BarChart3, Search, Download, HelpCircle, FileText, Sparkles, ArrowRight, Languages, UserCircle,
-  Eye, Monitor, Link2, TrendingUp,
+  Eye, Monitor, Link2, TrendingUp, AlertTriangle,
 } from "lucide-react";
+import type { PaymentAlert } from "@/lib/clientBilling";
 
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
 const ACCEPTED_IMAGE_TYPES = "image/jpeg,image/png,image/webp,image/gif";
@@ -46,6 +47,15 @@ const T = {
     manageSub: "Manage subscription", opening: "Opening…",
     billingErr: "Could not open the billing portal.", connErr: "Connection error — please try again.",
     statusActive: "active", statusPaused: "paused",
+    // payment dunning (Vercel-style)
+    payTitle: "Payment failed",
+    payPastDueBody: (d: number) =>
+      d > 0
+        ? `Pay any open invoices in the next ${d} day${d === 1 ? "" : "s"} — after that, your site and AI receptionist are suspended until payment clears.`
+        : "Pay any open invoices before your account is shut down.",
+    paySuspendedBody: "Your site and AI receptionist have been suspended for non-payment. Pay the open invoice to reactivate — it's usually restored within a minute.",
+    payInvoicesBtn: "Pay open invoice",
+    payManageBtn: "Manage billing",
     // stats
     stEnquiries: "Enquiries this month", stBookings: "Booking requests", stContacts: "Contacts captured",
     // lifetime value
@@ -126,6 +136,14 @@ const T = {
     manageSub: "Gérer l'abonnement", opening: "Ouverture…",
     billingErr: "Impossible d'ouvrir le portail de facturation.", connErr: "Erreur de connexion — réessayez.",
     statusActive: "actif", statusPaused: "en pause",
+    payTitle: "Paiement échoué",
+    payPastDueBody: (d: number) =>
+      d > 0
+        ? `Réglez les factures ouvertes dans les ${d} prochain${d === 1 ? "" : "s"} jour${d === 1 ? "" : "s"} — au-delà, votre site et votre assistant IA seront suspendus jusqu'au paiement.`
+        : "Réglez les factures ouvertes avant la suspension de votre compte.",
+    paySuspendedBody: "Votre site et votre assistant IA ont été suspendus pour impayé. Réglez la facture ouverte pour réactiver — la remise en service est immédiate.",
+    payInvoicesBtn: "Payer la facture",
+    payManageBtn: "Gérer la facturation",
     stEnquiries: "Demandes ce mois-ci", stBookings: "Demandes de RDV", stContacts: "Coordonnées captées",
     ltTitle: "Depuis votre arrivée",
     ltSince: (d: string) => `À votre service depuis le ${d}`,
@@ -216,8 +234,8 @@ interface PortalTraffic {
 }
 
 export default function PortalDashboard({
-  email, builds, subscription, siteSlugs, scopesByLeadId,
-}: { email: string; builds: Build[]; subscription?: Client | null; siteSlugs?: Record<string, string>; scopesByLeadId?: Record<string, { token: string; accepted: boolean }> }) {
+  email, builds, subscription, siteSlugs, scopesByLeadId, paymentAlert,
+}: { email: string; builds: Build[]; subscription?: Client | null; siteSlugs?: Record<string, string>; scopesByLeadId?: Record<string, { token: string; accepted: boolean }>; paymentAlert?: PaymentAlert | null }) {
   const router = useRouter();
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [lang, setLang] = useState<Lang>("en");
@@ -486,6 +504,36 @@ export default function PortalDashboard({
           </div>
         </div>
       </header>
+
+      {paymentAlert && (
+        <div className="border-b" style={{
+          background: paymentAlert.level === "suspended" ? "#7F1D1D" : "#B91C1C",
+          borderColor: paymentAlert.level === "suspended" ? "#450A0A" : "#7F1D1D",
+        }}>
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center gap-3 text-white">
+            <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-black">{t.payTitle}</p>
+              <p className="text-xs opacity-90 mt-0.5">
+                {paymentAlert.level === "suspended"
+                  ? t.paySuspendedBody
+                  : t.payPastDueBody(paymentAlert.daysLeft ?? 0)}
+              </p>
+            </div>
+            {paymentAlert.invoiceUrl ? (
+              <a href={paymentAlert.invoiceUrl} target="_blank" rel="noopener noreferrer"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white text-[#B91C1C] text-xs font-black hover:bg-white/90 transition-colors">
+                {t.payInvoicesBtn} <ExternalLink className="w-3 h-3" />
+              </a>
+            ) : (
+              <button onClick={openBillingPortal} disabled={billingBusy}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white text-[#B91C1C] text-xs font-black hover:bg-white/90 transition-colors disabled:opacity-60">
+                {billingBusy ? t.opening : t.payManageBtn} <ExternalLink className="w-3 h-3" />
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-5 sm:py-8">
         {/* Greeting */}

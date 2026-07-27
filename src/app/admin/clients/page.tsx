@@ -1,5 +1,6 @@
 import { supabaseAdmin } from "@/lib/supabase";
-import { UserCircle } from "lucide-react";
+import { UserCircle, AlertTriangle } from "lucide-react";
+import { paymentAlertFrom } from "@/lib/clientBilling";
 
 export const dynamic = "force-dynamic";
 
@@ -44,11 +45,27 @@ export default async function ClientsPage() {
                   <td className="px-4 py-3 text-[#52525B]">{c.plan}</td>
                   <td className="px-4 py-3 font-bold text-[#36671E]">€{Number(c.monthly_amount).toLocaleString()}</td>
                   <td className="px-4 py-3">
-                    <span className={`text-xs font-bold px-2 py-1 rounded-full ${
-                      c.status === "active" ? "bg-[#D1FAE5] text-[#065F46]" :
-                      c.status === "paused" ? "bg-[#FEF3C7] text-[#92400E]" :
-                      "bg-[#FEE2E2] text-[#991B1B]"
-                    }`}>{c.status.toUpperCase()}</span>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className={`text-xs font-bold px-2 py-1 rounded-full ${
+                        c.status === "active" ? "bg-[#D1FAE5] text-[#065F46]" :
+                        c.status === "paused" ? "bg-[#FEF3C7] text-[#92400E]" :
+                        "bg-[#FEE2E2] text-[#991B1B]"
+                      }`}>{c.status.toUpperCase()}</span>
+                      {(() => {
+                        const a = paymentAlertFrom(c);
+                        if (!a) return null;
+                        return (
+                          <span title={a.reason ?? ""} className={`inline-flex items-center gap-1 text-[10px] font-black px-2 py-1 rounded-full ${
+                            a.level === "suspended" ? "bg-[#7F1D1D] text-white" : "bg-[#FEE2E2] text-[#991B1B]"
+                          }`}>
+                            <AlertTriangle className="w-3 h-3" />
+                            {a.level === "suspended"
+                              ? "SUSPENDED"
+                              : a.daysLeft != null ? `PAST DUE · ${a.daysLeft}d` : "PAST DUE"}
+                          </span>
+                        );
+                      })()}
+                    </div>
                   </td>
                   <td className="px-4 py-3 text-[#71717A] text-xs">{new Date(c.started_at).toLocaleDateString()}</td>
                 </tr>

@@ -679,3 +679,17 @@ create table if not exists pay_per_booking_invoices (
 );
 
 create index if not exists ppb_invoices_client_idx on pay_per_booking_invoices(client_id, period desc);
+
+-- PAYMENT DUNNING: when a Stripe subscription invoice fails, mark the client
+-- past_due and give them a 14-day grace window. If they don't pay before
+-- suspend_at, the site + AI receptionist go into a "suspended for non-payment"
+-- state. Reset back to 'ok' when Stripe reports invoice.paid.
+alter table clients add column if not exists payment_status text not null default 'ok';
+  -- 'ok' | 'past_due' | 'suspended'
+alter table clients add column if not exists past_due_since timestamptz;
+alter table clients add column if not exists suspend_at timestamptz;      -- grace deadline
+alter table clients add column if not exists suspended_at timestamptz;    -- when we actually shut the site off
+alter table clients add column if not exists last_payment_failure_reason text;
+alter table clients add column if not exists open_invoice_url text;        -- Stripe hosted invoice, so the portal deep-links to Pay
+
+create index if not exists clients_payment_status_idx on clients(payment_status) where payment_status <> 'ok';

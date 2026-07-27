@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getClientEmail } from "@/lib/clientAuth";
 import { supabaseAdmin, type Build, type Client } from "@/lib/supabase";
 import PortalDashboard from "@/components/PortalDashboard";
+import { paymentAlertFrom } from "@/lib/clientBilling";
 
 export const dynamic = "force-dynamic";
 
@@ -47,5 +48,7 @@ export default async function PortalPage() {
     }
   }
 
-  return <PortalDashboard email={email} builds={builds} subscription={subscription} siteSlugs={siteSlugs} scopesByLeadId={scopesByLeadId} />;
+  const paymentAlert = paymentAlertFrom(subscription);
+
+  return <PortalDashboard email={email} builds={builds} subscription={subscription} siteSlugs={siteSlugs} scopesByLeadId={scopesByLeadId} paymentAlert={paymentAlert} />;
 }

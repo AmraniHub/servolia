@@ -16,9 +16,12 @@ export const runtime = "nodejs";
  * Setup:
  *   1. dashboard.stripe.com → Developers → Webhooks → Add endpoint
  *   2. URL: https://servolia.com/api/webhooks/stripe
- *   3. Events: checkout.session.completed, customer.subscription.deleted
+ *   3. Events: checkout.session.completed, customer.subscription.deleted,
+ *              invoice.payment_failed, invoice.paid, invoice.payment_succeeded
  *   4. Copy "Signing secret" → STRIPE_WEBHOOK_SECRET env var
  */
+
+const GRACE_DAYS = 14; // Vercel-style: banner immediately, hard suspend after this many days.
 
 export async function POST(req: NextRequest) {
   const key = process.env.STRIPE_SECRET_KEY;
@@ -244,6 +247,59 @@ export async function POST(req: NextRequest) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ chat_id: tgChatId, text: msg, parse_mode: "Markdown" }),
         }).catch(() => {});
+      }
+    }
+
+    // ── Recurring invoice failed: flag past_due, start grace, notify ──────
+    if (event.type === "invoice.payment_failed") {
+      const invoice = event.data.object as Stripe.Invoice & { subscription?: string | null };
+      const subscriptionId = typeof invoice.subscription === "string" ? invoice.subscription : null;
+      const customerId = typeof invoice.customer === "string" ? invoice.customer : null;
+      const reason = invoice.last_finalization_error?.message ?? "Card declined or expired";
+
+      const { data: existing } = await db.from("clients").select("id, past_due_since, business, email")
+        .or([subscriptionId ? `subscription_id.eq.${subscriptionId}` : null, customerId ? `customer_id.eq.${customerId}` : null].filter(Boolean).join(","))
+        .maybeSingle();
+
+      if (existing) {
+        const now = new Date();
+        const pastDueSince = existing.past_due_since ?? now.toISOString();
+        const suspendAt = new Date(new Date(pastDueSince).getTime() + GRACE_DAYS * 86400000).toISOString();
+        await db.from("clients").update({
+          payment_status: "past_due",
+          past_due_since: pastDueSince,
+          suspend_at: suspendAt,
+          last_payment_failure_reason: String(reason).slice(0, 500),
+          open_invoice_url: invoice.hosted_invoice_url ?? null,
+        }).eq("id", existing.id);
+
+        const tgToken = process.env.TELEGRAM_BOT_TOKEN;
+        const tgChatId = process.env.TELEGRAM_CHAT_ID;
+        if (tgToken && tgChatId) {
+          const msg = `🔴 *Payment failed*\n${existing.business ?? existing.email ?? "Unknown client"}\nGrace ends: ${new Date(suspendAt).toLocaleDateString()}\n\n[Open in CRM](https://servolia.com/admin/clients)`;
+          fetch(`https://api.telegram.org/bot${tgToken}/sendMessage`, {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ chat_id: tgChatId, text: msg, parse_mode: "Markdown" }),
+          }).catch(() => {});
+        }
+      }
+    }
+
+    // ── Invoice paid: clear past_due back to ok, unsuspend if needed ──────
+    if (event.type === "invoice.paid" || event.type === "invoice.payment_succeeded") {
+      const invoice = event.data.object as Stripe.Invoice & { subscription?: string | null };
+      const subscriptionId = typeof invoice.subscription === "string" ? invoice.subscription : null;
+      const customerId = typeof invoice.customer === "string" ? invoice.customer : null;
+      const filter = [subscriptionId ? `subscription_id.eq.${subscriptionId}` : null, customerId ? `customer_id.eq.${customerId}` : null].filter(Boolean).join(",");
+      if (filter) {
+        await db.from("clients").update({
+          payment_status: "ok",
+          past_due_since: null,
+          suspend_at: null,
+          suspended_at: null,
+          last_payment_failure_reason: null,
+          open_invoice_url: null,
+        }).or(filter);
       }
     }
 
