@@ -19,10 +19,10 @@ const entreprise = [
 ];
 
 const legal = [
-  { label: "Confidentialité", href: "/legal/privacy" },
-  { label: "CGV", href: "/legal/cgv" },
+  { label: "Confidentialité", href: "/fr/legal/confidentialite" },
+  { label: "CGV", href: "/fr/legal/cgv" },
   { label: "Conditions d'utilisation", href: "/legal/terms" },
-  { label: "Remboursement", href: "/legal/refund" },
+  { label: "Remboursement", href: "/fr/legal/remboursement" },
 ];
 
 export default function FrenchFooter() {

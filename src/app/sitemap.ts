@@ -60,5 +60,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${base}/legal/cgv`,                   lastModified: now, changeFrequency: "yearly",  priority: 0.3 },
     { url: `${base}/legal/terms`,                 lastModified: now, changeFrequency: "yearly",  priority: 0.3 },
     { url: `${base}/legal/refund`,                lastModified: now, changeFrequency: "yearly",  priority: 0.3 },
+    { url: `${base}/fr/legal/confidentialite`,    lastModified: now, changeFrequency: "yearly",  priority: 0.3 },
+    { url: `${base}/fr/legal/cgv`,                lastModified: now, changeFrequency: "yearly",  priority: 0.3 },
+    { url: `${base}/fr/legal/remboursement`,      lastModified: now, changeFrequency: "yearly",  priority: 0.3 },
   ];
 }
