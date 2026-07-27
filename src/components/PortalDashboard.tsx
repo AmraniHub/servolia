@@ -12,7 +12,7 @@ import {
   LogOut, Send, MessageSquare, Clock, CreditCard, CheckCircle2, Users, CalendarCheck,
   Megaphone, ExternalLink, Sun, Moon, LayoutDashboard, KeyRound, Loader2, ShieldCheck, Trash2,
   Image as ImageIcon, X, Globe, BarChart3, Search, Download, HelpCircle, FileText, Sparkles, ArrowRight, Languages, UserCircle,
-  Eye, Monitor, Link2, TrendingUp, AlertTriangle,
+  Eye, Monitor, Link2, TrendingUp, AlertTriangle, Zap, Phone,
 } from "lucide-react";
 import type { PaymentAlert } from "@/lib/clientBilling";
 import { T, locale, formatDate, formatPeriod, type Lang, type Dict } from "@/components/portal/portalDict";
@@ -340,7 +340,41 @@ export default function PortalDashboard({
     router.push("/portal/login"); router.refresh();
   }
 
-  const firstName = email.split("@")[0];
+  // Branded greeting: their saved name → their business name → email prefix.
+  const [profileName, setProfileName] = useState<string | null>(null);
+  useEffect(() => {
+    fetch("/api/portal/profile").then((r) => r.json()).then((d) => {
+      const n = (d.profile?.display_name ?? "").trim();
+      if (n) setProfileName(n.split(/\s+/)[0]);
+    }).catch(() => {});
+  }, []);
+  const businessName = builds.find((b) => b.business && b.business !== "Pending intake" && b.business !== "Unknown")?.business ?? null;
+  const firstName = profileName ?? businessName ?? email.split("@")[0];
+
+  // The client's primary live site (first build with a slug) — powers the tool hub.
+  const primarySlug = builds.map((b) => siteSlugs?.[b.id]).find(Boolean) ?? null;
+  const siteUrl = primarySlug ? `https://servolia.com/sites/${primarySlug}` : null;
+
+  const [copied2, setCopied2] = useState<string | null>(null);
+  function copyText(text: string, key: string) {
+    navigator.clipboard.writeText(text).catch(() => {});
+    setCopied2(key); setTimeout(() => setCopied2(null), 1600);
+  }
+
+  // Plan-aware upgrade card: the highest tier they own decides the next step.
+  const planRank = (p: string) => /pro|client|pay_per_booking/.test(p) ? 3 : /growth|booking/.test(p) ? 2 : /starter|website/.test(p) ? 1 : 0;
+  const maxRank = Math.max(0, ...builds.map((b) => planRank((b.plan ?? "").toLowerCase())));
+  const upsell = maxRank === 1
+    ? { h: t.upStarterH, b: t.upStarterB, cta: t.upStarterCta, prefill: t.upStarterPrefill }
+    : maxRank === 2
+    ? { h: t.upGrowthH, b: t.upGrowthB, cta: t.upGrowthCta, prefill: t.upGrowthPrefill }
+    : maxRank >= 3 && !subscription
+    ? { h: t.upCareH, b: t.upCareB, cta: t.upCareCta, prefill: t.upCarePrefill }
+    : null;
+  function askUpgrade(prefill: string) {
+    setInput(prefill);
+    setTab("messages");
+  }
   const subStatusLabel = (s?: string) => s === "active" ? t.statusActive : s === "paused" ? t.statusPaused : (s ?? "");
 
   return (
@@ -456,6 +490,51 @@ export default function PortalDashboard({
                   ))}
                 </div>
                 <p className="text-xs text-[var(--p-muted)] mt-4 leading-relaxed">{t.ltNote}</p>
+              </div>
+            )}
+
+            {/* Tool hub — the daily-use quick actions */}
+            {siteUrl && (
+              <div className="rounded-2xl border border-[var(--p-border)] bg-[var(--p-surface)] p-4 sm:p-5" style={{ boxShadow: "var(--p-shadow)" }}>
+                <div className="flex items-center gap-2 mb-3">
+                  <Zap className="w-4 h-4 text-[var(--p-accent)]" />
+                  <h3 className="font-black text-[var(--p-text)] text-sm">{t.quickTitle}</h3>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <a href={siteUrl} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[var(--p-accent)] text-[var(--p-accent-fg)] text-xs font-black hover:bg-[var(--p-accent-hover)] transition-colors">
+                    <Globe className="w-3.5 h-3.5" /> {t.quickView}
+                  </a>
+                  <button onClick={() => copyText(siteUrl, "link")}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[var(--p-border)] text-[var(--p-text)] text-xs font-bold hover:bg-[var(--p-raised)] transition-colors">
+                    <Link2 className="w-3.5 h-3.5 text-[var(--p-accent)]" /> {copied2 === "link" ? t.quickCopied : t.quickCopy}
+                  </button>
+                  <a href={`https://wa.me/?text=${encodeURIComponent(t.quickShareMsg(siteUrl))}`} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[var(--p-border)] text-[var(--p-text)] text-xs font-bold hover:bg-[var(--p-raised)] transition-colors">
+                    <MessageSquare className="w-3.5 h-3.5 text-[#25D366]" /> {t.quickShare}
+                  </a>
+                  <button onClick={() => copyText(`${businessName ?? firstName}\n${siteUrl}`, "sig")}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[var(--p-border)] text-[var(--p-text)] text-xs font-bold hover:bg-[var(--p-raised)] transition-colors">
+                    <FileText className="w-3.5 h-3.5 text-[var(--p-accent)]" /> {copied2 === "sig" ? t.quickSigCopied : t.quickSig}
+                  </button>
+                  <button onClick={() => setTab("messages")}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[var(--p-border)] text-[var(--p-text)] text-xs font-bold hover:bg-[var(--p-raised)] transition-colors">
+                    <Send className="w-3.5 h-3.5 text-[var(--p-accent)]" /> {t.quickMsg}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Plan-aware upgrade — the next step for THEIR tier, founder-led close */}
+            {upsell && (
+              <div className="rounded-2xl border-2 p-5" style={{ borderColor: "var(--p-accent)", background: "var(--p-surface)", boxShadow: "var(--p-shadow)" }}>
+                <p className="text-[10px] font-black uppercase tracking-widest text-[var(--p-accent)] mb-2">{t.upTitle}</p>
+                <h3 className="font-black text-[var(--p-text)] text-base mb-1.5">{upsell.h}</h3>
+                <p className="text-xs text-[var(--p-muted)] leading-relaxed mb-3">{upsell.b}</p>
+                <button onClick={() => askUpgrade(upsell.prefill)}
+                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-[var(--p-accent)] text-[var(--p-accent-fg)] text-sm font-bold hover:bg-[var(--p-accent-hover)] transition-colors">
+                  {upsell.cta} <ArrowRight className="w-3.5 h-3.5" />
+                </button>
               </div>
             )}
 
@@ -651,6 +730,25 @@ export default function PortalDashboard({
                             {l.note ? " · 📝" : ""}
                           </p>
                         </div>
+                        {/* One-tap reply: phone contacts get call + WhatsApp, emails get mailto */}
+                        {l.contact && !l.contact.includes("@") && (
+                          <>
+                            <a href={`tel:${l.contact.replace(/[^\d+]/g, "")}`} onClick={(e) => e.stopPropagation()} title={l.contact}
+                              className="shrink-0 p-1.5 rounded-lg border border-[var(--p-border)] text-[var(--p-muted)] hover:text-[var(--p-text)] hover:bg-[var(--p-raised)] transition-colors">
+                              <Phone className="w-3.5 h-3.5" />
+                            </a>
+                            <a href={`https://wa.me/${l.contact.replace(/[^\d]/g, "")}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} title="WhatsApp"
+                              className="shrink-0 p-1.5 rounded-lg border border-[var(--p-border)] text-[#25D366] hover:bg-[var(--p-raised)] transition-colors">
+                              <MessageSquare className="w-3.5 h-3.5" />
+                            </a>
+                          </>
+                        )}
+                        {l.contact?.includes("@") && (
+                          <a href={`mailto:${l.contact}`} onClick={(e) => e.stopPropagation()} title={l.contact}
+                            className="shrink-0 p-1.5 rounded-lg border border-[var(--p-border)] text-[var(--p-muted)] hover:text-[var(--p-text)] hover:bg-[var(--p-raised)] transition-colors">
+                            <Send className="w-3.5 h-3.5" />
+                          </a>
+                        )}
                         {l.id && (
                           <select
                             value={l.status ?? "new"}
