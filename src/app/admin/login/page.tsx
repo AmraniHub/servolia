@@ -7,6 +7,7 @@ import { Lock, ArrowRight } from "lucide-react";
 export default function AdminLogin() {
   const router = useRouter();
   const [password, setPassword] = useState("");
+  const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -18,7 +19,7 @@ export default function AdminLogin() {
       const res = await fetch("/api/admin/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ password, code: code.trim() || undefined }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -63,6 +64,22 @@ export default function AdminLogin() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 className="w-full px-4 py-3 rounded-xl bg-[#FAFAF7] border border-[#E8E6E0] text-[#18181B] focus:outline-none focus:border-[#36671E] focus:ring-2 focus:ring-[#36671E]/10 text-sm transition-all"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-[#52525B] uppercase tracking-widest mb-2">
+                2FA code <span className="normal-case font-semibold text-[#A1A1AA]">(if enabled)</span>
+              </label>
+              <input
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                maxLength={6}
+                value={code}
+                onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+                placeholder="123456"
+                className="w-full px-4 py-3 rounded-xl bg-[#FAFAF7] border border-[#E8E6E0] text-[#18181B] tracking-[0.3em] font-mono focus:outline-none focus:border-[#36671E] focus:ring-2 focus:ring-[#36671E]/10 text-sm transition-all"
               />
             </div>
 

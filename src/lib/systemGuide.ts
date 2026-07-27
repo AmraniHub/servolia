@@ -201,6 +201,27 @@ export const FEATURES: SystemFeature[] = [
     code: "src/components/ClientSite.tsx · src/lib/clientPrompt.ts · /api/sites/[slug]/lead",
   },
   {
+    name: "Security model — logins, rate limits, 2FA",
+    summary: "How the admin and client doors are locked: fail-closed JWT secrets, constant-time checks, cross-instance rate limiting, optional TOTP 2FA for the admin, and site-wide security headers.",
+    how: [
+      "Sessions: both admin and portal sessions are signed JWTs in httpOnly/secure/sameSite cookies. Since 2026-07-27 the signing secret FAILS CLOSED — production throws if ADMIN_JWT_SECRET is unset instead of silently using a fallback string that lives in the public repo.",
+      "Admin login: password compared in constant time (no timing oracle), 8 attempts / 15 min per IP via the shared rate limiter, and — when ADMIN_TOTP_SECRET is set — a mandatory 6-digit authenticator code. Wrong password and wrong code return the identical error.",
+      "Admin 2FA setup: while logged in, GET /api/admin/2fa-setup → fresh secret + otpauth URI; add to your authenticator, put the secret in Vercel as ADMIN_TOTP_SECRET, redeploy. POST {code} to the same endpoint dry-runs a code. Lost phone = delete the env var and redeploy (password-only again).",
+      "Client portal: magic links (15-min tokens) stay the default; optional bcrypt passwords. Magic-link requests are limited 5/15min per IP and 3/15min per target address — silently, so no account enumeration. Password login shares the same DB-backed limiter.",
+      "Rate limiter: rate_limits table in Supabase (one row per key) = one global window across all serverless instances; degrades gracefully to per-instance memory until the SQL block is run.",
+      "Headers on every response: HSTS (1 year), X-Content-Type-Options nosniff, X-Frame-Options SAMEORIGIN, Referrer-Policy strict-origin-when-cross-origin, Permissions-Policy denying camera/mic/geo/payment.",
+      "Already solid before this pass: Stripe webhook signature verification, Bearer-token crons, admin-auth checks on every /api/admin route, portal-session checks on every /api/portal route, server-side upload validation, no Supabase anon key in the browser.",
+    ],
+    use: [
+      "Enable 2FA today: log in → open /api/admin/2fa-setup in the browser → follow the 4 instructions in the response.",
+      "Run the security SQL block (end of supabase/schema.sql) with the other pending blocks to upgrade rate limiting from per-instance to global.",
+      "If you ever rotate ADMIN_JWT_SECRET, every admin and client session is invalidated at once — that's the emergency logout lever.",
+    ],
+    cost: "None.",
+    value: "The CRM holds every lead, client conversation and revenue number. This pass closes the realistic attack paths (forged sessions, brute force, email bombing, clickjacking) at zero recurring cost.",
+    code: "src/lib/security.ts · src/lib/auth.ts · src/lib/clientAuth.ts · /api/admin/login · /api/admin/2fa-setup · /api/portal/request-link · /api/portal/login-password · next.config.ts (headers) · supabase/schema.sql (rate_limits)",
+  },
+  {
     name: "Scheduled jobs map (Vercel crons vs GitHub Actions)",
     summary: "Every automated job, where it's scheduled, and why there are two systems — so nobody 'rediscovers' this topology again.",
     how: [

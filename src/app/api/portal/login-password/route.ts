@@ -1,24 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyPassword, hasPassword } from "@/lib/clientPassword";
 import { createClientSession, getClientCookieName, getClientSessionMaxAge } from "@/lib/clientAuth";
+import { rateLimited, clientIp } from "@/lib/security";
 
 export const runtime = "nodejs";
-
-// Very light in-memory throttle (per instance) to blunt password guessing.
-const attempts = new Map<string, { n: number; ts: number }>();
-const WINDOW = 10 * 60 * 1000;
-const MAX = 8;
-
-function throttled(key: string): boolean {
-  const now = Date.now();
-  const rec = attempts.get(key);
-  if (!rec || now - rec.ts > WINDOW) {
-    attempts.set(key, { n: 1, ts: now });
-    return false;
-  }
-  rec.n += 1;
-  return rec.n > MAX;
-}
 
 /** Log in with email + password. Only works once the client has set a password. */
 export async function POST(req: NextRequest) {
@@ -29,8 +14,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Email and password required" }, { status: 400 });
   }
 
-  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
-  if (throttled(`${ip}:${clean}`)) {
+  // Cross-instance limiter (was per-lambda in-memory before 2026-07-27).
+  const ip = clientIp(req.headers);
+  if (await rateLimited(`portal-pw:${ip}:${clean}`, 8, 10 * 60)) {
     return NextResponse.json({ error: "Too many attempts — try again later or use the email login link." }, { status: 429 });
   }
 

@@ -13,7 +13,14 @@ const LINK_DURATION = 15 * 60;            // 15 minutes to click the email link
 const SESSION_DURATION = 60 * 60 * 24 * 30; // 30 days once logged in
 
 function getSecret(): Uint8Array {
-  const s = process.env.ADMIN_JWT_SECRET ?? "servolia-dev-secret-change-me-please-32+ch";
+  const s = process.env.ADMIN_JWT_SECRET;
+  if (!s) {
+    // FAIL CLOSED in production — same reasoning as src/lib/auth.ts.
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("ADMIN_JWT_SECRET must be set in production");
+    }
+    return new TextEncoder().encode("servolia-dev-secret-change-me-please-32+ch");
+  }
   return new TextEncoder().encode(s);
 }
 

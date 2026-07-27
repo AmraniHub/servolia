@@ -693,3 +693,14 @@ alter table clients add column if not exists last_payment_failure_reason text;
 alter table clients add column if not exists open_invoice_url text;        -- Stripe hosted invoice, so the portal deep-links to Pay
 
 create index if not exists clients_payment_status_idx on clients(payment_status) where payment_status <> 'ok';
+
+-- SECURITY: cross-instance rate limiting (admin login, portal magic links).
+-- One row per limiter key; the window resets when window_start ages out.
+-- src/lib/security.ts falls back to per-instance memory if this table is
+-- missing, so running this block just upgrades protection from "per lambda"
+-- to "global".
+create table if not exists rate_limits (
+  key          text primary key,
+  count        int not null default 0,
+  window_start timestamptz not null default now()
+);

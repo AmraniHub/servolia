@@ -10,7 +10,15 @@ const COOKIE_NAME = "servolia_admin";
 const SESSION_DURATION = 60 * 60 * 24 * 7; // 7 days
 
 function getSecret(): Uint8Array {
-  const s = process.env.ADMIN_JWT_SECRET ?? "servolia-dev-secret-change-me-please-32+ch";
+  const s = process.env.ADMIN_JWT_SECRET;
+  if (!s) {
+    // FAIL CLOSED in production: the old fallback was a publicly-known string
+    // from the repo — anyone reading GitHub could forge an admin session.
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("ADMIN_JWT_SECRET must be set in production");
+    }
+    return new TextEncoder().encode("servolia-dev-secret-change-me-please-32+ch");
+  }
   return new TextEncoder().encode(s);
 }
 
