@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import {
   Target, Upload, Wand2, MessageCircle, AtSign, ExternalLink,
-  Copy, Check, ChevronRight, Trash2, PhoneCall,
+  Copy, Check, ChevronRight, Trash2, PhoneCall, Mail, Plus, X, Send, Loader2,
 } from "lucide-react";
 import { waLink } from "@/lib/whatsapp";
 
@@ -42,6 +42,13 @@ export default function ProspectsManager() {
   const [copied, setCopied] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [showImport, setShowImport] = useState(false);
+  const [showAddOne, setShowAddOne] = useState(false);
+  const [addOne, setAddOne] = useState({ business: "", owner_name: "", city: "", phone: "", email: "", website: "", niche: "dental" });
+  const [addOneBusy, setAddOneBusy] = useState(false);
+  const [emailFor, setEmailFor] = useState<Prospect | null>(null);
+  const [emailDraft, setEmailDraft] = useState<{ subject: string; body: string; previewUrl: string } | null>(null);
+  const [emailBusy, setEmailBusy] = useState<"drafting" | "sending" | null>(null);
+  const [emailNotice, setEmailNotice] = useState("");
   const origin = typeof window !== "undefined" ? window.location.origin : "";
 
   const load = useCallback(async () => {
@@ -95,6 +102,63 @@ export default function ProspectsManager() {
     setCopied(key); setTimeout(() => setCopied(null), 1500);
   }
 
+  async function addOneProspect() {
+    if (!addOne.business.trim() || addOneBusy) return;
+    setAddOneBusy(true);
+    try {
+      const res = await fetch("/api/admin/prospects", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ one: {
+          business: addOne.business.trim(),
+          owner_name: addOne.owner_name.trim() || undefined,
+          city: addOne.city.trim() || undefined,
+          phone: addOne.phone.trim().replace(/[^\d+]/g, "") || undefined,
+          email: addOne.email.trim() || undefined,
+          website: addOne.website.trim() || undefined,
+        }, niche: addOne.niche }),
+      });
+      if (res.ok) {
+        setAddOne({ business: "", owner_name: "", city: "", phone: "", email: "", website: "", niche: addOne.niche });
+        setShowAddOne(false);
+        load();
+      } else {
+        const d = await res.json().catch(() => ({}));
+        setNotice(`⚠️ ${d.error ?? "Add failed"}`);
+      }
+    } finally { setAddOneBusy(false); }
+  }
+
+  async function openEmailFor(p: Prospect) {
+    setEmailFor(p); setEmailDraft(null); setEmailNotice(""); setEmailBusy("drafting");
+    try {
+      const res = await fetch("/api/admin/prospects/cold-email", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: p.id, mode: "draft" }),
+      });
+      const data = await res.json();
+      if (res.ok) setEmailDraft({ subject: data.subject, body: data.body, previewUrl: data.previewUrl });
+      else setEmailNotice(data.error ?? "Draft failed");
+    } finally { setEmailBusy(null); }
+  }
+
+  async function sendEmail() {
+    if (!emailFor || !emailDraft || emailBusy) return;
+    setEmailBusy("sending"); setEmailNotice("");
+    try {
+      const res = await fetch("/api/admin/prospects/cold-email", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: emailFor.id, mode: "send", subject: emailDraft.subject, body: emailDraft.body }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setEmailNotice("✅ Sent");
+        setTimeout(() => { setEmailFor(null); setEmailDraft(null); setEmailNotice(""); load(); }, 900);
+      } else {
+        setEmailNotice(`⚠️ ${data.error ?? "Send failed"}`);
+      }
+    } finally { setEmailBusy(null); }
+  }
+
   async function remove(id: string) {
     if (!confirm("Delete this prospect?")) return;
     await fetch(`/api/admin/prospects?id=${id}`, { method: "DELETE" });
@@ -117,10 +181,52 @@ export default function ProspectsManager() {
           </h1>
           <p className="text-sm text-[#71717A]">Cold clinics → mystery-shop → demo → call. {active.length} active.</p>
         </div>
-        <button onClick={() => setShowImport((s) => !s)} className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#36671E] text-white text-sm font-bold hover:bg-[#295115]">
-          <Upload className="w-4 h-4" /> Import CSV
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => { setShowAddOne((s) => !s); setShowImport(false); }} className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#36671E] text-white text-sm font-bold hover:bg-[#295115]">
+            <Plus className="w-4 h-4" /> Add one
+          </button>
+          <button onClick={() => { setShowImport((s) => !s); setShowAddOne(false); }} className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-[#E8E6E0] text-sm font-bold text-[#52525B] hover:bg-[#F5F4EF]">
+            <Upload className="w-4 h-4" /> Import CSV
+          </button>
+        </div>
       </div>
+
+      {showAddOne && (
+        <div className="bg-white border border-[#E8E6E0] rounded-2xl p-5 mb-5">
+          <div className="grid sm:grid-cols-2 gap-3">
+            {([
+              ["business", "Business name *", "Cabinet Dentaire Lumière"],
+              ["owner_name", "Owner / dentist", "Dr Benali"],
+              ["city", "City", "Lyon"],
+              ["phone", "Phone", "+33 4 78 00 00 00"],
+              ["email", "Email", "contact@lumiere.fr"],
+              ["website", "Website", "lumiere-dentaire.fr"],
+            ] as const).map(([k, label, ph]) => (
+              <label key={k} className="flex flex-col gap-1">
+                <span className="text-xs font-bold text-[#71717A]">{label}</span>
+                <input value={addOne[k]} onChange={(e) => setAddOne((v) => ({ ...v, [k]: e.target.value }))} placeholder={ph}
+                  className="bg-[#FAFAF7] border border-[#E8E6E0] rounded-lg px-3 py-2 text-sm text-[#18181B] placeholder-[#A1A1AA] focus:outline-none focus:border-[#36671E]" />
+              </label>
+            ))}
+            <label className="flex flex-col gap-1">
+              <span className="text-xs font-bold text-[#71717A]">Niche</span>
+              <select value={addOne.niche} onChange={(e) => setAddOne((v) => ({ ...v, niche: e.target.value }))}
+                className="bg-[#FAFAF7] border border-[#E8E6E0] rounded-lg px-3 py-2 text-sm text-[#18181B] focus:outline-none focus:border-[#36671E]">
+                <option value="dental">Dental</option>
+                <option value="aesthetic">Aesthetic / med-spa</option>
+                <option value="home-services">Home services</option>
+              </select>
+            </label>
+          </div>
+          <div className="flex items-center gap-3 mt-4">
+            <button onClick={addOneProspect} disabled={!addOne.business.trim() || addOneBusy}
+              className="px-4 py-2 rounded-lg bg-[#36671E] text-white text-sm font-bold disabled:opacity-40">
+              {addOneBusy ? "Adding…" : "Add prospect"}
+            </button>
+            <button onClick={() => setShowAddOne(false)} className="text-sm text-[#71717A] hover:text-[#18181B]">Cancel</button>
+          </div>
+        </div>
+      )}
 
       {showImport && (
         <div className="bg-white border border-[#E8E6E0] rounded-2xl p-5 mb-5">
@@ -207,6 +313,10 @@ export default function ProspectsManager() {
                       <a href={demoUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-[#36671E] text-white text-xs font-bold hover:bg-[#295115]">
                         <ExternalLink className="w-3.5 h-3.5" /> Open
                       </a>
+                      <button onClick={() => openEmailFor(p)} disabled={!p.email} title={p.email ? "AI-draft a cold email + send" : "Prospect has no email address"}
+                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-[#2563EB]/40 text-xs font-bold text-[#2563EB] hover:bg-[#EFF6FF] disabled:opacity-40 disabled:cursor-not-allowed">
+                        <Mail className="w-3.5 h-3.5" /> Email
+                      </button>
                     </>
                   ) : (
                     <button onClick={() => generateDemo(p)} disabled={busyId === p.id} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-[#36671E] text-white text-xs font-bold hover:bg-[#295115] disabled:opacity-40">
@@ -230,6 +340,58 @@ export default function ProspectsManager() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {emailFor && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => !emailBusy && setEmailFor(null)}>
+          <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-2xl shadow-xl w-full max-w-xl max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="px-5 py-4 border-b border-[#E8E6E0] flex items-center gap-2">
+              <Mail className="w-4 h-4 text-[#2563EB]" />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-black text-[#18181B] truncate">Cold email · {emailFor.business}</p>
+                <p className="text-xs text-[#71717A] truncate">To: {emailFor.email}</p>
+              </div>
+              <button onClick={() => !emailBusy && setEmailFor(null)} className="p-1.5 rounded-lg hover:bg-[#F5F4EF] text-[#71717A]">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-5 flex-1 overflow-y-auto space-y-3">
+              {emailBusy === "drafting" ? (
+                <div className="flex items-center gap-2 text-sm text-[#71717A] py-8 justify-center">
+                  <Loader2 className="w-4 h-4 animate-spin" /> Claude is drafting…
+                </div>
+              ) : emailDraft ? (
+                <>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-xs font-bold text-[#71717A]">Subject</span>
+                    <input value={emailDraft.subject} onChange={(e) => setEmailDraft((d) => d && { ...d, subject: e.target.value })}
+                      className="bg-[#FAFAF7] border border-[#E8E6E0] rounded-lg px-3 py-2 text-sm text-[#18181B] focus:outline-none focus:border-[#36671E]" />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-xs font-bold text-[#71717A]">Body</span>
+                    <textarea value={emailDraft.body} onChange={(e) => setEmailDraft((d) => d && { ...d, body: e.target.value })}
+                      rows={12}
+                      className="bg-[#FAFAF7] border border-[#E8E6E0] rounded-lg px-3 py-2 text-sm text-[#18181B] font-mono focus:outline-none focus:border-[#36671E] resize-y" />
+                  </label>
+                  <p className="text-[11px] text-[#A1A1AA]">Preview URL: <a href={emailDraft.previewUrl} target="_blank" rel="noopener noreferrer" className="text-[#36671E] underline">{emailDraft.previewUrl}</a></p>
+                </>
+              ) : (
+                <p className="text-sm text-[#71717A]">{emailNotice || "No draft."}</p>
+              )}
+            </div>
+            <div className="px-5 py-4 border-t border-[#E8E6E0] flex items-center gap-3">
+              {emailNotice && <span className="text-xs text-[#52525B]">{emailNotice}</span>}
+              <button onClick={sendEmail} disabled={!emailDraft || !!emailBusy}
+                className="ml-auto flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#36671E] text-white text-sm font-bold hover:bg-[#295115] disabled:opacity-40">
+                {emailBusy === "sending" ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Sending…</> : <><Send className="w-3.5 h-3.5" /> Send</>}
+              </button>
+              <button onClick={() => emailDraft && copy(`${emailDraft.subject}\n\n${emailDraft.body}`, `email-${emailFor.id}`)} disabled={!emailDraft}
+                className="px-3 py-2 rounded-lg border border-[#E8E6E0] text-xs font-bold text-[#52525B] hover:bg-[#F5F4EF] disabled:opacity-40">
+                {copied === `email-${emailFor.id}` ? <span className="flex items-center gap-1"><Check className="w-3.5 h-3.5" /> Copied</span> : <span className="flex items-center gap-1"><Copy className="w-3.5 h-3.5" /> Copy</span>}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
