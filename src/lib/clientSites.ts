@@ -184,6 +184,14 @@ export interface ClientSiteConfig {
   // Set it in the site config when a client asks for their sheet.
   sheetsWebhookUrl?: string;
 
+  // "Infos pratiques" block — the practical-information section every French
+  // practice site has (Carte Vitale / mutuelles, payment methods, access &
+  // parking, PMR accessibility). Rendered on the home page when present.
+  practicalInfo?: { title: string; body: string }[];
+  // Urgent-care strip under the header (e.g. "Urgence dentaire ? Des créneaux
+  // sont réservés chaque jour."). Pairs with the site's phone for one-tap call.
+  emergencyNote?: string;
+
   // Business economics & growth loop
   avgTreatmentValue?: number; // avg € per new client — used in the monthly ROI report
   googleReviewUrl?: string; // "leave us a review" link (g.page/r/...)
@@ -486,6 +494,13 @@ const DEMO_SITES: ClientSiteConfig[] = [
     email: "dentistelyon8@gmail.com",
     hours: "Lun–Ven, 9h30–12h00 et 14h00–17h00 (fermé le mercredi)",
     tagline: "Cabinet d'implantologie à Lyon",
+    emergencyNote: "Urgence dentaire ? Des créneaux sont réservés chaque jour pour la douleur et les traumatismes.",
+    practicalInfo: [
+      { title: "Carte Vitale & mutuelles", body: "Carte Vitale acceptée, feuilles de soins télétransmises. Le remboursement mutuelle dépend de votre contrat — un devis détaillé vous est remis pour votre demande de prise en charge." },
+      { title: "Moyens de paiement", body: "Carte bancaire, espèces et chèques. Paiement échelonné possible pour les traitements implantaires — les modalités sont fixées avec vous avant de démarrer." },
+      { title: "Accès & stationnement", body: "Métro D (Monplaisir–Lumière) à deux pas, bus et stations Vélo'v à proximité. Parking public Place Ambroise Courtois à 2 minutes à pied." },
+      { title: "Accessibilité PMR", body: "Cabinet accessible aux personnes à mobilité réduite. Signalez tout besoin particulier à la prise de rendez-vous — l'accueil est adapté." },
+    ],
     expandedHeader: true,
     multiPage: true,
     // Demo only: social icons keep the design's look but route back to Servolia

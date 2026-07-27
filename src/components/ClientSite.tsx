@@ -15,8 +15,8 @@ function shade(hex: string, amt = -18): string {
 }
 
 const T = {
-  en: { book: "Book now", home: "Home", about: "About", expertise: "Expertise", services: "Services", advice: "Advice", contactShort: "Contact", why: "Why choose us", faq: "Questions", callUs: "Call us", emailUs: "Email us", visit: "Visit us", hours: "Hours", bookCta: "Book your appointment", bookSub: "Fill in the form and the practice will get back to you fast — or reach us directly.", orReach: "Or reach us directly", chat: "Chat with us", team: "Meet the team", teamEyebrow: "The people behind your care", backHome: "Home", processTitle: "How it works", processEyebrow: "Your journey", solutionsTitle: "Treatment options", solutionsEyebrow: "What we treat", valuesTitle: "Our commitments", valuesEyebrow: "Why patients trust us", adviceTitle: "Advice & aftercare", adviceEyebrow: "We're with you", learnMore: "Learn more", ourExpertise: "Our expertise", expertiseEyebrow: "Our know-how" },
-  fr: { book: "Réserver", home: "Accueil", about: "Cabinet", expertise: "Expertise", services: "Services", advice: "Conseils", contactShort: "Contact", why: "Pourquoi nous choisir", faq: "Questions", callUs: "Appelez-nous", emailUs: "Écrivez-nous", visit: "Nous trouver", hours: "Horaires", bookCta: "Réservez votre rendez-vous", bookSub: "Remplissez le formulaire et le cabinet vous recontacte rapidement — ou contactez-nous directement.", orReach: "Ou contactez-nous directement", chat: "Discuter", team: "Notre équipe", teamEyebrow: "Les visages de votre prise en charge", backHome: "Accueil", processTitle: "Comment ça se passe", processEyebrow: "Votre parcours", solutionsTitle: "Nos solutions", solutionsEyebrow: "Ce que nous traitons", valuesTitle: "Nos engagements", valuesEyebrow: "Pourquoi nous faire confiance", adviceTitle: "Conseils & suivi", adviceEyebrow: "On vous accompagne", learnMore: "En savoir plus", ourExpertise: "Notre expertise", expertiseEyebrow: "Notre savoir-faire" },
+  en: { book: "Book now", home: "Home", about: "About", expertise: "Expertise", services: "Services", advice: "Advice", contactShort: "Contact", why: "Why choose us", faq: "Questions", callUs: "Call us", emailUs: "Email us", visit: "Visit us", hours: "Hours", bookCta: "Book your appointment", bookSub: "Fill in the form and the practice will get back to you fast — or reach us directly.", orReach: "Or reach us directly", chat: "Chat with us", team: "Meet the team", teamEyebrow: "The people behind your care", backHome: "Home", processTitle: "How it works", processEyebrow: "Your journey", solutionsTitle: "Treatment options", solutionsEyebrow: "What we treat", valuesTitle: "Our commitments", valuesEyebrow: "Why patients trust us", adviceTitle: "Advice & aftercare", adviceEyebrow: "We're with you", learnMore: "Learn more", ourExpertise: "Our expertise", expertiseEyebrow: "Our know-how", practicalTitle: "Practical information", practicalEyebrow: "Before your visit", emergencyCall: "Call now" },
+  fr: { book: "Réserver", home: "Accueil", about: "Cabinet", expertise: "Expertise", services: "Services", advice: "Conseils", contactShort: "Contact", why: "Pourquoi nous choisir", faq: "Questions", callUs: "Appelez-nous", emailUs: "Écrivez-nous", visit: "Nous trouver", hours: "Horaires", bookCta: "Réservez votre rendez-vous", bookSub: "Remplissez le formulaire et le cabinet vous recontacte rapidement — ou contactez-nous directement.", orReach: "Ou contactez-nous directement", chat: "Discuter", team: "Notre équipe", teamEyebrow: "Les visages de votre prise en charge", backHome: "Accueil", processTitle: "Comment ça se passe", processEyebrow: "Votre parcours", solutionsTitle: "Nos solutions", solutionsEyebrow: "Ce que nous traitons", valuesTitle: "Nos engagements", valuesEyebrow: "Pourquoi nous faire confiance", adviceTitle: "Conseils & suivi", adviceEyebrow: "On vous accompagne", learnMore: "En savoir plus", ourExpertise: "Notre expertise", expertiseEyebrow: "Notre savoir-faire", practicalTitle: "Infos pratiques", practicalEyebrow: "Avant votre visite", emergencyCall: "Appeler maintenant" },
 };
 type Dict = typeof T["en"];
 
@@ -194,6 +194,22 @@ export default function ClientSite({ config, page = "home" }: { config: ClientSi
                   </a>
                 ))}
               </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Urgent-care strip — opt-in via emergencyNote (e.g. dental urgences).
+          Deliberately calm styling: reassuring, not alarming. */}
+      {c.emergencyNote && (
+        <div className="bg-[#FFF7ED] border-b border-[#FDBA74]/40">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-2 flex items-center justify-center gap-3 flex-wrap text-center">
+            <span className="text-[13px] font-semibold text-[#9A3412]">⚡ {c.emergencyNote}</span>
+            {c.phone && (
+              <a href={`tel:${c.phone.replace(/\s+/g, "")}`}
+                className="text-[12px] font-black px-3 py-1 rounded-full bg-[#9A3412] text-white hover:opacity-90 transition-opacity whitespace-nowrap">
+                {t.emergencyCall} · {c.phone}
+              </a>
             )}
           </div>
         </div>
@@ -487,6 +503,35 @@ export default function ClientSite({ config, page = "home" }: { config: ClientSi
                   </summary>
                   <div className="px-6 pb-5 text-[#71717A] text-sm leading-relaxed border-t border-[#EFEFEF] pt-4">{f.a}</div>
                 </details>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Infos pratiques — the practical-information block every French
+          practice site has (mutuelles, payment, access, accessibility).
+          Opt-in via practicalInfo; home page only. */}
+      {isHome && c.practicalInfo && c.practicalInfo.length > 0 && (
+        <section className="py-16 lg:py-20 bg-[#FAFAFA] border-t border-[#ECECEC]">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-10">
+              <p className="text-xs font-black uppercase tracking-widest mb-2" style={{ color: accent }}>{t.practicalEyebrow}</p>
+              <h2 className="text-3xl font-black text-[#18181B]">{t.practicalTitle}</h2>
+            </div>
+            <div className="grid sm:grid-cols-2 gap-4">
+              {c.practicalInfo.map((p, i) => (
+                <div key={i} className="bg-white rounded-2xl border border-[#ECECEC] p-5">
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5" style={{ background: `${accent}14` }}>
+                      <Check className="w-4 h-4" style={{ color: accent }} />
+                    </div>
+                    <div>
+                      <h3 className="font-black text-[#18181B] text-sm mb-1">{p.title}</h3>
+                      <p className="text-[#71717A] text-sm leading-relaxed">{p.body}</p>
+                    </div>
+                  </div>
+                </div>
               ))}
             </div>
           </div>
