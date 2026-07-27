@@ -201,6 +201,23 @@ export const FEATURES: SystemFeature[] = [
     code: "src/components/ClientSite.tsx · src/lib/clientPrompt.ts · /api/sites/[slug]/lead",
   },
   {
+    name: "Costs & subscriptions overview",
+    summary: "Every dollar this app can cost you, in one place — what's a fixed subscription, what scales with usage, and what's free — with the live active/inactive state pulled from your actual env vars.",
+    how: [
+      "src/lib/costs.ts is the single data file: one entry per service, tagged flat / usage / free, with a note explaining the pricing model and a dashboardHint for where to verify the real number.",
+      "'Fixed' entries (Vercel, Supabase, the domain) are marked active:always — they're billed the moment the app is deployed, whether or not any feature env var is set. Everything else is active only when its env vars are actually configured, same detection as the Integrations panel above it.",
+      "'Usage-based' entries (Stripe fees, Anthropic, Google Places, Twilio, Cloudflare Registrar) are deliberately NEVER summed into a total — a made-up usage number is worse than none. They scale with clients and traffic.",
+      "The fixed-overhead total only adds up active flat-fee services, and anything guessed at a typical plan tier (Vercel Pro, Supabase Pro) carries an ESTIMATE flag — confirm against the real dashboard before trusting it as accounting.",
+    ],
+    use: [
+      "Live numbers, always current: /admin/settings → 'Costs & subscriptions'.",
+      "Adding a new paid service: add one entry to costs.ts (same file the founder rule in roadmap.ts describes for integrations) — it appears automatically, correctly bucketed.",
+    ],
+    cost: "N/A — this feature describes cost, it doesn't add any.",
+    value: "Answers 'what does running Servolia actually cost me this month' without opening five different billing dashboards — and keeps AI/Stripe/SMS costs visibly separate from fixed overhead so a good month doesn't get misread as the business getting more expensive.",
+    code: "src/lib/costs.ts · src/app/admin/settings/page.tsx",
+  },
+  {
     name: "Delivery pipeline — niche template × plan template × GitHub archive",
     summary: "How a paid build becomes exactly what the pricing page sold, fast: the niche template writes the content, the plan template switches the features, and every published site is version-archived to GitHub for reuse or restore.",
     how: [
