@@ -37,7 +37,7 @@ export default function ValueStack({
           <p className="text-sm font-bold text-[#36671E] uppercase tracking-widest mb-3">
             <span className={dark ? "text-[#BEF264]" : "text-[#36671E]"}>{h.eyebrow}</span>
           </p>
-          <h2 className={`text-2xl sm:text-3xl lg:text-4xl font-black mb-4 leading-tight ${dark ? "text-[#FAFAF7]" : "text-[#080E1C]"}`}>
+          <h2 className={`text-2xl sm:text-3xl lg:text-4xl font-black mb-4 leading-tight ${dark ? "text-[#FAFAF7]" : "text-[#18181B]"}`}>
             {h.h}
           </h2>
           <p className={`text-sm sm:text-base max-w-2xl mx-auto leading-relaxed ${dark ? "text-[#ABDF90]/80" : "text-[#52525B]"}`}>
@@ -73,7 +73,7 @@ export default function ValueStack({
                 <p className={`text-[10px] font-bold uppercase tracking-widest mb-1.5 ${dark ? "text-[#ABDF90]" : "text-[#36671E]"}`}>
                   {l.label}
                 </p>
-                <h3 className={`font-black text-base mb-2 leading-snug ${dark ? "text-[#FAFAF7]" : "text-[#080E1C]"}`}>
+                <h3 className={`font-black text-base mb-2 leading-snug ${dark ? "text-[#FAFAF7]" : "text-[#18181B]"}`}>
                   {l.headline}
                 </h3>
                 <p className={`text-sm leading-relaxed ${dark ? "text-[#FAFAF7]/70" : "text-[#52525B]"}`}>

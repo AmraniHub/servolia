@@ -126,7 +126,7 @@ export default function DentistsPage() {
             </Link>
           </div>
           <div className="flex flex-wrap justify-center gap-6 text-sm text-[#52525B]">
-            <div className="flex items-center gap-1.5"><TrendingUp className="w-3.5 h-3.5 text-[#10B981]" /> Built for more bookings</div>
+            <div className="flex items-center gap-1.5"><TrendingUp className="w-3.5 h-3.5 text-[#059669]" /> Built for more bookings</div>
             <div className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-[#36671E]" /> 7-day delivery</div>
             <div className="flex items-center gap-1.5"><Lock className="w-3.5 h-3.5 text-[#36671E]" /> Fixed price in writing</div>
           </div>
@@ -147,12 +147,12 @@ export default function DentistsPage() {
                 ))}
               </ul>
             </div>
-            <div className="bg-white rounded-2xl p-6 border border-[#10B981]/20">
-              <p className="text-xs font-black text-[#10B981] uppercase tracking-widest mb-4">With Servolia</p>
+            <div className="bg-white rounded-2xl p-6 border border-[#059669]/20">
+              <p className="text-xs font-black text-[#059669] uppercase tracking-widest mb-4">With Servolia</p>
               <ul className="flex flex-col gap-3">
                 {gains.map((t, i) => (
-                  <li key={i} className="flex items-start gap-2.5 text-sm text-[#374151]">
-                    <CheckCircle className="w-4 h-4 text-[#10B981] flex-shrink-0 mt-0.5" />{t}
+                  <li key={i} className="flex items-start gap-2.5 text-sm text-[#3F3F46]">
+                    <CheckCircle className="w-4 h-4 text-[#059669] flex-shrink-0 mt-0.5" />{t}
                   </li>
                 ))}
               </ul>
@@ -166,20 +166,20 @@ export default function DentistsPage() {
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-10">
             <p className="text-sm font-bold text-[#36671E] uppercase tracking-widest mb-2">What We Build</p>
-            <h2 className="text-3xl font-black text-[#080E1C]">Every piece your clinic needs</h2>
+            <h2 className="text-3xl font-black text-[#18181B]">Every piece your clinic needs</h2>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
             {[
               { icon: <Globe className="w-5 h-5" />, title: "Professional Website", desc: "Fast, mobile-first, GDPR-compliant site that builds trust instantly.", color: "from-[#36671E] to-[#143424]" },
               { icon: <Bot className="w-5 h-5" />, title: "AI Receptionist", desc: "Trained on your services. Answers patients 24/7 in French or English.", color: "from-[#295115] to-[#6B8439]" },
-              { icon: <Calendar className="w-5 h-5" />, title: "Booking System", desc: "Online appointment requests with automatic confirmation emails.", color: "from-[#059669] to-[#10B981]" },
-              { icon: <BarChart3 className="w-5 h-5" />, title: "Lead Tracking", desc: "Google Analytics 4. See exactly where every patient came from.", color: "from-[#F59E0B] to-[#EF4444]" },
+              { icon: <Calendar className="w-5 h-5" />, title: "Booking System", desc: "Online appointment requests with automatic confirmation emails.", color: "from-[#059669] to-[#059669]" },
+              { icon: <BarChart3 className="w-5 h-5" />, title: "Lead Tracking", desc: "Google Analytics 4. See exactly where every patient came from.", color: "from-[#F59E0B] to-[#D97706]" },
             ].map((item, i) => (
               <div key={i} className="border border-[#E8E6E0] rounded-xl p-5 hover:shadow-md transition-shadow">
                 <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${item.color} flex items-center justify-center text-[#FAFAF7] mb-3`}>
                   {item.icon}
                 </div>
-                <h3 className="font-black text-[#080E1C] text-sm mb-1.5">{item.title}</h3>
+                <h3 className="font-black text-[#18181B] text-sm mb-1.5">{item.title}</h3>
                 <p className="text-[#71717A] text-xs leading-relaxed">{item.desc}</p>
               </div>
             ))}
@@ -203,7 +203,7 @@ export default function DentistsPage() {
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-10">
             <p className="text-sm font-bold text-[#36671E] uppercase tracking-widest mb-2">Clinic Packages</p>
-            <h2 className="text-3xl font-black text-[#080E1C] mb-3">Choose your plan</h2>
+            <h2 className="text-3xl font-black text-[#18181B] mb-3">Choose your plan</h2>
             <p className="text-[#71717A]">All prices exclude VAT. 50% deposit · Balance on delivery.</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -214,16 +214,16 @@ export default function DentistsPage() {
                     RECOMMENDED
                   </div>
                 )}
-                <h3 className="text-lg font-black text-[#080E1C] mb-1">{p.name}</h3>
-                <div className="text-3xl font-black text-[#080E1C] mb-1">{p.price}</div>
+                <h3 className="text-lg font-black text-[#18181B] mb-1">{p.name}</h3>
+                <div className="text-3xl font-black text-[#18181B] mb-1">{p.price}</div>
                 <div className="flex items-center gap-1.5 mb-4">
-                  <Clock className="w-3.5 h-3.5 text-[#10B981]" />
-                  <span className="text-xs font-semibold text-[#10B981]">Delivered in {p.delivery}</span>
+                  <Clock className="w-3.5 h-3.5 text-[#059669]" />
+                  <span className="text-xs font-semibold text-[#059669]">Delivered in {p.delivery}</span>
                 </div>
                 <ul className="flex flex-col gap-2 mb-6">
                   {p.features.map((f, j) => (
-                    <li key={j} className="flex items-start gap-2 text-sm text-[#374151]">
-                      <CheckCircle className="w-4 h-4 text-[#10B981] flex-shrink-0 mt-0.5" />{f}
+                    <li key={j} className="flex items-start gap-2 text-sm text-[#3F3F46]">
+                      <CheckCircle className="w-4 h-4 text-[#059669] flex-shrink-0 mt-0.5" />{f}
                     </li>
                   ))}
                 </ul>
@@ -231,7 +231,7 @@ export default function DentistsPage() {
                   className={`block text-center py-3 rounded-xl font-bold text-sm transition-all ${
                     p.popular
                       ? "bg-gradient-to-r from-[#36671E] to-[#295115] text-[#FAFAF7] hover:opacity-90 glow-button"
-                      : "border border-[#E8E6E0] text-[#080E1C] hover:border-[#36671E] hover:text-[#36671E]"
+                      : "border border-[#E8E6E0] text-[#18181B] hover:border-[#36671E] hover:text-[#36671E]"
                   }`}>
                   {p.cta} →
                 </Link>

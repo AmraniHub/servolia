@@ -181,7 +181,7 @@ export default function FrenchAestheticPage() {
                     "Les no-shows sont déduits — vous ne payez que les consultations honorées",
                     "Sans engagement de durée : vous repassez sur une formule fixe quand vous voulez",
                   ].map((t, i) => (
-                    <li key={i} className="flex items-start gap-2 text-sm text-[#374151]">
+                    <li key={i} className="flex items-start gap-2 text-sm text-[#3F3F46]">
                       <CheckCircle className="w-4 h-4 text-[#059669] flex-shrink-0 mt-0.5" />{t}
                     </li>
                   ))}
@@ -214,7 +214,7 @@ export default function FrenchAestheticPage() {
               <p className="text-xs font-black text-[#059669] uppercase tracking-widest mb-4">Avec Servolia</p>
               <ul className="flex flex-col gap-3">
                 {gains.map((t, i) => (
-                  <li key={i} className="flex items-start gap-2.5 text-sm text-[#374151]">
+                  <li key={i} className="flex items-start gap-2.5 text-sm text-[#3F3F46]">
                     <CheckCircle className="w-4 h-4 text-[#059669] flex-shrink-0 mt-0.5" />{t}
                   </li>
                 ))}
@@ -229,20 +229,20 @@ export default function FrenchAestheticPage() {
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-10">
             <p className="text-sm font-bold text-[#36671E] uppercase tracking-widest mb-2">Ce que nous construisons</p>
-            <h2 className="text-3xl font-black text-[#080E1C]">Tout ce dont votre clinique a besoin</h2>
+            <h2 className="text-3xl font-black text-[#18181B]">Tout ce dont votre clinique a besoin</h2>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
             {[
               { icon: <Globe className="w-5 h-5" />, title: "Site premium", desc: "Rapide, mobile-first, conforme RGPD — à la hauteur de l'image de votre clinique.", color: "from-[#36671E] to-[#143424]" },
               { icon: <Bot className="w-5 h-5" />, title: "Assistante IA", desc: "Formée sur vos soins et votre grille tarifaire. Qualifie chaque demande, en français et en anglais, 24h/24.", color: "from-[#295115] to-[#6B8439]" },
-              { icon: <Calendar className="w-5 h-5" />, title: "Réservation en ligne", desc: "Demandes de rendez-vous en ligne avec confirmation automatique par email.", color: "from-[#059669] to-[#10B981]" },
-              { icon: <BarChart3 className="w-5 h-5" />, title: "Suivi des demandes", desc: "Instagram, Google, direct — vous savez exactement d'où vient chaque cliente.", color: "from-[#F59E0B] to-[#EF4444]" },
+              { icon: <Calendar className="w-5 h-5" />, title: "Réservation en ligne", desc: "Demandes de rendez-vous en ligne avec confirmation automatique par email.", color: "from-[#059669] to-[#059669]" },
+              { icon: <BarChart3 className="w-5 h-5" />, title: "Suivi des demandes", desc: "Instagram, Google, direct — vous savez exactement d'où vient chaque cliente.", color: "from-[#F59E0B] to-[#D97706]" },
             ].map((item, i) => (
               <div key={i} className="border border-[#E8E6E0] rounded-xl p-5 hover:shadow-md transition-shadow">
                 <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${item.color} flex items-center justify-center text-[#FAFAF7] mb-3`}>
                   {item.icon}
                 </div>
-                <h3 className="font-black text-[#080E1C] text-sm mb-1.5">{item.title}</h3>
+                <h3 className="font-black text-[#18181B] text-sm mb-1.5">{item.title}</h3>
                 <p className="text-[#71717A] text-xs leading-relaxed">{item.desc}</p>
               </div>
             ))}
@@ -266,7 +266,7 @@ export default function FrenchAestheticPage() {
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-10">
             <p className="text-sm font-bold text-[#36671E] uppercase tracking-widest mb-2">Formules Clinique</p>
-            <h2 className="text-3xl font-black text-[#080E1C] mb-3">Ou choisissez une formule fixe</h2>
+            <h2 className="text-3xl font-black text-[#18181B] mb-3">Ou choisissez une formule fixe</h2>
             <p className="text-[#71717A]">Prix HT. Acompte de 50 % · Solde à la livraison.</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -277,15 +277,15 @@ export default function FrenchAestheticPage() {
                     RECOMMANDÉ
                   </div>
                 )}
-                <h3 className="text-lg font-black text-[#080E1C] mb-1">{p.name}</h3>
-                <div className="text-3xl font-black text-[#080E1C] mb-1">{p.price}</div>
+                <h3 className="text-lg font-black text-[#18181B] mb-1">{p.name}</h3>
+                <div className="text-3xl font-black text-[#18181B] mb-1">{p.price}</div>
                 <div className="flex items-center gap-1.5 mb-4">
                   <Clock className="w-3.5 h-3.5 text-[#059669]" />
                   <span className="text-xs font-semibold text-[#059669]">Livré en {p.delivery}</span>
                 </div>
                 <ul className="flex flex-col gap-2 mb-6">
                   {p.features.map((f, j) => (
-                    <li key={j} className="flex items-start gap-2 text-sm text-[#374151]">
+                    <li key={j} className="flex items-start gap-2 text-sm text-[#3F3F46]">
                       <CheckCircle className="w-4 h-4 text-[#059669] flex-shrink-0 mt-0.5" />{f}
                     </li>
                   ))}
@@ -294,7 +294,7 @@ export default function FrenchAestheticPage() {
                   className={`block text-center py-3 rounded-xl font-bold text-sm transition-all ${
                     p.popular
                       ? "bg-gradient-to-r from-[#36671E] to-[#295115] text-[#FAFAF7] hover:opacity-90"
-                      : "border border-[#E8E6E0] text-[#080E1C] hover:border-[#36671E] hover:text-[#36671E]"
+                      : "border border-[#E8E6E0] text-[#18181B] hover:border-[#36671E] hover:text-[#36671E]"
                   }`}>
                   {p.cta} →
                 </Link>

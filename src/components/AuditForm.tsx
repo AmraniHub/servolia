@@ -162,7 +162,7 @@ const DICT = {
 const DEMO_URL = "/sites/demo-metay";
 
 const inputCls =
-  "w-full px-4 py-3 rounded-xl border border-[#D4D2CC] text-sm text-[#080E1C] placeholder:text-[#A1A1AA] focus:outline-none focus:ring-2 focus:ring-[#36671E] focus:border-transparent";
+  "w-full px-4 py-3 rounded-xl border border-[#D4D2CC] text-sm text-[#18181B] placeholder:text-[#A1A1AA] focus:outline-none focus:ring-2 focus:ring-[#36671E] focus:border-transparent";
 
 const LEAK_ICONS = [PhoneOff, CalendarX, MailQuestion];
 
@@ -322,14 +322,14 @@ export default function AuditForm({ lang = "en" }: { lang?: Lang }) {
 
           <form onSubmit={handleSubmit} className="bg-white rounded-3xl border border-[#E8E6E0] shadow-sm p-8 space-y-6">
             <div>
-              <label className="block text-sm font-bold text-[#080E1C] mb-1.5">{L.businessName} <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-bold text-[#18181B] mb-1.5">{L.businessName} <span className="text-red-500">*</span></label>
               <input required value={form.businessName}
                 onChange={(e) => setForm((f) => ({ ...f, businessName: e.target.value }))}
                 placeholder={L.businessPh} className={inputCls} />
             </div>
 
             <div>
-              <label className="block text-sm font-bold text-[#080E1C] mb-2">{L.industry} <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-bold text-[#18181B] mb-2">{L.industry} <span className="text-red-500">*</span></label>
               <div className="grid grid-cols-2 gap-2">
                 {L.niches.map((n) => (
                   <button key={n} type="button"
@@ -346,7 +346,7 @@ export default function AuditForm({ lang = "en" }: { lang?: Lang }) {
             </div>
 
             <div>
-              <label className="block text-sm font-bold text-[#080E1C] mb-1.5">{L.email} <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-bold text-[#18181B] mb-1.5">{L.email} <span className="text-red-500">*</span></label>
               <input required type="email" value={form.email}
                 onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
                 placeholder={L.emailPh} className={inputCls} />
@@ -362,21 +362,21 @@ export default function AuditForm({ lang = "en" }: { lang?: Lang }) {
             {showMore && (
               <div className="space-y-6 pt-2">
                 <div>
-                  <label className="block text-sm font-bold text-[#080E1C] mb-1.5">{L.website} <span className="text-[#52525B] font-normal">{L.websiteHint}</span></label>
+                  <label className="block text-sm font-bold text-[#18181B] mb-1.5">{L.website} <span className="text-[#52525B] font-normal">{L.websiteHint}</span></label>
                   <input value={form.websiteUrl}
                     onChange={(e) => setForm((f) => ({ ...f, websiteUrl: e.target.value }))}
                     placeholder="https://votresite.com" type="url" className={inputCls} />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold text-[#080E1C] mb-1.5">{L.country}</label>
+                  <label className="block text-sm font-bold text-[#18181B] mb-1.5">{L.country}</label>
                   <input value={form.country}
                     onChange={(e) => setForm((f) => ({ ...f, country: e.target.value }))}
                     placeholder={L.countryPh} className={inputCls} />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold text-[#080E1C] mb-2">{L.problems}</label>
+                  <label className="block text-sm font-bold text-[#18181B] mb-2">{L.problems}</label>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {L.problemOptions.map((p) => (
                       <button key={p} type="button" onClick={() => toggleProblem(p)}
@@ -393,7 +393,7 @@ export default function AuditForm({ lang = "en" }: { lang?: Lang }) {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold text-[#080E1C] mb-2">{L.clientValue}</label>
+                  <label className="block text-sm font-bold text-[#18181B] mb-2">{L.clientValue}</label>
                   <div className="flex flex-wrap gap-2">
                     {L.values.map((v) => (
                       <button key={v} type="button"
@@ -410,7 +410,7 @@ export default function AuditForm({ lang = "en" }: { lang?: Lang }) {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold text-[#080E1C] mb-1.5">{L.phone} <span className="text-[#52525B] font-normal">{L.optional}</span></label>
+                  <label className="block text-sm font-bold text-[#18181B] mb-1.5">{L.phone} <span className="text-[#52525B] font-normal">{L.optional}</span></label>
                   <input value={form.phone}
                     onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
                     placeholder="+33 6 12 34 56 78" className={inputCls} />

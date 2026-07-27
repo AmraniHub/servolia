@@ -80,7 +80,7 @@ const tiers = [
     for: "For businesses that want full tracking, dashboard, and automation",
     desc: "Complete AI lead system with dashboard, pipeline, automations, and monthly reports.",
     icon: <Building2 className="w-5 h-5" />,
-    color: "from-[#F59E0B] to-[#EF4444]",
+    color: "from-[#F59E0B] to-[#D97706]",
     popular: false,
     features: [
       "Everything in Booking System",
@@ -121,11 +121,11 @@ export default function PricingPage() {
             Fixed price, clear scope, delivered fast.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-[#52525B]">
-            <div className="flex items-center gap-1.5"><Shield className="w-4 h-4 text-[#10B981]" /> GDPR compliant</div>
+            <div className="flex items-center gap-1.5"><Shield className="w-4 h-4 text-[#059669]" /> GDPR compliant</div>
             <div className="flex items-center gap-1.5"><Clock className="w-4 h-4 text-[#36671E]" /> Fixed delivery date</div>
             <div className="flex items-center gap-1.5">
               <div className="w-4 h-4 rounded bg-[#635bff] flex items-center justify-center">
-                <span className="text-[#18181B] text-[7px] font-black">S</span>
+                <span className="text-white text-[7px] font-black">S</span>
               </div>
               50% deposit via Stripe
             </div>
@@ -153,15 +153,15 @@ export default function PricingPage() {
                   <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${t.color} flex items-center justify-center text-[#FAFAF7] mb-3 shadow-md`}>
                     {t.icon}
                   </div>
-                  <h2 className="text-xl font-black text-[#080E1C] mb-1">{t.name}</h2>
+                  <h2 className="text-xl font-black text-[#18181B] mb-1">{t.name}</h2>
                   <p className="text-xs font-semibold text-[#36671E] mb-3">{t.for}</p>
                   <div className="flex items-baseline gap-2 mb-1">
-                    <span className="text-4xl font-black text-[#080E1C]">{t.price}</span>
+                    <span className="text-4xl font-black text-[#18181B]">{t.price}</span>
                     <span className="text-[#52525B] text-sm">{t.usd}</span>
                   </div>
                   <div className="flex items-center gap-1.5 mb-3">
-                    <Clock className="w-3.5 h-3.5 text-[#10B981]" />
-                    <span className="text-sm font-semibold text-[#10B981]">Delivered in {t.delivery}</span>
+                    <Clock className="w-3.5 h-3.5 text-[#059669]" />
+                    <span className="text-sm font-semibold text-[#059669]">Delivered in {t.delivery}</span>
                   </div>
                   <p className="text-[#71717A] text-sm leading-relaxed">{t.desc}</p>
                 </div>
@@ -169,8 +169,8 @@ export default function PricingPage() {
                 {/* Features — one ticked list, same as /fr/tarifs */}
                 <ul className="flex flex-col gap-2.5 mb-6 flex-1">
                   {t.features.map((f, j) => (
-                    <li key={j} className="flex items-start gap-2 text-sm text-[#374151]">
-                      <CheckCircle className="w-4 h-4 text-[#10B981] flex-shrink-0 mt-0.5" />{f}
+                    <li key={j} className="flex items-start gap-2 text-sm text-[#3F3F46]">
+                      <CheckCircle className="w-4 h-4 text-[#059669] flex-shrink-0 mt-0.5" />{f}
                     </li>
                   ))}
                 </ul>
@@ -182,7 +182,7 @@ export default function PricingPage() {
                   className={`w-full py-3.5 rounded-xl font-bold text-sm transition-all disabled:opacity-60 ${
                     t.popular
                       ? "bg-gradient-to-r from-[#36671E] to-[#295115] text-[#FAFAF7] hover:opacity-90 shadow-lg shadow-blue-500/15"
-                      : "border-2 border-[#E8E6E0] text-[#080E1C] hover:border-[#36671E] hover:text-[#36671E]"
+                      : "border-2 border-[#E8E6E0] text-[#18181B] hover:border-[#36671E] hover:text-[#36671E]"
                   }`}
                 />
                 <p className="text-center text-xs text-[#52525B] mt-2.5">
@@ -203,7 +203,7 @@ export default function PricingPage() {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-10">
             <p className="text-sm font-bold text-[#36671E] uppercase tracking-widest mb-3">The Process</p>
-            <h2 className="text-2xl sm:text-3xl font-black text-[#080E1C]">What happens after you choose a plan</h2>
+            <h2 className="text-2xl sm:text-3xl font-black text-[#18181B]">What happens after you choose a plan</h2>
           </div>
           <div className="relative">
             <div className="absolute left-5 top-6 bottom-6 w-px bg-gradient-to-b from-[#36671E]/30 via-[#6BA52A]/40 to-[#ABDF90]/20 hidden sm:block" />
@@ -214,7 +214,7 @@ export default function PricingPage() {
                     {s.num}
                   </div>
                   <div className="bg-[#FAFAF7] rounded-xl px-5 py-4 flex-1 border border-[#E8E6E0]">
-                    <p className="font-black text-[#080E1C] text-sm mb-0.5">{s.title}</p>
+                    <p className="font-black text-[#18181B] text-sm mb-0.5">{s.title}</p>
                     <p className="text-[#71717A] text-sm">{s.desc}</p>
                   </div>
                 </div>
@@ -233,7 +233,7 @@ export default function PricingPage() {
       <section className="py-16 bg-[#FAFAF7]">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-10">
-            <h2 className="text-2xl font-black text-[#080E1C] mb-2">Pricing FAQs</h2>
+            <h2 className="text-2xl font-black text-[#18181B] mb-2">Pricing FAQs</h2>
           </div>
           <div className="flex flex-col gap-4">
             {[
@@ -243,7 +243,7 @@ export default function PricingPage() {
               { q: "Can I upgrade plans after delivery?", a: "Yes. If you start on Website System and want to add AI chatbot or a dashboard later, we quote an upgrade price — never the full plan price." },
             ].map((f, i) => (
               <div key={i} className="bg-white rounded-xl border border-[#E8E6E0] p-5 shadow-sm">
-                <h3 className="font-bold text-[#080E1C] text-sm mb-2">{f.q}</h3>
+                <h3 className="font-bold text-[#18181B] text-sm mb-2">{f.q}</h3>
                 <p className="text-[#71717A] text-sm leading-relaxed">{f.a}</p>
               </div>
             ))}

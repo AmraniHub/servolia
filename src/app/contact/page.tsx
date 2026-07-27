@@ -61,18 +61,18 @@ export default function ContactPage() {
             {/* Info sidebar */}
             <div className="lg:col-span-1">
               <div className="sticky top-24">
-                <h2 className="text-xl font-black text-[#080E1C] mb-5">What happens next</h2>
+                <h2 className="text-xl font-black text-[#18181B] mb-5">What happens next</h2>
                 <div className="flex flex-col gap-5">
                   {[
                     { icon: <Mail className="w-4 h-4 text-[#36671E]" />, title: "You submit this form", desc: "5 minutes. No payment required." },
                     { icon: <Clock className="w-4 h-4 text-[#36671E]" />, title: "We audit your business", desc: "Within 24 hours we send a PDF audit showing your gaps and our recommendations." },
-                    { icon: <Zap className="w-4 h-4 text-[#10B981]" />, title: "Optional 15-min call", desc: "If you want, we hop on a quick call to walk through the audit together." },
-                    { icon: <CheckCircle className="w-4 h-4 text-[#10B981]" />, title: "We build your system", desc: "If you're ready, we propose a fixed-price package. Deposit via Stripe. Build starts immediately." },
+                    { icon: <Zap className="w-4 h-4 text-[#059669]" />, title: "Optional 15-min call", desc: "If you want, we hop on a quick call to walk through the audit together." },
+                    { icon: <CheckCircle className="w-4 h-4 text-[#059669]" />, title: "We build your system", desc: "If you're ready, we propose a fixed-price package. Deposit via Stripe. Build starts immediately." },
                   ].map((s, i) => (
                     <div key={i} className="flex gap-3">
                       <div className="w-8 h-8 rounded-lg bg-white border border-[#E8E6E0] flex items-center justify-center flex-shrink-0 shadow-sm">{s.icon}</div>
                       <div>
-                        <p className="font-bold text-[#080E1C] text-sm">{s.title}</p>
+                        <p className="font-bold text-[#18181B] text-sm">{s.title}</p>
                         <p className="text-[#71717A] text-xs mt-0.5 leading-relaxed">{s.desc}</p>
                       </div>
                     </div>
@@ -81,13 +81,13 @@ export default function ContactPage() {
 
                 <div className="mt-8 p-4 rounded-xl bg-white border border-[#E8E6E0]">
                   <div className="flex items-center gap-2 mb-3">
-                    <Shield className="w-4 h-4 text-[#10B981]" />
-                    <span className="text-sm font-bold text-[#080E1C]">Our guarantees</span>
+                    <Shield className="w-4 h-4 text-[#059669]" />
+                    <span className="text-sm font-bold text-[#18181B]">Our guarantees</span>
                   </div>
                   <ul className="flex flex-col gap-2">
                     {["GDPR compliant handling", "No spam. Ever.", "Free audit, no commitment", "Fixed price before we start", "7-day delivery guarantee"].map((g, i) => (
                       <li key={i} className="flex items-center gap-2 text-xs text-[#71717A]">
-                        <CheckCircle className="w-3.5 h-3.5 text-[#10B981] flex-shrink-0" />{g}
+                        <CheckCircle className="w-3.5 h-3.5 text-[#059669] flex-shrink-0" />{g}
                       </li>
                     ))}
                   </ul>
@@ -105,53 +105,53 @@ export default function ContactPage() {
             {/* Form */}
             <div className="lg:col-span-2">
               {submitted ? (
-                <div className="bg-white rounded-2xl border border-[#10B981]/30 p-10 text-center shadow-sm">
-                  <div className="w-16 h-16 rounded-full bg-[#10B981]/10 flex items-center justify-center mx-auto mb-4">
-                    <CheckCircle className="w-8 h-8 text-[#10B981]" />
+                <div className="bg-white rounded-2xl border border-[#059669]/30 p-10 text-center shadow-sm">
+                  <div className="w-16 h-16 rounded-full bg-[#059669]/10 flex items-center justify-center mx-auto mb-4">
+                    <CheckCircle className="w-8 h-8 text-[#059669]" />
                   </div>
-                  <h2 className="text-2xl font-black text-[#080E1C] mb-3">We've got your request!</h2>
+                  <h2 className="text-2xl font-black text-[#18181B] mb-3">We've got your request!</h2>
                   <p className="text-[#71717A] mb-6 leading-relaxed">
                     Your free audit is being prepared. You'll receive a detailed PDF report at <strong>{form.email}</strong> within 24 hours.
                   </p>
                   <div className="p-4 rounded-xl bg-[#FAFAF7] border border-[#E8E6E0] text-sm text-[#71717A]">
-                    <p className="font-semibold text-[#080E1C] mb-1">What to expect:</p>
+                    <p className="font-semibold text-[#18181B] mb-1">What to expect:</p>
                     <ul className="flex flex-col gap-1 text-left">
-                      <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-[#10B981]" /> PDF audit sent within 24h</li>
-                      <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-[#10B981]" /> No pressure, no spam</li>
-                      <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-[#10B981]" /> Reply to schedule a free call if you'd like</li>
+                      <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-[#059669]" /> PDF audit sent within 24h</li>
+                      <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-[#059669]" /> No pressure, no spam</li>
+                      <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-[#059669]" /> Reply to schedule a free call if you'd like</li>
                     </ul>
                   </div>
                 </div>
               ) : (
                 <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-[#E8E6E0] p-8 shadow-sm">
-                  <h2 className="text-xl font-black text-[#080E1C] mb-6">Tell us about your business</h2>
+                  <h2 className="text-xl font-black text-[#18181B] mb-6">Tell us about your business</h2>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-5">
                     <div>
-                      <label className="block text-xs font-bold text-[#374151] mb-1.5">Your name *</label>
+                      <label className="block text-xs font-bold text-[#3F3F46] mb-1.5">Your name *</label>
                       <input name="name" required value={form.name} onChange={handleChange}
-                        className="w-full px-3.5 py-2.5 rounded-lg border border-[#E8E6E0] text-sm text-[#080E1C] focus:outline-none focus:border-[#36671E] focus:ring-2 focus:ring-[#36671E]/20 transition-all"
+                        className="w-full px-3.5 py-2.5 rounded-lg border border-[#E8E6E0] text-sm text-[#18181B] focus:outline-none focus:border-[#36671E] focus:ring-2 focus:ring-[#36671E]/20 transition-all"
                         placeholder="Your full name" />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-[#374151] mb-1.5">Email address *</label>
+                      <label className="block text-xs font-bold text-[#3F3F46] mb-1.5">Email address *</label>
                       <input name="email" type="email" required value={form.email} onChange={handleChange}
-                        className="w-full px-3.5 py-2.5 rounded-lg border border-[#E8E6E0] text-sm text-[#080E1C] focus:outline-none focus:border-[#36671E] focus:ring-2 focus:ring-[#36671E]/20 transition-all"
+                        className="w-full px-3.5 py-2.5 rounded-lg border border-[#E8E6E0] text-sm text-[#18181B] focus:outline-none focus:border-[#36671E] focus:ring-2 focus:ring-[#36671E]/20 transition-all"
                         placeholder="sophie@clinique.fr" />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-5">
                     <div>
-                      <label className="block text-xs font-bold text-[#374151] mb-1.5">Business name *</label>
+                      <label className="block text-xs font-bold text-[#3F3F46] mb-1.5">Business name *</label>
                       <input name="business" required value={form.business} onChange={handleChange}
-                        className="w-full px-3.5 py-2.5 rounded-lg border border-[#E8E6E0] text-sm text-[#080E1C] focus:outline-none focus:border-[#36671E] focus:ring-2 focus:ring-[#36671E]/20 transition-all"
+                        className="w-full px-3.5 py-2.5 rounded-lg border border-[#E8E6E0] text-sm text-[#18181B] focus:outline-none focus:border-[#36671E] focus:ring-2 focus:ring-[#36671E]/20 transition-all"
                         placeholder="Cabinet Dentaire Martin" />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-[#374151] mb-1.5">Industry *</label>
+                      <label className="block text-xs font-bold text-[#3F3F46] mb-1.5">Industry *</label>
                       <select name="industry" required value={form.industry} onChange={handleChange}
-                        className="w-full px-3.5 py-2.5 rounded-lg border border-[#E8E6E0] text-sm text-[#080E1C] focus:outline-none focus:border-[#36671E] focus:ring-2 focus:ring-[#36671E]/20 transition-all bg-white">
+                        className="w-full px-3.5 py-2.5 rounded-lg border border-[#E8E6E0] text-sm text-[#18181B] focus:outline-none focus:border-[#36671E] focus:ring-2 focus:ring-[#36671E]/20 transition-all bg-white">
                         <option value="">Select industry</option>
                         {industries.map((ind) => <option key={ind} value={ind}>{ind}</option>)}
                       </select>
@@ -159,25 +159,25 @@ export default function ContactPage() {
                   </div>
 
                   <div className="mb-5">
-                    <label className="block text-xs font-bold text-[#374151] mb-1.5">Current website URL (if any)</label>
+                    <label className="block text-xs font-bold text-[#3F3F46] mb-1.5">Current website URL (if any)</label>
                     <input name="website" value={form.website} onChange={handleChange}
-                      className="w-full px-3.5 py-2.5 rounded-lg border border-[#E8E6E0] text-sm text-[#080E1C] focus:outline-none focus:border-[#36671E] focus:ring-2 focus:ring-[#36671E]/20 transition-all"
+                      className="w-full px-3.5 py-2.5 rounded-lg border border-[#E8E6E0] text-sm text-[#18181B] focus:outline-none focus:border-[#36671E] focus:ring-2 focus:ring-[#36671E]/20 transition-all"
                       placeholder="https://yourwebsite.com (or leave blank)" />
                   </div>
 
                   <div className="mb-5">
-                    <label className="block text-xs font-bold text-[#374151] mb-1.5">Interested in</label>
+                    <label className="block text-xs font-bold text-[#3F3F46] mb-1.5">Interested in</label>
                     <select name="plan" value={form.plan} onChange={handleChange}
-                      className="w-full px-3.5 py-2.5 rounded-lg border border-[#E8E6E0] text-sm text-[#080E1C] focus:outline-none focus:border-[#36671E] focus:ring-2 focus:ring-[#36671E]/20 transition-all bg-white">
+                      className="w-full px-3.5 py-2.5 rounded-lg border border-[#E8E6E0] text-sm text-[#18181B] focus:outline-none focus:border-[#36671E] focus:ring-2 focus:ring-[#36671E]/20 transition-all bg-white">
                       <option value="">Select a plan</option>
                       {plans.map((p) => <option key={p} value={p}>{p}</option>)}
                     </select>
                   </div>
 
                   <div className="mb-6">
-                    <label className="block text-xs font-bold text-[#374151] mb-1.5">What's your biggest challenge right now? *</label>
+                    <label className="block text-xs font-bold text-[#3F3F46] mb-1.5">What's your biggest challenge right now? *</label>
                     <textarea name="problem" required value={form.problem} onChange={handleChange} rows={4}
-                      className="w-full px-3.5 py-2.5 rounded-lg border border-[#E8E6E0] text-sm text-[#080E1C] focus:outline-none focus:border-[#36671E] focus:ring-2 focus:ring-[#36671E]/20 transition-all resize-none"
+                      className="w-full px-3.5 py-2.5 rounded-lg border border-[#E8E6E0] text-sm text-[#18181B] focus:outline-none focus:border-[#36671E] focus:ring-2 focus:ring-[#36671E]/20 transition-all resize-none"
                       placeholder="e.g. We have no online booking system, clients can't find us on Google, our website looks outdated..." />
                   </div>
 

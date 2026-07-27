@@ -38,7 +38,7 @@ export default function FrenchContactPage() {
     }
   };
 
-  const inputCls = "w-full px-3.5 py-2.5 rounded-lg border border-[#E8E6E0] text-sm text-[#080E1C] focus:outline-none focus:border-[#36671E] focus:ring-2 focus:ring-[#36671E]/20 transition-all";
+  const inputCls = "w-full px-3.5 py-2.5 rounded-lg border border-[#E8E6E0] text-sm text-[#18181B] focus:outline-none focus:border-[#36671E] focus:ring-2 focus:ring-[#36671E]/20 transition-all";
 
   return (
     <main className="flex flex-col bg-white">
@@ -63,7 +63,7 @@ export default function FrenchContactPage() {
             {/* Sidebar */}
             <div className="lg:col-span-1">
               <div className="sticky top-24">
-                <h2 className="text-xl font-black text-[#080E1C] mb-5">La suite des événements</h2>
+                <h2 className="text-xl font-black text-[#18181B] mb-5">La suite des événements</h2>
                 <div className="flex flex-col gap-5">
                   {[
                     { icon: <Mail className="w-4 h-4 text-[#36671E]" />, title: "Vous envoyez ce formulaire", desc: "5 minutes. Aucun paiement requis." },
@@ -74,7 +74,7 @@ export default function FrenchContactPage() {
                     <div key={i} className="flex gap-3">
                       <div className="w-8 h-8 rounded-lg bg-white border border-[#E8E6E0] flex items-center justify-center flex-shrink-0 shadow-sm">{s.icon}</div>
                       <div>
-                        <p className="font-bold text-[#080E1C] text-sm">{s.title}</p>
+                        <p className="font-bold text-[#18181B] text-sm">{s.title}</p>
                         <p className="text-[#71717A] text-xs mt-0.5 leading-relaxed">{s.desc}</p>
                       </div>
                     </div>
@@ -84,7 +84,7 @@ export default function FrenchContactPage() {
                 <div className="mt-8 p-4 rounded-xl bg-white border border-[#E8E6E0]">
                   <div className="flex items-center gap-2 mb-3">
                     <Shield className="w-4 h-4 text-[#059669]" />
-                    <span className="text-sm font-bold text-[#080E1C]">Nos garanties</span>
+                    <span className="text-sm font-bold text-[#18181B]">Nos garanties</span>
                   </div>
                   <ul className="flex flex-col gap-2">
                     {["Traitement conforme RGPD", "Pas de spam. Jamais.", "Audit gratuit, sans engagement", "Prix fixe avant de commencer", "Garantie de livraison en 7 jours"].map((g, i) => (
@@ -111,12 +111,12 @@ export default function FrenchContactPage() {
                   <div className="w-16 h-16 rounded-full bg-[#EEF5EA] flex items-center justify-center mx-auto mb-4">
                     <CheckCircle className="w-8 h-8 text-[#36671E]" />
                   </div>
-                  <h2 className="text-2xl font-black text-[#080E1C] mb-3">Demande bien reçue !</h2>
+                  <h2 className="text-2xl font-black text-[#18181B] mb-3">Demande bien reçue !</h2>
                   <p className="text-[#71717A] mb-6 leading-relaxed">
                     Votre audit gratuit est en préparation. Vous recevrez un rapport détaillé à <strong>{form.email}</strong> sous 24 heures.
                   </p>
                   <div className="p-4 rounded-xl bg-[#FAFAF7] border border-[#E8E6E0] text-sm text-[#71717A]">
-                    <p className="font-semibold text-[#080E1C] mb-1">À quoi vous attendre :</p>
+                    <p className="font-semibold text-[#18181B] mb-1">À quoi vous attendre :</p>
                     <ul className="flex flex-col gap-1 text-left">
                       <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-[#059669]" /> Audit envoyé sous 24h</li>
                       <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-[#059669]" /> Aucune pression, aucun spam</li>
@@ -126,26 +126,26 @@ export default function FrenchContactPage() {
                 </div>
               ) : (
                 <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-[#E8E6E0] p-8 shadow-sm">
-                  <h2 className="text-xl font-black text-[#080E1C] mb-6">Parlez-nous de votre activité</h2>
+                  <h2 className="text-xl font-black text-[#18181B] mb-6">Parlez-nous de votre activité</h2>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-5">
                     <div>
-                      <label className="block text-xs font-bold text-[#374151] mb-1.5">Votre nom *</label>
+                      <label className="block text-xs font-bold text-[#3F3F46] mb-1.5">Votre nom *</label>
                       <input name="name" required value={form.name} onChange={handleChange} className={inputCls} placeholder="Votre nom complet" />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-[#374151] mb-1.5">Adresse email *</label>
+                      <label className="block text-xs font-bold text-[#3F3F46] mb-1.5">Adresse email *</label>
                       <input name="email" type="email" required value={form.email} onChange={handleChange} className={inputCls} placeholder="vous@votreclinique.fr" />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-5">
                     <div>
-                      <label className="block text-xs font-bold text-[#374151] mb-1.5">Nom de l&apos;entreprise *</label>
+                      <label className="block text-xs font-bold text-[#3F3F46] mb-1.5">Nom de l&apos;entreprise *</label>
                       <input name="business" required value={form.business} onChange={handleChange} className={inputCls} placeholder="Cabinet Dentaire Martin" />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-[#374151] mb-1.5">Secteur *</label>
+                      <label className="block text-xs font-bold text-[#3F3F46] mb-1.5">Secteur *</label>
                       <select name="industry" required value={form.industry} onChange={handleChange} className={`${inputCls} bg-white`}>
                         <option value="">Choisir un secteur</option>
                         {industries.map((ind) => <option key={ind} value={ind}>{ind}</option>)}
@@ -154,12 +154,12 @@ export default function FrenchContactPage() {
                   </div>
 
                   <div className="mb-5">
-                    <label className="block text-xs font-bold text-[#374151] mb-1.5">URL de votre site actuel (si vous en avez un)</label>
+                    <label className="block text-xs font-bold text-[#3F3F46] mb-1.5">URL de votre site actuel (si vous en avez un)</label>
                     <input name="website" value={form.website} onChange={handleChange} className={inputCls} placeholder="https://votresite.fr (ou laissez vide)" />
                   </div>
 
                   <div className="mb-5">
-                    <label className="block text-xs font-bold text-[#374151] mb-1.5">Intéressé par</label>
+                    <label className="block text-xs font-bold text-[#3F3F46] mb-1.5">Intéressé par</label>
                     <select name="plan" value={form.plan} onChange={handleChange} className={`${inputCls} bg-white`}>
                       <option value="">Choisir une formule</option>
                       {plans.map((p) => <option key={p} value={p}>{p}</option>)}
@@ -167,7 +167,7 @@ export default function FrenchContactPage() {
                   </div>
 
                   <div className="mb-6">
-                    <label className="block text-xs font-bold text-[#374151] mb-1.5">Quel est votre plus grand défi en ce moment ? *</label>
+                    <label className="block text-xs font-bold text-[#3F3F46] mb-1.5">Quel est votre plus grand défi en ce moment ? *</label>
                     <textarea name="problem" required value={form.problem} onChange={handleChange} rows={4}
                       className={`${inputCls} resize-none`}
                       placeholder="ex. Pas de réservation en ligne, les clients ne nous trouvent pas sur Google, notre site fait daté..." />

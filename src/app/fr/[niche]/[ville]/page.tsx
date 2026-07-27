@@ -163,7 +163,7 @@ export default async function FrGeoPage({ params }: { params: Promise<{ niche: s
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-10">
             <p className="text-sm font-bold text-[#36671E] uppercase tracking-widest mb-2">Formules Servolia</p>
-            <h2 className="text-3xl font-black text-[#080E1C] mb-3">Choisissez votre formule</h2>
+            <h2 className="text-3xl font-black text-[#18181B] mb-3">Choisissez votre formule</h2>
             <p className="text-[#71717A]">Prix HT (EUR). Acompte de 50 % · Solde à la livraison.</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -174,14 +174,14 @@ export default async function FrGeoPage({ params }: { params: Promise<{ niche: s
                     RECOMMANDÉ
                   </div>
                 )}
-                <h3 className="text-lg font-black text-[#080E1C] mb-1">{p.name}</h3>
-                <div className="text-3xl font-black text-[#080E1C] mb-1">{p.price}</div>
+                <h3 className="text-lg font-black text-[#18181B] mb-1">{p.name}</h3>
+                <div className="text-3xl font-black text-[#18181B] mb-1">{p.price}</div>
                 <div className="flex items-center gap-1.5 mb-3">
                   <Clock className="w-3.5 h-3.5 text-[#059669]" />
                   <span className="text-xs font-semibold text-[#059669]">Livré en {p.delivery}</span>
                 </div>
                 <p className="text-sm text-[#52525B] mb-4 leading-relaxed">{p.blurb}</p>
-                <Link href="/fr/audit" className={`block text-center py-3 rounded-xl font-bold text-sm transition-all ${p.popular ? "bg-gradient-to-r from-[#36671E] to-[#295115] text-[#FAFAF7] hover:opacity-90" : "border border-[#E8E6E0] text-[#080E1C] hover:border-[#36671E] hover:text-[#36671E]"}`}>
+                <Link href="/fr/audit" className={`block text-center py-3 rounded-xl font-bold text-sm transition-all ${p.popular ? "bg-gradient-to-r from-[#36671E] to-[#295115] text-[#FAFAF7] hover:opacity-90" : "border border-[#E8E6E0] text-[#18181B] hover:border-[#36671E] hover:text-[#36671E]"}`}>
                   Choisir →
                 </Link>
               </div>
@@ -203,7 +203,7 @@ export default async function FrGeoPage({ params }: { params: Promise<{ niche: s
                 <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#36671E] to-[#143424] flex items-center justify-center text-[#FAFAF7] mb-3">
                   {item.icon}
                 </div>
-                <h3 className="font-black text-[#080E1C] text-sm mb-1.5">{item.title}</h3>
+                <h3 className="font-black text-[#18181B] text-sm mb-1.5">{item.title}</h3>
                 <p className="text-[#71717A] text-xs leading-relaxed">{item.desc}</p>
               </div>
             ))}
@@ -216,7 +216,7 @@ export default async function FrGeoPage({ params }: { params: Promise<{ niche: s
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-8">
             <p className="text-sm font-bold text-[#36671E] uppercase tracking-widest mb-2">Questions fréquentes · {c.name}</p>
-            <h2 className="text-3xl font-black text-[#080E1C]">Ce que les {n.labelPlural} nous demandent le plus.</h2>
+            <h2 className="text-3xl font-black text-[#18181B]">Ce que les {n.labelPlural} nous demandent le plus.</h2>
           </div>
           <div className="space-y-3">
             {faqs.map((f, i) => (

@@ -148,7 +148,7 @@ export default function AestheticClinicsPage() {
         {/* PROBLEM vs GAIN */}
         <section className="py-20 lg:py-28 bg-white">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 className="text-2xl sm:text-3xl font-black text-[#080E1C] text-center mb-12">
+            <h2 className="text-2xl sm:text-3xl font-black text-[#18181B] text-center mb-12">
               The gap between your clinic and a full booking calendar
             </h2>
             <div className="grid md:grid-cols-2 gap-6">
@@ -185,7 +185,7 @@ export default function AestheticClinicsPage() {
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-12">
               <p className="text-sm font-bold text-[#36671E] uppercase tracking-widest mb-3">What we build</p>
-              <h2 className="text-3xl sm:text-4xl font-black text-[#080E1C] mb-3">Every system includes:</h2>
+              <h2 className="text-3xl sm:text-4xl font-black text-[#18181B] mb-3">Every system includes:</h2>
             </div>
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
               {[
@@ -198,7 +198,7 @@ export default function AestheticClinicsPage() {
                   <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#36671E] to-[#295115] flex items-center justify-center text-[#18181B] mb-4">
                     {f.icon}
                   </div>
-                  <h3 className="text-sm font-black text-[#080E1C] mb-2">{f.title}</h3>
+                  <h3 className="text-sm font-black text-[#18181B] mb-2">{f.title}</h3>
                   <p className="text-xs text-[#71717A] leading-relaxed">{f.body}</p>
                 </div>
               ))}
@@ -257,7 +257,7 @@ export default function AestheticClinicsPage() {
         {/* WHAT IT'S BUILT TO DO */}
         <section className="py-20 bg-white">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 className="text-2xl font-black text-[#080E1C] text-center mb-2">What it&apos;s built to do</h2>
+            <h2 className="text-2xl font-black text-[#18181B] text-center mb-2">What it&apos;s built to do</h2>
             <p className="text-xs text-[#A1A1AA] text-center mb-10">Illustrative targets based on typical aesthetic-clinic benchmarks. Actual results vary.</p>
             <div className="grid md:grid-cols-2 gap-6">
               {capabilities.map((t, i) => (
@@ -265,8 +265,8 @@ export default function AestheticClinicsPage() {
                   <div className="w-9 h-9 rounded-lg bg-[#36671E] flex items-center justify-center mb-4">
                     <CheckCircle className="w-5 h-5 text-[#FAFAF7]" />
                   </div>
-                  <p className="text-sm font-black text-[#080E1C] mb-2">{t.title}</p>
-                  <p className="text-sm text-[#334155] leading-relaxed">{t.body}</p>
+                  <p className="text-sm font-black text-[#18181B] mb-2">{t.title}</p>
+                  <p className="text-sm text-[#3F3F46] leading-relaxed">{t.body}</p>
                 </div>
               ))}
             </div>
@@ -276,11 +276,11 @@ export default function AestheticClinicsPage() {
         {/* FAQ */}
         <section className="py-20 bg-[#FAFAF7]">
           <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 className="text-2xl font-black text-[#080E1C] text-center mb-10">Common questions</h2>
+            <h2 className="text-2xl font-black text-[#18181B] text-center mb-10">Common questions</h2>
             <div className="space-y-3">
               {faqs.map((f, i) => (
                 <div key={i} className="p-5 rounded-2xl bg-white border border-[#E8E6E0]">
-                  <h3 className="text-sm font-black text-[#080E1C] mb-2">{f.q}</h3>
+                  <h3 className="text-sm font-black text-[#18181B] mb-2">{f.q}</h3>
                   <p className="text-sm text-[#71717A] leading-relaxed">{f.a}</p>
                 </div>
               ))}

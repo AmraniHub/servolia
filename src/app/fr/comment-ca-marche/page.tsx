@@ -52,7 +52,7 @@ const steps = [
     time: "À votre convenance",
     desc: "Si vous voulez discuter de l'audit, poser des questions ou approfondir — nous sommes disponibles. Si l'audit suffit à vous convaincre, passez directement à l'étape 4.",
     detail: "Aucune vente forcée. Si Servolia est le bon choix, l'audit le rend évident. Nous ne relançons pas avec pression. Si vous êtes prêt, nous envoyons le document de périmètre.",
-    color: "from-[#059669] to-[#10B981]",
+    color: "from-[#059669] to-[#059669]",
   },
   {
     num: "04",
@@ -62,7 +62,7 @@ const steps = [
     time: "Le jour même",
     desc: "Nous envoyons un document d'une page : exactement ce que nous construisons, ce qui n'est pas inclus, le prix fixe et la date de livraison. Vous validez avant tout paiement.",
     detail: "Cela vous protège. Aucune dérive de périmètre possible puisque tout est convenu par écrit d'abord. Si vous voulez ajouter quelque chose plus tard, nous le chiffrons séparément — sans surprise.",
-    color: "from-[#F59E0B] to-[#EF4444]",
+    color: "from-[#F59E0B] to-[#D97706]",
   },
   {
     num: "05",
@@ -112,7 +112,7 @@ const steps = [
     time: "Jour 5–7",
     desc: "Une fois la maquette validée, nous envoyons un lien de paiement Stripe pour les 50 % restants. Paiement reçu → mise en ligne sous 24 heures.",
     detail: "La mise en ligne comprend : connexion du domaine, SSL, tests finaux mobile et ordinateur, activation de Google Analytics, vérification du Pixel Meta (si inclus) et activation du chatbot.",
-    color: "from-[#059669] to-[#10B981]",
+    color: "from-[#059669] to-[#059669]",
   },
   {
     num: "10",
@@ -122,7 +122,7 @@ const steps = [
     time: "Jour 7",
     desc: "Votre système IA est en ligne, testé et reçoit du trafic. Vous recevez un email de lancement avec vos identifiants, vos statistiques de départ et ce qui vous attend les 30 premiers jours.",
     detail: "La réceptionniste IA commence à répondre aux demandes dès le premier jour — même à 2h du matin.",
-    color: "from-[#F59E0B] to-[#EF4444]",
+    color: "from-[#F59E0B] to-[#D97706]",
   },
   {
     num: "11",
@@ -191,11 +191,11 @@ export default function FrenchHowItWorksPage() {
                             <span className="text-xs font-black text-[#52525B] tracking-widest">{s.num}</span>
                             <span className={`text-xs font-bold px-2 py-0.5 rounded-full bg-gradient-to-r ${s.color} text-[#FAFAF7]`}>{s.who}</span>
                           </div>
-                          <h3 className="text-base font-black text-[#080E1C]">{s.title}</h3>
+                          <h3 className="text-base font-black text-[#18181B]">{s.title}</h3>
                         </div>
                         <span className="text-xs font-medium text-[#71717A] bg-[#FAFAF7] border border-[#E8E6E0] px-2.5 py-1 rounded-full shrink-0 whitespace-nowrap">{s.time}</span>
                       </div>
-                      <p className="text-sm text-[#374151] mb-2 leading-relaxed">{s.desc}</p>
+                      <p className="text-sm text-[#3F3F46] mb-2 leading-relaxed">{s.desc}</p>
                       <p className="text-xs text-[#71717A] leading-relaxed">{s.detail}</p>
                     </div>
                   </div>
@@ -208,7 +208,7 @@ export default function FrenchHowItWorksPage() {
         {/* FAQ */}
         <section className="py-16 bg-white">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 className="text-2xl font-black text-[#080E1C] mb-8 text-center">Questions sur le processus</h2>
+            <h2 className="text-2xl font-black text-[#18181B] mb-8 text-center">Questions sur le processus</h2>
             <div className="grid md:grid-cols-2 gap-5">
               {[
                 { q: "Dois-je rédiger les textes du site ?", a: "Non. Nous rédigeons tout à partir de vos réponses au formulaire de démarrage. Vous relisez et validez avant la mise en ligne." },
@@ -219,7 +219,7 @@ export default function FrenchHowItWorksPage() {
                 { q: "Et si vous manquez la date de livraison ?", a: "Nos CGV garantissent 10 % de votre paiement remboursés par jour de retard si le retard vient de nous. Nous n'avons jamais eu à le payer." },
               ].map((faq, i) => (
                 <div key={i} className="p-5 rounded-2xl bg-[#FAFAF7] border border-[#E8E6E0]">
-                  <h3 className="text-sm font-black text-[#080E1C] mb-2">{faq.q}</h3>
+                  <h3 className="text-sm font-black text-[#18181B] mb-2">{faq.q}</h3>
                   <p className="text-sm text-[#71717A] leading-relaxed">{faq.a}</p>
                 </div>
               ))}

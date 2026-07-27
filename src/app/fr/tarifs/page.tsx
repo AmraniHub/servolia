@@ -146,10 +146,10 @@ export default function FrenchPricingPage() {
                   <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${t.color} flex items-center justify-center text-[#FAFAF7] mb-3 shadow-md`}>
                     {t.icon}
                   </div>
-                  <h2 className="text-xl font-black text-[#080E1C] mb-1">{t.name}</h2>
+                  <h2 className="text-xl font-black text-[#18181B] mb-1">{t.name}</h2>
                   <p className="text-xs font-semibold text-[#36671E] mb-3">{t.forWho}</p>
                   <div className="flex items-baseline gap-2 mb-1">
-                    <span className="text-4xl font-black text-[#080E1C]">{t.price}</span>
+                    <span className="text-4xl font-black text-[#18181B]">{t.price}</span>
                     <span className="text-xs text-[#71717A]">HT</span>
                   </div>
                   <div className="flex items-center gap-1.5 mb-3">
@@ -160,7 +160,7 @@ export default function FrenchPricingPage() {
                 </div>
                 <ul className="flex flex-col gap-2 mb-6 flex-1">
                   {t.features.map((f, j) => (
-                    <li key={j} className="flex items-start gap-2 text-sm text-[#374151]">
+                    <li key={j} className="flex items-start gap-2 text-sm text-[#3F3F46]">
                       <CheckCircle className="w-4 h-4 text-[#36671E] flex-shrink-0 mt-0.5" />{f}
                     </li>
                   ))}
@@ -172,7 +172,7 @@ export default function FrenchPricingPage() {
                   className={`w-full py-3.5 rounded-xl font-bold text-sm transition-all disabled:opacity-60 ${
                     t.popular
                       ? "bg-gradient-to-r from-[#36671E] to-[#295115] text-[#FAFAF7] hover:opacity-90"
-                      : "border border-[#E8E6E0] text-[#080E1C] hover:border-[#36671E] hover:text-[#36671E]"
+                      : "border border-[#E8E6E0] text-[#18181B] hover:border-[#36671E] hover:text-[#36671E]"
                   }`}
                 />
                 <p className="text-center text-[10px] text-[#A1A1AA] mt-2">Solde de {t.deposit} à la livraison · Stripe sécurisé</p>
@@ -192,7 +192,7 @@ export default function FrenchPricingPage() {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-10">
             <p className="text-sm font-bold text-[#36671E] uppercase tracking-widest mb-3">Le processus</p>
-            <h2 className="text-2xl sm:text-3xl font-black text-[#080E1C]">Ce qui se passe après avoir choisi votre formule</h2>
+            <h2 className="text-2xl sm:text-3xl font-black text-[#18181B]">Ce qui se passe après avoir choisi votre formule</h2>
           </div>
           <div className="relative">
             <div className="absolute left-5 top-6 bottom-6 w-px bg-gradient-to-b from-[#36671E]/30 via-[#6BA52A]/40 to-[#ABDF90]/20 hidden sm:block" />
@@ -203,7 +203,7 @@ export default function FrenchPricingPage() {
                     {s.num}
                   </div>
                   <div className="bg-[#FAFAF7] rounded-xl px-5 py-4 flex-1 border border-[#E8E6E0]">
-                    <p className="font-black text-[#080E1C] text-sm mb-0.5">{s.title}</p>
+                    <p className="font-black text-[#18181B] text-sm mb-0.5">{s.title}</p>
                     <p className="text-[#71717A] text-sm">{s.desc}</p>
                   </div>
                 </div>
@@ -237,12 +237,12 @@ export default function FrenchPricingPage() {
       <section className="py-16 bg-[#FAFAF7]">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-8">
-            <h2 className="text-2xl font-black text-[#080E1C] mb-2">Questions fréquentes sur les tarifs</h2>
+            <h2 className="text-2xl font-black text-[#18181B] mb-2">Questions fréquentes sur les tarifs</h2>
           </div>
           <div className="flex flex-col gap-4">
             {faqs.map((f, i) => (
               <div key={i} className="bg-white rounded-xl border border-[#E8E6E0] p-5 shadow-sm">
-                <h3 className="font-bold text-[#080E1C] text-sm mb-2">{f.q}</h3>
+                <h3 className="font-bold text-[#18181B] text-sm mb-2">{f.q}</h3>
                 <p className="text-[#52525B] text-sm leading-relaxed">{f.a}</p>
               </div>
             ))}

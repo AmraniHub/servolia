@@ -62,8 +62,8 @@ export default function CarePlansSection({ lang = "en" }: { lang?: "en" | "fr" }
     <section className="py-16 lg:py-20 bg-[#FAFAF7]">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-8">
-          <p className="text-sm font-bold text-[#10B981] uppercase tracking-widest mb-3">{t.eyebrow}</p>
-          <h2 className="text-2xl sm:text-3xl font-black text-[#080E1C] mb-3">{t.title}</h2>
+          <p className="text-sm font-bold text-[#059669] uppercase tracking-widest mb-3">{t.eyebrow}</p>
+          <h2 className="text-2xl sm:text-3xl font-black text-[#18181B] mb-3">{t.title}</h2>
           <p className="text-[#71717A] max-w-lg mx-auto text-sm">{t.sub}</p>
         </div>
 
@@ -73,11 +73,11 @@ export default function CarePlansSection({ lang = "en" }: { lang?: "en" | "fr" }
             {(["monthly", "annual"] as Billing[]).map((b) => (
               <button key={b} onClick={() => setBilling(b)}
                 className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${
-                  billing === b ? "bg-[#10B981] text-[#18181B]" : "text-[#71717A] hover:text-[#080E1C]"
+                  billing === b ? "bg-[#059669] text-[#18181B]" : "text-[#71717A] hover:text-[#18181B]"
                 }`}>
                 {b === "monthly" ? t.monthly : t.annual}
                 {b === "annual" && (
-                  <span className={`ml-1.5 text-[10px] font-black px-1.5 py-0.5 rounded-full ${billing === "annual" ? "bg-[#18181B]/15 text-[#18181B]" : "bg-[#10B981]/15 text-[#0F9D6B]"}`}>
+                  <span className={`ml-1.5 text-[10px] font-black px-1.5 py-0.5 rounded-full ${billing === "annual" ? "bg-[#18181B]/15 text-[#18181B]" : "bg-[#059669]/15 text-[#0F9D6B]"}`}>
                     {t.oneFree}
                   </span>
                 )}
@@ -92,14 +92,14 @@ export default function CarePlansSection({ lang = "en" }: { lang?: "en" | "fr" }
             const copy = t.plans[key];
             const effMonthly = Math.round(plan.annualEur / 12);
             return (
-              <div key={key} className={`rounded-2xl p-6 border-2 relative flex flex-col ${popular ? "border-[#10B981] bg-white shadow-lg shadow-emerald-500/8" : "border-[#E8E6E0] bg-white"}`}>
+              <div key={key} className={`rounded-2xl p-6 border-2 relative flex flex-col ${popular ? "border-[#059669] bg-white shadow-lg shadow-emerald-500/8" : "border-[#E8E6E0] bg-white"}`}>
                 {popular && (
-                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-gradient-to-r from-[#10B981] to-[#34D399] text-[#18181B] text-xs font-black whitespace-nowrap">
+                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-gradient-to-r from-[#059669] to-[#34D399] text-[#18181B] text-xs font-black whitespace-nowrap">
                     {t.popular}
                   </div>
                 )}
-                <h3 className="text-lg font-black text-[#080E1C] mb-1">{plan.name}</h3>
-                <div className="text-3xl font-black text-[#080E1C]">
+                <h3 className="text-lg font-black text-[#18181B] mb-1">{plan.name}</h3>
+                <div className="text-3xl font-black text-[#18181B]">
                   €{billing === "annual" ? plan.annualEur : plan.monthlyEur}
                   <span className="text-base font-bold text-[#71717A]">{billing === "annual" ? t.perYr : t.perMo}</span>
                 </div>
@@ -107,8 +107,8 @@ export default function CarePlansSection({ lang = "en" }: { lang?: "en" | "fr" }
                 <p className="text-[#71717A] text-sm mb-5">{copy.tag}</p>
                 <ul className="flex flex-col gap-2.5 mb-6 flex-1">
                   {copy.inc.map((f, j) => (
-                    <li key={j} className="flex items-start gap-2 text-sm text-[#374151]">
-                      <CheckCircle className="w-4 h-4 text-[#10B981] flex-shrink-0 mt-0.5" />{f}
+                    <li key={j} className="flex items-start gap-2 text-sm text-[#3F3F46]">
+                      <CheckCircle className="w-4 h-4 text-[#059669] flex-shrink-0 mt-0.5" />{f}
                     </li>
                   ))}
                 </ul>
@@ -120,8 +120,8 @@ export default function CarePlansSection({ lang = "en" }: { lang?: "en" | "fr" }
                   label={t.subscribe}
                   className={`block w-full text-center py-3 rounded-xl font-bold text-sm transition-all disabled:opacity-60 ${
                     popular
-                      ? "bg-gradient-to-r from-[#10B981] to-[#34D399] text-[#18181B] hover:opacity-90"
-                      : "border border-[#E8E6E0] text-[#080E1C] hover:border-[#10B981] hover:text-[#10B981]"
+                      ? "bg-gradient-to-r from-[#059669] to-[#34D399] text-[#18181B] hover:opacity-90"
+                      : "border border-[#E8E6E0] text-[#18181B] hover:border-[#059669] hover:text-[#059669]"
                   }`}
                 />
               </div>
@@ -139,9 +139,9 @@ export default function CarePlansSection({ lang = "en" }: { lang?: "en" | "fr" }
               const unit = a.interval === "year" ? t.perYrShort : a.per === "mailbox" ? t.perMailbox : t.perMoShort;
               return (
                 <div key={a.key} className="rounded-xl border border-[#E8E6E0] bg-white p-4">
-                  <Icon className="w-4 h-4 text-[#10B981] mb-2" />
-                  <p className="text-sm font-bold text-[#080E1C] leading-snug">{lang === "fr" ? a.nameFr : a.name}</p>
-                  <p className="text-sm font-black text-[#080E1C] mt-1">€{a.priceEur}<span className="text-xs font-semibold text-[#71717A]">{unit}</span></p>
+                  <Icon className="w-4 h-4 text-[#059669] mb-2" />
+                  <p className="text-sm font-bold text-[#18181B] leading-snug">{lang === "fr" ? a.nameFr : a.name}</p>
+                  <p className="text-sm font-black text-[#18181B] mt-1">€{a.priceEur}<span className="text-xs font-semibold text-[#71717A]">{unit}</span></p>
                 </div>
               );
             })}

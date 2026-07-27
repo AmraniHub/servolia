@@ -262,8 +262,8 @@ function Form({ lang }: { lang: Lang }) {
     setSubmitted(true);
   };
 
-  const inputClass = "w-full px-4 py-3 rounded-xl border border-[#E8E6E0] text-sm text-[#080E1C] placeholder:text-[#52525B] focus:outline-none focus:ring-2 focus:ring-[#36671E] focus:border-transparent transition-all bg-white";
-  const labelClass = "block text-sm font-bold text-[#080E1C] mb-1.5";
+  const inputClass = "w-full px-4 py-3 rounded-xl border border-[#E8E6E0] text-sm text-[#18181B] placeholder:text-[#52525B] focus:outline-none focus:ring-2 focus:ring-[#36671E] focus:border-transparent transition-all bg-white";
+  const labelClass = "block text-sm font-bold text-[#18181B] mb-1.5";
 
   if (submitted) {
     const d = t.done;
@@ -314,7 +314,7 @@ function Form({ lang }: { lang: Lang }) {
 
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-black text-[#080E1C] mb-2">{t.title(planName)}</h1>
+          <h1 className="text-2xl font-black text-[#18181B] mb-2">{t.title(planName)}</h1>
           <p className="text-[#71717A] text-sm">{t.subtitle}</p>
         </div>
 
@@ -329,7 +329,7 @@ function Form({ lang }: { lang: Lang }) {
               }`}>
                 {i < step ? <CheckCircle className="w-4 h-4" /> : i + 1}
               </div>
-              <span className={`text-xs font-medium hidden sm:block ${i === step ? "text-[#080E1C]" : "text-[#52525B]"}`}>{s}</span>
+              <span className={`text-xs font-medium hidden sm:block ${i === step ? "text-[#18181B]" : "text-[#52525B]"}`}>{s}</span>
               {i < t.steps.length - 1 && <ChevronRight className="w-3 h-3 text-[#3F3F46] ml-1" />}
             </div>
           ))}
@@ -340,7 +340,7 @@ function Form({ lang }: { lang: Lang }) {
 
           {step === 0 && (
             <div className="space-y-5">
-              <h2 className="text-lg font-black text-[#080E1C] mb-5">{t.s0.heading}</h2>
+              <h2 className="text-lg font-black text-[#18181B] mb-5">{t.s0.heading}</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div><label className={labelClass}>{t.s0.businessName}</label><input required value={form.businessName} onChange={e => set("businessName", e.target.value)} placeholder={t.s0.businessNamePh} className={inputClass} /></div>
                 <div><label className={labelClass}>{t.s0.ownerName}</label><input required value={form.ownerName} onChange={e => set("ownerName", e.target.value)} placeholder={t.s0.ownerNamePh} className={inputClass} /></div>
@@ -358,7 +358,7 @@ function Form({ lang }: { lang: Lang }) {
 
           {step === 1 && (
             <div className="space-y-5">
-              <h2 className="text-lg font-black text-[#080E1C] mb-5">{t.s1.heading}</h2>
+              <h2 className="text-lg font-black text-[#18181B] mb-5">{t.s1.heading}</h2>
               <div>
                 <label className={labelClass}>{t.s1.colors} <span className="text-[#52525B] font-normal">{t.s1.colorsHint}</span></label>
                 <input value={form.primaryColor} onChange={e => set("primaryColor", e.target.value)} placeholder={t.s1.colorsPh} className={inputClass} />
@@ -389,7 +389,7 @@ function Form({ lang }: { lang: Lang }) {
 
           {step === 2 && (
             <div className="space-y-5">
-              <h2 className="text-lg font-black text-[#080E1C] mb-5">{t.s2.heading}</h2>
+              <h2 className="text-lg font-black text-[#18181B] mb-5">{t.s2.heading}</h2>
               <div>
                 <label className={labelClass}>{t.s2.services}</label>
                 <textarea required value={form.services} onChange={e => set("services", e.target.value)} rows={4} placeholder={t.s2.servicesPh} className={`${inputClass} resize-none`} />
@@ -411,7 +411,7 @@ function Form({ lang }: { lang: Lang }) {
 
           {step === 3 && (
             <div className="space-y-5">
-              <h2 className="text-lg font-black text-[#080E1C] mb-5">{t.s3.heading}</h2>
+              <h2 className="text-lg font-black text-[#18181B] mb-5">{t.s3.heading}</h2>
               <div>
                 <label className={labelClass}>{t.s3.goal}</label>
                 <select required value={form.mainGoal} onChange={e => set("mainGoal", e.target.value)} className={inputClass}>
@@ -433,7 +433,7 @@ function Form({ lang }: { lang: Lang }) {
 
           {step === 4 && (
             <div className="space-y-5">
-              <h2 className="text-lg font-black text-[#080E1C] mb-5">{t.s4.heading}</h2>
+              <h2 className="text-lg font-black text-[#18181B] mb-5">{t.s4.heading}</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className={labelClass}>{t.s4.domain}</label>
@@ -470,7 +470,7 @@ function Form({ lang }: { lang: Lang }) {
           <div className="flex gap-3 mt-8 pt-6 border-t border-[#F1F5F9]">
             {step > 0 && (
               <button onClick={() => setStep(s => s - 1)}
-                className="flex-1 py-3 rounded-xl border border-[#E8E6E0] text-[#080E1C] font-bold text-sm hover:bg-[#FAFAF7] transition-colors">
+                className="flex-1 py-3 rounded-xl border border-[#E8E6E0] text-[#18181B] font-bold text-sm hover:bg-[#FAFAF7] transition-colors">
                 {t.back}
               </button>
             )}

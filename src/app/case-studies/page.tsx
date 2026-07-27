@@ -111,9 +111,9 @@ const cases = [
     capability:
       "The AI qualifies leads around the clock, so the owner only speaks to people who are already serious — and no enquiry slips through voicemail again.",
     cta: "/contact",
-    color: "from-[#10B981] to-[#34D399]",
+    color: "from-[#059669] to-[#34D399]",
     lightColor: "bg-[#ECFDF5]",
-    borderColor: "border-[#10B981]/20",
+    borderColor: "border-[#059669]/20",
   },
 ];
 
@@ -177,7 +177,7 @@ export default async function CaseStudiesPage() {
                 {/* Header */}
                 <div className="mb-10">
                   <span className="inline-block text-xs font-bold text-[#71717A] uppercase tracking-widest bg-white border border-[#E8E6E0] px-3 py-1 rounded-full mb-4">{c.badge}</span>
-                  <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-[#080E1C] leading-tight mb-3 max-w-3xl">
+                  <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-[#18181B] leading-tight mb-3 max-w-3xl">
                     {c.headline}
                   </h2>
                   <div className="flex flex-wrap gap-3">
@@ -191,11 +191,11 @@ export default async function CaseStudiesPage() {
                   {/* Left: story */}
                   <div className="lg:col-span-3 space-y-6">
                     <div className="p-6 rounded-2xl bg-white border border-[#E8E6E0]">
-                      <h3 className="text-sm font-black text-[#080E1C] uppercase tracking-wide mb-3">The challenge</h3>
+                      <h3 className="text-sm font-black text-[#18181B] uppercase tracking-wide mb-3">The challenge</h3>
                       <p className="text-[#71717A] text-sm leading-relaxed">{c.challenge}</p>
                     </div>
                     <div className="p-6 rounded-2xl bg-white border border-[#E8E6E0]">
-                      <h3 className="text-sm font-black text-[#080E1C] uppercase tracking-wide mb-3">What we built</h3>
+                      <h3 className="text-sm font-black text-[#18181B] uppercase tracking-wide mb-3">What we built</h3>
                       <ul className="space-y-2.5">
                         {c.solution.map((s, i) => (
                           <li key={i} className="flex items-start gap-2 text-sm text-[#71717A]">
@@ -206,8 +206,8 @@ export default async function CaseStudiesPage() {
                     </div>
                     {/* Capability note */}
                     <div className={`p-6 rounded-2xl border-2 ${c.borderColor} ${c.lightColor}`}>
-                      <h3 className="text-sm font-black text-[#080E1C] uppercase tracking-wide mb-3">In practice</h3>
-                      <p className="text-[#080E1C] text-sm leading-relaxed">{c.capability}</p>
+                      <h3 className="text-sm font-black text-[#18181B] uppercase tracking-wide mb-3">In practice</h3>
+                      <p className="text-[#18181B] text-sm leading-relaxed">{c.capability}</p>
                     </div>
                   </div>
 
@@ -226,7 +226,7 @@ export default async function CaseStudiesPage() {
                     </div>
                     <div className="p-5 rounded-2xl bg-white border border-[#E8E6E0]">
                       <p className="text-xs text-[#71717A] mb-1">System used</p>
-                      <p className="font-black text-[#080E1C] text-sm mb-0.5">{c.system}</p>
+                      <p className="font-black text-[#18181B] text-sm mb-0.5">{c.system}</p>
                       <p className="text-xs text-[#71717A]">{c.plan}</p>
                     </div>
                     <Link href={c.cta}

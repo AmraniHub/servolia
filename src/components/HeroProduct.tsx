@@ -20,7 +20,7 @@ export default function HeroProduct() {
       <div className="absolute -inset-4 bg-[#BEF264]/20 rounded-[28px] blur-3xl pointer-events-none" />
 
       {/* Browser frame */}
-      <div className="relative rounded-2xl border border-[#FAFAF7]/15 bg-[#0B1F12]/80 backdrop-blur-xl shadow-2xl overflow-hidden">
+      <div className="relative rounded-2xl border border-[#FAFAF7]/15 bg-[#0A1F14]/80 backdrop-blur-xl shadow-2xl overflow-hidden">
         {/* Chrome bar */}
         <div className="flex items-center gap-2 px-4 py-3 border-b border-[#FAFAF7]/10">
           <div className="flex gap-1.5">

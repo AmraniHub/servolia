@@ -51,7 +51,7 @@ const steps = [
     time: "Your choice",
     desc: "If you want to discuss the audit, ask questions, or get more detail — we're available. If the audit is enough to convince you, you can skip straight to step 4.",
     detail: "No hard sell. If Servolia is the right fit, it's obvious from the audit. We don't chase or pressure. If you're ready, we send the scope document.",
-    color: "from-[#059669] to-[#10B981]",
+    color: "from-[#059669] to-[#059669]",
   },
   {
     num: "04",
@@ -61,7 +61,7 @@ const steps = [
     time: "Same day",
     desc: "We send a 1-page scope document: exactly what we build, what's not included, the fixed price, and the delivery deadline. You approve it before paying anything.",
     detail: "This protects you. Scope creep is impossible because everything is agreed in writing first. If you want to add something later, we price it separately — no surprises.",
-    color: "from-[#F59E0B] to-[#EF4444]",
+    color: "from-[#F59E0B] to-[#D97706]",
   },
   {
     num: "05",
@@ -111,7 +111,7 @@ const steps = [
     time: "Day 5–7",
     desc: "Once you're happy with the draft, we send a Stripe Payment Link for the remaining 50%. Payment clears → we go live within 24 hours.",
     detail: "Going live includes: domain connection, SSL setup, final testing on mobile and desktop, Google Analytics activation, and chatbot activation.",
-    color: "from-[#059669] to-[#10B981]",
+    color: "from-[#059669] to-[#059669]",
   },
   {
     num: "10",
@@ -121,7 +121,7 @@ const steps = [
     time: "Day 7",
     desc: "Your AI system is live, tested, and receiving traffic. We send a launch email with your login credentials, baseline stats, and what to expect in the first 30 days.",
     detail: "Most clients see their first online lead or booking within 48 hours of going live. The AI receptionist starts answering enquiries from day one — even at 2am.",
-    color: "from-[#F59E0B] to-[#EF4444]",
+    color: "from-[#F59E0B] to-[#D97706]",
   },
   {
     num: "11",
@@ -195,11 +195,11 @@ export default function HowItWorksPage() {
                             <span className="text-xs font-black text-[#52525B] tracking-widest">{s.num}</span>
                             <span className={`text-xs font-bold px-2 py-0.5 rounded-full bg-gradient-to-r ${s.color} text-[#FAFAF7]`}>{s.who}</span>
                           </div>
-                          <h3 className="text-base font-black text-[#080E1C]">{s.title}</h3>
+                          <h3 className="text-base font-black text-[#18181B]">{s.title}</h3>
                         </div>
                         <span className="text-xs font-medium text-[#71717A] bg-[#FAFAF7] border border-[#E8E6E0] px-2.5 py-1 rounded-full shrink-0 whitespace-nowrap">{s.time}</span>
                       </div>
-                      <p className="text-sm text-[#374151] mb-2 leading-relaxed">{s.desc}</p>
+                      <p className="text-sm text-[#3F3F46] mb-2 leading-relaxed">{s.desc}</p>
                       <p className="text-xs text-[#71717A] leading-relaxed">{s.detail}</p>
                     </div>
                   </div>
@@ -212,7 +212,7 @@ export default function HowItWorksPage() {
         {/* FAQ STRIP */}
         <section className="py-16 bg-white">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 className="text-2xl font-black text-[#080E1C] mb-8 text-center">Questions about the process</h2>
+            <h2 className="text-2xl font-black text-[#18181B] mb-8 text-center">Questions about the process</h2>
             <div className="grid md:grid-cols-2 gap-5">
               {[
                 { q: "Do I need to write the website copy?", a: "No. We write everything from your intake form answers. You review and approve before launch." },
@@ -223,7 +223,7 @@ export default function HowItWorksPage() {
                 { q: "What if you miss the deadline?", a: "Our CGV guarantees 10% of your payment back per day late if we miss through our own fault." },
               ].map((faq, i) => (
                 <div key={i} className="p-5 rounded-2xl bg-[#FAFAF7] border border-[#E8E6E0]">
-                  <h3 className="text-sm font-black text-[#080E1C] mb-2">{faq.q}</h3>
+                  <h3 className="text-sm font-black text-[#18181B] mb-2">{faq.q}</h3>
                   <p className="text-sm text-[#71717A] leading-relaxed">{faq.a}</p>
                 </div>
               ))}

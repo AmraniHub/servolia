@@ -32,7 +32,7 @@ export default async function ScopeAcceptancePage({ params }: { params: Promise<
           <h1 className="text-2xl sm:text-3xl font-black text-[#18181B] text-center mb-8">{scope.business_name}</h1>
 
           <div className="bg-white border border-[#E8E6E0] rounded-2xl p-5 sm:p-6 mb-6">
-            <pre className="whitespace-pre-wrap font-sans text-sm text-[#374151] leading-relaxed">{scope.scope_text}</pre>
+            <pre className="whitespace-pre-wrap font-sans text-sm text-[#3F3F46] leading-relaxed">{scope.scope_text}</pre>
           </div>
 
           {scope.accepted_at ? (
