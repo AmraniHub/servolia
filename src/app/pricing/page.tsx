@@ -6,7 +6,7 @@ import Guarantee from "@/components/Guarantee";
 import Link from "next/link";
 import {
   CheckCircle, ArrowRight, Shield, Clock, Zap,
-  Globe, Smartphone, LayoutDashboard, Bot, BarChart3,
+  Globe, Bot, BarChart3,
   Building2, Star,
 } from "lucide-react";
 import type { Metadata } from "next";
@@ -92,29 +92,6 @@ const tiers = [
       "Monthly analytics report",
       "Unlimited revisions (first month)",
     ],
-  },
-];
-
-const appServices = [
-  {
-    plan: "webapp",
-    name: "Web App / SaaS MVP",
-    price: "€290",
-    deposit: "€145",
-    delivery: "7–14 days",
-    icon: <LayoutDashboard className="w-5 h-5" />,
-    desc: "Custom web application, SaaS MVP, or internal tool — built and deployed to production.",
-    features: ["Custom React / Next.js app", "User authentication", "Database + API backend", "Admin panel", "Vercel deployment", "1 month support"],
-  },
-  {
-    plan: "mobile",
-    name: "Mobile App (Android/iOS)",
-    price: "€490",
-    deposit: "€245",
-    delivery: "10–15 days",
-    icon: <Smartphone className="w-5 h-5" />,
-    desc: "React Native app for Android (iOS optional +€100). Play Store submission included.",
-    features: ["Android app (React Native)", "iOS version available +€100", "Push notifications", "User auth + API integration", "Play Store submission", "1 month support"],
   },
 ];
 
@@ -250,50 +227,6 @@ export default function PricingPage() {
       {/* ── CARE PLANS (all-in, monthly/annual) ── */}
       <CarePlansSection lang="en" />
 
-      {/* ── APP DEVELOPMENT ── */}
-      <section className="py-16 lg:py-20 bg-[#FAFAF7]">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-10">
-            <p className="text-sm font-bold text-[#36671E] uppercase tracking-widest mb-3">App Development</p>
-            <h2 className="text-2xl sm:text-3xl font-black text-[#18181B] mb-3">Need a web app or mobile app?</h2>
-            <p className="text-[#52525B] text-sm max-w-lg mx-auto">
-              React Native for mobile. Next.js for web. Deployed and live — not just a Figma mockup.
-            </p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
-            {appServices.map((a, i) => (
-              <div key={i} className="bg-[#F5F4EF] border border-[#D4D2CC] rounded-2xl p-6 flex flex-col backdrop-blur">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#295115] to-[#6B8439] flex items-center justify-center text-[#FAFAF7] mb-4 shadow-md">
-                  {a.icon}
-                </div>
-                <h3 className="text-lg font-black text-[#18181B] mb-1">{a.name}</h3>
-                <div className="flex items-baseline gap-2 mb-1">
-                  <span className="text-3xl font-black text-[#18181B]">{a.price}</span>
-                </div>
-                <div className="flex items-center gap-1.5 mb-3">
-                  <Clock className="w-3.5 h-3.5 text-[#10B981]" />
-                  <span className="text-xs font-semibold text-[#10B981]">Delivered in {a.delivery}</span>
-                </div>
-                <p className="text-[#52525B] text-sm mb-4 leading-relaxed">{a.desc}</p>
-                <ul className="flex flex-col gap-2 mb-6 flex-1">
-                  {a.features.map((f, j) => (
-                    <li key={j} className="flex items-start gap-2 text-sm text-[#3F3F46]">
-                      <CheckCircle className="w-4 h-4 text-[#10B981] flex-shrink-0 mt-0.5" />{f}
-                    </li>
-                  ))}
-                </ul>
-                <CheckoutButton
-                  plan={a.plan}
-                  label={`Pay ${a.deposit} deposit →`}
-                  className="w-full py-3.5 rounded-xl font-bold text-sm border-2 border-[#D4D2CC] text-[#18181B] hover:bg-[#F0EFEA] transition-all disabled:opacity-60"
-                />
-                <p className="text-center text-xs text-[#A1A1AA] mt-2.5">50% now via Stripe · Balance on delivery</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       <Guarantee lang="en" />
 
       {/* ── PRICING FAQ ── */}
@@ -308,7 +241,6 @@ export default function PricingPage() {
               { q: "Are there any hidden fees?", a: "Never. The price quoted is the price you pay. Third-party tools (hosting, domain, Stripe fees) are extra and disclosed upfront. Our service fee has no surprises." },
               { q: "Do you offer refunds?", a: "If we miss the agreed delivery deadline, we refund 10% per day of delay. If we fail to deliver at all, full refund. See our full refund policy in the CGV." },
               { q: "Can I upgrade plans after delivery?", a: "Yes. If you start on Website System and want to add AI chatbot or a dashboard later, we quote an upgrade price — never the full plan price." },
-              { q: "Does the mobile app work on both Android and iOS?", a: "We build with React Native so the same code runs on both. Android app and Play Store submission is included. iOS version is +€100, App Store submission +€100 extra." },
             ].map((f, i) => (
               <div key={i} className="bg-white rounded-xl border border-[#E8E6E0] p-5 shadow-sm">
                 <h3 className="font-bold text-[#080E1C] text-sm mb-2">{f.q}</h3>

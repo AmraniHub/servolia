@@ -10,9 +10,10 @@ export interface Scoreable {
 export function computeLeadScore(lead: Scoreable): number {
   let score = 0;
 
+  // Excluded niches (legal, wealth, real-estate) pruned 2026-07-27 — they
+  // fall through to the default score, same as any unrecognised niche.
   const nicheScores: Record<string, number> = {
     dental: 25, aesthetic: 25, "med-spa": 25, ivf: 25,
-    "law-firm": 22, "wealth-management": 22, "real-estate": 20,
     veterinary: 15, "home-services": 12, restaurant: 8,
   };
   score += nicheScores[lead.niche ?? ""] ?? 5;

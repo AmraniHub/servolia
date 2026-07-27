@@ -33,8 +33,10 @@ export const BUILD_PLANS: Record<string, BuildPlan> = {
   growth:  { key: "growth",  name: "Booking System", nameFr: "Système de Réservation",  totalEur: 590, delivery: "5 days" },
   pro:     { key: "pro",     name: "Client System",  nameFr: "Système Client",          totalEur: 990, delivery: "7 days" },
   landing: { key: "landing", name: "Ads Landing",    nameFr: "Système Landing Pub",     totalEur: 290, delivery: "4 days", monthlyEur: 99, retired: true },
-  webapp:  { key: "webapp",  name: "Web App / SaaS", nameFr: "Web App / SaaS",          totalEur: 290, delivery: "7–14 days" },
-  mobile:  { key: "mobile",  name: "Mobile App",     nameFr: "Application Mobile",      totalEur: 490, delivery: "10–15 days" },
+  // webapp + mobile retired 2026-07-27: generic app-dev offers diluted the
+  // clinic-niche positioning ("the only one who does X for Y" ≠ "a web agency").
+  webapp:  { key: "webapp",  name: "Web App / SaaS", nameFr: "Web App / SaaS",          totalEur: 290, delivery: "7–14 days", retired: true },
+  mobile:  { key: "mobile",  name: "Mobile App",     nameFr: "Application Mobile",      totalEur: 490, delivery: "10–15 days", retired: true },
 };
 
 /** The plans actually on sale — use this anywhere a customer chooses a plan. */
@@ -136,9 +138,6 @@ export function payPerBookingEligible(niche?: string | null): boolean {
   if (PAY_PER_BOOKING_REGULATED.test(n)) return false;
   return PAY_PER_BOOKING_ELIGIBLE.test(n);
 }
-
-/** iOS add-on for the mobile plan, EUR. */
-export const MOBILE_IOS_ADDON_EUR = 100;
 
 /** 50% deposit in Stripe cents. */
 export function depositCents(plan: BuildPlan): number {

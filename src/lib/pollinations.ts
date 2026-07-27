@@ -6,9 +6,7 @@
 const CATEGORY_STYLE: Record<string, string> = {
   Dental: "modern dental clinic interior, bright and clean, professional photography",
   "Aesthetic Clinics": "modern med spa treatment room, soft light, minimal luxury aesthetic",
-  "Real Estate": "modern home exterior at golden hour, architectural photography",
   "Home Services": "professional technician at work, clean modern home, natural light",
-  "Law Firms": "modern law office, bookshelves, professional and calm",
   Accounting: "modern office desk with laptop and documents, clean minimal workspace",
   Consulting: "two professionals in a bright meeting room, modern office",
   "AI Systems": "abstract technology visualization, soft green and cream tones, minimal",

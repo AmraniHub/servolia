@@ -93,7 +93,7 @@ export interface ClientAdvice {
 export interface ClientSiteConfig {
   slug: string;
   businessName: string;
-  niche: string; // dental, aesthetic, real-estate, home-services, law-firm, ...
+  niche: string; // dental, aesthetic, med-spa, home-services, ...
   language: "en" | "fr";
   accent: string; // brand hex, e.g. "#36671E"
 

@@ -171,7 +171,7 @@ export async function aiEnrichConfig(
     : isHomeServicesNiche(draft.niche) ? homeServicesCopyPlaybook(nicheLang)
     : "";
 
-  const prompt = `You are the senior copywriter at Servolia, an agency that delivers websites with AI receptionists for service businesses (dental clinics, aesthetic clinics, real estate, home services, law firms...).
+  const prompt = `You are the senior copywriter at Servolia, an agency that delivers websites with AI receptionists for service businesses (dental clinics, aesthetic clinics, med-spas, home services...).
 
 A new client paid and filled our intake form. Write their complete website copy IN ${lang.toUpperCase()}.
 

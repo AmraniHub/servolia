@@ -201,6 +201,63 @@ export const FEATURES: SystemFeature[] = [
     code: "src/components/ClientSite.tsx · src/lib/clientPrompt.ts · /api/sites/[slug]/lead",
   },
   {
+    name: "FR Geo-SEO + GEO (LLM-answer) surface",
+    summary: "Programmatic city × niche landing pages at /fr/[niche]/[ville] — 45 pages covering the top 15 French cities × 3 niches (dentaire, esthétique, services à domicile). Optimised for BOTH classic Google local search AND generative-engine answers (ChatGPT, Perplexity, Google AI Overviews).",
+    how: [
+      "Data lives in src/lib/content/frGeo.ts — FR_CITIES (15 entries with region, population, and one genuine local hook each) × FR_GEO_NICHES (3 entries: dentiste, clinique-esthetique, services-a-domicile). Niche slugs are SINGULAR to avoid colliding with the existing /fr/dentistes/ static route (plural).",
+      "The dynamic route /fr/[niche]/[ville]/page.tsx statically generates every combo via generateStaticParams. Each page has a unique <title>, canonical URL, OG tags, and a local-context paragraph (city hook + niche pain-point) that makes it non-templated.",
+      "Every page emits two JSON-LD blocks: Service+LocalBusiness (Google Maps / classic SEO — areaServed = City containedInPlace AdministrativeArea) AND FAQPage (the block LLM search engines lift into answers, so 'best AI receptionist for dentists in Lyon' can pull Servolia's Q&A directly).",
+      "The FAQ block is BOTH machine-readable (schema) AND human-readable (interactive <details> on the page) — no keyword-stuffing, real answers.",
+      "Hub page at /fr/villes internally links all 45 combos grouped by region — kills the 'orphan page' problem that would otherwise hurt indexing.",
+      "Sitemap.ts includes every combo + the hub, so Google discovers them on the next crawl.",
+    ],
+    use: [
+      "Send FR outbound at these pages instead of the generic /fr — the pitch reads more relevant when it references the recipient's own city.",
+      "For a new city: add one entry to FR_CITIES (slug, name, region, population, one honest local hook) — the 3 niche pages generate automatically.",
+      "For a new niche: add one entry to FR_GEO_NICHES with singular slug (avoid /fr/dentistes/ etc), then 15 city pages ship at once.",
+      "Do NOT invent local case studies or fake review counts per city — Google downranks doorway pages that only differ by city name.",
+    ],
+    cost: "Zero — no LLM calls per request, all content is authored in the data file.",
+    value: "Local intent is where clinic-owner search actually happens ('dentiste Lyon site web', not 'best dental website builder'). And FAQPage schema is the single highest-ROI thing you can do for LLM answer inclusion right now — the same 45 pages give you both classic SEO and GEO coverage in one shot.",
+    code: "src/lib/content/frGeo.ts · src/app/fr/[niche]/[ville]/page.tsx · src/app/fr/villes/page.tsx · src/app/sitemap.ts",
+  },
+  {
+    name: "Cold outbound: prospect → live demo → AI-drafted cold email → send",
+    summary: "The full outbound pipeline sits on /admin/prospects. Add a prospect (single row or CSV), one-click generate a live demo site in their name, then AI-draft a personalized cold email pointing at it and send via Resend — all without them lifting a finger.",
+    how: [
+      "Add prospect: 'Add one' opens a quick form (business, owner, city, phone, email, website, niche). 'Import CSV' still handles bulk.",
+      "Generate demo: 'Generate demo' calls /api/admin/demo, which runs the same configFromIntake + aiEnrichConfig pipeline a paid client uses — the prospect gets pixel-identical output. Result is stamped isDemo=true, published, and its slug is written to prospects.demo_slug.",
+      "Cold email: once demo_slug + email exist, the 'Email' button opens a modal. /api/admin/prospects/cold-email drafts the email with Claude Haiku, in French (default for the French beachhead) or English, referencing the mystery-shop notes when present. You can edit subject + body inline.",
+      "Send: hits /api/admin/prospects/cold-email again with mode='send'. Resend delivers from EMAIL_FROM. Prospect gets a touch logged and stage advances to demo_sent if it wasn't already ahead.",
+    ],
+    use: [
+      "Beachhead workflow: paste 20 FR clinics via CSV → mystery-shop the top-rated ones (log notes) → Generate demo → Email. The mystery-shop notes give the email its wedge ('I called Tuesday afternoon and no one picked up').",
+      "The preview URL is servolia.com/sites/{slug} — servolia.com is already a branded custom domain, so no Vercel URL is exposed. Roadmap has an entry for per-prospect throwaway domains once volume justifies the cost.",
+      "If the prospect has no email, the Email button is disabled — fall back to WhatsApp ('Shop' button) with the demo link pasted in.",
+    ],
+    cost: "Cents of Claude Haiku per email draft. Resend is free up to 3,000 emails/month. Demos cost one Claude call each.",
+    value: "Turns a cold clinic into a self-service demo they can *play with* before you ever speak. The demo is the pitch — no slides, no meeting to schedule, no imagination required from them.",
+    code: "src/components/admin/ProspectsManager.tsx · src/app/api/admin/demo · src/app/api/admin/prospects · src/app/api/admin/prospects/cold-email",
+  },
+  {
+    name: "Payment dunning + suspend for non-payment",
+    summary: "Vercel-style: a red banner in the client portal the moment a Stripe recurring invoice fails, a 14-day grace window, then the site + AI receptionist go offline until they pay.",
+    how: [
+      "Stripe fires invoice.payment_failed → the webhook flips clients.payment_status to 'past_due', stamps past_due_since = now, sets suspend_at = now + 14 days, stores the hosted invoice URL and the failure reason, and pings Telegram.",
+      "The portal reads clients via paymentAlertFrom() and shows a red bar at the top with the exact days left, a 'Pay open invoice' button that deep-links to Stripe's hosted invoice, and falls back to 'Manage billing' if we don't have the URL.",
+      "/sites/[slug] also reads the client (via client_sites.build_id → clients.build_id). Once suspend_at passes, paymentAlertFrom() auto-promotes past_due → suspended, and the site renders a minimal 'temporarily unavailable' page in the client's own language instead of the real site.",
+      "The moment invoice.paid or invoice.payment_succeeded arrives, everything resets to 'ok' — banner disappears, site is live again, no cron needed.",
+    ],
+    use: [
+      "Enable invoice.payment_failed and invoice.paid on the Stripe webhook (see /admin/settings — the roadmap will nag until it's done).",
+      "Watch the past-due badge in /admin/clients to know which relationships are wobbling.",
+      "Tune GRACE_DAYS at the top of /api/webhooks/stripe/route.ts if 14 days is wrong for you.",
+    ],
+    cost: "None — piggybacks on the Stripe webhook you already run.",
+    value: "Turns silent churn (card expires → nothing happens → three months later they've forgotten why they ever paid) into a self-service recovery flow. The visible countdown makes people update the card. The eventual shutoff makes sure a dead card can't cost you inference forever.",
+    code: "src/lib/clientBilling.ts · src/app/api/webhooks/stripe/route.ts · src/components/PortalDashboard.tsx · src/app/sites/[slug]/page.tsx · src/app/admin/clients/page.tsx",
+  },
+  {
     name: "Client portal (bilingual)",
     summary: "Where the client logs in to see their leads, results and billing. Full English/French with a language switch.",
     how: [

@@ -59,16 +59,6 @@ const OUTCOME: Record<string, Record<Lang, { headline: string; body: string }>> 
       body: "Si une cure laser vaut 500 € et que huit demandes par mois restent sans réponse, ce sont 4 000 € qui s'envolent. Faites vos calculs — le système est là pour combler cet écart.",
     },
   },
-  "real-estate": {
-    en: {
-      headline: "Only the buyers who are genuinely ready",
-      body: "One commission dwarfs the cost of the system. The assistant qualifies every enquiry first, so your hours go to the people actually ready to move.",
-    },
-    fr: {
-      headline: "Uniquement les acheteurs réellement prêts",
-      body: "Une seule commission dépasse largement le coût du système. L'assistant qualifie chaque demande en amont : votre temps va aux personnes réellement prêtes à avancer.",
-    },
-  },
   "home-services": {
     en: {
       headline: "Quote requests that don't go cold",
@@ -77,16 +67,6 @@ const OUTCOME: Record<string, Record<Lang, { headline: string; body: string }>> 
     fr: {
       headline: "Des demandes de devis qui ne refroidissent pas",
       body: "Chaque chantier que vous chiffrez a une valeur que vous connaissez déjà. Multipliez-la par les appels manqués en intervention le mois dernier — c'est ce montant que le système récupère.",
-    },
-  },
-  lawyers: {
-    en: {
-      headline: "Enquiries triaged before they reach you",
-      body: "One retained matter is worth multiples of the system. Every enquiry gets an immediate reply and a first qualification, so your billable hours aren't spent on cases you'd decline.",
-    },
-    fr: {
-      headline: "Des demandes triées avant d'arriver sur votre bureau",
-      body: "Un seul dossier signé vaut plusieurs fois le système. Chaque demande reçoit une réponse immédiate et une première qualification : vos heures facturables ne partent plus dans des dossiers que vous refuseriez.",
     },
   },
   accountants: {
@@ -112,12 +92,13 @@ const OUTCOME: Record<string, Record<Lang, { headline: string; body: string }>> 
 };
 
 /** Page slugs → outcome key. Solution pages (ai-websites, …) use the default. */
+// real-estate + lawyers entries removed 2026-07-27 (excluded niches, pages
+// already redirect) — their slugs now fall back to the default outcome.
 const SLUG_TO_NICHE: Record<string, string> = {
   dentists: "dental", dentistes: "dental", dental: "dental",
   "aesthetic-clinics": "aesthetic", aesthetic: "aesthetic",
-  "real-estate": "real-estate",
   "home-services": "home-services",
-  lawyers: "lawyers", accountants: "accountants", consultants: "consultants",
+  accountants: "accountants", consultants: "consultants",
 };
 
 export const nicheForSlug = (slug?: string): string =>
