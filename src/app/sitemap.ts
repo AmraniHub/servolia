@@ -32,6 +32,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${base}/fr/audit`,                     lastModified: now, changeFrequency: "monthly", priority: 0.9 },
     { url: `${base}/fr/dentistes`,                 lastModified: now, changeFrequency: "monthly", priority: 0.9 },
     { url: `${base}/fr/esthetique`,                lastModified: now, changeFrequency: "monthly", priority: 0.9 },
+    { url: `${base}/fr/appel`,                     lastModified: now, changeFrequency: "monthly", priority: 0.8 },
     { url: `${base}/fr/tarifs`,                    lastModified: now, changeFrequency: "monthly", priority: 0.9 },
     { url: `${base}/fr/solutions`,                 lastModified: now, changeFrequency: "monthly", priority: 0.8 },
     { url: `${base}/fr/comment-ca-marche`,         lastModified: now, changeFrequency: "monthly", priority: 0.8 },
