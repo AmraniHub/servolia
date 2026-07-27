@@ -12,7 +12,7 @@ export const maxDuration = 30;
  *
  * Uses the Places API (New) Text Search endpoint. Needs GOOGLE_PLACES_API_KEY
  * (Google Cloud Console → APIs → Places API (New) → credentials). Costs
- * ~$0.017 per search-with-details — trivial for the pipeline it feeds.
+ * ~$0.035 per search (Enterprise-tier fields: phone + website), ~1,000 free/month — effectively free at founder prospecting scale.
  *
  * POST { query, niche? } → { imported, skipped, total }
  * Dedupes against existing prospects by (business, city) pair.
