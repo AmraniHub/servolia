@@ -98,7 +98,8 @@ const SLUG_TO_NICHE: Record<string, string> = {
   dentists: "dental", dentistes: "dental", dental: "dental",
   "aesthetic-clinics": "aesthetic", aesthetic: "aesthetic",
   "home-services": "home-services",
-  accountants: "accountants", consultants: "consultants",
+  accountants: "accountants", "experts-comptables": "accountants",
+  consultants: "consultants",
 };
 
 export const nicheForSlug = (slug?: string): string =>

@@ -1,6 +1,8 @@
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import FrenchNav from "@/components/FrenchNav";
+import FrenchFooter from "@/components/FrenchFooter";
 import ChatWidget from "@/components/ChatWidget";
 import type { MarketingContent, IconName } from "@/lib/content/pages";
 import { FaqSchema } from "@/components/StructuredData";
@@ -21,11 +23,25 @@ const ICONS: Record<IconName, React.ComponentType<{ className?: string }>> = {
   search: Search,
 };
 
-export default function MarketingPage({ data }: { data: MarketingContent }) {
+const CHROME = {
+  en: {
+    audit: "Book a Free System Audit", pricing: "View pricing", how: "How it works",
+    faq: "Common questions", footNote: "Delivered within 24h · No call required · Fixed price in writing",
+    auditHref: "/free-audit", pricingHref: "/pricing",
+  },
+  fr: {
+    audit: "Recevoir mon audit gratuit", pricing: "Voir les tarifs", how: "Comment ça marche",
+    faq: "Questions fréquentes", footNote: "Livré sous 24 h · Sans appel obligatoire · Prix fixe par écrit",
+    auditHref: "/fr/audit", pricingHref: "/fr/tarifs",
+  },
+};
+
+export default function MarketingPage({ data, lang = "en", enHref }: { data: MarketingContent; lang?: "en" | "fr"; enHref?: string }) {
+  const t = CHROME[lang];
   return (
     <>
       <FaqSchema faqs={data.faqs} />
-      <Navbar heroDark />
+      {lang === "fr" ? <FrenchNav enHref={enHref ?? "/"} /> : <Navbar heroDark />}
       <main className="bg-[#FAFAF7]">
         {/* HERO */}
         <section className="relative pt-32 pb-20 lg:pt-40 lg:pb-28 bg-[#0A1F14] overflow-hidden">
@@ -50,13 +66,13 @@ export default function MarketingPage({ data }: { data: MarketingContent }) {
               ))}
             </div>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link href="/free-audit"
+              <Link href={t.auditHref}
                 className="group px-8 py-4 rounded-xl bg-[#BEF264] text-[#0A1F14] font-black text-base hover:bg-[#D9F99D] transition-colors shadow-lg shadow-[#BEF264]/20 flex items-center gap-2">
-                Book a Free System Audit <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                {t.audit} <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </Link>
-              <Link href="/pricing"
+              <Link href={t.pricingHref}
                 className="px-7 py-4 rounded-xl border border-[#FAFAF7]/20 text-[#FAFAF7] font-semibold text-base hover:bg-[#FAFAF7]/8 transition-colors">
-                View pricing
+                {t.pricing}
               </Link>
             </div>
           </div>
@@ -128,7 +144,7 @@ export default function MarketingPage({ data }: { data: MarketingContent }) {
         {/* HOW IT WORKS */}
         <section className="py-20 lg:py-24 bg-[#FAFAF7]">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 className="text-3xl sm:text-4xl font-black text-[#18181B] text-center mb-14">How it works</h2>
+            <h2 className="text-3xl sm:text-4xl font-black text-[#18181B] text-center mb-14">{t.how}</h2>
             <div className="grid md:grid-cols-3 gap-6">
               {data.steps.map((s, i) => (
                 <div key={i} className="relative bg-white rounded-2xl p-7 border border-[#E8E6E0] overflow-hidden">
@@ -148,7 +164,7 @@ export default function MarketingPage({ data }: { data: MarketingContent }) {
         {/* FAQ */}
         <section className="py-20 bg-white">
           <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 className="text-3xl font-black text-[#18181B] text-center mb-10">Common questions</h2>
+            <h2 className="text-3xl font-black text-[#18181B] text-center mb-10">{t.faq}</h2>
             <div className="space-y-3">
               {data.faqs.map((f, i) => (
                 <details key={i} className="group bg-[#FAFAF7] border border-[#E8E6E0] rounded-xl overflow-hidden">
@@ -163,8 +179,8 @@ export default function MarketingPage({ data }: { data: MarketingContent }) {
           </div>
         </section>
 
-        <ValueStack niche={nicheForSlug(data.slug)} />
-        <Guarantee />
+        <ValueStack lang={lang} niche={nicheForSlug(data.slug)} />
+        <Guarantee lang={lang} />
 
         {/* CTA */}
         <section className="py-24 bg-[#0A1F14] relative overflow-hidden">
@@ -172,15 +188,15 @@ export default function MarketingPage({ data }: { data: MarketingContent }) {
           <div className="relative max-w-2xl mx-auto px-4 sm:px-6 text-center">
             <h2 className="text-3xl sm:text-4xl font-black text-[#FAFAF7] mb-4 leading-tight">{data.ctaHeadline}</h2>
             <p className="text-[#FAFAF7]/60 mb-8 max-w-xl mx-auto">{data.ctaSub}</p>
-            <Link href="/free-audit"
+            <Link href={t.auditHref}
               className="group inline-flex items-center gap-2 px-9 py-4 rounded-xl bg-[#BEF264] text-[#0A1F14] font-black text-lg hover:bg-[#D9F99D] transition-colors shadow-lg shadow-[#BEF264]/20">
-              Book a Free System Audit <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              {t.audit} <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </Link>
-            <p className="text-[#FAFAF7]/40 text-xs mt-5">Delivered within 24h · No call required · Fixed price in writing</p>
+            <p className="text-[#FAFAF7]/40 text-xs mt-5">{t.footNote}</p>
           </div>
         </section>
       </main>
-      <Footer />
+      {lang === "fr" ? <FrenchFooter /> : <Footer />}
       <ChatWidget />
     </>
   );

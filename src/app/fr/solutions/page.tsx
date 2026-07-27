@@ -26,24 +26,28 @@ const solutions = [
     title: "Sites web IA",
     sub: "Un site conçu pour convertir — pas seulement pour être joli. Mobile-first, conforme RGPD, avec appels à l'action de réservation et de contact, en ligne en 72 heures.",
     tag: "Dès 290 €",
+    href: "/fr/solutions/sites-ia",
   },
   {
     icon: Bot,
     title: "Réceptionniste IA",
     sub: "Répond aux visiteurs 24h/24 en français et en anglais, qualifie les demandes, répond aux questions sur vos services et prix, et enregistre chaque conversation comme un lead scoré.",
     tag: "Inclus dès 590 €",
+    href: "/fr/solutions/receptionniste-ia",
   },
   {
     icon: Calendar,
     title: "Systèmes de réservation",
     sub: "Vos clients réservent en ligne, reçoivent confirmations et rappels automatiques — même à 2h du matin, même le dimanche. Fini les appels manqués qui partent chez le concurrent.",
     tag: "Inclus dès 590 €",
+    href: "/fr/solutions/reservation-en-ligne",
   },
   {
     icon: LayoutDashboard,
     title: "Tableaux de bord CRM",
     sub: "Chaque lead, sa source, son statut et sa valeur dans un seul tableau de bord. Pipeline de suivi, notifications automatiques et rapport mensuel de performance.",
     tag: "Inclus dès 990 €",
+    href: "/fr/solutions/crm-tableaux-de-bord",
   },
 ];
 
@@ -88,8 +92,8 @@ export default function FrenchSolutionsHub() {
                     <p className="text-sm text-[#71717A] leading-relaxed mb-5 flex-1">{s.sub}</p>
                     <div className="flex items-center justify-between">
                       <span className="px-2.5 py-1 rounded-full bg-[#EEF5EA] text-[#36671E] text-xs font-bold">{s.tag}</span>
-                      <Link href="/fr/tarifs" className="inline-flex items-center gap-1.5 text-sm font-bold text-[#36671E] hover:gap-2.5 transition-all">
-                        Voir les tarifs <ArrowRight className="w-4 h-4" />
+                      <Link href={s.href} className="inline-flex items-center gap-1.5 text-sm font-bold text-[#36671E] hover:gap-2.5 transition-all">
+                        En savoir plus <ArrowRight className="w-4 h-4" />
                       </Link>
                     </div>
                   </div>
