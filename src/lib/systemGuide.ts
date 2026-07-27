@@ -244,7 +244,7 @@ export const FEATURES: SystemFeature[] = [
     name: "Cold outbound: prospect → live demo → AI-drafted cold email → send",
     summary: "The full outbound pipeline sits on /admin/prospects. Add a prospect (single row or CSV), one-click generate a live demo site in their name, then AI-draft a personalized cold email pointing at it and send via Resend — all without them lifting a finger.",
     how: [
-      "Add prospect: 'Add one' opens a quick form (business, owner, city, phone, email, website, niche). 'Import CSV' still handles bulk.",
+      "Add prospects: the 'Google Maps' button imports up to 20 businesses from a plain search ('clinique esthétique Lyon') with phone, website, city and rating (needs GOOGLE_PLACES_API_KEY, ~$0.017/search, dupes auto-skipped). 'Add one' is a quick manual form; 'Import CSV' handles bulk lists.",
       "Generate demo: 'Generate demo' calls /api/admin/demo, which runs the same configFromIntake + aiEnrichConfig pipeline a paid client uses — the prospect gets pixel-identical output. Result is stamped isDemo=true, published, and its slug is written to prospects.demo_slug.",
       "Cold email: once demo_slug + email exist, the 'Email' button opens a modal. /api/admin/prospects/cold-email drafts the email with Claude Haiku, in French (default for the French beachhead) or English, referencing the mystery-shop notes when present. You can edit subject + body inline.",
       "Send: hits /api/admin/prospects/cold-email again with mode='send'. Resend delivers from EMAIL_FROM. Prospect gets a touch logged and stage advances to demo_sent if it wasn't already ahead.",

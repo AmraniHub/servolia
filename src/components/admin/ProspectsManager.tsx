@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import {
   Target, Upload, Wand2, MessageCircle, AtSign, ExternalLink,
-  Copy, Check, ChevronRight, Trash2, PhoneCall, Mail, Plus, X, Send, Loader2,
+  Copy, Check, ChevronRight, Trash2, PhoneCall, Mail, Plus, X, Send, Loader2, MapPin,
 } from "lucide-react";
 import { waLink } from "@/lib/whatsapp";
 
@@ -43,6 +43,10 @@ export default function ProspectsManager() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [showImport, setShowImport] = useState(false);
   const [showAddOne, setShowAddOne] = useState(false);
+  const [showMaps, setShowMaps] = useState(false);
+  const [mapsQuery, setMapsQuery] = useState("");
+  const [mapsNiche, setMapsNiche] = useState("aesthetic");
+  const [mapsBusy, setMapsBusy] = useState(false);
   const [addOne, setAddOne] = useState({ business: "", owner_name: "", city: "", phone: "", email: "", website: "", niche: "dental" });
   const [addOneBusy, setAddOneBusy] = useState(false);
   const [emailFor, setEmailFor] = useState<Prospect | null>(null);
@@ -100,6 +104,22 @@ export default function ProspectsManager() {
   function copy(text: string, key: string) {
     navigator.clipboard.writeText(text);
     setCopied(key); setTimeout(() => setCopied(null), 1500);
+  }
+
+  async function importFromMaps() {
+    if (!mapsQuery.trim() || mapsBusy) return;
+    setMapsBusy(true); setNotice("");
+    try {
+      const res = await fetch("/api/admin/prospects/places-import", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: mapsQuery, niche: mapsNiche }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setNotice(`✅ ${data.imported} imported${data.skipped ? `, ${data.skipped} skipped (dupes)` : ""}`);
+        setMapsQuery(""); setShowMaps(false); load();
+      } else setNotice(`⚠️ ${data.error}`);
+    } finally { setMapsBusy(false); }
   }
 
   async function addOneProspect() {
@@ -181,15 +201,42 @@ export default function ProspectsManager() {
           </h1>
           <p className="text-sm text-[#71717A]">Cold clinics → mystery-shop → demo → call. {active.length} active.</p>
         </div>
-        <div className="flex items-center gap-2">
-          <button onClick={() => { setShowAddOne((s) => !s); setShowImport(false); }} className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#36671E] text-white text-sm font-bold hover:bg-[#295115]">
+        <div className="flex items-center gap-2 flex-wrap">
+          <button onClick={() => { setShowMaps((s) => !s); setShowAddOne(false); setShowImport(false); }} className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#36671E] text-white text-sm font-bold hover:bg-[#295115]">
+            <MapPin className="w-4 h-4" /> Google Maps
+          </button>
+          <button onClick={() => { setShowAddOne((s) => !s); setShowImport(false); setShowMaps(false); }} className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-[#E8E6E0] text-sm font-bold text-[#52525B] hover:bg-[#F5F4EF]">
             <Plus className="w-4 h-4" /> Add one
           </button>
-          <button onClick={() => { setShowImport((s) => !s); setShowAddOne(false); }} className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-[#E8E6E0] text-sm font-bold text-[#52525B] hover:bg-[#F5F4EF]">
+          <button onClick={() => { setShowImport((s) => !s); setShowAddOne(false); setShowMaps(false); }} className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-[#E8E6E0] text-sm font-bold text-[#52525B] hover:bg-[#F5F4EF]">
             <Upload className="w-4 h-4" /> Import CSV
           </button>
         </div>
       </div>
+
+      {showMaps && (
+        <div className="bg-white border border-[#E8E6E0] rounded-2xl p-5 mb-5">
+          <p className="text-xs text-[#71717A] mb-3">
+            Type what you&apos;d type into Google Maps — up to 20 businesses come back with phone, website, rating and city. Duplicates are skipped automatically.
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <input value={mapsQuery} onChange={(e) => setMapsQuery(e.target.value)} onKeyDown={(e) => e.key === "Enter" && importFromMaps()}
+              placeholder="clinique esthétique Lyon"
+              className="flex-1 min-w-[220px] bg-[#FAFAF7] border border-[#E8E6E0] rounded-lg px-3 py-2 text-sm text-[#18181B] placeholder-[#A1A1AA] focus:outline-none focus:border-[#36671E]" />
+            <select value={mapsNiche} onChange={(e) => setMapsNiche(e.target.value)}
+              className="bg-[#FAFAF7] border border-[#E8E6E0] rounded-lg px-2.5 py-2 text-sm text-[#18181B] focus:outline-none focus:border-[#36671E]">
+              <option value="aesthetic">Aesthetic / med-spa</option>
+              <option value="dental">Dental</option>
+              <option value="home-services">Home services</option>
+            </select>
+            <button onClick={importFromMaps} disabled={!mapsQuery.trim() || mapsBusy}
+              className="px-4 py-2 rounded-lg bg-[#36671E] text-white text-sm font-bold disabled:opacity-40">
+              {mapsBusy ? "Searching…" : "Import"}
+            </button>
+          </div>
+          {notice && <p className="text-sm text-[#52525B] mt-3">{notice}</p>}
+        </div>
+      )}
 
       {showAddOne && (
         <div className="bg-white border border-[#E8E6E0] rounded-2xl p-5 mb-5">
