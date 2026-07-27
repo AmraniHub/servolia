@@ -32,7 +32,7 @@ export default function AboutPage() {
               <span className="bg-gradient-to-r from-[#36671E] to-[#295115] bg-clip-text text-transparent">in 7 days, at a fixed price.</span>
             </h1>
             <p className="text-lg text-[#52525B] leading-relaxed">
-              Servolia is an AI client acquisition systems agency for service businesses — dental clinics, aesthetic clinics, real estate agents, and home services. We don&apos;t do retainers, we don&apos;t do open-ended projects. We deliver a working system in a week, then we keep it running for a small monthly fee.
+              Servolia is an AI client acquisition systems agency for service businesses — dental clinics, aesthetic clinics, med-spas, and home services. We don&apos;t do retainers, we don&apos;t do open-ended projects. We deliver a working system in a week, then we keep it running for a small monthly fee.
             </p>
           </div>
         </section>

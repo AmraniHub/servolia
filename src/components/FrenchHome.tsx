@@ -144,7 +144,7 @@ export default function FrenchHome() {
             initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.65, delay: 0.25 }}
             className="text-[#ABDF90]/80 text-lg sm:text-xl max-w-2xl mx-auto mb-3 leading-relaxed"
           >
-            Chaque demande traitée en quelques secondes, jour et nuit, et le rendez-vous posé directement dans votre agenda. Servolia crée le site IA, le réceptionniste et le système de réservation qui s&apos;en chargent — pour <a href="/fr/dentistes" className="underline decoration-[#BEF264]/50 underline-offset-2 hover:decoration-[#BEF264]">cabinets dentaires</a>, cliniques, agents immobiliers et entreprises de services en Europe.
+            Chaque demande traitée en quelques secondes, jour et nuit, et le rendez-vous posé directement dans votre agenda. Servolia crée le site IA, le réceptionniste et le système de réservation qui s&apos;en chargent — pour <a href="/fr/dentistes" className="underline decoration-[#BEF264]/50 underline-offset-2 hover:decoration-[#BEF264]">cabinets dentaires</a>, <a href="/fr/esthetique" className="underline decoration-[#BEF264]/50 underline-offset-2 hover:decoration-[#BEF264]">cliniques esthétiques</a> et entreprises de services en Europe.
           </motion.p>
           <motion.p
             initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.35 }}

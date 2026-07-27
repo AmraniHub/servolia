@@ -167,7 +167,7 @@ export default function HomePage() {
             transition={{ duration: 0.65, delay: 0.25 }}
             className="text-[#ABDF90]/80 text-lg sm:text-xl max-w-2xl mx-auto mb-3 leading-relaxed"
           >
-            Every enquiry answered in seconds, day or night, and booked straight into your calendar. Servolia builds the AI website, receptionist and booking system that does it — for clinics, dentists, real estate agents and home services across Europe and the US.
+            Every enquiry answered in seconds, day or night, and booked straight into your calendar. Servolia builds the AI website, receptionist and booking system that does it — for dentists, aesthetic clinics, med-spas and home services across Europe and the US.
           </motion.p>
           <motion.p
             initial={{ opacity: 0, y: 12 }}
