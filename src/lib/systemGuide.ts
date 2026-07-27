@@ -201,6 +201,25 @@ export const FEATURES: SystemFeature[] = [
     code: "src/components/ClientSite.tsx · src/lib/clientPrompt.ts · /api/sites/[slug]/lead",
   },
   {
+    name: "Client value delivery — instant lead alerts, portal pipeline, Sheets, GDPR",
+    summary: "The felt-value layer of every plan: the clinic owner gets an instant '🌙 caught while you were closed' email with one-tap WhatsApp reply the moment their assistant captures a lead, works a real pipeline in their portal, can sync to their own Google Sheet, and ships with a GDPR page — every pricing-page promise now has a real feature behind it.",
+    how: [
+      "Instant alerts (clientNotify.ts): both lead entry points — the booking form (/api/sites/[slug]/lead) and the AI receptionist (/api/chat, on the FIRST message a conversation turns into a booking, never again for the same session) — email the clinic owner immediately. Recipient = site config email, falling back to the build's email. Bilingual by the site's language.",
+      "The unique framing: a Europe/Paris heuristic (Mon–Sat 08:00–19:00) tags each lead as caught during or OUTSIDE opening hours. The after-hours subject line ('🌙 New enquiry caught while you were closed') is Servolia's whole pitch arriving as a real-time push — plus the '5-minute reply wins' nudge and one-tap buttons: wa.me link to the LEAD's phone with a prefilled greeting, tel:, mailto:, portal.",
+      "Portal pipeline: each lead in 'My leads' has a status chip (new → contacted → booked → won/lost) and an expandable private note. PATCH /api/portal/leads is scoped server-side to the client's own site slugs. Needs the pipeline SQL block (chat_sessions.client_status/client_note).",
+      "Google Sheets sync: set sheetsWebhookUrl in a site's config (an Apps Script web-app URL, same pattern as Servolia's own sheet) and every lead POSTs a row: timestamp, source, name, phone, email, service, message, after_hours.",
+      "GDPR page: /sites/{slug}/confidentialite renders a bilingual privacy notice auto-populated from the config (controller name, city, contact email, CNIL recourse) and is linked from every client-site footer. Demo sites never send alerts and never store form submissions.",
+    ],
+    use: [
+      "Run the client-lead-pipeline SQL block with the others — statuses/notes silently no-op until then, everything else works now.",
+      "When a client asks for their Google Sheet: create an Apps Script doPost that appends rows, deploy as web app, paste its URL into the site config's sheetsWebhookUrl.",
+      "In sales conversations: the after-hours alert email IS the demo — 'this is the email you'll get at 11pm when we catch a patient you'd have lost.'",
+    ],
+    cost: "Resend emails (free tier) — no new services.",
+    value: "This is the moment the subscription justifies itself: not a monthly report a month later, but a push at 11pm saying 'your assistant just caught a €500 client while you were closed — tap to reply on WhatsApp.' Nobody selling websites in this niche does that.",
+    code: "src/lib/clientNotify.ts · /api/sites/[slug]/lead · /api/chat · /api/portal/leads (PATCH) · src/components/PortalDashboard.tsx · src/app/sites/[slug]/confidentialite · supabase/schema.sql (pipeline block)",
+  },
+  {
     name: "Costs & subscriptions overview",
     summary: "Every dollar this app can cost you, in one place — what's a fixed subscription, what scales with usage, and what's free — with the live active/inactive state pulled from your actual env vars.",
     how: [

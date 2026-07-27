@@ -63,6 +63,8 @@ export const T = {
     enable: "Enable", askUs: "Ask us", perYr: "yr", perMailbox: "mailbox", perMoShort: "mo",
     // leads
     yourLeads: "Your leads", yourLeadsSub: "— every enquiry your assistant handled", exportCsv: "Export", search: "Search…",
+    leadStage: { new: "New", contacted: "Contacted", booked: "Booked", won: "Won", lost: "Lost" } as Record<string, string>,
+    notePh: "Private note (only you see this)…", noteSave: "Save note", noteSaved: "Saved ✓",
     fAll: "All time", fMonth: "30 days", fWeek: "7 days",
     noLeads: "No enquiries captured yet — they'll appear here as they arrive.", noMatch: "No leads match your search.",
     booking: "Booking", enquiry: "Enquiry", fromAds: " · from your ads", conversation: "(conversation)",
@@ -146,6 +148,8 @@ export const T = {
     addonsTitle: "Modules", addonsDesc: "Modules gérés en plus. Activez les modules en un clic, ou écrivez-nous pour les autres.",
     enable: "Activer", askUs: "Nous demander", perYr: "an", perMailbox: "boîte", perMoShort: "mois",
     yourLeads: "Vos leads", yourLeadsSub: "— chaque demande traitée par votre assistant", exportCsv: "Exporter", search: "Rechercher…",
+    leadStage: { new: "Nouveau", contacted: "Contacté", booked: "RDV fixé", won: "Gagné", lost: "Perdu" } as Record<string, string>,
+    notePh: "Note privée (visible par vous seul)…", noteSave: "Enregistrer", noteSaved: "Enregistré ✓",
     fAll: "Tout", fMonth: "30 jours", fWeek: "7 jours",
     noLeads: "Aucune demande captée pour l'instant — elles apparaîtront ici dès leur arrivée.", noMatch: "Aucun lead ne correspond à votre recherche.",
     booking: "RDV", enquiry: "Demande", fromAds: " · via vos pubs", conversation: "(conversation)",

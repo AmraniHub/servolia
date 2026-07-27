@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { getClientSite } from "@/lib/clientSites";
 import { sendMetaCapiEvent } from "@/lib/metaCapi";
+import { notifyClientOfLead } from "@/lib/clientNotify";
 
 export const runtime = "nodejs";
 
@@ -64,6 +65,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
       });
     } catch { /* table/column may not exist yet — never block the visitor */ }
   }
+
+  // Instant alert to the clinic owner — email + one-tap WhatsApp/call reply,
+  // with after-hours framing. Fire-and-forget by contract.
+  notifyClientOfLead(config, {
+    name, phone, email,
+    service: service && service !== "__other" ? service : null,
+    when: when || null,
+    excerpt: content,
+    source: "form",
+  }).catch(() => {});
 
   // Client's own pixel: a form booking is a Lead event in THEIR Ads Manager.
   if (config.metaPixelId && config.metaCapiToken) {

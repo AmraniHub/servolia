@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getClientEmail } from "@/lib/clientAuth";
 import { supabaseAdmin } from "@/lib/supabase";
 
@@ -7,9 +7,12 @@ export const runtime = "nodejs";
 /**
  * A logged-in client's own lead history: every enquiry their AI receptionist
  * handled, plus this-month stats. This is the "your pipeline lives here" view.
+ * PATCH lets the client work the pipeline: status + a private note per lead
+ * (the "Lead pipeline with statuses / Client notes & history" promises).
  */
 
 interface SessionRow {
+  id: string;
   created_at: string;
   qualified: boolean | null;
   email_captured: string | null;
@@ -17,6 +20,21 @@ interface SessionRow {
   messages: { role: string; content: string }[] | null;
   utm: Record<string, string> | null;
   site_slug: string;
+  client_status?: string | null;
+  client_note?: string | null;
+}
+
+const LEAD_STATUSES = ["new", "contacted", "booked", "won", "lost"] as const;
+
+/** The slugs this logged-in client owns — the authorization boundary for PATCH. */
+async function ownedSlugs(email: string): Promise<string[]> {
+  const db = supabaseAdmin();
+  if (!db) return [];
+  const { data: builds } = await db.from("builds").select("id").eq("email", email);
+  const buildIds = (builds ?? []).map((b) => b.id);
+  if (!buildIds.length) return [];
+  const { data: sites } = await db.from("client_sites").select("slug").in("build_id", buildIds);
+  return (sites ?? []).map((s) => s.slug);
 }
 
 export async function GET() {
@@ -36,22 +54,39 @@ export async function GET() {
   const slugs = (sites ?? []).map((s) => s.slug);
   if (!slugs.length) return NextResponse.json({ leads: [], stats: null });
 
-  const { data } = await db
-    .from("chat_sessions")
-    .select("created_at, qualified, email_captured, phone_captured, messages, utm, site_slug")
-    .in("site_slug", slugs)
-    .order("created_at", { ascending: false })
-    .limit(100);
+  // client_status / client_note may not exist until the pipeline SQL block
+  // runs — fall back to the legacy column list so the portal never breaks.
+  let rows: SessionRow[] = [];
+  {
+    const full = await db
+      .from("chat_sessions")
+      .select("id, created_at, qualified, email_captured, phone_captured, messages, utm, site_slug, client_status, client_note")
+      .in("site_slug", slugs)
+      .order("created_at", { ascending: false })
+      .limit(100);
+    if (!full.error) rows = (full.data as SessionRow[] | null) ?? [];
+    else {
+      const legacy = await db
+        .from("chat_sessions")
+        .select("id, created_at, qualified, email_captured, phone_captured, messages, utm, site_slug")
+        .in("site_slug", slugs)
+        .order("created_at", { ascending: false })
+        .limit(100);
+      rows = (legacy.data as SessionRow[] | null) ?? [];
+    }
+  }
 
-  const rows = (data as SessionRow[] | null) ?? [];
   const leads = rows.map((r) => {
     const firstUser = (r.messages ?? []).find((m) => m.role === "user");
     return {
+      id: r.id,
       created_at: r.created_at,
       qualified: !!r.qualified,
       contact: r.email_captured ?? r.phone_captured ?? null,
       excerpt: firstUser?.content?.slice(0, 120) ?? "",
       fromAds: !!(r.utm && /facebook|instagram|fb|ig|meta|google/i.test(`${r.utm.utm_source ?? ""} ${r.utm.utm_medium ?? ""}`)),
+      status: r.client_status ?? "new",
+      note: r.client_note ?? "",
     };
   });
 
@@ -95,4 +130,33 @@ export async function GET() {
   } catch { /* keep the dashboard working even if this fails */ }
 
   return NextResponse.json({ leads, stats, lifetime });
+}
+
+/** Client works their pipeline: PATCH { id, status?, note? }. Scoped to their own sites. */
+export async function PATCH(req: NextRequest) {
+  const email = await getClientEmail();
+  if (!email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const db = supabaseAdmin();
+  if (!db) return NextResponse.json({ error: "Not configured" }, { status: 503 });
+
+  const { id, status, note } = (await req.json().catch(() => ({}))) as { id?: string; status?: string; note?: string };
+  if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
+
+  const update: Record<string, unknown> = {};
+  if (status !== undefined) {
+    if (!(LEAD_STATUSES as readonly string[]).includes(status)) {
+      return NextResponse.json({ error: "invalid status" }, { status: 400 });
+    }
+    update.client_status = status;
+  }
+  if (note !== undefined) update.client_note = String(note).slice(0, 1000);
+  if (!Object.keys(update).length) return NextResponse.json({ error: "nothing to update" }, { status: 400 });
+
+  // Authorization boundary: the lead must belong to one of THIS client's sites.
+  const slugs = await ownedSlugs(email);
+  if (!slugs.length) return NextResponse.json({ error: "No sites" }, { status: 403 });
+
+  const { error } = await db.from("chat_sessions").update(update).eq("id", id).in("site_slug", slugs);
+  if (error) return NextResponse.json({ error: "Update failed — has the pipeline SQL block been run?" }, { status: 500 });
+  return NextResponse.json({ ok: true });
 }

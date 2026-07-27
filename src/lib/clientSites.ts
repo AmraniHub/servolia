@@ -179,6 +179,11 @@ export interface ClientSiteConfig {
   planKey?: string;
   features?: { chat?: boolean };
 
+  // Per-client Google Sheets CRM sync (Booking System promise): an Apps
+  // Script webhook URL — every captured lead is POSTed there as a JSON row.
+  // Set it in the site config when a client asks for their sheet.
+  sheetsWebhookUrl?: string;
+
   // Business economics & growth loop
   avgTreatmentValue?: number; // avg € per new client — used in the monthly ROI report
   googleReviewUrl?: string; // "leave us a review" link (g.page/r/...)

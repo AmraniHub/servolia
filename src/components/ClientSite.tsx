@@ -562,6 +562,10 @@ export default function ClientSite({ config, page = "home" }: { config: ClientSi
           <span className="font-black">{c.businessName}</span>
           <p className="text-[#A1A1AA] text-xs">
             © {new Date().getFullYear()} {c.businessName}. {c.city ? `${c.city}. ` : ""}
+            <a href={`${basePath}/confidentialite`} className="underline underline-offset-2 hover:text-[#71717A]">
+              {c.language === "fr" ? "Confidentialité" : "Privacy"}
+            </a>
+            {" · "}
             <span className="opacity-70">Built with Servolia</span>
           </p>
         </div>

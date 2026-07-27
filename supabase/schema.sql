@@ -704,3 +704,9 @@ create table if not exists rate_limits (
   count        int not null default 0,
   window_start timestamptz not null default now()
 );
+
+-- CLIENT LEAD PIPELINE: the portal's "My leads" pipeline (Client System
+-- promise — statuses + private notes the clinic keeps on each enquiry).
+-- client_status: new, contacted, booked, won, lost.
+alter table chat_sessions add column if not exists client_status text;
+alter table chat_sessions add column if not exists client_note text;

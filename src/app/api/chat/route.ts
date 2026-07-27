@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin, estimateLeadValue } from "@/lib/supabase";
 import { getClientSite } from "@/lib/clientSites";
+import { notifyClientOfLead } from "@/lib/clientNotify";
 import { buildReceptionistPrompt } from "@/lib/clientPrompt";
 import { sendMetaCapiEvent } from "@/lib/metaCapi";
 import { pricingPromptLines } from "@/lib/pricing";
@@ -196,7 +197,7 @@ export async function POST(req: NextRequest) {
           const emailMatch = allText.match(/[\w.+-]+@[\w-]+\.[\w.-]+/);
           const phoneMatch = allText.match(/\+?[\d\s().-]{8,}/);
           const { data: existing } = await db.from("chat_sessions")
-            .select("id").eq("session_id", sessionId).maybeSingle();
+            .select("id, qualified").eq("session_id", sessionId).maybeSingle();
           const row = {
             messages: fullMessages,
             message_count: fullMessages.length,
@@ -209,6 +210,19 @@ export async function POST(req: NextRequest) {
           };
           if (existing) await db.from("chat_sessions").update(row).eq("id", existing.id);
           else await db.from("chat_sessions").insert({ session_id: sessionId, ...row });
+
+          // Alert the clinic owner the FIRST time this conversation becomes a
+          // booking (transition only — a long chat can never spam them).
+          const wasQualified = !!(existing as { qualified?: boolean } | null)?.qualified;
+          if (isBooking && !wasQualified && config && !config.isDemo) {
+            const lastUserMsg = [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
+            notifyClientOfLead(config, {
+              phone: phoneMatch?.[0] ?? null,
+              email: emailMatch?.[0] ?? null,
+              excerpt: lastUserMsg.slice(0, 400),
+              source: "chat",
+            }).catch(() => {});
+          }
 
           // Ads closed loop: a booking on a client site fires a Lead event on the
           // CLIENT's pixel, so their Ads Manager sees which euro became a consultation.

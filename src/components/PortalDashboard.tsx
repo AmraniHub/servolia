@@ -24,7 +24,17 @@ const ACCEPTED_IMAGE_TYPES = "image/jpeg,image/png,image/webp,image/gif";
 
 
 interface Message { id: string; sender: "client" | "admin"; body: string; created_at: string; attachment_url?: string | null; attachment_type?: string | null }
-interface PortalLead { created_at: string; qualified: boolean; contact: string | null; excerpt: string; fromAds: boolean }
+interface PortalLead { id?: string; created_at: string; qualified: boolean; contact: string | null; excerpt: string; fromAds: boolean; status?: string; note?: string }
+
+/** Client-side pipeline stages (mirrors LEAD_STATUSES in /api/portal/leads). */
+const LEAD_STAGES = ["new", "contacted", "booked", "won", "lost"] as const;
+const STAGE_COLORS: Record<string, { color: string; bg: string }> = {
+  new:       { color: "#52525B", bg: "#F0EFEA" },
+  contacted: { color: "#1D4ED8", bg: "#DBEAFE" },
+  booked:    { color: "#5B21B6", bg: "#EDE9FE" },
+  won:       { color: "#166534", bg: "#DCFCE7" },
+  lost:      { color: "#B91C1C", bg: "#FEE2E2" },
+};
 interface PortalStats { monthEnquiries: number; monthBookings: number; monthContacts: number }
 interface PortalLifetime { enquiries: number; bookings: number; afterHours: number; since: string | null }
 interface ReportMetrics { enquiries: number; bookings: number; afterHours: number; fromAds: number; estValue: number; perClient: number }
@@ -73,6 +83,10 @@ export default function PortalDashboard({
   const [lifetime, setLifetime] = useState<PortalLifetime | null>(null);
   const [leadSearch, setLeadSearch] = useState("");
   const [leadFilter, setLeadFilter] = useState<"all" | "week" | "month">("all");
+  const [openLeadId, setOpenLeadId] = useState<string | null>(null);
+  const [leadNoteDraft, setLeadNoteDraft] = useState("");
+  const [leadNoteBusy, setLeadNoteBusy] = useState(false);
+  const [leadNoteSaved, setLeadNoteSaved] = useState(false);
 
   const [traffic, setTraffic] = useState<PortalTraffic | null>(null);
   const [trafficEnquiries, setTrafficEnquiries] = useState(0);
@@ -161,6 +175,36 @@ export default function PortalDashboard({
       return true;
     });
   }, [leads, leadSearch, leadFilter]);
+
+  // Pipeline actions — optimistic updates, scoped server-side to this client's sites.
+  async function updateLeadStatus(id: string, status: string) {
+    setLeads((prev) => prev.map((l) => (l.id === id ? { ...l, status } : l)));
+    await fetch("/api/portal/leads", {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, status }),
+    }).catch(() => {});
+  }
+  async function saveLeadNote(id: string) {
+    if (leadNoteBusy) return;
+    setLeadNoteBusy(true);
+    try {
+      const res = await fetch("/api/portal/leads", {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, note: leadNoteDraft }),
+      });
+      if (res.ok) {
+        setLeads((prev) => prev.map((l) => (l.id === id ? { ...l, note: leadNoteDraft } : l)));
+        setLeadNoteSaved(true);
+        setTimeout(() => setLeadNoteSaved(false), 1500);
+      }
+    } finally { setLeadNoteBusy(false); }
+  }
+  // Load the existing note into the draft when a lead row is expanded.
+  useEffect(() => {
+    if (!openLeadId) return;
+    setLeadNoteDraft(leads.find((l) => l.id === openLeadId)?.note ?? "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openLeadId]);
 
   function exportLeadsCsv() {
     const headers = ["date", "type", "contact", "excerpt", "from_ads"];
@@ -591,19 +635,54 @@ export default function PortalDashboard({
               <p className="text-sm text-[var(--p-faint)] text-center py-12">{t.noMatch}</p>
             ) : (
               <div className="max-h-[540px] overflow-y-auto divide-y divide-[var(--p-border)]">
-                {filteredLeads.map((l, i) => (
-                  <div key={i} className="px-4 sm:px-5 py-3 flex items-start gap-3">
-                    <span className={`mt-1 text-[10px] font-black px-2 py-0.5 rounded-full whitespace-nowrap ${l.qualified ? "bg-[#DCFCE7] text-[#166534]" : "bg-[var(--p-raised)] text-[var(--p-muted)]"}`}>
-                      {l.qualified ? t.booking : t.enquiry}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm text-[var(--p-text)] truncate">{l.excerpt || t.conversation}</p>
-                      <p className="text-[11px] text-[var(--p-faint)] mt-0.5">
-                        {formatDate(l.created_at, lang)}{l.contact ? ` · ${l.contact}` : ""}{l.fromAds ? t.fromAds : ""}
-                      </p>
+                {filteredLeads.map((l, i) => {
+                  const stage = STAGE_COLORS[l.status ?? "new"] ?? STAGE_COLORS.new;
+                  const open = l.id != null && openLeadId === l.id;
+                  return (
+                    <div key={l.id ?? i} className="px-4 sm:px-5 py-3">
+                      <div className="flex items-start gap-3">
+                        <span className={`mt-1 text-[10px] font-black px-2 py-0.5 rounded-full whitespace-nowrap ${l.qualified ? "bg-[#DCFCE7] text-[#166534]" : "bg-[var(--p-raised)] text-[var(--p-muted)]"}`}>
+                          {l.qualified ? t.booking : t.enquiry}
+                        </span>
+                        <div className="min-w-0 flex-1 cursor-pointer" onClick={() => l.id && setOpenLeadId(open ? null : l.id)}>
+                          <p className="text-sm text-[var(--p-text)] truncate">{l.excerpt || t.conversation}</p>
+                          <p className="text-[11px] text-[var(--p-faint)] mt-0.5">
+                            {formatDate(l.created_at, lang)}{l.contact ? ` · ${l.contact}` : ""}{l.fromAds ? t.fromAds : ""}
+                            {l.note ? " · 📝" : ""}
+                          </p>
+                        </div>
+                        {l.id && (
+                          <select
+                            value={l.status ?? "new"}
+                            onChange={(e) => updateLeadStatus(l.id!, e.target.value)}
+                            onClick={(e) => e.stopPropagation()}
+                            className="shrink-0 text-[11px] font-black rounded-lg px-2 py-1.5 border-0 cursor-pointer focus:outline-none"
+                            style={{ background: stage.bg, color: stage.color }}
+                          >
+                            {LEAD_STAGES.map((s) => (
+                              <option key={s} value={s}>{t.leadStage[s]}</option>
+                            ))}
+                          </select>
+                        )}
+                      </div>
+                      {open && (
+                        <div className="mt-2.5 ml-0 sm:ml-14 flex items-start gap-2">
+                          <textarea
+                            value={leadNoteDraft}
+                            onChange={(e) => setLeadNoteDraft(e.target.value)}
+                            placeholder={t.notePh}
+                            rows={2}
+                            className="flex-1 rounded-lg bg-[var(--p-bg)] border border-[var(--p-border)] px-3 py-2 text-xs text-[var(--p-text)] placeholder-[var(--p-faint)] focus:outline-none focus:border-[var(--p-accent)] resize-y"
+                          />
+                          <button onClick={() => saveLeadNote(l.id!)} disabled={leadNoteBusy}
+                            className="shrink-0 px-3 py-2 rounded-lg bg-[var(--p-accent)] text-[var(--p-accent-fg)] text-[11px] font-black hover:bg-[var(--p-accent-hover)] transition-colors disabled:opacity-50">
+                            {leadNoteSaved ? t.noteSaved : t.noteSave}
+                          </button>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
