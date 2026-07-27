@@ -201,6 +201,24 @@ export const FEATURES: SystemFeature[] = [
     code: "src/components/ClientSite.tsx · src/lib/clientPrompt.ts · /api/sites/[slug]/lead",
   },
   {
+    name: "Scheduled jobs map (Vercel crons vs GitHub Actions)",
+    summary: "Every automated job, where it's scheduled, and why there are two systems — so nobody 'rediscovers' this topology again.",
+    how: [
+      "VERCEL CRONS (vercel.json, GET, Authorization auto-injected from CRON_SECRET): daily-brief 07:00 · monthly-report 08:00 on the 1st · monthly-invoice 09:00 on the 1st (pay-per-booking).",
+      "GITHUB ACTIONS (.github/workflows/*.yml, POST via curl with the CRON_SECRET repo secret — set 2026-07-15): follow-up daily 09:30 UTC (48h lead nudge) · daily-stats 07:15 (GA4 → Telegram) · weekly-seo Monday 08:15 · client-reports 5th 08:00 (AI narrative per care client) · blog-generator Mon/Wed/Fri 08:00 · linkedin-generator Mon/Wed/Fri 07:00 · uptime every ~2h (independent of Vercel, alerts even if the site is down).",
+      "Why two systems: Actions workflows POST (Vercel crons can only GET), give a manual 'Run workflow' button, survive a Vercel outage (uptime), and don't count against Vercel's cron limits.",
+      "monthly-report (1st) and client-reports (5th) are NOT duplicates: the 1st sends the metrics snapshot; the 5th sends the Claude-written narrative + recommendation for active care clients.",
+    ],
+    use: [
+      "Check a failing job: GitHub → Actions tab → the workflow's runs (blog-generator now prints the HTTP status + body on failure).",
+      "Run any Actions job manually with its 'Run workflow' button — useful for testing without waiting for the schedule.",
+      "If CRON_SECRET is ever rotated, update BOTH Vercel env AND the GitHub repo secret.",
+    ],
+    cost: "GitHub Actions minutes — a few seconds per run, far inside the free tier.",
+    value: "Follow-ups, reports and content generation run without the founder remembering anything — and the uptime watch alerts even when Vercel itself is down.",
+    code: "vercel.json · .github/workflows/*.yml · src/app/api/cron/*",
+  },
+  {
     name: "Pay-per-booking billing (aesthetic/med-spa wedge)",
     summary: "The results-only offer: €990 setup, then €60 per AI-booked consultation, invoiced monthly. The strongest close for a skeptical clinic owner — Servolia only earns when her agenda fills.",
     how: [

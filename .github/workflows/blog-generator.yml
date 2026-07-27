@@ -11,5 +11,9 @@ jobs:
     steps:
       - name: Trigger blog generation
         run: |
-          curl -sf -X POST "https://servolia.com/api/cron/generate-blog" \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
+          # -f alone hides WHY a run failed; print status + body, then fail on non-2xx.
+          body=$(mktemp)
+          code=$(curl -s -o "$body" -w "%{http_code}" -X POST "https://servolia.com/api/cron/generate-blog" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}")
+          echo "HTTP $code"; cat "$body"; echo
+          [ "$code" -ge 200 ] && [ "$code" -lt 300 ]
