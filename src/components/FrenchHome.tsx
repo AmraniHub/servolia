@@ -412,7 +412,7 @@ export default function FrenchHome() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {[
               { emoji: "🦷", title: "Cabinets dentaires & implants", pain: "Les réservations du soir partent chez les confrères", avg: "1,5k–5k € par patient", href: "/fr/dentistes" },
-              { emoji: "💉", title: "Cliniques esthétiques & med spas", pain: "Des DMs Instagram qui convertissent à 5 %", avg: "500–3k € par visite", href: "/fr/contact" },
+              { emoji: "💉", title: "Cliniques esthétiques & med spas", pain: "Des DMs Instagram qui convertissent à 5 %", avg: "500–3k € par visite", href: "/fr/esthetique" },
               { emoji: "🏠", title: "Immobilier de prestige", pain: "10 min de délai de réponse = mandat perdu", avg: "10k–100k € de commission", href: "/fr/contact" },
               { emoji: "🌬️", title: "CVC & services à domicile", pain: "L'accueil téléphonique seul coûte 10h/semaine", avg: "3k–30k $ par chantier", href: "/fr/contact" },
               { emoji: "🔬", title: "Chirurgie esthétique", pain: "Consultations réservées 6 semaines à l'avance", avg: "5k–25k $ par intervention", href: "/fr/contact" },

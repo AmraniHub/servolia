@@ -14,6 +14,7 @@ const entreprise = [
   { label: "Audit gratuit", href: "/fr/audit" },
   { label: "Contact", href: "/fr/contact" },
   { label: "Cabinets dentaires", href: "/fr/dentistes" },
+  { label: "Cliniques esthétiques", href: "/fr/esthetique" },
   { label: "Espace client", href: "/portal" },
 ];
 
