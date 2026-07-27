@@ -201,6 +201,25 @@ export const FEATURES: SystemFeature[] = [
     code: "src/components/ClientSite.tsx · src/lib/clientPrompt.ts · /api/sites/[slug]/lead",
   },
   {
+    name: "Pay-per-booking billing (aesthetic/med-spa wedge)",
+    summary: "The results-only offer: €990 setup, then €60 per AI-booked consultation, invoiced monthly. The strongest close for a skeptical clinic owner — Servolia only earns when her agenda fills.",
+    how: [
+      "Checkout: /api/checkout-ppb charges the setup fee in full and saves the card for off-session billing. Founder-led: POST for a {url}, or just send servolia.com/api/checkout-ppb?niche=aesthetic&lang=fr in a DM — it redirects straight into Stripe.",
+      "LEGAL GATE: payPerBookingEligible(niche) runs server-side — dental/medical is refused no matter what the link says (French compérage rules; see pricing.ts). Never weaken it.",
+      "On payment the webhook (kind=ppb_setup) creates the build + an active clients row with billing_mode 'per_booking' and the €60 rate snapshotted (a later price change never re-prices existing clients).",
+      "On the 1st at 09:00, /api/cron/monthly-invoice tallies each per-booking client's unbilled qualified bookings, writes ONE pay_per_booking_invoices ledger row per period (unique constraint — re-runs are no-ops, never double-charges), stamps chat_sessions.billed_at, then creates and sends a real Stripe invoice with 7 days to pay.",
+      "invoice.paid marks the ledger row paid; a failed invoice flows into the same dunning path as Care plans (banner → grace → suspend).",
+    ],
+    use: [
+      "Close an aesthetic prospect by sending the GET checkout link with their niche — nothing to build manually.",
+      "When the monthly Telegram summary arrives, review for no-shows and void/adjust line items in the Stripe dashboard within the 7-day due window — that's how 'attended' stays honest.",
+      "A 'PENDING (no Stripe customer)' line in the summary means the client has no card on file — chase manually.",
+    ],
+    cost: "Stripe's per-transaction fee on the setup + each monthly invoice.",
+    value: "Removes the biggest objection in the niche ('what if it doesn't work?') by pricing on results. 15 attended bookings/month = €900/mo recurring from one client — triple a Scale care plan.",
+    code: "src/lib/pricing.ts (PAY_PER_BOOKING, payPerBookingEligible) · /api/checkout-ppb · /api/webhooks/stripe (ppb_setup) · /api/cron/monthly-invoice · supabase/schema.sql (pay-per-booking block)",
+  },
+  {
     name: "FR Geo-SEO + GEO (LLM-answer) surface",
     summary: "Programmatic city × niche landing pages at /fr/[niche]/[ville] — 45 pages covering the top 15 French cities × 3 niches (dentaire, esthétique, services à domicile). Optimised for BOTH classic Google local search AND generative-engine answers (ChatGPT, Perplexity, Google AI Overviews).",
     how: [
