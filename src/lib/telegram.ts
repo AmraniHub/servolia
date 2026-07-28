@@ -20,10 +20,29 @@ export function telegramConfigured(): boolean {
   return creds().configured;
 }
 
+/**
+ * NOTIFICATION POLICY — the phone should only buzz for money.
+ *
+ *   loud  (default) → a real event you'd want to know about within minutes:
+ *                     a captured lead, a payment, a scope accepted, a failed
+ *                     charge, a client message.
+ *   silent          → routine digests and reports. Delivered to the chat with
+ *                     `disable_notification`, so it's there when you look but
+ *                     never interrupts you.
+ *
+ * Config nags ("X not connected yet") should not be sent at all — /admin/settings
+ * already tracks every unset secret and never stops being visible.
+ */
+export interface SendOptions {
+  /** Deliver without sound/vibration. Use for digests, reports and summaries. */
+  silent?: boolean;
+}
+
 /** Send a message, optionally with a row of inline buttons. Returns the message_id, or null if not configured/failed. */
 export async function sendTelegramMessage(
   text: string,
-  buttons?: InlineButton[][]
+  buttons?: InlineButton[][],
+  opts?: SendOptions
 ): Promise<{ messageId: string; chatId: string } | null> {
   const { token, chatId, configured } = creds();
   if (!configured) return null;
@@ -36,6 +55,7 @@ export async function sendTelegramMessage(
         chat_id: chatId,
         text,
         parse_mode: "Markdown",
+        disable_notification: opts?.silent === true,
         reply_markup: buttons ? { inline_keyboard: buttons } : undefined,
       }),
     });

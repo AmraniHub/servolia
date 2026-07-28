@@ -22,9 +22,8 @@ export async function POST(req: NextRequest) {
   }
 
   if (!ga4Configured()) {
-    await sendTelegramMessage(
-      "📊 *Daily stats* — GA4 not connected yet.\n\nAdd `GOOGLE_SERVICE_ACCOUNT_KEY` + `GA4_PROPERTY_ID` in Vercel to enable this report."
-    );
+    // Silent by design: this used to Telegram the same config nag every single
+    // day, forever. /admin/settings already lists every unset secret.
     return NextResponse.json({ ok: true, reason: "GA4 not configured" });
   }
 
@@ -99,6 +98,12 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  await sendTelegramMessage(msg);
+  // Nothing happened yesterday and nothing this week — a "0 / 0 / 0" push is
+  // pure noise. Skip entirely; the numbers stay available in /admin/traffic.
+  if (!users && !sessions && !pageviews && !leadsWeek) {
+    return NextResponse.json({ ok: true, skipped: "no activity" });
+  }
+
+  await sendTelegramMessage(msg, undefined, { silent: true }); // routine digest
   return NextResponse.json({ ok: true, users, sessions, pageviews, leadsWeek });
 }

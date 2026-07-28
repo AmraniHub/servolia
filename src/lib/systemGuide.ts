@@ -278,6 +278,24 @@ export const FEATURES: SystemFeature[] = [
     code: "src/lib/security.ts · src/lib/auth.ts · src/lib/clientAuth.ts · /api/admin/login · /api/admin/2fa-setup · /api/portal/request-link · /api/portal/login-password · next.config.ts (headers) · supabase/schema.sql (rate_limits)",
   },
   {
+    name: "Telegram notification policy — the phone only buzzes for money",
+    summary: "Three tiers so the bot stays worth reading: real events buzz, routine digests arrive silently, and config nags aren't sent at all.",
+    how: [
+      "LOUD (default): a captured lead, a payment, a scope accepted, a failed charge, a new subscriber, a client portal message, and the morning brief WHEN it has hot leads or 48h-silent leads. These are the ones worth interrupting you.",
+      "SILENT (`sendTelegramMessage(text, buttons, { silent: true })` → Telegram's disable_notification): daily traffic stats, weekly SEO, 48h follow-up summaries, monthly client-report summaries. They land in the chat for when you look, without a buzz.",
+      "NOT SENT AT ALL: config nags. daily-stats and weekly-seo used to Telegram 'GA4 not connected yet' every single day/week forever — an unset secret is a /admin/settings concern, not a push notification.",
+      "ZERO-ACTIVITY SUPPRESSION: the morning brief skips entirely when there are no leads, no builds and nothing actionable; daily stats skip when yesterday had 0 visitors and the week had 0 leads. A '0 / 0 / 0' report teaches you to ignore the bot.",
+      "Content approvals (blog + LinkedIn drafts with Publish/Skip buttons) stay loud — they're a decision waiting on you, and tapping a button IS the workflow.",
+    ],
+    use: [
+      "Adding a new notification: default to silent unless a human would want to stop what they're doing for it. If it repeats on a schedule and says the same thing when nothing happened, guard it with a zero-activity check.",
+      "Too noisy again? The lever is `{ silent: true }` plus a zero-activity guard — not muting the bot, which would also hide the money alerts.",
+    ],
+    cost: "None.",
+    value: "Before this, a Monday morning delivered up to 6 pushes before 10am — several of them config nags or empty reports. A bot you mute is a bot that can't tell you a €990 lead just came in at 23:00.",
+    code: "src/lib/telegram.ts (SendOptions) · /api/cron/daily-brief · daily-stats · weekly-seo · follow-up · client-reports",
+  },
+  {
     name: "Scheduled jobs map (Vercel crons vs GitHub Actions)",
     summary: "Every automated job, where it's scheduled, and why there are two systems — so nobody 'rediscovers' this topology again.",
     how: [

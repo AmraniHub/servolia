@@ -60,10 +60,15 @@ export async function GET(req: NextRequest) {
     msg += "\n";
   }
 
-  if (hot.length === 0 && slaBreached.length === 0) {
-    msg += leads.length === 0
-      ? "📭 No open leads. Focus on outreach today.\n"
-      : "✅ Pipeline looks healthy — no urgent actions.\n";
+  // NOTHING TO ACT ON → don't send at all. A daily "no open leads" push is the
+  // fastest way to train yourself to ignore the bot. The CRM is always there.
+  const actionable = hot.length > 0 || slaBreached.length > 0;
+  if (!actionable && leads.length === 0 && builds.length === 0) {
+    return NextResponse.json({ ok: true, skipped: "nothing actionable" });
+  }
+
+  if (!actionable) {
+    msg += "✅ Pipeline looks healthy — no urgent actions.\n";
   }
 
   msg += `\n👉 [Open CRM](https://servolia.com/admin)`;
@@ -75,7 +80,13 @@ export async function GET(req: NextRequest) {
     const res = await fetch(`https://api.telegram.org/bot${tgToken}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: tgChatId, text: msg, parse_mode: "Markdown" }),
+      body: JSON.stringify({
+        chat_id: tgChatId,
+        text: msg,
+        parse_mode: "Markdown",
+        // Only buzz when there's something to actually do this morning.
+        disable_notification: !actionable,
+      }),
     });
     const json = await res.json();
     return NextResponse.json({ ok: true, telegram: json.ok, hot: hot.length, sla: slaBreached.length });

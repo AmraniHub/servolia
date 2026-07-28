@@ -35,9 +35,7 @@ export async function POST(req: NextRequest) {
   }
 
   if (!ga4Configured()) {
-    await sendTelegramMessage(
-      "🔎 *Weekly SEO report* — GA4 not connected yet.\n\nAdd `GOOGLE_SERVICE_ACCOUNT_KEY` + `GA4_PROPERTY_ID` in Vercel to enable this report."
-    );
+    // Silent by design — same reasoning as daily-stats. Surfaced in /admin/settings.
     return NextResponse.json({ ok: true, reason: "GA4 not configured" });
   }
 
@@ -132,6 +130,6 @@ export async function POST(req: NextRequest) {
     ch.forEach((r) => { msg += `• ${r.dimensionValues?.[0]?.value ?? "?"} — ${r.metricValues?.[0]?.value ?? 0}\n`; });
   }
 
-  await sendTelegramMessage(msg);
+  await sendTelegramMessage(msg, undefined, { silent: true }); // routine digest
   return NextResponse.json({ ok: true, currSessions, prevSessions });
 }

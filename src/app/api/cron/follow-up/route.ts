@@ -113,7 +113,10 @@ export async function POST(req: NextRequest) {
   }
 
   if (telegramConfigured() && sent > 0) {
-    await sendTelegramMessage(`📮 Relances 48h envoyées : ${sent}\n${sentTo.map((b) => `• ${b}`).join("\n")}`);
+    await sendTelegramMessage(
+      `📮 Relances 48h envoyées : ${sent}\n${sentTo.map((b) => `• ${b}`).join("\n")}`,
+      undefined, { silent: true }, // routine digest — no buzz
+    );
   }
 
   return NextResponse.json({ sent, skipped });

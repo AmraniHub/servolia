@@ -179,7 +179,10 @@ export async function POST(req: NextRequest) {
     const lines = results.map(
       (r) => `• ${r.site}: ${r.conversations} conv · ${r.qualified} qualifiés · ${r.emailed ? "📧 envoyé" : "⚠️ email NON envoyé"}`,
     );
-    await sendTelegramMessage(`📊 Rapports clients ${win.labelFr}\n${lines.join("\n")}`);
+    await sendTelegramMessage(
+      `📊 Rapports clients ${win.labelFr}\n${lines.join("\n")}`,
+      undefined, { silent: true }, // routine digest — no buzz
+    );
   }
 
   return NextResponse.json({ month: win.label, reports: results });
