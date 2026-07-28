@@ -11,30 +11,98 @@ import CommandPalette from "./CommandPalette";
 import AutoRefresh from "@/components/AutoRefresh";
 import Copilot from "./Copilot";
 
-const nav = [
-  { label: "Dashboard",   href: "/admin",           icon: LayoutDashboard },
-  { label: "Leads",       href: "/admin/leads",     icon: Users },
-  { label: "Email audience", href: "/admin/subscribers", icon: Mail },
-  { label: "Email your list", href: "/admin/broadcast", icon: Send },
-  { label: "Pipeline",    href: "/admin/pipeline",  icon: Kanban },
-  { label: "Prospects",   href: "/admin/prospects", icon: Target },
-  { label: "Calls",       href: "/admin/bookings",  icon: CalendarClock },
-  { label: "Builds",      href: "/admin/builds",    icon: Hammer },
-  { label: "Client Sites", href: "/admin/sites",    icon: Globe },
-  { label: "Demo Generator", href: "/admin/demo",  icon: Wand2 },
-  { label: "Clients",     href: "/admin/clients",   icon: UserCircle },
-  { label: "Messages",    href: "/admin/messages",  icon: MessageSquare },
-  { label: "Chat inbox",  href: "/admin/chat",      icon: Bot },
-  { label: "Campaigns",   href: "/admin/reactivation", icon: RefreshCcw },
-  { label: "Case Studies", href: "/admin/case-studies", icon: Star },
-  { label: "Content Engine", href: "/admin/content", icon: Sparkles },
-  { label: "Analytics",   href: "/admin/analytics", icon: BarChart3 },
-  { label: "Traffic",     href: "/admin/traffic",   icon: Eye },
-  { label: "Revenue",     href: "/admin/revenue",   icon: TrendingUp },
-  { label: "Data Room",   href: "/admin/data-room", icon: Database },
-  { label: "System guide", href: "/admin/system",   icon: BookOpen },
-  { label: "Settings",    href: "/admin/settings",  icon: Settings },
+/**
+ * Nav grouped by what you're actually doing — 22 flat links were impossible to
+ * scan. Order follows the business flow: find them → deliver → keep them →
+ * grow → run the machine.
+ */
+const navGroups: { group: string; items: { label: string; href: string; icon: typeof Users }[] }[] = [
+  {
+    group: "Acquisition",
+    items: [
+      { label: "Leads",           href: "/admin/leads",        icon: Users },
+      { label: "Pipeline",        href: "/admin/pipeline",     icon: Kanban },
+      { label: "Prospects",       href: "/admin/prospects",    icon: Target },
+      { label: "Calls",           href: "/admin/bookings",     icon: CalendarClock },
+      { label: "Campaigns",       href: "/admin/reactivation", icon: RefreshCcw },
+      { label: "Email audience",  href: "/admin/subscribers",  icon: Mail },
+      { label: "Email your list", href: "/admin/broadcast",    icon: Send },
+    ],
+  },
+  {
+    group: "Delivery",
+    items: [
+      { label: "Builds",         href: "/admin/builds", icon: Hammer },
+      { label: "Client Sites",   href: "/admin/sites",  icon: Globe },
+      { label: "Demo Generator", href: "/admin/demo",   icon: Wand2 },
+    ],
+  },
+  {
+    group: "Clients",
+    items: [
+      { label: "Clients",    href: "/admin/clients",  icon: UserCircle },
+      { label: "Messages",   href: "/admin/messages", icon: MessageSquare },
+      { label: "Chat inbox", href: "/admin/chat",     icon: Bot },
+    ],
+  },
+  {
+    group: "Growth",
+    items: [
+      { label: "Content Engine", href: "/admin/content",      icon: Sparkles },
+      { label: "Case Studies",   href: "/admin/case-studies", icon: Star },
+      { label: "Analytics",      href: "/admin/analytics",    icon: BarChart3 },
+      { label: "Traffic",        href: "/admin/traffic",      icon: Eye },
+      { label: "Revenue",        href: "/admin/revenue",      icon: TrendingUp },
+    ],
+  },
+  {
+    group: "System",
+    items: [
+      { label: "Data Room",    href: "/admin/data-room", icon: Database },
+      { label: "System guide", href: "/admin/system",    icon: BookOpen },
+      { label: "Settings",     href: "/admin/settings",  icon: Settings },
+    ],
+  },
 ];
+
+/** Flat list — mobile drawer and any lookup that doesn't care about grouping. */
+const nav = [
+  { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
+  ...navGroups.flatMap((g) => g.items),
+];
+
+/** One sidebar row. Active state gets a left indicator bar + tinted background. */
+function NavLink({ item, pathname, unreadMsgs }: {
+  item: { label: string; href: string; icon: typeof Users };
+  pathname: string;
+  unreadMsgs: number;
+}) {
+  const active = item.href === "/admin" ? pathname === "/admin" : pathname.startsWith(item.href);
+  const Icon = item.icon;
+  const badge = item.href === "/admin/messages" && unreadMsgs > 0 ? unreadMsgs : 0;
+  return (
+    <Link
+      href={item.href}
+      aria-current={active ? "page" : undefined}
+      className={`relative flex items-center gap-3 pl-3 pr-3 py-2 rounded-lg text-sm transition-colors ${
+        active
+          ? "bg-[#EEF5EA] text-[#36671E] font-semibold"
+          : "text-[#52525B] hover:bg-[#F5F4EF] hover:text-[#18181B]"
+      }`}
+    >
+      {active && (
+        <span aria-hidden className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r-full bg-[#36671E]" />
+      )}
+      <Icon className="w-4 h-4 shrink-0" />
+      <span className="flex-1 truncate">{item.label}</span>
+      {badge > 0 && (
+        <span className="text-[10px] font-black px-1.5 py-0.5 rounded-full bg-[#36671E] text-white">
+          {badge > 99 ? "99+" : badge}
+        </span>
+      )}
+    </Link>
+  );
+}
 
 export default function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -46,8 +114,10 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
 
   useEffect(() => {
     setIsMac(/Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent));
+    // Saved choice wins; otherwise follow the OS (the portal already did this).
     const saved = localStorage.getItem("servolia_admin_theme");
     if (saved === "dark" || saved === "light") setTheme(saved);
+    else if (window.matchMedia?.("(prefers-color-scheme: dark)").matches) setTheme("dark");
   }, []);
 
   // Unread client-messages badge, visible from anywhere in the CRM (not just the Messages page).
@@ -102,31 +172,22 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           </button>
         </div>
 
-        <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-          {nav.map((item) => {
-            const active = item.href === "/admin"
-              ? pathname === "/admin"
-              : pathname.startsWith(item.href);
-            const Icon = item.icon;
-            const badge = item.href === "/admin/messages" && unreadMsgs > 0 ? unreadMsgs : 0;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-                  active
-                    ? "bg-[#EEF5EA] text-[#36671E] font-semibold"
-                    : "text-[#52525B] hover:bg-[#F5F4EF] hover:text-[#18181B]"
-                }`}
-              >
-                <Icon className="w-4 h-4" />
-                <span className="flex-1">{item.label}</span>
-                {badge > 0 && (
-                  <span className="text-[10px] font-black px-1.5 py-0.5 rounded-full bg-[#36671E] text-white">{badge > 99 ? "99+" : badge}</span>
-                )}
-              </Link>
-            );
-          })}
+        <nav className="flex-1 px-3 py-3 overflow-y-auto">
+          {/* Dashboard sits above the groups — it's the home, not a category */}
+          <NavLink item={nav[0]} pathname={pathname} unreadMsgs={unreadMsgs} />
+
+          {navGroups.map((g) => (
+            <div key={g.group} className="mt-4 first:mt-2">
+              <p className="px-3 pb-1.5 text-[10px] font-black uppercase tracking-widest text-[#A1A1AA]">
+                {g.group}
+              </p>
+              <div className="space-y-0.5">
+                {g.items.map((item) => (
+                  <NavLink key={item.href} item={item} pathname={pathname} unreadMsgs={unreadMsgs} />
+                ))}
+              </div>
+            </div>
+          ))}
         </nav>
 
         <div className="p-3 border-t border-[#E8E6E0]">

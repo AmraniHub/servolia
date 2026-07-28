@@ -66,107 +66,226 @@ html {
   scroll-behavior: smooth;
 }
 
-/* === Admin dark theme — red-accented, retrofit over the light palette ===
-   Scoped to [data-admin-theme="dark"] on the AdminShell root so light mode is
-   untouched. Overrides the ~30 color tokens the admin actually uses. */
-[data-admin-theme="dark"] { color-scheme: dark; background: #0c0d11; }
+/* ===========================================================================
+   DASHBOARD THEMES — one dark scale shared by the admin CRM and the client
+   portal, so the two surfaces read as one product.
+
+   Dark accent is LIME (#BEF264 on ink), matching the marketing site's dark
+   CTAs and the design system's own "electric accent on dark surfaces" note.
+   It replaced a red accent that collided with danger states: brand text and
+   error text both rendered #f87171, so "Generate" and "Delete" looked
+   identical. Red now means danger and nothing else.
+   =========================================================================== */
+
+:root {
+  /* Shared dark scale (referenced by both dashboards) */
+  --d-bg:        #0B0F0D;  /* canvas */
+  --d-surface:   #121613;  /* cards */
+  --d-raised:    #1A211C;  /* hover / subtle sections */
+  --d-elevated:  #212A23;  /* dropdowns, popovers */
+  --d-border:    #262E28;
+  --d-border-2:  #334036;  /* stronger divider */
+  --d-text:      #F2F3F0;
+  --d-text-2:    #D7DBD6;
+  --d-text-3:    #A8B0AA;
+  --d-muted:     #8A928C;
+  --d-faint:     #6B726C;
+
+  --d-accent:      #BEF264;
+  --d-accent-hover:#D9F99D;
+  --d-accent-fg:   #0A1F14;  /* text ON the accent */
+  --d-accent-soft: #18251A;  /* tinted background */
+
+  /* Status on dark — tint + legible foreground */
+  --d-ok-bg:    #10231A;  --d-ok-fg:    #4ADE80;
+  --d-warn-bg:  #2A2410;  --d-warn-fg:  #FBBF24;
+  --d-bad-bg:   #2A1517;  --d-bad-fg:   #F87171;
+  --d-info-bg:  #14243D;  --d-info-fg:  #60A5FA;
+  --d-purple-bg:#1F1A35;  --d-purple-fg:#C4B5FD;
+  --d-sky-bg:   #10283A;  --d-sky-fg:   #38BDF8;
+}
+
+/* === ADMIN DARK — retrofit over the light palette =========================
+   Scoped to [data-admin-theme="dark"] so light mode is untouched. Covers
+   every colour the admin actually uses (audited, not guessed). */
+[data-admin-theme="dark"] {
+  color-scheme: dark;
+  background: var(--d-bg);
+  color: var(--d-text-2);
+}
 
 /* Surfaces */
 [data-admin-theme="dark"] .bg-white,
-[data-admin-theme="dark"] .bg-\[\#FFFFFF\] { background-color: #16181f; }
-[data-admin-theme="dark"] .bg-\[\#FAFAF7\] { background-color: #0f1014; }
-[data-admin-theme="dark"] .bg-\[\#F5F4EF\] { background-color: #1c1f27; }
-[data-admin-theme="dark"] .bg-\[\#F0EFEA\] { background-color: #20232c; }
-[data-admin-theme="dark"] .bg-\[\#18181B\] { background-color: #2a2c36; }
-[data-admin-theme="dark"] .from-\[\#FAFAF7\] { --tw-gradient-from: #0f1014; }
+[data-admin-theme="dark"] .bg-\[\#FFFFFF\] { background-color: var(--d-surface); }
+[data-admin-theme="dark"] .bg-\[\#FAFAF7\] { background-color: var(--d-bg); }
+[data-admin-theme="dark"] .bg-\[\#F5F4EF\],
+[data-admin-theme="dark"] .hover\:bg-\[\#F5F4EF\]:hover { background-color: var(--d-raised); }
+[data-admin-theme="dark"] .bg-\[\#F0EFEA\],
+[data-admin-theme="dark"] .bg-\[\#EDEBE4\] { background-color: var(--d-elevated); }
+[data-admin-theme="dark"] .bg-\[\#18181B\] { background-color: var(--d-elevated); }
+[data-admin-theme="dark"] .from-\[\#FAFAF7\] { --tw-gradient-from: var(--d-bg); }
+[data-admin-theme="dark"] .bg-black\/40 { background-color: rgba(0,0,0,0.65); }
 
 /* Borders */
 [data-admin-theme="dark"] .border-\[\#E8E6E0\],
-[data-admin-theme="dark"] .border-\[\#D4D2CC\] { border-color: #2b2e39; }
-[data-admin-theme="dark"] .border-\[\#F5F4EF\] { border-color: #23262f; }
-[data-admin-theme="dark"] .divide-\[\#F5F4EF\] > * { border-color: #23262f; }
+[data-admin-theme="dark"] .border-\[\#D4D2CC\] { border-color: var(--d-border); }
+[data-admin-theme="dark"] .border-\[\#F5F4EF\] { border-color: var(--d-border); }
+[data-admin-theme="dark"] .divide-\[\#F5F4EF\] > *,
+[data-admin-theme="dark"] .divide-\[\#E8E6E0\] > * { border-color: var(--d-border); }
 
 /* Text */
 [data-admin-theme="dark"] .text-\[\#18181B\],
-[data-admin-theme="dark"] .text-\[\#080E1C\] { color: #f3f4f6; }
-[data-admin-theme="dark"] .text-\[\#3F3F46\] { color: #d5d8de; }
-[data-admin-theme="dark"] .text-\[\#52525B\] { color: #c4c8d0; }
-[data-admin-theme="dark"] .text-\[\#71717A\] { color: #9aa0aa; }
-[data-admin-theme="dark"] .text-\[\#A1A1AA\] { color: #7d838d; }
-[data-admin-theme="dark"] .text-\[\#D4D2CC\] { color: #6b7079; }
+[data-admin-theme="dark"] .text-\[\#080E1C\] { color: var(--d-text); }
+[data-admin-theme="dark"] .text-\[\#3F3F46\] { color: var(--d-text-2); }
+[data-admin-theme="dark"] .text-\[\#52525B\] { color: var(--d-text-3); }
+[data-admin-theme="dark"] .text-\[\#71717A\] { color: var(--d-muted); }
+[data-admin-theme="dark"] .text-\[\#A1A1AA\] { color: var(--d-faint); }
+[data-admin-theme="dark"] .text-\[\#D4D2CC\] { color: var(--d-faint); }
 
-/* Brand green → red accent */
-[data-admin-theme="dark"] .bg-\[\#36671E\] { background-color: #dc2626; }
-[data-admin-theme="dark"] .hover\:bg-\[\#295115\]:hover,
-[data-admin-theme="dark"] .bg-\[\#295115\] { background-color: #b91c1c; }
-[data-admin-theme="dark"] .text-\[\#36671E\] { color: #f87171; }
-[data-admin-theme="dark"] .border-\[\#36671E\] { border-color: #dc2626; }
-[data-admin-theme="dark"] .from-\[\#36671E\] { --tw-gradient-from: #dc2626; }
-[data-admin-theme="dark"] .to-\[\#295115\] { --tw-gradient-to: #b91c1c; }
-[data-admin-theme="dark"] .bg-\[\#EEF5EA\] { background-color: #2a1618; }
-[data-admin-theme="dark"] .hover\:bg-\[\#EEF5EA\]:hover { background-color: #2a1618; }
-[data-admin-theme="dark"] .bg-\[\#BEF264\] { background-color: #ef4444; }
+/* Brand forest → lime. Solid/gradient fills also flip their text to ink,
+   otherwise the cream label on a lime button would be unreadable. */
+[data-admin-theme="dark"] .bg-\[\#36671E\],
+[data-admin-theme="dark"] .bg-\[\#295115\],
+[data-admin-theme="dark"] .bg-\[\#BEF264\] {
+  background-color: var(--d-accent);
+  color: var(--d-accent-fg);
+}
+[data-admin-theme="dark"] .hover\:bg-\[\#295115\]:hover { background-color: var(--d-accent-hover); }
+[data-admin-theme="dark"] .from-\[\#36671E\] { --tw-gradient-from: var(--d-accent); }
+[data-admin-theme="dark"] .to-\[\#295115\] { --tw-gradient-to: var(--d-accent-hover); }
+[data-admin-theme="dark"] .bg-gradient-to-r.from-\[\#36671E\],
+[data-admin-theme="dark"] .bg-gradient-to-br.from-\[\#36671E\] { color: var(--d-accent-fg); }
+[data-admin-theme="dark"] .text-\[\#36671E\],
+[data-admin-theme="dark"] .text-\[\#295115\],
 [data-admin-theme="dark"] .text-\[\#ABDF90\],
-[data-admin-theme="dark"] .text-\[\#6B8439\] { color: #fca5a5; }
+[data-admin-theme="dark"] .text-\[\#6B8439\] { color: var(--d-accent); }
+[data-admin-theme="dark"] .border-\[\#36671E\] { border-color: var(--d-accent); }
+[data-admin-theme="dark"] .bg-\[\#EEF5EA\],
+[data-admin-theme="dark"] .hover\:bg-\[\#EEF5EA\]:hover,
+[data-admin-theme="dark"] .bg-\[\#D6E2CF\] { background-color: var(--d-accent-soft); }
+[data-admin-theme="dark"] .bg-\[\#0A1F14\],
+[data-admin-theme="dark"] .bg-\[\#143424\] { background-color: #08120C; }
 
-/* Status chips — darken tints, lighten text so they stay legible */
+/* Status chips — tint darkens, foreground brightens */
 [data-admin-theme="dark"] .bg-\[\#FEF3C7\],
-[data-admin-theme="dark"] .bg-\[\#FDE68A\] { background-color: #2c2510; }
+[data-admin-theme="dark"] .bg-\[\#FDE68A\] { background-color: var(--d-warn-bg); }
 [data-admin-theme="dark"] .text-\[\#92400E\],
 [data-admin-theme="dark"] .text-\[\#B45309\],
-[data-admin-theme="dark"] .text-\[\#D97706\] { color: #fbbf24; }
-[data-admin-theme="dark"] .bg-\[\#FEE2E2\] { background-color: #2c1416; }
+[data-admin-theme="dark"] .text-\[\#D97706\],
+[data-admin-theme="dark"] .text-\[\#CA8A04\] { color: var(--d-warn-fg); }
+[data-admin-theme="dark"] .bg-\[\#FEE2E2\] { background-color: var(--d-bad-bg); }
+[data-admin-theme="dark"] .bg-\[\#DC2626\],
+[data-admin-theme="dark"] .bg-\[\#7F1D1D\] { background-color: #B91C1C; color: #FFF; }
 [data-admin-theme="dark"] .text-\[\#B91C1C\],
-[data-admin-theme="dark"] .text-\[\#991B1B\] { color: #f87171; }
-[data-admin-theme="dark"] .bg-\[\#DCFCE7\] { background-color: #132a1c; }
+[data-admin-theme="dark"] .text-\[\#991B1B\],
+[data-admin-theme="dark"] .text-\[\#DC2626\],
+[data-admin-theme="dark"] .hover\:text-\[\#DC2626\]:hover { color: var(--d-bad-fg); }
+[data-admin-theme="dark"] .bg-\[\#DCFCE7\],
+[data-admin-theme="dark"] .bg-\[\#D1FAE5\] { background-color: var(--d-ok-bg); }
 [data-admin-theme="dark"] .text-\[\#166534\],
-[data-admin-theme="dark"] .text-\[\#065F46\] { color: #4ade80; }
-[data-admin-theme="dark"] .bg-\[\#DBEAFE\] { background-color: #14243d; }
-[data-admin-theme="dark"] .text-\[\#1D4ED8\] { color: #60a5fa; }
-[data-admin-theme="dark"] .bg-\[\#EDE9FE\] { background-color: #1f1a35; }
-[data-admin-theme="dark"] .text-\[\#5B21B6\] { color: #c4b5fd; }
-[data-admin-theme="dark"] .bg-\[\#E0F2FE\] { background-color: #10283a; }
-[data-admin-theme="dark"] .text-\[\#0369A1\] { color: #38bdf8; }
-/* Inputs get a darker field */
-[data-admin-theme="dark"] input, [data-admin-theme="dark"] textarea, [data-admin-theme="dark"] select { color: #f3f4f6; }
-[data-admin-theme="dark"] input::placeholder, [data-admin-theme="dark"] textarea::placeholder { color: #6b7079; }
+[data-admin-theme="dark"] .text-\[\#065F46\],
+[data-admin-theme="dark"] .text-\[\#059669\] { color: var(--d-ok-fg); }
+[data-admin-theme="dark"] .bg-\[\#DBEAFE\],
+[data-admin-theme="dark"] .bg-\[\#EFF6FF\],
+[data-admin-theme="dark"] .bg-\[\#BFDBFE\] { background-color: var(--d-info-bg); }
+[data-admin-theme="dark"] .text-\[\#1D4ED8\],
+[data-admin-theme="dark"] .text-\[\#2563EB\] { color: var(--d-info-fg); }
+[data-admin-theme="dark"] .bg-\[\#EDE9FE\] { background-color: var(--d-purple-bg); }
+[data-admin-theme="dark"] .text-\[\#5B21B6\],
+[data-admin-theme="dark"] .text-\[\#8B5CF6\],
+[data-admin-theme="dark"] .text-\[\#7C3AED\] { color: var(--d-purple-fg); }
+[data-admin-theme="dark"] .bg-\[\#E0F2FE\] { background-color: var(--d-sky-bg); }
+[data-admin-theme="dark"] .text-\[\#0369A1\] { color: var(--d-sky-fg); }
 
-/* === Portal theme — scoped light/dark tokens for /portal === */
+/* Form fields */
+[data-admin-theme="dark"] input,
+[data-admin-theme="dark"] textarea,
+[data-admin-theme="dark"] select { color: var(--d-text); }
+[data-admin-theme="dark"] input::placeholder,
+[data-admin-theme="dark"] textarea::placeholder { color: var(--d-faint); }
+[data-admin-theme="dark"] kbd { background-color: var(--d-elevated); border-color: var(--d-border-2); color: var(--d-text-3); }
+
+/* Black-based shadows are invisible on a dark canvas — swap for depth that
+   actually reads (deeper shadow + a hairline top edge). */
+[data-admin-theme="dark"] .shadow-soft,
+[data-admin-theme="dark"] .shadow-card { box-shadow: 0 1px 2px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.04); }
+[data-admin-theme="dark"] .shadow-elevated { box-shadow: 0 8px 28px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.06); }
+[data-admin-theme="dark"] .shadow-glow { box-shadow: 0 0 0 1px rgba(190,242,100,0.14), 0 8px 24px rgba(190,242,100,0.10); }
+
+/* === PORTAL THEME — token-based (the cleaner of the two systems) ========= */
 [data-portal-theme="light"] {
   --p-bg: #FAFAF7;
   --p-surface: #FFFFFF;
+  --p-card: #FFFFFF;
   --p-raised: #F5F4EF;
+  --p-elevated: #F0EFEA;
   --p-border: #E8E6E0;
+  --p-border-strong: #D4D2CC;
   --p-text: #18181B;
+  --p-text-2: #3F3F46;
   --p-muted: #71717A;
   --p-faint: #A1A1AA;
   --p-accent: #36671E;
   --p-accent-hover: #295115;
   --p-accent-fg: #FAFAF7;
   --p-accent-soft: #EEF5EA;
+  --p-accent-2: #6B8439;   /* secondary series (sage on light, lime-soft on dark) */
+  --p-ring: #36671E;
   --p-shadow: 0 1px 3px rgba(24,24,27,0.06), 0 1px 2px rgba(24,24,27,0.04);
+  /* Status tokens — chips adapt instead of glaring in dark mode */
+  --p-ok-bg: #DCFCE7;   --p-ok-fg: #166534;
+  --p-warn-bg: #FEF3C7; --p-warn-fg: #92400E;
+  --p-bad-bg: #FEE2E2;  --p-bad-fg: #B91C1C;
+  --p-info-bg: #DBEAFE; --p-info-fg: #1D4ED8;
+  --p-purple-bg: #EDE9FE; --p-purple-fg: #5B21B6;
+  --p-neutral-bg: #F0EFEA; --p-neutral-fg: #52525B;
 }
 [data-portal-theme="dark"] {
-  --p-bg: #0B0F0D;
-  --p-surface: #121613;
-  --p-raised: #1A211C;
-  --p-border: #262E28;
-  --p-text: #F2F3F0;
-  --p-muted: #9BA39C;
-  --p-faint: #6B726C;
-  --p-accent: #BEF264;
-  --p-accent-hover: #D9F99D;
-  --p-accent-fg: #0A1F14;
-  --p-accent-soft: #18251A;
-  --p-shadow: 0 1px 3px rgba(0,0,0,0.4);
+  --p-bg: var(--d-bg);
+  --p-surface: var(--d-surface);
+  --p-card: #151A16;
+  --p-raised: var(--d-raised);
+  --p-elevated: var(--d-elevated);
+  --p-border: var(--d-border);
+  --p-border-strong: var(--d-border-2);
+  --p-text: var(--d-text);
+  --p-text-2: var(--d-text-2);
+  --p-muted: var(--d-muted);
+  --p-faint: var(--d-faint);
+  --p-accent: var(--d-accent);
+  --p-accent-hover: var(--d-accent-hover);
+  --p-accent-fg: var(--d-accent-fg);
+  --p-accent-soft: var(--d-accent-soft);
+  --p-accent-2: #ABDF90;
+  --p-ring: var(--d-accent);
+  --p-shadow: 0 1px 3px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.04);
+  --p-ok-bg: var(--d-ok-bg);      --p-ok-fg: var(--d-ok-fg);
+  --p-warn-bg: var(--d-warn-bg);  --p-warn-fg: var(--d-warn-fg);
+  --p-bad-bg: var(--d-bad-bg);    --p-bad-fg: var(--d-bad-fg);
+  --p-info-bg: var(--d-info-bg);  --p-info-fg: var(--d-info-fg);
+  --p-purple-bg: var(--d-purple-bg); --p-purple-fg: var(--d-purple-fg);
+  --p-neutral-bg: var(--d-raised); --p-neutral-fg: var(--d-text-3);
 }
+[data-portal-theme="dark"] { color-scheme: dark; }
+[data-portal-theme="dark"] input::placeholder,
+[data-portal-theme="dark"] textarea::placeholder { color: var(--d-faint); }
 
-/* Accessible focus rings — brand forest, visible on cream & white */
+/* Accessible focus rings — brand forest on light, lime on dark surfaces */
 :focus-visible {
   outline: 2px solid #36671E;
   outline-offset: 2px;
   border-radius: 4px;
 }
+[data-admin-theme="dark"] :focus-visible { outline-color: var(--d-accent); }
+[data-portal-theme="dark"] :focus-visible { outline-color: var(--p-ring); }
+
+/* Selection + scrollbar follow the active theme */
+[data-admin-theme="dark"] ::selection,
+[data-portal-theme="dark"] ::selection { background: #BEF264; color: #0A1F14; }
+[data-admin-theme="dark"] ::-webkit-scrollbar-thumb,
+[data-portal-theme="dark"] ::-webkit-scrollbar-thumb { background: #2F3A32; background-clip: padding-box; }
+[data-admin-theme="dark"] ::-webkit-scrollbar-thumb:hover,
+[data-portal-theme="dark"] ::-webkit-scrollbar-thumb:hover { background: #46554A; background-clip: padding-box; }
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }

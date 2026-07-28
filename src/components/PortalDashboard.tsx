@@ -29,11 +29,11 @@ interface PortalLead { id?: string; created_at: string; qualified: boolean; cont
 /** Client-side pipeline stages (mirrors LEAD_STATUSES in /api/portal/leads). */
 const LEAD_STAGES = ["new", "contacted", "booked", "won", "lost"] as const;
 const STAGE_COLORS: Record<string, { color: string; bg: string }> = {
-  new:       { color: "#52525B", bg: "#F0EFEA" },
-  contacted: { color: "#1D4ED8", bg: "#DBEAFE" },
-  booked:    { color: "#5B21B6", bg: "#EDE9FE" },
-  won:       { color: "#166534", bg: "#DCFCE7" },
-  lost:      { color: "#B91C1C", bg: "#FEE2E2" },
+  new:       { color: "var(--p-neutral-fg)", bg: "var(--p-neutral-bg)" },
+  contacted: { color: "var(--p-info-fg)",    bg: "var(--p-info-bg)" },
+  booked:    { color: "var(--p-purple-fg)",  bg: "var(--p-purple-bg)" },
+  won:       { color: "var(--p-ok-fg)",      bg: "var(--p-ok-bg)" },
+  lost:      { color: "var(--p-bad-fg)",     bg: "var(--p-bad-bg)" },
 };
 interface PortalStats { monthEnquiries: number; monthBookings: number; monthContacts: number }
 interface PortalLifetime { enquiries: number; bookings: number; afterHours: number; since: string | null }
@@ -42,11 +42,11 @@ interface PortalReport { period: string; metrics: ReportMetrics; sent_at: string
 
 function statusMeta(status: Build["status"], t: Dict): { label: string; color: string; bg: string } {
   switch (status) {
-    case "building":  return { label: t.stBuilding,  color: "#1D4ED8", bg: "#DBEAFE" };
-    case "review":    return { label: t.stReview,    color: "#5B21B6", bg: "#EDE9FE" };
-    case "delivered": return { label: t.stDelivered, color: "#0369A1", bg: "#E0F2FE" };
-    case "live":      return { label: t.stLive,      color: "#166534", bg: "#DCFCE7" };
-    default:          return { label: t.stIntake,    color: "#92400E", bg: "#FEF3C7" };
+    case "building":  return { label: t.stBuilding,  color: "var(--p-info-fg)",   bg: "var(--p-info-bg)" };
+    case "review":    return { label: t.stReview,    color: "var(--p-purple-fg)", bg: "var(--p-purple-bg)" };
+    case "delivered": return { label: t.stDelivered, color: "var(--p-info-fg)",   bg: "var(--p-info-bg)" };
+    case "live":      return { label: t.stLive,      color: "var(--p-ok-fg)",     bg: "var(--p-ok-bg)" };
+    default:          return { label: t.stIntake,    color: "var(--p-warn-fg)",   bg: "var(--p-warn-bg)" };
   }
 }
 
@@ -549,8 +549,8 @@ export default function PortalDashboard({
                     <p className="font-black text-[var(--p-text)] text-sm capitalize">
                       {subscription.plan} {t.planSuffix} · €{Number(subscription.monthly_amount).toLocaleString()}{t.perMo}
                       <span className={`ml-2 text-[10px] font-black px-2 py-0.5 rounded-full align-middle ${
-                        subscription.status === "active" ? "bg-[#DCFCE7] text-[#166534]" :
-                        subscription.status === "paused" ? "bg-[#FEF3C7] text-[#92400E]" : "bg-[#FEE2E2] text-[#B91C1C]"
+                        subscription.status === "active" ? "bg-[var(--p-ok-bg)] text-[var(--p-ok-fg)]" :
+                        subscription.status === "paused" ? "bg-[var(--p-warn-bg)] text-[var(--p-warn-fg)]" : "bg-[var(--p-bad-bg)] text-[var(--p-bad-fg)]"
                       }`}>{subStatusLabel(subscription.status)}</span>
                     </p>
                     <p className="text-xs text-[var(--p-muted)] mt-0.5">{t.subManageDesc}</p>
@@ -561,7 +561,7 @@ export default function PortalDashboard({
                     <p className="text-xs text-[var(--p-muted)] mt-0.5">{t.billingDesc}</p>
                   </>
                 )}
-                {billingError && <p className="text-xs text-[#EF4444] mt-1">{billingError}</p>}
+                {billingError && <p className="text-xs text-[var(--p-bad-fg)] mt-1">{billingError}</p>}
               </div>
               <button onClick={openBillingPortal} disabled={billingBusy}
                 className="flex w-full sm:w-auto items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-[var(--p-accent)] text-[var(--p-accent-fg)] text-sm font-bold hover:bg-[var(--p-accent-hover)] transition-colors disabled:opacity-50 flex-shrink-0">
@@ -609,20 +609,20 @@ export default function PortalDashboard({
                           {b.balance_due > 0 && <span className="text-[var(--p-faint)]">· {t.dueOnDelivery(Number(b.balance_due).toLocaleString())}</span>}
                         </div>
                         {b.deadline && <div className="flex items-center gap-2"><Clock className="w-3.5 h-3.5 text-[var(--p-faint)]" /> {t.targetDelivery(formatDate(b.deadline, lang))}</div>}
-                        {b.live_at && <div className="flex items-center gap-2 text-[#22C55E]"><CheckCircle2 className="w-3.5 h-3.5" /> {t.liveSince(formatDate(b.live_at, lang))}</div>}
+                        {b.live_at && <div className="flex items-center gap-2 text-[var(--p-ok-fg)]"><CheckCircle2 className="w-3.5 h-3.5" /> {t.liveSince(formatDate(b.live_at, lang))}</div>}
                       </div>
                       {needsScope && (
                         <>
-                          <p className="text-xs text-[#92400E] mt-3 leading-relaxed">{t.needsScopeMsg}</p>
+                          <p className="text-xs text-[var(--p-warn-fg)] mt-3 leading-relaxed">{t.needsScopeMsg}</p>
                           <a href={`/scope/${scope.token}`}
-                            className="mt-3 flex items-center justify-center gap-1.5 py-2.5 rounded-xl border-2 border-[#D97706] text-[#92400E] text-sm font-black hover:bg-[#FEF3C7] transition-colors">
+                            className="mt-3 flex items-center justify-center gap-1.5 py-2.5 rounded-xl border-2 border-[var(--p-warn-fg)]/50 text-[var(--p-warn-fg)] text-sm font-black hover:bg-[var(--p-warn-bg)] transition-colors">
                             <FileText className="w-3.5 h-3.5" /> {t.confirmScope}
                           </a>
                         </>
                       )}
                       {needsIntake && (
                         <>
-                          <p className="text-xs text-[#92400E] mt-3 leading-relaxed">{t.needsIntakeMsg}</p>
+                          <p className="text-xs text-[var(--p-warn-fg)] mt-3 leading-relaxed">{t.needsIntakeMsg}</p>
                           <a href={`${lang === "fr" ? "/fr/demarrage" : "/onboarding"}?plan=${b.plan}${b.checkout_session_id ? `&session_id=${b.checkout_session_id}` : ""}`}
                             className="mt-3 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-gradient-to-r from-[#F59E0B] to-[#D97706] text-white text-sm font-black hover:opacity-90 transition-opacity">
                             {t.completeIntake} <ArrowRight className="w-3.5 h-3.5" />
@@ -720,7 +720,7 @@ export default function PortalDashboard({
                   return (
                     <div key={l.id ?? i} className="px-4 sm:px-5 py-3">
                       <div className="flex items-start gap-3">
-                        <span className={`mt-1 text-[10px] font-black px-2 py-0.5 rounded-full whitespace-nowrap ${l.qualified ? "bg-[#DCFCE7] text-[#166534]" : "bg-[var(--p-raised)] text-[var(--p-muted)]"}`}>
+                        <span className={`mt-1 text-[10px] font-black px-2 py-0.5 rounded-full whitespace-nowrap ${l.qualified ? "bg-[var(--p-ok-bg)] text-[var(--p-ok-fg)]" : "bg-[var(--p-raised)] text-[var(--p-muted)]"}`}>
                           {l.qualified ? t.booking : t.enquiry}
                         </span>
                         <div className="min-w-0 flex-1 cursor-pointer" onClick={() => l.id && setOpenLeadId(open ? null : l.id)}>
@@ -1103,7 +1103,7 @@ function ProfileCard({ email, t }: { email: string; t: Dict }) {
           className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[var(--p-accent)] text-[var(--p-accent-fg)] text-sm font-bold hover:bg-[var(--p-accent-hover)] transition-colors disabled:opacity-40">
           {busy ? <><Loader2 className="w-4 h-4 animate-spin" /> {t.saving}</> : t.saveProfile}
         </button>
-        {saved && <span className="text-sm text-[#22C55E]">{t.savedProfile}</span>}
+        {saved && <span className="text-sm text-[var(--p-ok-fg)]">{t.savedProfile}</span>}
       </div>
     </div>
   );
@@ -1180,7 +1180,7 @@ function AccountTab({ email, onLogout, t }: { email: string; onLogout: () => voi
             <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} className={inp} autoComplete="new-password" />
           </div>
         </div>
-        {msg && <p className={`text-sm mt-3 ${msg.ok ? "text-[#22C55E]" : "text-[#EF4444]"}`}>{msg.text}</p>}
+        {msg && <p className={`text-sm mt-3 ${msg.ok ? "text-[var(--p-ok-fg)]" : "text-[var(--p-bad-fg)]"}`}>{msg.text}</p>}
         <button onClick={submit} disabled={busy || !next}
           className="mt-4 flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[var(--p-accent)] text-[var(--p-accent-fg)] text-sm font-bold hover:bg-[var(--p-accent-hover)] transition-colors disabled:opacity-40">
           {busy ? <><Loader2 className="w-4 h-4 animate-spin" /> {t.saving}</> : hasPassword ? t.updatePw : t.setPwBtn}

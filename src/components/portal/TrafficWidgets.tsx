@@ -47,7 +47,7 @@ export function PBars({ rows, total, accent, mono }: {
             </span>
           </div>
           <div className="h-2 rounded-full bg-[var(--p-raised)]">
-            <div className={`h-full rounded-full ${accent ? "bg-[#BEF264]" : "bg-[var(--p-accent)]"}`}
+            <div className={`h-full rounded-full transition-all ${accent ? "bg-[var(--p-accent-2)]" : "bg-[var(--p-accent)]"}`}
               style={{ width: `${(n / max) * 100}%` }} />
           </div>
         </div>
@@ -62,11 +62,12 @@ export function PChart({ days }: { days: { label: string; views: number; visitor
   return (
     <div className="flex items-end justify-between gap-[2px] h-36">
       {days.map((d, i) => (
-        <div key={d.label + i} className="flex-1 flex flex-col items-center gap-1 group min-w-0">
+        <div key={d.label + i} title={`${d.label} · ${d.visitors}`}
+          className="flex-1 flex flex-col items-center gap-1 group min-w-0">
           <span className="text-[10px] font-bold text-[var(--p-accent)] opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
             {d.visitors}
           </span>
-          <div className="w-full rounded-t-sm bg-[var(--p-accent)] transition-all min-h-[2px] hover:opacity-75"
+          <div className="w-full rounded-t-sm bg-[var(--p-accent)] transition-all min-h-[2px] group-hover:opacity-75"
             style={{ height: `${Math.max((d.visitors / max) * 100, 2)}%` }} />
           <span className="text-[8px] text-[var(--p-faint)] whitespace-nowrap">{i % step === 0 ? d.label : ""}</span>
         </div>
