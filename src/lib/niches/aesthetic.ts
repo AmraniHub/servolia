@@ -149,6 +149,25 @@ export const AESTHETIC_ADVICE: Bilingual<ClientAdvice[]> = {
   ],
 };
 
+/** "Infos pratiques" defaults for aesthetic clinics — discretion, payment,
+ *  hygiene and first-visit preparation. Generic-true for any aesthetic/med-spa
+ *  business; softened phrasing wherever a claim could vary by clinic. No
+ *  emergency strip for this niche (not applicable). */
+export const AESTHETIC_PRACTICAL_INFO: Bilingual<{ title: string; body: string }[]> = {
+  en: [
+    { title: "Private consultations & discretion", body: "Consultations take place in a private treatment room, and your information stays strictly confidential." },
+    { title: "Payment options", body: "Card and cash accepted. For multi-session treatment plans, paying per session or in instalments is usually possible — confirmed with your quote." },
+    { title: "Hygiene & safety", body: "Single-use or sterilised equipment for every client, strict hygiene protocols and full traceability of treatments." },
+    { title: "Your first appointment", body: "Come without make-up if possible for an accurate skin assessment, and bring a list of the products you use daily." },
+  ],
+  fr: [
+    { title: "Consultation privée & discrétion", body: "Chaque bilan se déroule en cabine privée, et vos informations restent strictement confidentielles." },
+    { title: "Moyens de paiement", body: "Carte bancaire et espèces. Pour les plans de soins en plusieurs séances, un règlement séance par séance ou échelonné est généralement possible — confirmé avec votre devis." },
+    { title: "Hygiène & sécurité", body: "Matériel à usage unique ou stérilisé entre chaque cliente, protocoles d'hygiène stricts et traçabilité complète des soins." },
+    { title: "Votre premier rendez-vous", body: "Venez si possible sans maquillage pour un bilan de peau précis, et apportez la liste des produits que vous utilisez au quotidien." },
+  ],
+};
+
 /** Short descriptive subtitle under the business name in the header. */
 export function aestheticTagline(city: string | undefined, lang: "en" | "fr"): string {
   const base = lang === "fr" ? "Clinique esthétique" : "Aesthetic clinic";

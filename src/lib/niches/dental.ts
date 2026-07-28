@@ -153,6 +153,33 @@ export const DENTAL_ADVICE: Bilingual<ClientAdvice[]> = {
   ],
 };
 
+/** Urgent-care strip under the header — same-day dental urgences are universal
+ *  practice reality and the first thing a patient in pain needs to see. */
+export const DENTAL_EMERGENCY_NOTE: Bilingual<string> = {
+  en: "Dental emergency? Slots are kept each day for pain and trauma.",
+  fr: "Urgence dentaire ? Des créneaux sont réservés chaque jour pour la douleur et les traumatismes.",
+};
+
+/** "Infos pratiques" defaults — the practical-information block every French
+ *  cabinet site has. Everything here is generic-true for a French dental
+ *  practice (Carte Vitale/télétransmission are near-universal; softened
+ *  phrasing everywhere a claim could vary by clinic). Location-specific info
+ *  (parking, metro) is the client's to add — never invented here. */
+export const DENTAL_PRACTICAL_INFO: Bilingual<{ title: string; body: string }[]> = {
+  en: [
+    { title: "Insurance & reimbursement", body: "Reimbursement depends on your plan and the treatment — you receive a detailed written quote to submit to your insurer before any treatment starts." },
+    { title: "Payment methods", body: "Card, cash and cheques accepted. Staged payment can be arranged for larger treatment plans — the terms are set out with your quote." },
+    { title: "Accessibility & special needs", body: "Tell us about any particular need (reduced mobility, dental anxiety, an accompanying person) when booking — the practice adapts your welcome wherever possible." },
+    { title: "Your first visit", body: "Bring your insurance details and any recent X-rays. Arriving 10 minutes early leaves time for the paperwork." },
+  ],
+  fr: [
+    { title: "Carte Vitale & mutuelles", body: "Carte Vitale acceptée, feuilles de soins télétransmises. Le remboursement mutuelle dépend de votre contrat — un devis détaillé vous est remis pour votre demande de prise en charge." },
+    { title: "Moyens de paiement", body: "Carte bancaire, espèces et chèques. Un paiement échelonné peut être proposé pour les traitements importants — les modalités sont précisées avec votre devis." },
+    { title: "Accessibilité & besoins particuliers", body: "Signalez tout besoin particulier (mobilité réduite, anxiété, accompagnement) à la prise de rendez-vous — l'accueil est adapté autant que possible." },
+    { title: "Votre première visite", body: "Apportez votre Carte Vitale, votre carte de mutuelle et vos éventuelles radiographies récentes. Arriver 10 minutes en avance laisse le temps des formalités." },
+  ],
+};
+
 /** Short descriptive subtitle under the business name in the header. */
 export function dentalTagline(city: string | undefined, lang: "en" | "fr"): string {
   const base = lang === "fr" ? "Cabinet dentaire" : "Dental practice";

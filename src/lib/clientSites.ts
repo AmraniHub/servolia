@@ -15,10 +15,12 @@ import { supabaseAdmin } from "@/lib/supabase";
 import {
   isDentalNiche, DENTAL_WHY_US, DENTAL_FAQS, DENTAL_AI_TONE, dentalAiGreeting,
   DENTAL_HERO_IMAGES, DENTAL_PAGE_BANNERS, DENTAL_PROCESS, DENTAL_VALUES, DENTAL_ADVICE, dentalTagline,
+  DENTAL_EMERGENCY_NOTE, DENTAL_PRACTICAL_INFO,
 } from "@/lib/niches/dental";
 import {
   isAestheticNiche, AESTHETIC_WHY_US, AESTHETIC_FAQS, AESTHETIC_AI_TONE, aestheticAiGreeting,
   AESTHETIC_HERO_IMAGES, AESTHETIC_PAGE_BANNERS, AESTHETIC_PROCESS, AESTHETIC_VALUES, AESTHETIC_ADVICE, aestheticTagline,
+  AESTHETIC_PRACTICAL_INFO,
 } from "@/lib/niches/aesthetic";
 import {
   isHomeServicesNiche, HOME_SERVICES_WHY_US, HOME_SERVICES_FAQS, HOME_SERVICES_AI_TONE, homeServicesAiGreeting,
@@ -361,6 +363,7 @@ export function configFromIntake(src: IntakeSource): ClientSiteConfig {
           heroImages: intakeHero ? undefined : DENTAL_HERO_IMAGES,
           pageBanners: DENTAL_PAGE_BANNERS, process: DENTAL_PROCESS[lang],
           values: DENTAL_VALUES[lang], advice: DENTAL_ADVICE[lang],
+          emergencyNote: DENTAL_EMERGENCY_NOTE[lang], practicalInfo: DENTAL_PRACTICAL_INFO[lang],
         }
       : nicheKind === "aesthetic"
       ? {
@@ -368,6 +371,7 @@ export function configFromIntake(src: IntakeSource): ClientSiteConfig {
           heroImages: intakeHero ? undefined : AESTHETIC_HERO_IMAGES,
           pageBanners: AESTHETIC_PAGE_BANNERS, process: AESTHETIC_PROCESS[lang],
           values: AESTHETIC_VALUES[lang], advice: AESTHETIC_ADVICE[lang],
+          practicalInfo: AESTHETIC_PRACTICAL_INFO[lang],
         }
       : nicheKind === "home-services"
       ? {
@@ -647,6 +651,172 @@ const DEMO_SITES: ClientSiteConfig[] = [
     ],
     aiTone: "chaleureux, rassurant, à l'écoute des patients anxieux",
     aiGreeting: "Bonjour 👋 Bienvenue au Cabinet Nicolas Metay, spécialiste en implantologie à Lyon Monplaisir. Comment puis-je vous aider ?",
+    isDemo: true,
+    demoContactUrl: "https://servolia.com/call",
+    status: "published",
+  },
+  {
+    // AESTHETIC SHOWCASE — the rung-2 sales asset (and the pay-per-booking
+    // pilot niche). Same rules as demo-metay: a FICTIONAL clinic ("Institut
+    // Luméa"), invented team names on illustrative stock portraits, no real
+    // prices, no medical claims, no invented before/after results. Social
+    // icons route back to Servolia. A real client's build replaces all of it.
+    slug: "demo-lumea",
+    businessName: "Institut Luméa",
+    niche: "aesthetic",
+    language: "fr",
+    accent: "#A16A8F",
+    city: "Lyon",
+    country: "France",
+    address: "12 Rue Gasparin, 69002 Lyon",
+    phone: "04 72 40 22 22",
+    email: "contact@institut-lumea.fr",
+    hours: "Mar–Sam, 10h00–19h00 (nocturne le jeudi jusqu'à 21h)",
+    tagline: "Médecine esthétique douce · Lyon Presqu'île",
+    expandedHeader: true,
+    multiPage: true,
+    socialLinks: [
+      { platform: "instagram", url: "https://servolia.com" },
+      { platform: "facebook", url: "https://servolia.com" },
+      { platform: "tiktok", url: "https://servolia.com" },
+    ],
+    heroImageUrl: "https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=1600&q=80&auto=format&fit=crop",
+    heroImages: [
+      "https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=1600&q=80&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1512290923902-8a9f81dc236c?w=1600&q=80&auto=format&fit=crop",
+    ],
+    pageBanners: {
+      cabinet: [
+        "https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=1600&q=80&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1595476108010-b4d1f102b3b1?w=1600&q=80&auto=format&fit=crop",
+      ],
+      expertise: [
+        "https://images.unsplash.com/photo-1596178065887-1198b6148b2b?w=1600&q=80&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1512290923902-8a9f81dc236c?w=1600&q=80&auto=format&fit=crop",
+      ],
+      conseils: [
+        "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=1600&q=80&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=1600&q=80&auto=format&fit=crop",
+      ],
+    },
+    heroHeadline: "Une peau lumineuse, sans transformation.",
+    heroSub: "Institut de médecine esthétique douce en Presqu'île de Lyon. Notre assistante répond à vos questions en toute discrétion et réserve votre bilan — même à 21h un dimanche.",
+    about: "Luméa défend une esthétique du naturel : révéler votre éclat sans jamais transformer votre visage. Bilan de peau approfondi avant tout soin, protocoles peu invasifs, et un accompagnement discret et sans jugement — du premier échange jusqu'au suivi entre les séances.",
+    stats: [
+      { value: "Bilan", label: "systématique avant tout soin" },
+      { value: "0", label: "vente à chaud — jamais" },
+      { value: "48h", label: "réponse garantie à toute demande" },
+      { value: "100%", label: "cabines privées" },
+    ],
+    highlights: [
+      {
+        title: "L'épilation laser, en toute confiance",
+        body: "Un protocole personnalisé selon votre phototype, établi lors d'un bilan préalable offert. Matériel médical récent et cabines privées pour un parcours discret du début à la fin.",
+        imageUrl: "https://images.unsplash.com/photo-1596178065887-1198b6148b2b?w=1200&q=80&auto=format&fit=crop",
+        ctaLabel: "En savoir plus",
+      },
+      {
+        title: "Le soin du visage, version sur-mesure",
+        body: "HydraFacial, peelings et microneedling — jamais de protocole standard : chaque plan de soin part de votre bilan de peau et de votre quotidien réel.",
+        imageUrl: "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=1200&q=80&auto=format&fit=crop",
+        ctaLabel: "En savoir plus",
+      },
+      {
+        title: "La discrétion comme principe",
+        body: "Cabines privées, informations confidentielles, et une assistante en ligne qui répond à vos questions sans que vous ayez à les poser à voix haute.",
+        imageUrl: "https://images.unsplash.com/photo-1512290923902-8a9f81dc236c?w=1200&q=80&auto=format&fit=crop",
+        ctaLabel: "Voir notre approche",
+      },
+    ],
+    expertiseIntro: "Le naturel comme résultat, la méthode comme garantie. Un parcours en trois temps, pensé pour que vous ne réserviez jamais un soin dont vous n'êtes pas sûre.",
+    expertise: [
+      {
+        eyebrow: "La méthode Luméa",
+        title: "Le bilan avant tout",
+        body: "Aucun soin n'est vendu lors d'un premier rendez-vous. Le bilan évalue votre peau, vos objectifs et votre calendrier réel — c'est lui qui décide du plan, pas l'inverse.",
+        bullets: [
+          "Bilan de peau approfondi en cabine privée",
+          "Plan de soin écrit, avec devis détaillé",
+          "Un temps de réflexion assumé — jamais de décision le jour même",
+        ],
+        imageUrl: "https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=1200&q=80&auto=format&fit=crop",
+      },
+      {
+        eyebrow: "Exigence & sécurité",
+        title: "Des protocoles peu invasifs, rigoureusement encadrés",
+        body: "Des soins choisis pour un résultat naturel et une éviction sociale minimale, réalisés avec du matériel à usage unique ou stérilisé entre chaque cliente.",
+        bullets: [
+          "Protocoles personnalisés par phototype et type de peau",
+          "Matériel médical récent, traçabilité complète",
+          "Suivi entre les séances via votre assistante en ligne",
+        ],
+        imageUrl: "https://images.unsplash.com/photo-1596178065887-1198b6148b2b?w=1200&q=80&auto=format&fit=crop",
+      },
+    ],
+    solutions: [
+      { title: "Éclat du teint", body: "HydraFacial et peelings doux pour une peau visiblement plus lumineuse, sans éviction sociale." },
+      { title: "Grain de peau & cicatrices", body: "Microneedling et protocoles progressifs pour lisser le grain de peau à votre rythme." },
+      { title: "Épilation durable", body: "Laser adapté à votre phototype, planifié sur un calendrier réaliste établi au bilan." },
+      { title: "Fermeté & contours", body: "Remodelage corporel non invasif, pensé en plan de séances avec objectifs mesurables." },
+      { title: "Peaux sensibles", body: "Des protocoles spécifiquement calibrés pour les peaux réactives, testés en douceur." },
+      { title: "Je ne sais pas par où commencer", body: "Le bilan de peau est fait pour ça — on part de vous, pas d'un catalogue de soins." },
+    ],
+    process: [
+      { meta: "45 min", title: "Bilan de peau", body: "En cabine privée : votre peau, vos objectifs, votre quotidien — et zéro soin vendu ce jour-là." },
+      { meta: "Sous 48h", title: "Plan personnalisé", body: "Un plan de soin écrit avec devis détaillé, à lire tranquillement chez vous." },
+      { meta: "À votre rythme", title: "Soins & suivi", body: "Les séances s'enchaînent selon votre calendrier, avec conseils d'entretien entre chacune." },
+    ],
+    services: [
+      { name: "Bilan de peau", description: "Le point de départ de tout : 45 minutes en cabine privée pour évaluer votre peau et vos objectifs." },
+      { name: "HydraFacial", description: "Nettoyage profond, exfoliation et hydratation en un seul soin, sans éviction sociale." },
+      { name: "Peeling du visage", description: "Des peelings doux à moyens, choisis selon votre type de peau et la saison." },
+      { name: "Microneedling", description: "Stimulation naturelle du renouvellement cutané, en protocole progressif." },
+      { name: "Épilation laser", description: "Protocole personnalisé par phototype, établi lors d'un bilan préalable." },
+      { name: "Remodelage corporel", description: "Techniques non invasives, planifiées en séances avec objectifs définis ensemble." },
+    ],
+    whyUs: [
+      "Un bilan systématique avant tout soin — jamais de vente à chaud",
+      "Des protocoles peu invasifs pour un résultat naturel",
+      "Cabines privées et discrétion totale, de la demande au suivi",
+      "Un plan de soin écrit avec devis — zéro surprise",
+      "Une assistante en ligne qui répond même le soir et le week-end",
+    ],
+    values: [
+      { title: "Le naturel comme résultat", body: "Notre réussite, c'est qu'on vous dise « tu as bonne mine », pas « qu'est-ce que tu as fait ? »." },
+      { title: "Jamais de vente à chaud", body: "Aucun soin n'est réservé lors du premier bilan — vous décidez chez vous, avec le devis écrit sous les yeux." },
+      { title: "Une hygiène irréprochable", body: "Matériel à usage unique ou stérilisé entre chaque cliente, protocoles contrôlés et traçabilité complète." },
+      { title: "La discrétion, toujours", body: "Cabines privées, données confidentielles, et une équipe formée à l'accueil sans jugement." },
+    ],
+    advice: [
+      { title: "Avant votre rendez-vous", body: "Soleil, rétinoïdes, anticoagulants : ce qu'il faut éviter dans les jours qui précèdent la plupart des soins." },
+      { title: "Après un laser ou un peeling", body: "Protection solaire et gestes adaptés pour préserver le résultat et éviter les irritations." },
+      { title: "Après un microneedling", body: "Les 48 premières heures : hydratation, maquillage et exposition — les bons réflexes." },
+      { title: "Construire sa routine quotidienne", body: "Les bases qui prolongent les résultats obtenus en institut, entre les séances." },
+      { title: "L'éviction sociale, concrètement", body: "À quoi s'attendre et comment s'organiser après chaque type de soin." },
+      { title: "Quand nous recontacter", body: "Les signes qui doivent vous amener à écrire ou appeler l'institut après un soin." },
+    ],
+    // Team: FICTIONAL placeholder people (invented names + illustrative stock
+    // portraits) — same rule as demo-metay.
+    team: [
+      { name: "Dr Élise Fontanel", role: "Médecin esthétique", bio: "Formée à la médecine esthétique douce, elle défend un principe simple : le meilleur soin est celui qu'on ne remarque pas. Elle réalise tous les bilans elle-même.", photoUrl: "https://images.unsplash.com/photo-1594824476967-48c8b964273f?w=600&q=80&auto=format&fit=crop" },
+      { name: "Sarah Benali", role: "Praticienne laser & soins", bio: "Spécialiste des protocoles laser par phototype et des soins du visage. Elle assure aussi le suivi entre vos séances.", photoUrl: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=600&q=80&auto=format&fit=crop" },
+      { name: "Chloé Vasseur", role: "Responsable accueil", bio: "Votre premier contact à l'institut : rendez-vous, questions pratiques et devis — toujours en toute discrétion.", photoUrl: "https://images.unsplash.com/photo-1612531386530-97286d97c2d2?w=600&q=80&auto=format&fit=crop" },
+    ],
+    faqs: [
+      { q: "La première visite est-elle un soin ou un bilan ?", a: "Un bilan — 45 minutes en cabine privée pour évaluer votre peau et vos objectifs. Aucun soin n'est réservé ce jour-là : vous recevez un plan écrit sous 48h et décidez tranquillement." },
+      { q: "Combien de séances seront nécessaires ?", a: "Cela dépend du soin, de votre peau et de vos objectifs — le plan personnalisé remis après le bilan vous donne un calendrier réaliste, jamais un chiffre générique." },
+      { q: "Les soins sont-ils douloureux ?", a: "La plupart de nos protocoles sont peu invasifs, avec peu ou pas d'éviction sociale. L'assistante peut vous détailler ce à quoi vous attendre pour un soin précis." },
+      { q: "Est-ce discret ?", a: "Totalement : cabines privées, informations confidentielles, et vous pouvez poser toutes vos questions à l'assistante en ligne sans en parler à personne." },
+      { q: "Proposez-vous des facilités de paiement ?", a: "Pour les plans en plusieurs séances, un règlement séance par séance ou échelonné est généralement possible — les modalités sont confirmées avec votre devis." },
+    ],
+    practicalInfo: [
+      { title: "Consultation privée & discrétion", body: "Chaque bilan se déroule en cabine privée, et vos informations restent strictement confidentielles." },
+      { title: "Moyens de paiement", body: "Carte bancaire et espèces. Pour les plans en plusieurs séances, un règlement séance par séance ou échelonné est généralement possible — confirmé avec votre devis." },
+      { title: "Accès & stationnement", body: "En Presqu'île, à 3 minutes du métro A (Bellecour). Parkings LPA Bellecour et République à proximité immédiate." },
+      { title: "Votre premier rendez-vous", body: "Venez si possible sans maquillage pour un bilan de peau précis, et apportez la liste des produits que vous utilisez au quotidien." },
+    ],
+    aiTone: "chaleureux, discret, sans jugement",
+    aiGreeting: "Bonjour 👋 Bienvenue à l'Institut Luméa. Souhaitez-vous réserver un bilan de peau, ou avez-vous une question sur un soin ? Je vous réponds en toute discrétion.",
     isDemo: true,
     demoContactUrl: "https://servolia.com/call",
     status: "published",
