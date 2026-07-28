@@ -3,9 +3,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import StickyMobileCTA from "@/components/StickyMobileCTA";
 import Guarantee from "@/components/Guarantee";
-import { CheckCircle, ArrowRight, Bot, Calendar, BarChart3, Clock, Lock, TrendingUp } from "lucide-react";
+import { ArrowRight, Bot, Calendar, BarChart3, Clock, Lock, TrendingUp } from "lucide-react";
 import { COUNTRIES, COUNTRY_SLUGS } from "@/lib/content/countries";
 import ValueStack from "@/components/ValueStack";
+import { SETUP_PLAN, PLANS, PLAN_ORDER, POPULAR_PLAN_KEY } from "@/lib/pricing";
 
 export function generateStaticParams() {
   return COUNTRY_SLUGS.map((pays) => ({ pays }));
@@ -22,11 +23,13 @@ export async function generateMetadata({ params }: { params: Promise<{ pays: str
   };
 }
 
-const packages = [
-  { name: "Cabinet Essentiel", price: "290 €", delivery: "3 jours", popular: false },
-  { name: "Système IA Cabinet", price: "590 €", delivery: "5 jours", popular: true },
-  { name: "Cabinet Pro Complet", price: "990 €", delivery: "7 jours", popular: false },
-];
+// Tarifs issus de src/lib/pricing.ts — ne jamais coder un prix en dur ici.
+const packages = PLAN_ORDER.map((k) => ({
+  name: PLANS[k].nameFr,
+  price: `${PLANS[k].monthlyEur} €/mois`,
+  meter: `${PLANS[k].conversations} conversations IA/mois`,
+  popular: k === POPULAR_PLAN_KEY,
+}));
 
 export default async function CountryPage({ params }: { params: Promise<{ pays: string }> }) {
   const { pays } = await params;
@@ -104,7 +107,7 @@ export default async function CountryPage({ params }: { params: Promise<{ pays: 
           <div className="text-center mb-10">
             <p className="text-sm font-bold text-[#36671E] uppercase tracking-widest mb-2">Formules Cabinet</p>
             <h2 className="text-3xl font-black text-[#18181B] mb-3">Choisissez votre formule</h2>
-            <p className="text-[#71717A]">Prix HT (EUR). Acompte de 50 % · Solde à la livraison.</p>
+            <p className="text-[#71717A]">Prix HT (EUR). Mise en place de {SETUP_PLAN.totalEur} € au démarrage — offerte en annuel, rien à payer à la livraison.</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {packages.map((p, i) => (
@@ -118,7 +121,7 @@ export default async function CountryPage({ params }: { params: Promise<{ pays: 
                 <div className="text-3xl font-black text-[#18181B] mb-1">{p.price}</div>
                 <div className="flex items-center gap-1.5 mb-4">
                   <Clock className="w-3.5 h-3.5 text-[#059669]" />
-                  <span className="text-xs font-semibold text-[#059669]">Livré en {p.delivery}</span>
+                  <span className="text-xs font-semibold text-[#059669]">{p.meter}</span>
                 </div>
                 <Link href="/fr/audit" className={`block text-center py-3 rounded-xl font-bold text-sm transition-all ${p.popular ? "bg-gradient-to-r from-[#36671E] to-[#295115] text-[#FAFAF7] hover:opacity-90" : "border border-[#E8E6E0] text-[#18181B] hover:border-[#36671E] hover:text-[#36671E]"}`}>
                   Choisir →

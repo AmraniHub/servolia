@@ -5,9 +5,17 @@ import FrenchNav from "@/components/FrenchNav";
 import FrenchFooter from "@/components/FrenchFooter";
 import { Mail, Clock, Shield, CheckCircle, ArrowRight, Zap } from "lucide-react";
 import ValueStack from "@/components/ValueStack";
+import { PLANS, PLAN_ORDER } from "@/lib/pricing";
 
-const plans = ["Pas encore sûr — audit d'abord", "Système Site Web (290 €)", "Système Réservation (590 €)", "Système Client (990 €)", "Sur mesure / Option"];
-const industries = ["Cabinet dentaire", "Clinique esthétique / Med spa", "Immobilier", "Services à domicile (CVC, toiture…)", "Restaurant / Alimentation", "Juridique / Comptabilité", "Autre"];
+// Ces chaînes atterrissent dans leads.plan_interest, sur lequel
+// estimateLeadValue() fait un match par sous-chaîne — le NOM de la formule
+// doit donc y figurer tel quel. D'où la construction depuis pricing.ts.
+const plans = [
+  "Pas encore sûr — audit d'abord",
+  ...PLAN_ORDER.map((k) => `${PLANS[k].nameFr} (${PLANS[k].monthlyEur} €/mois)`),
+  "Sur mesure / Option",
+];
+const industries = ["Cabinet dentaire", "Clinique esthétique / Med spa", "Chirurgie esthétique", "Vétérinaire", "Services à domicile (CVC, toiture…)", "Autre"];
 
 export default function FrenchContactPage() {
   const [submitted, setSubmitted] = useState(false);

@@ -5,11 +5,11 @@ interface Props {
   plan: string;
   label: string;
   className?: string;
-  /** Defaults to the one-time deposit checkout; pass "/api/checkout-subscription" for recurring plans. */
+  /** Defaults to the one-time installation checkout; pass "/api/checkout-subscription" for recurring plans. */
   endpoint?: string;
   /** Ties the Stripe checkout session (and the build it creates) back to an existing lead. */
   leadId?: string;
-  /** For care-plan subscriptions: monthly (default) or annual (one month free). */
+  /** For monthly-plan subscriptions: monthly (default) or annual (pay 10, get 12 — two months free). */
   billing?: "monthly" | "annual";
   /** Language of the page the buyer clicked from — drives the Stripe locale and the intake page they land on. */
   lang?: "en" | "fr";

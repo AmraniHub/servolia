@@ -1,5 +1,6 @@
 import FrenchNav from "@/components/FrenchNav";
 import FrenchFooter from "@/components/FrenchFooter";
+import { SETUP_PLAN, PLANS } from "@/lib/pricing";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -35,19 +36,19 @@ export default function CgvFrPage() {
             </div>
             <div>
               <h2 className="text-lg font-black text-[#18181B] mb-3">2. Commande et acceptation</h2>
-              <p>Une commande est confirmée lorsque : (a) le client a validé la proposition écrite envoyée par Servolia, et (b) l&apos;acompte a été réglé via Stripe. Le travail ne démarre qu&apos;après confirmation de l&apos;acompte.</p>
+              <p>Une commande est confirmée lorsque : (a) le client a validé le périmètre écrit envoyé par Servolia, et (b) les frais de mise en place de {SETUP_PLAN.totalEur} € ont été réglés via Stripe — ou, pour un client démarrant sur une formule annuelle, le premier paiement annuel. Le travail ne démarre qu&apos;après confirmation de ce paiement.</p>
             </div>
             <div>
               <h2 className="text-lg font-black text-[#18181B] mb-3">3. Prix et paiement</h2>
-              <p>Tous les prix sont en euros et s&apos;entendent hors taxes sauf mention contraire. Modalités : acompte de 50 % à la confirmation de commande, solde de 50 % le jour de la livraison. Les paiements sont traités de manière sécurisée via Stripe. Les abonnements mensuels sont prélevés automatiquement chaque mois.</p>
+              <p>Tous les prix sont en euros et s&apos;entendent hors taxes sauf mention contraire. Modalités : des frais de mise en place de {SETUP_PLAN.totalEur} €, une seule fois, dus au démarrage et offerts en cas de paiement annuel d&apos;avance. L&apos;abonnement mensuel est ensuite prélevé automatiquement chaque mois ({PLANS.essentiel.monthlyEur} € {PLANS.essentiel.nameFr}, {PLANS.croissance.monthlyEur} € {PLANS.croissance.nameFr}, {PLANS.performance.monthlyEur} € {PLANS.performance.nameFr}, selon la formule choisie), ou réglé annuellement au tarif de dix mois pour douze mois. Les paiements sont traités de manière sécurisée via Stripe. Rien n&apos;est dû le jour de la livraison.</p>
             </div>
             <div>
               <h2 className="text-lg font-black text-[#18181B] mb-3">4. Livraison</h2>
-              <p>Servolia s&apos;engage à livrer le périmètre convenu dans le délai annoncé (3 à 7 jours ouvrés selon la formule). Le délai court à partir de la réception de l&apos;acompte ET de la complétion du formulaire d&apos;intake par le client. Si Servolia manque la date convenue de son propre fait, le client a droit à un remboursement de 10 % par jour de retard, plafonné à 50 % du prix total.</p>
+              <p>Servolia s&apos;engage à livrer le périmètre convenu dans le délai annoncé (7 jours à compter du démarrage des travaux). Le délai court à partir de la réception des frais de mise en place ET de la complétion du formulaire d&apos;intake par le client. Si Servolia manque la date convenue de son propre fait, le client a droit à un remboursement de 10 % par jour de retard, plafonné à 50 % du prix total. Les retards imputables au client ne sont pas comptabilisés dans cette garantie.</p>
             </div>
             <div>
               <h2 className="text-lg font-black text-[#18181B] mb-3">5. Révisions</h2>
-              <p>Chaque formule inclut un nombre défini de tours de révision (Essentiel : 2 tours ; Système IA : 3 tours ; Pro : illimité le premier mois). Un tour de révision correspond à une liste consolidée de modifications transmise en un seul document. Les tours supplémentaires sont facturés 50 € / heure.</p>
+              <p>La mise en place inclut <strong>une série de révisions</strong> avant la mise en ligne. Une série de révisions correspond à une liste consolidée de modifications transmise en un seul document. Les séries supplémentaires, ainsi que toute modification demandée après la mise en ligne, sont facturées 50 € / heure ou chiffrées au forfait au préalable.</p>
             </div>
             <div>
               <h2 className="text-lg font-black text-[#18181B] mb-3">6. Obligations du client</h2>
@@ -59,7 +60,7 @@ export default function CgvFrPage() {
             </div>
             <div>
               <h2 className="text-lg font-black text-[#18181B] mb-3">8. Remboursements</h2>
-              <p>L&apos;acompte de 50 % n&apos;est pas remboursable une fois le travail commencé. Si Servolia ne livre pas le périmètre convenu, le client a droit à un remboursement intégral. Les abonnements mensuels sont remboursables pour le mois en cours si l&apos;annulation intervient dans les 5 jours suivant la facturation. Aucun remboursement partiel au-delà de cette fenêtre.</p>
+              <p>Les frais de mise en place de {SETUP_PLAN.totalEur} € ne sont pas remboursables une fois le travail commencé. Si Servolia ne livre pas du tout le périmètre convenu, ils sont intégralement remboursés. L&apos;abonnement mensuel est remboursable pour le mois en cours si l&apos;annulation intervient dans les 5 jours suivant la date de facturation de ce mois. Au-delà de cette fenêtre, le mois en cours n&apos;est pas remboursable, mais la facturation future s&apos;arrête.</p>
             </div>
             <div>
               <h2 className="text-lg font-black text-[#18181B] mb-3">9. Résiliation des abonnements</h2>

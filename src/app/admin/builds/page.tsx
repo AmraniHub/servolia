@@ -58,7 +58,7 @@ export default async function BuildsPage() {
         <div className="bg-white border border-[#E8E6E0] rounded-2xl p-12 text-center">
           <Hammer className="w-10 h-10 text-[#A1A1AA] mx-auto mb-3" />
           <p className="text-sm text-[#71717A]">
-            No builds yet. When a client pays a deposit via Stripe, a build appears here automatically.
+            No builds yet. When a client pays their installation via Stripe, a build appears here automatically.
           </p>
         </div>
       ) : (

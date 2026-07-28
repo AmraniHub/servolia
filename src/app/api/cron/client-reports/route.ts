@@ -13,7 +13,7 @@ const MODEL = "claude-haiku-4-5-20251001";
 /**
  * MONTHLY CLIENT REPORT — the retention engine.
  *
- * For every published client site whose build has an ACTIVE care-plan client,
+ * For every published client site whose build has an ACTIVE subscribed client,
  * aggregate last month's AI-receptionist activity (conversations, qualified
  * leads, sample questions), have Claude write a 3-sentence narrative + one
  * concrete recommendation in the client's language, and email it to the
@@ -139,7 +139,7 @@ export async function POST(req: NextRequest) {
   for (const row of (sites as { slug: string; build_id: string | null; config: ClientSiteConfig }[] | null) ?? []) {
     const cfg = { ...row.config, slug: row.slug };
 
-    // … whose build has an ACTIVE care-plan client (no retainer → no report).
+    // … whose build has an ACTIVE monthly-plan client (no subscription → no report).
     if (!row.build_id) continue;
     const { data: client } = await db
       .from("clients")

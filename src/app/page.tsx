@@ -13,10 +13,11 @@ import ROICalculator from "@/components/ROICalculator";
 import StickyMobileCTA from "@/components/StickyMobileCTA";
 import { FaqSchema } from "@/components/StructuredData";
 import ValueStack from "@/components/ValueStack";
+import { SETUP_PLAN, PLANS, PLAN_ORDER, POPULAR_PLAN_KEY } from "@/lib/pricing";
 import {
   Bot, Globe, CheckCircle, ArrowRight,
   Shield, Clock, TrendingUp, MessageSquare,
-  Users, Building2, Sparkles, ChevronDown, Zap, XCircle,
+  Users, Sparkles, ChevronDown, Zap, XCircle,
   BadgeCheck, Lock, Calendar, LayoutDashboard, FileText, Phone,
 } from "lucide-react";
 
@@ -71,42 +72,65 @@ export default function HomePage() {
   const [faqOpen, setFaqOpen] = useState<number | null>(null);
 
   const faqs = [
-    { q: "How fast do you really deliver?", a: "3–7 business days depending on the package. The clock starts when you submit your intake form and deposit clears. The date is committed in writing, and our CGV guarantees 10% back per day late if we miss it." },
+    { q: "How fast do you really deliver?", a: `${SETUP_PLAN.delivery} from the start of work. The clock starts when your intake form is in and the €${SETUP_PLAN.totalEur} installation is paid. The date is committed in writing, and our CGV guarantees 10% back per day late, capped at 50%, if we miss it through our own fault.` },
     { q: "Do I need to write my own content?", a: "No. You fill a 10-minute intake form. We write everything — headlines, copy, service descriptions, GDPR pages. You review and approve before anything goes live." },
-    { q: "Can I pay in installments?", a: "Yes — 50% deposit via Stripe to start, 50% on delivery day. Monthly retainers are charged automatically and cancel anytime with 30 days notice." },
+    { q: "How does the payment work?", a: `A one-time €${SETUP_PLAN.totalEur} installation to start — nothing is owed on delivery day. Once you're live, your monthly plan (€${PLANS.essentiel.monthlyEur}, €${PLANS.croissance.monthlyEur} or €${PLANS.performance.monthlyEur}) is charged automatically and cancels anytime with 30 days notice. Pay a year up front and the installation is waived plus two months are free.` },
     { q: "Do you work in French?", a: "Yes. We serve clients in France, Belgium, Switzerland, Monaco, and the US. All communication, copy, and legal pages can be in French or English — your choice." },
     { q: "What if I already have a website?", a: "We can rebuild it, or add specific components (AI chatbot, booking flow, tracking) to your existing site. We'll recommend the right option in your free audit." },
     { q: "What makes you different from Fiverr or a local agency?", a: "Local agencies charge €3,000–€10,000 and take 6–12 weeks. Fiverr gives you a random freelancer with no accountability. We give you a fixed-price AI system in 7 days with a written delivery guarantee and monthly support." },
   ];
 
+  // The four pieces of the system. Every plan gets all four — the tier decides
+  // conversation volume and how much of the growth layer is switched on, not
+  // which pieces you get. Prices live on the plan cards below, never here.
   const systems = [
     {
       num: "01", icon: <Globe className="w-5 h-5" />,
-      title: "AI Website System", price: "From €290", delivery: "3 days",
-      desc: "A professional website built to convert visitors into inquiries — mobile-first, GDPR-ready, live in 72 hours.",
-      features: ["5–10 conversion-focused pages", "Booking & contact CTA", "Google Analytics 4", "GDPR pages included"],
+      title: "Your website", tag: "In every plan",
+      desc: "A professional site built to turn visitors into enquiries — mobile-first, GDPR-ready, live in a week.",
+      features: ["Conversion-focused pages", "Booking & contact CTA", "Google Analytics 4", "GDPR pages included"],
       accent: false,
     },
     {
       num: "02", icon: <Bot className="w-5 h-5" />,
-      title: "AI Booking System", price: "€590", delivery: "5 days",
-      desc: "AI receptionist + website + full tracking. Books appointments, captures leads, answers FAQs 24/7.",
-      features: ["Everything in Website System", "AI receptionist chatbot", "Lead capture + CRM sync", "Google Analytics 4"],
+      title: "Your AI receptionist", tag: "In every plan",
+      desc: "Answers every enquiry in seconds, 24/7 — books appointments, qualifies leads, handles the FAQs you're tired of repeating.",
+      features: ["24/7 answering", "Books appointments", "Instant lead alerts", "French & English"],
       accent: true,
     },
     {
-      num: "03", icon: <Building2 className="w-5 h-5" />,
-      title: "Client System", price: "From €990", delivery: "7 days",
-      desc: "Complete AI system — website, chatbot, admin dashboard, lead pipeline, automations, and monthly reports.",
-      features: ["Everything in Booking System", "Admin dashboard", "Lead pipeline + history", "Monthly analytics report"],
+      num: "03", icon: <LayoutDashboard className="w-5 h-5" />,
+      title: "Your client portal", tag: "In every plan",
+      desc: "One place to see every enquiry the system captured, listen back to what was asked, and follow what we're improving.",
+      features: ["Every lead in one list", "Conversation history", "Live site status", "Request changes"],
+      accent: false,
+    },
+    {
+      num: "04", icon: <TrendingUp className="w-5 h-5" />,
+      title: "Your growth layer", tag: `From ${PLANS.croissance.name}`,
+      desc: "Lead pipeline, Google reviews automation, SMS reminders and a monthly report that shows exactly what the system brought in.",
+      features: ["Lead pipeline", "Google reviews automation", "SMS reminders", "Monthly ROI report"],
       accent: false,
     },
   ];
 
-  const carePlans = [
-    { name: "Care", price: "€49", sub: "/mo", desc: "Maintenance, edits & uptime.", features: ["Uptime monitoring", "Content edits (1h/mo)", "Security updates", "Email support"], popular: false },
-    { name: "Growth", price: "€99", sub: "/mo", desc: "Analytics, chatbot updates, monthly improvements.", features: ["Everything in Care", "Chatbot retraining", "Monthly analytics report", "2h improvements/mo"], popular: true },
-    { name: "Scale", price: "€199", sub: "/mo", desc: "Full monthly optimization & strategy.", features: ["Everything in Growth", "A/B test improvements", "CRM workflow updates", "Monthly strategy call"], popular: false },
+  // Derived from src/lib/pricing.ts — never hardcode a plan price here.
+  const monthlyPlans = [
+    {
+      plan: PLANS.essentiel,
+      desc: "For a practice that just needs to stop losing after-hours enquiries.",
+      features: [`${PLANS.essentiel.conversations} AI conversations/mo`, "Site + AI receptionist", "Instant lead alerts", "Client portal", "Hosting, domain & email included"],
+    },
+    {
+      plan: PLANS.croissance,
+      desc: "For a practice that wants the enquiries tracked, followed up and measured.",
+      features: [`${PLANS.croissance.conversations} AI conversations/mo`, "Everything in Essentiel", "Lead pipeline + monthly ROI report", "Google reviews automation", "SMS reminders & traffic analytics"],
+    },
+    {
+      plan: PLANS.performance,
+      desc: "For multi-practitioner clinics running paid acquisition.",
+      features: [`${PLANS.performance.conversations} AI conversations/mo`, "Everything in Croissance", "Multi-practitioner routing", "Ads closed-loop tracking", "Custom AI training + quarterly strategy call"],
+    },
   ];
 
   return (
@@ -526,7 +550,7 @@ export default function HomePage() {
                 We sell AI client systems.
               </span>
             </h2>
-            <p className="text-[#71717A] max-w-xl mx-auto text-sm">Four systems. One goal — more paying clients, less manual work.</p>
+            <p className="text-[#71717A] max-w-xl mx-auto text-sm">Four moving parts. One goal — more paying clients, less manual work.</p>
           </FadeUp>
 
           <div className="grid md:grid-cols-2 gap-5">
@@ -556,10 +580,9 @@ export default function HomePage() {
                     ))}
                   </div>
                   <div className="flex items-center justify-between pt-5 border-t border-[#E8E6E0]">
-                    <div>
-                      <span className="text-2xl font-black text-[#18181B]">{s.price}</span>
-                      <span className="text-xs text-[#71717A] ml-2">· {s.delivery} delivery</span>
-                    </div>
+                    <span className="inline-flex items-center gap-1.5 text-sm font-black text-[#36671E]">
+                      <CheckCircle className="w-4 h-4" />{s.tag}
+                    </span>
                     <Link href="/pricing" className="text-sm font-bold text-[#36671E] flex items-center gap-1 hover:gap-2 transition-all">
                       Details <ArrowRight className="w-3.5 h-3.5" />
                     </Link>
@@ -577,7 +600,7 @@ export default function HomePage() {
       <section className="py-20 lg:py-28 bg-[#FAFAF7]">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
           <FadeUp className="text-center mb-10">
-            <p className="text-xs font-black text-[#36671E] uppercase tracking-widest mb-3">AI Booking System — What You Get</p>
+            <p className="text-xs font-black text-[#36671E] uppercase tracking-widest mb-3">What you get on day one</p>
             <h2 className="text-3xl sm:text-4xl font-black text-[#18181B] mb-3">
               Everything included.{" "}
               <span className="bg-gradient-to-r from-[#36671E] to-[#6B8439] bg-clip-text text-transparent">
@@ -592,7 +615,7 @@ export default function HomePage() {
           <FadeUp delay={0.1}>
             <div className="bg-white rounded-2xl border border-[#E8E6E0] overflow-hidden shadow-card">
               <div className="px-6 py-4 border-b border-[#E8E6E0] flex items-center justify-between bg-[#FAFAF7]">
-                <span className="text-sm font-black text-[#18181B]">Included in AI Booking System</span>
+                <span className="text-sm font-black text-[#18181B]">Included in your installation</span>
                 <span className="text-xs text-[#A1A1AA]">Market value</span>
               </div>
               {[
@@ -619,8 +642,9 @@ export default function HomePage() {
                   <p className="text-xl font-black text-[#18181B] line-through opacity-40">€6,650</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-xs text-[#36671E] font-bold mb-0.5">Your price</p>
-                  <p className="text-4xl font-black text-[#36671E]">€590</p>
+                  <p className="text-xs text-[#36671E] font-bold mb-0.5">Your installation</p>
+                  <p className="text-4xl font-black text-[#36671E]">€{SETUP_PLAN.totalEur}</p>
+                  <p className="text-xs text-[#71717A] mt-1">then from €{PLANS.essentiel.monthlyEur}/mo · waived if you pay yearly</p>
                 </div>
               </div>
             </div>
@@ -663,9 +687,9 @@ export default function HomePage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 lg:gap-10">
             {[
               { value: 7, suffix: " days", label: "From kickoff to live system" },
-              { value: 50, suffix: "%", label: "Deposit to start, rest on delivery" },
+              { value: 1, suffix: " payment", label: "Up front — nothing owed on delivery" },
               { value: 10, suffix: "%", label: "Back for every day we're late" },
-              { value: 100, suffix: "%", label: "Code & files yours on payment" },
+              { value: 30, suffix: " days", label: "Notice to cancel, no penalty" },
             ].map((s, i) => {
               const c = useCounter(s.value, 1800, statsInView);
               return (
@@ -764,23 +788,25 @@ export default function HomePage() {
       </section>
 
       {/* ══════════════════════════════════════════════════════════════
-          CARE PLANS
+          MONTHLY PLANS — the product. Prices from src/lib/pricing.ts.
       ══════════════════════════════════════════════════════════════ */}
       <section className="py-20 lg:py-28 bg-white">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <FadeUp className="text-center mb-12">
-            <p className="text-xs font-black text-[#36671E] uppercase tracking-widest mb-3">Monthly Care Plans</p>
+            <p className="text-xs font-black text-[#36671E] uppercase tracking-widest mb-3">Monthly plans</p>
             <h2 className="text-3xl sm:text-4xl font-black text-[#18181B] mb-4">
               Keep your system{" "}
               <span className="bg-gradient-to-r from-[#36671E] to-[#6B8439] bg-clip-text text-transparent">
                 growing every month.
               </span>
             </h2>
-            <p className="text-[#71717A] max-w-xl mx-auto text-sm">Not just a one-time build. Manage, optimize, and improve — cancel anytime.</p>
+            <p className="text-[#71717A] max-w-xl mx-auto text-sm">One fee covers the site, the AI receptionist, hosting, your domain and pro email. Pay yearly and two months are free. Cancel anytime with 30 days notice.</p>
           </FadeUp>
 
           <div className="grid md:grid-cols-3 gap-5">
-            {carePlans.map((p, i) => (
+            {monthlyPlans.map((m, i) => {
+              const p = { ...m, popular: m.plan.key === POPULAR_PLAN_KEY };
+              return (
               <FadeUp key={i} delay={i * 0.1}>
                 <div className={`relative rounded-2xl p-7 border-2 flex flex-col h-full ${
                   p.popular
@@ -789,14 +815,14 @@ export default function HomePage() {
                 }`}>
                   {p.popular && (
                     <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-[#36671E] text-[#FAFAF7] text-[10px] font-black whitespace-nowrap">
-                      MOST POPULAR
+                      MOST CHOSEN
                     </div>
                   )}
                   <div className="mb-5">
-                    <h3 className="text-lg font-black text-[#18181B] mb-1">{p.name}</h3>
+                    <h3 className="text-lg font-black text-[#18181B] mb-1">{p.plan.name}</h3>
                     <div className="flex items-baseline gap-0.5 mb-2">
-                      <span className="text-4xl font-black text-[#18181B]">{p.price}</span>
-                      <span className="text-[#71717A] text-sm">{p.sub}</span>
+                      <span className="text-4xl font-black text-[#18181B]">€{p.plan.monthlyEur}</span>
+                      <span className="text-[#71717A] text-sm">/mo</span>
                     </div>
                     <p className="text-[#71717A] text-sm">{p.desc}</p>
                   </div>
@@ -816,11 +842,12 @@ export default function HomePage() {
                   </Link>
                 </div>
               </FadeUp>
-            ))}
+              );
+            })}
           </div>
           <FadeUp delay={0.3}>
             <p className="text-center text-[#A1A1AA] text-xs mt-6">
-              All retainers cancel anytime with 30 days notice · Billed monthly via Stripe
+              Cancel anytime with 30 days notice · Billed via Stripe · Go over your conversations and you simply move up a plan — never a surprise bill
             </p>
           </FadeUp>
         </div>
@@ -891,54 +918,60 @@ export default function HomePage() {
           <FadeUp className="text-center mb-14">
             <p className="text-xs font-black text-[#36671E] uppercase tracking-widest mb-3">Pricing</p>
             <h2 className="text-3xl sm:text-4xl font-black text-[#18181B] mb-4">
-              Choose the system your business needs.
+              Two numbers. That&apos;s the whole price list.
             </h2>
-            <p className="text-[#71717A] max-w-lg mx-auto text-sm">Fixed price, clear scope, delivered fast.</p>
+            <p className="text-[#71717A] max-w-lg mx-auto text-sm">Fixed price, clear scope, delivered fast — and nothing owed on delivery day.</p>
           </FadeUp>
 
-          <div className="grid md:grid-cols-3 gap-5">
-            {[
-              { name: "Website System", price: "€290", delivery: "3 days", desc: "For businesses that need a trusted online presence", features: ["5-page website", "Contact form", "Google Analytics", "GDPR compliant", "Mobile optimized"], popular: false },
-              { name: "Booking System", price: "€590", delivery: "5 days", desc: "For businesses that want leads and appointments automatically", features: ["10-page website", "AI chatbot", "Booking flow", "CRM sync", "Google Analytics 4", "GDPR compliant"], popular: true },
-              { name: "Client System", price: "€990", delivery: "7 days", desc: "For businesses that want full tracking and client management", features: ["Everything in Booking", "Admin dashboard", "Lead pipeline", "Auto notifications", "Monthly reporting"], popular: false },
-            ].map((p, i) => (
-              <FadeUp key={i} delay={i * 0.1}>
-                <div className={`relative bg-white rounded-2xl border-2 p-7 h-full flex flex-col ${p.popular ? "border-[#36671E] shadow-xl shadow-[#36671E]/10" : "border-[#E8E6E0]"}`}>
-                  {p.popular && (
-                    <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-[#36671E] text-[#FAFAF7] text-[10px] font-black whitespace-nowrap">
-                      MAIN OFFER
-                    </div>
-                  )}
-                  <div className="mb-5">
-                    <h3 className="text-lg font-black text-[#18181B] mb-0.5">{p.name}</h3>
-                    <p className="text-xs text-[#71717A] mb-4">{p.desc}</p>
-                    <div className="text-4xl font-black text-[#18181B] mb-2">{p.price}</div>
-                    <div className="flex items-center gap-1.5">
-                      <Clock className="w-3.5 h-3.5 text-[#36671E]" />
-                      <span className="text-xs font-semibold text-[#36671E]">Delivered in {p.delivery}</span>
-                    </div>
-                  </div>
-                  <ul className="space-y-2 mb-7 flex-1">
-                    {p.features.map((f, j) => (
-                      <li key={j} className="flex items-center gap-2 text-sm text-[#52525B]">
-                        <CheckCircle className="w-4 h-4 text-[#36671E] shrink-0" />{f}
-                      </li>
-                    ))}
-                  </ul>
-                  <Link href="/pricing" className={`block text-center py-3 rounded-xl font-bold text-sm transition-all ${
-                    p.popular
-                      ? "bg-[#36671E] text-[#FAFAF7] hover:bg-[#295115]"
-                      : "border border-[#E8E6E0] text-[#18181B] hover:border-[#36671E] hover:text-[#36671E]"
-                  }`}>
-                    Get started →
-                  </Link>
+          <div className="grid md:grid-cols-2 gap-5">
+            <FadeUp>
+              <div className="relative bg-white rounded-2xl border-2 border-[#E8E6E0] p-8 h-full flex flex-col">
+                <span className="text-xs font-black text-[#A1A1AA] tracking-widest mb-3">STEP 1</span>
+                <h3 className="text-lg font-black text-[#18181B] mb-1">{SETUP_PLAN.name}</h3>
+                <p className="text-xs text-[#71717A] mb-4">Everything built, written and trained on your practice — once.</p>
+                <div className="text-4xl font-black text-[#18181B] mb-2">€{SETUP_PLAN.totalEur}</div>
+                <div className="flex items-center gap-1.5 mb-6">
+                  <Clock className="w-3.5 h-3.5 text-[#36671E]" />
+                  <span className="text-xs font-semibold text-[#36671E]">Live in {SETUP_PLAN.delivery}</span>
                 </div>
-              </FadeUp>
-            ))}
+                <ul className="space-y-2 mb-7 flex-1">
+                  {["Your site, written for you", "AI receptionist trained on your services", "Domain, hosting & pro email set up", "One round of revisions before launch", "Nothing owed on delivery day"].map((f, j) => (
+                    <li key={j} className="flex items-center gap-2 text-sm text-[#52525B]">
+                      <CheckCircle className="w-4 h-4 text-[#36671E] shrink-0" />{f}
+                    </li>
+                  ))}
+                </ul>
+                <p className="text-xs font-black text-[#36671E]">Waived when you start on an annual plan.</p>
+              </div>
+            </FadeUp>
+
+            <FadeUp delay={0.1}>
+              <div className="relative rounded-2xl border-2 border-[#36671E] bg-[#0A1F14] p-8 h-full flex flex-col shadow-xl shadow-[#36671E]/10">
+                <span className="text-xs font-black text-[#ABDF90]/60 tracking-widest mb-3">STEP 2</span>
+                <h3 className="text-lg font-black text-[#FAFAF7] mb-1">Your monthly plan</h3>
+                <p className="text-xs text-[#ABDF90]/80 mb-4">The site, the receptionist and everything it runs on — one fee.</p>
+                <div className="flex items-baseline gap-1 mb-2">
+                  <span className="text-4xl font-black text-[#BEF264]">€{PLANS.essentiel.monthlyEur}</span>
+                  <span className="text-sm text-[#ABDF90]/70">– €{PLANS.performance.monthlyEur}/mo</span>
+                </div>
+                <p className="text-xs font-semibold text-[#ABDF90] mb-6">Two months free when you pay yearly</p>
+                <ul className="space-y-2 mb-7 flex-1">
+                  {PLAN_ORDER.map((k) => (
+                    <li key={k} className="flex items-center gap-2 text-sm text-[#FAFAF7]/85">
+                      <CheckCircle className="w-4 h-4 text-[#BEF264] shrink-0" />
+                      {PLANS[k].name} — €{PLANS[k].monthlyEur}/mo · {PLANS[k].conversations} AI conversations
+                    </li>
+                  ))}
+                </ul>
+                <Link href="/pricing" className="block text-center py-3 rounded-xl font-bold text-sm bg-[#BEF264] text-[#0A1F14] hover:bg-[#ABDF90] transition-colors">
+                  Compare the plans →
+                </Link>
+              </div>
+            </FadeUp>
           </div>
 
           <FadeUp delay={0.3} className="text-center mt-8">
-            <p className="text-[#71717A] text-sm mb-2">All prices exclude VAT · 50% deposit · Balance on delivery</p>
+            <p className="text-[#71717A] text-sm mb-2">All prices exclude VAT · Cancel the monthly plan anytime with 30 days notice</p>
             <Link href="/pricing" className="inline-flex items-center gap-1.5 text-[#36671E] font-bold text-sm hover:underline">
               Full pricing details <ArrowRight className="w-4 h-4" />
             </Link>

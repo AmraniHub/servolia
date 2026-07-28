@@ -11,10 +11,11 @@ import StickyMobileCTA from "@/components/StickyMobileCTA";
 import FrenchNav from "@/components/FrenchNav";
 import FrenchFooter from "@/components/FrenchFooter";
 import ValueStack from "@/components/ValueStack";
+import { SETUP_PLAN, PLANS, PLAN_ORDER, POPULAR_PLAN_KEY } from "@/lib/pricing";
 import {
   Bot, Globe, CheckCircle, ArrowRight,
   Shield, Clock, TrendingUp, MessageSquare,
-  Users, Building2, Sparkles, ChevronDown, Zap, XCircle,
+  Users, Sparkles, ChevronDown, Zap, XCircle,
   BadgeCheck, Lock, Calendar, LayoutDashboard, FileText, Phone,
 } from "lucide-react";
 
@@ -69,42 +70,65 @@ export default function FrenchHome() {
   const [faqOpen, setFaqOpen] = useState<number | null>(null);
 
   const faqs = [
-    { q: "En combien de temps livrez-vous vraiment ?", a: "3 à 7 jours ouvrés selon la formule. Le délai démarre dès la réception de votre formulaire et de l'acompte. La date est engagée par écrit, et notre contrat garantit 10 % de remboursement par jour de retard si nous la manquons." },
+    { q: "En combien de temps livrez-vous vraiment ?", a: `7 jours à compter du démarrage. Le délai court dès la réception de votre formulaire et des frais de mise en place de ${SETUP_PLAN.totalEur} €. La date est engagée par écrit, et notre contrat garantit 10 % de remboursement par jour de retard, plafonné à 50 %, si nous la manquons de notre fait.` },
     { q: "Dois-je rédiger mon propre contenu ?", a: "Non. Vous remplissez un formulaire de 10 minutes. Nous rédigeons tout — titres, textes, descriptions de services, pages RGPD. Vous validez avant toute mise en ligne." },
-    { q: "Puis-je payer en plusieurs fois ?", a: "Oui — 50 % d'acompte via Stripe pour démarrer, 50 % à la livraison. Les abonnements mensuels sont prélevés automatiquement et résiliables à tout moment avec 30 jours de préavis." },
+    { q: "Comment se passe le paiement ?", a: `Des frais de mise en place uniques de ${SETUP_PLAN.totalEur} € pour démarrer — rien n'est dû le jour de la livraison. Une fois en ligne, votre abonnement mensuel (${PLANS.essentiel.monthlyEur} €, ${PLANS.croissance.monthlyEur} € ou ${PLANS.performance.monthlyEur} €) est prélevé automatiquement, résiliable à tout moment avec 30 jours de préavis. En annuel, la mise en place est offerte et vous avez deux mois gratuits.` },
     { q: "Travaillez-vous en français ?", a: "Oui. Nous servons des clients en France, Belgique, Suisse, Monaco et aux États-Unis. Toute la communication, les textes et les pages légales peuvent être en français ou en anglais — au choix." },
     { q: "Et si j'ai déjà un site web ?", a: "Nous pouvons le reconstruire, ou ajouter des composants précis (chatbot IA, réservation, tracking) à votre site existant. Nous recommandons la bonne option dans votre audit gratuit." },
     { q: "Qu'est-ce qui vous différencie de Fiverr ou d'une agence locale ?", a: "Une agence locale facture 3 000 à 10 000 € et prend 6 à 12 semaines. Fiverr vous donne un freelance aléatoire sans garantie. Nous livrons un système IA à prix fixe en 7 jours, avec une garantie de livraison écrite et un accompagnement mensuel." },
   ];
 
+  // Les quatre briques du système. Chaque formule les contient toutes — le
+  // palier détermine le volume de conversations et la couche croissance, pas
+  // les briques. Les prix vivent sur les cartes de formules, jamais ici.
   const systems = [
     {
       num: "01", icon: <Globe className="w-5 h-5" />,
-      title: "Système Site Web IA", price: "Dès 290 €", delivery: "3 jours",
-      desc: "Un site professionnel conçu pour convertir les visiteurs en demandes — mobile-first, conforme RGPD, en ligne en 72 heures.",
-      features: ["5–10 pages orientées conversion", "Boutons réservation & contact", "Google Analytics 4", "Pages RGPD incluses"],
+      title: "Votre site", tag: "Dans chaque formule",
+      desc: "Un site professionnel conçu pour transformer les visiteurs en demandes — mobile-first, conforme RGPD, en ligne en une semaine.",
+      features: ["Pages orientées conversion", "Boutons réservation & contact", "Google Analytics 4", "Pages RGPD incluses"],
       accent: false,
     },
     {
       num: "02", icon: <Bot className="w-5 h-5" />,
-      title: "Système de Réservation IA", price: "590 €", delivery: "5 jours",
-      desc: "Réceptionniste IA + site + suivi complet. Prend les rendez-vous, capture les leads, répond aux questions 24h/24.",
-      features: ["Tout le Système Site Web", "Chatbot réceptionniste IA", "Capture de leads + synchro CRM", "Google Analytics 4"],
+      title: "Votre réceptionniste IA", tag: "Dans chaque formule",
+      desc: "Répond à chaque demande en quelques secondes, 24h/24 — prend les rendez-vous, qualifie les leads, traite les questions répétitives.",
+      features: ["Réponse 24h/24", "Prise de rendez-vous", "Alertes de leads instantanées", "Français & anglais"],
       accent: true,
     },
     {
-      num: "03", icon: <Building2 className="w-5 h-5" />,
-      title: "Système Client", price: "Dès 990 €", delivery: "7 jours",
-      desc: "Système IA complet — site, chatbot, tableau de bord, pipeline de leads, automatisations et rapports mensuels.",
-      features: ["Tout le Système Réservation", "Tableau de bord de gestion", "Pipeline de leads + historique", "Rapport analytique mensuel"],
+      num: "03", icon: <LayoutDashboard className="w-5 h-5" />,
+      title: "Votre espace client", tag: "Dans chaque formule",
+      desc: "Un seul endroit pour voir chaque demande captée, réécouter ce qui a été demandé et suivre ce que nous améliorons.",
+      features: ["Tous vos leads en une liste", "Historique des conversations", "État du site en direct", "Demander une modification"],
+      accent: false,
+    },
+    {
+      num: "04", icon: <TrendingUp className="w-5 h-5" />,
+      title: "Votre couche croissance", tag: `Dès ${PLANS.croissance.nameFr}`,
+      desc: "Pipeline de leads, automatisation des avis Google, rappels SMS et un rapport mensuel qui montre exactement ce que le système a rapporté.",
+      features: ["Pipeline de leads", "Automatisation des avis Google", "Rappels SMS", "Rapport ROI mensuel"],
       accent: false,
     },
   ];
 
-  const carePlans = [
-    { name: "Care", price: "49 €", sub: "/mois", desc: "Maintenance, modifications & disponibilité.", features: ["Surveillance de disponibilité", "Modifications de contenu (1h/mois)", "Mises à jour de sécurité", "Support par email"], popular: false },
-    { name: "Growth", price: "99 €", sub: "/mois", desc: "Analytique, mises à jour du chatbot, améliorations mensuelles.", features: ["Tout Care", "Réentraînement du chatbot", "Rapport analytique mensuel", "2h d'améliorations/mois"], popular: true },
-    { name: "Scale", price: "199 €", sub: "/mois", desc: "Optimisation et stratégie mensuelles complètes.", features: ["Tout Growth", "Améliorations A/B testées", "Évolutions CRM & workflows", "Appel stratégique mensuel"], popular: false },
+  // Dérivé de src/lib/pricing.ts — ne jamais coder un prix en dur ici.
+  const monthlyPlans = [
+    {
+      plan: PLANS.essentiel,
+      desc: "Pour un cabinet qui veut simplement arrêter de perdre les demandes hors horaires.",
+      features: [`${PLANS.essentiel.conversations} conversations IA/mois`, "Site + réceptionniste IA", "Alertes de leads instantanées", "Espace client", "Hébergement, domaine & email inclus"],
+    },
+    {
+      plan: PLANS.croissance,
+      desc: "Pour un cabinet qui veut que les demandes soient suivies, relancées et mesurées.",
+      features: [`${PLANS.croissance.conversations} conversations IA/mois`, "Tout Essentiel", "Pipeline de leads + rapport ROI mensuel", "Automatisation des avis Google", "Rappels SMS & analytique du trafic"],
+    },
+    {
+      plan: PLANS.performance,
+      desc: "Pour les cabinets à plusieurs praticiens qui font de la publicité payante.",
+      features: [`${PLANS.performance.conversations} conversations IA/mois`, "Tout Croissance", "Routage multi-praticiens", "Suivi publicitaire en boucle fermée", "IA sur mesure + point stratégique trimestriel"],
+    },
   ];
 
   return (
@@ -456,7 +480,7 @@ export default function FrenchHome() {
                 Nous vendons des systèmes clients IA.
               </span>
             </h2>
-            <p className="text-[#71717A] max-w-xl mx-auto text-sm">Quatre systèmes. Un objectif — plus de clients payants, moins de travail manuel.</p>
+            <p className="text-[#71717A] max-w-xl mx-auto text-sm">Quatre briques. Un objectif — plus de clients payants, moins de travail manuel.</p>
           </FadeUp>
 
           <div className="grid md:grid-cols-2 gap-5">
@@ -484,10 +508,9 @@ export default function FrenchHome() {
                     ))}
                   </div>
                   <div className="flex items-center justify-between pt-5 border-t border-[#E8E6E0]">
-                    <div>
-                      <span className="text-2xl font-black text-[#18181B]">{s.price}</span>
-                      <span className="text-xs text-[#71717A] ml-2">· livré en {s.delivery}</span>
-                    </div>
+                    <span className="inline-flex items-center gap-1.5 text-sm font-black text-[#36671E]">
+                      <CheckCircle className="w-4 h-4" />{s.tag}
+                    </span>
                     <Link href="/fr/tarifs" className="text-sm font-bold text-[#36671E] flex items-center gap-1 hover:gap-2 transition-all">
                       Détails <ArrowRight className="w-3.5 h-3.5" />
                     </Link>
@@ -505,7 +528,7 @@ export default function FrenchHome() {
       <section className="py-20 lg:py-28 bg-[#FAFAF7]">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
           <FadeUp className="text-center mb-10">
-            <p className="text-xs font-black text-[#36671E] uppercase tracking-widest mb-3">Système de Réservation IA — Ce que vous recevez</p>
+            <p className="text-xs font-black text-[#36671E] uppercase tracking-widest mb-3">Ce que vous recevez dès le premier jour</p>
             <h2 className="text-3xl sm:text-4xl font-black text-[#18181B] mb-3">
               Tout est inclus.{" "}
               <span className="bg-gradient-to-r from-[#36671E] to-[#6B8439] bg-clip-text text-transparent">
@@ -520,7 +543,7 @@ export default function FrenchHome() {
           <FadeUp delay={0.1}>
             <div className="bg-white rounded-2xl border border-[#E8E6E0] overflow-hidden shadow-card">
               <div className="px-6 py-4 border-b border-[#E8E6E0] flex items-center justify-between bg-[#FAFAF7]">
-                <span className="text-sm font-black text-[#18181B]">Inclus dans le Système de Réservation IA</span>
+                <span className="text-sm font-black text-[#18181B]">Inclus dans votre mise en place</span>
                 <span className="text-xs text-[#A1A1AA]">Valeur marché</span>
               </div>
               {[
@@ -547,8 +570,9 @@ export default function FrenchHome() {
                   <p className="text-xl font-black text-[#18181B] line-through opacity-40">6 650 €</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-xs text-[#36671E] font-bold mb-0.5">Votre prix</p>
-                  <p className="text-4xl font-black text-[#36671E]">590 €</p>
+                  <p className="text-xs text-[#36671E] font-bold mb-0.5">Votre mise en place</p>
+                  <p className="text-4xl font-black text-[#36671E]">{SETUP_PLAN.totalEur} €</p>
+                  <p className="text-xs text-[#71717A] mt-1">puis dès {PLANS.essentiel.monthlyEur} €/mois · offerte en annuel</p>
                 </div>
               </div>
             </div>
@@ -584,9 +608,9 @@ export default function FrenchHome() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 lg:gap-10">
             {[
               { value: 7, suffix: " jours", label: "Du démarrage au système en ligne" },
-              { value: 50, suffix: " %", label: "D'acompte pour démarrer, le reste à la livraison" },
+              { value: 1, suffix: " paiement", label: "Au démarrage — rien à la livraison" },
               { value: 10, suffix: " %", label: "Remboursés pour chaque jour de retard" },
-              { value: 100, suffix: " %", label: "Code & fichiers à vous au paiement" },
+              { value: 30, suffix: " jours", label: "De préavis pour résilier, sans pénalité" },
             ].map((s, i) => {
               const c = useCounter(s.value, 1800, statsInView);
               return (
@@ -685,23 +709,25 @@ export default function FrenchHome() {
       </section>
 
       {/* ══════════════════════════════════════════════════════════════
-          CARE PLANS
+          FORMULES MENSUELLES — le produit. Prix : src/lib/pricing.ts.
       ══════════════════════════════════════════════════════════════ */}
       <section className="py-20 lg:py-28 bg-white">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <FadeUp className="text-center mb-12">
-            <p className="text-xs font-black text-[#36671E] uppercase tracking-widest mb-3">Forfaits mensuels</p>
+            <p className="text-xs font-black text-[#36671E] uppercase tracking-widest mb-3">Formules mensuelles</p>
             <h2 className="text-3xl sm:text-4xl font-black text-[#18181B] mb-4">
               Un système qui{" "}
               <span className="bg-gradient-to-r from-[#36671E] to-[#6B8439] bg-clip-text text-transparent">
                 s&apos;améliore chaque mois.
               </span>
             </h2>
-            <p className="text-[#71717A] max-w-xl mx-auto text-sm">Pas juste une construction unique. Gestion, optimisation et amélioration — résiliable à tout moment.</p>
+            <p className="text-[#71717A] max-w-xl mx-auto text-sm">Un seul tarif couvre le site, la réceptionniste IA, l&apos;hébergement, votre domaine et votre email pro. Deux mois offerts en annuel. Résiliable avec 30 jours de préavis.</p>
           </FadeUp>
 
           <div className="grid md:grid-cols-3 gap-5">
-            {carePlans.map((p, i) => (
+            {monthlyPlans.map((m, i) => {
+              const p = { ...m, popular: m.plan.key === POPULAR_PLAN_KEY };
+              return (
               <FadeUp key={i} delay={i * 0.1}>
                 <div className={`relative rounded-2xl p-7 border-2 flex flex-col h-full ${
                   p.popular ? "border-[#36671E] bg-[#FAFAF7]" : "border-[#E8E6E0] bg-white"
@@ -712,10 +738,10 @@ export default function FrenchHome() {
                     </div>
                   )}
                   <div className="mb-5">
-                    <h3 className="text-lg font-black text-[#18181B] mb-1">{p.name}</h3>
+                    <h3 className="text-lg font-black text-[#18181B] mb-1">{p.plan.nameFr}</h3>
                     <div className="flex items-baseline gap-0.5 mb-2">
-                      <span className="text-4xl font-black text-[#18181B]">{p.price}</span>
-                      <span className="text-[#71717A] text-sm">{p.sub}</span>
+                      <span className="text-4xl font-black text-[#18181B]">{p.plan.monthlyEur} €</span>
+                      <span className="text-[#71717A] text-sm">/mois</span>
                     </div>
                     <p className="text-[#71717A] text-sm">{p.desc}</p>
                   </div>
@@ -735,11 +761,12 @@ export default function FrenchHome() {
                   </Link>
                 </div>
               </FadeUp>
-            ))}
+              );
+            })}
           </div>
           <FadeUp delay={0.3}>
             <p className="text-center text-[#A1A1AA] text-xs mt-6">
-              Tous les forfaits sont résiliables à tout moment avec 30 jours de préavis · Facturation mensuelle via Stripe
+              Résiliable à tout moment avec 30 jours de préavis · Facturation via Stripe · Si vous dépassez vos conversations, vous passez simplement au palier suivant — jamais de facture surprise
             </p>
           </FadeUp>
         </div>
@@ -810,54 +837,60 @@ export default function FrenchHome() {
           <FadeUp className="text-center mb-14">
             <p className="text-xs font-black text-[#36671E] uppercase tracking-widest mb-3">Tarifs</p>
             <h2 className="text-3xl sm:text-4xl font-black text-[#18181B] mb-4">
-              Choisissez le système dont votre activité a besoin.
+              Deux chiffres. C&apos;est toute la grille tarifaire.
             </h2>
-            <p className="text-[#71717A] max-w-lg mx-auto text-sm">Prix fixe, périmètre clair, livré vite.</p>
+            <p className="text-[#71717A] max-w-lg mx-auto text-sm">Prix fixe, périmètre clair, livré vite — et rien à payer le jour de la livraison.</p>
           </FadeUp>
 
-          <div className="grid md:grid-cols-3 gap-5">
-            {[
-              { name: "Système Site Web", price: "290 €", delivery: "3 jours", desc: "Pour les entreprises qui ont besoin d'une présence en ligne fiable", features: ["Site 5 pages", "Formulaire de contact", "Google Analytics", "Conforme RGPD", "Optimisé mobile"], popular: false },
-              { name: "Système Réservation", price: "590 €", delivery: "5 jours", desc: "Pour les entreprises qui veulent leads et rendez-vous en automatique", features: ["Site 10 pages", "Chatbot IA", "Parcours de réservation", "Synchro CRM", "Google Analytics 4", "Conforme RGPD"], popular: true },
-              { name: "Système Client", price: "990 €", delivery: "7 jours", desc: "Pour les entreprises qui veulent suivi complet et gestion clients", features: ["Tout le Système Réservation", "Tableau de bord", "Pipeline de leads", "Notifications automatiques", "Rapport mensuel"], popular: false },
-            ].map((p, i) => (
-              <FadeUp key={i} delay={i * 0.1}>
-                <div className={`relative bg-white rounded-2xl border-2 p-7 h-full flex flex-col ${p.popular ? "border-[#36671E] shadow-xl shadow-[#36671E]/10" : "border-[#E8E6E0]"}`}>
-                  {p.popular && (
-                    <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-[#36671E] text-[#FAFAF7] text-[10px] font-black whitespace-nowrap">
-                      OFFRE PRINCIPALE
-                    </div>
-                  )}
-                  <div className="mb-5">
-                    <h3 className="text-lg font-black text-[#18181B] mb-0.5">{p.name}</h3>
-                    <p className="text-xs text-[#71717A] mb-4">{p.desc}</p>
-                    <div className="text-4xl font-black text-[#18181B] mb-2">{p.price}</div>
-                    <div className="flex items-center gap-1.5">
-                      <Clock className="w-3.5 h-3.5 text-[#36671E]" />
-                      <span className="text-xs font-semibold text-[#36671E]">Livré en {p.delivery}</span>
-                    </div>
-                  </div>
-                  <ul className="space-y-2 mb-7 flex-1">
-                    {p.features.map((f, j) => (
-                      <li key={j} className="flex items-center gap-2 text-sm text-[#52525B]">
-                        <CheckCircle className="w-4 h-4 text-[#36671E] shrink-0" />{f}
-                      </li>
-                    ))}
-                  </ul>
-                  <Link href="/fr/tarifs" className={`block text-center py-3 rounded-xl font-bold text-sm transition-all ${
-                    p.popular
-                      ? "bg-[#36671E] text-[#FAFAF7] hover:bg-[#295115]"
-                      : "border border-[#E8E6E0] text-[#18181B] hover:border-[#36671E] hover:text-[#36671E]"
-                  }`}>
-                    Commencer →
-                  </Link>
+          <div className="grid md:grid-cols-2 gap-5">
+            <FadeUp>
+              <div className="relative bg-white rounded-2xl border-2 border-[#E8E6E0] p-8 h-full flex flex-col">
+                <span className="text-xs font-black text-[#A1A1AA] tracking-widest mb-3">ÉTAPE 1</span>
+                <h3 className="text-lg font-black text-[#18181B] mb-1">{SETUP_PLAN.nameFr}</h3>
+                <p className="text-xs text-[#71717A] mb-4">Tout est construit, rédigé et entraîné sur votre cabinet — une seule fois.</p>
+                <div className="text-4xl font-black text-[#18181B] mb-2">{SETUP_PLAN.totalEur} €</div>
+                <div className="flex items-center gap-1.5 mb-6">
+                  <Clock className="w-3.5 h-3.5 text-[#36671E]" />
+                  <span className="text-xs font-semibold text-[#36671E]">En ligne en 7 jours</span>
                 </div>
-              </FadeUp>
-            ))}
+                <ul className="space-y-2 mb-7 flex-1">
+                  {["Votre site, rédigé pour vous", "Réceptionniste IA entraînée sur vos actes", "Domaine, hébergement & email pro configurés", "Une série de révisions avant la mise en ligne", "Rien à payer le jour de la livraison"].map((f, j) => (
+                    <li key={j} className="flex items-center gap-2 text-sm text-[#52525B]">
+                      <CheckCircle className="w-4 h-4 text-[#36671E] shrink-0" />{f}
+                    </li>
+                  ))}
+                </ul>
+                <p className="text-xs font-black text-[#36671E]">Offerte si vous démarrez sur une formule annuelle.</p>
+              </div>
+            </FadeUp>
+
+            <FadeUp delay={0.1}>
+              <div className="relative rounded-2xl border-2 border-[#36671E] bg-[#0A1F14] p-8 h-full flex flex-col shadow-xl shadow-[#36671E]/10">
+                <span className="text-xs font-black text-[#ABDF90]/60 tracking-widest mb-3">ÉTAPE 2</span>
+                <h3 className="text-lg font-black text-[#FAFAF7] mb-1">Votre formule mensuelle</h3>
+                <p className="text-xs text-[#ABDF90]/80 mb-4">Le site, la réceptionniste et tout ce qui les fait tourner — un seul tarif.</p>
+                <div className="flex items-baseline gap-1 mb-2">
+                  <span className="text-4xl font-black text-[#BEF264]">{PLANS.essentiel.monthlyEur} €</span>
+                  <span className="text-sm text-[#ABDF90]/70">– {PLANS.performance.monthlyEur} €/mois</span>
+                </div>
+                <p className="text-xs font-semibold text-[#ABDF90] mb-6">Deux mois offerts en paiement annuel</p>
+                <ul className="space-y-2 mb-7 flex-1">
+                  {PLAN_ORDER.map((k) => (
+                    <li key={k} className="flex items-center gap-2 text-sm text-[#FAFAF7]/85">
+                      <CheckCircle className="w-4 h-4 text-[#BEF264] shrink-0" />
+                      {PLANS[k].nameFr} — {PLANS[k].monthlyEur} €/mois · {PLANS[k].conversations} conversations IA
+                    </li>
+                  ))}
+                </ul>
+                <Link href="/fr/tarifs" className="block text-center py-3 rounded-xl font-bold text-sm bg-[#BEF264] text-[#0A1F14] hover:bg-[#ABDF90] transition-colors">
+                  Comparer les formules →
+                </Link>
+              </div>
+            </FadeUp>
           </div>
 
           <FadeUp delay={0.3} className="text-center mt-8">
-            <p className="text-[#71717A] text-sm mb-2">Prix HT · Acompte de 50 % · Solde à la livraison</p>
+            <p className="text-[#71717A] text-sm mb-2">Prix HT · Formule mensuelle résiliable à tout moment avec 30 jours de préavis</p>
             <Link href="/fr/tarifs" className="inline-flex items-center gap-1.5 text-[#36671E] font-bold text-sm hover:underline">
               Tous les détails des tarifs <ArrowRight className="w-4 h-4" />
             </Link>

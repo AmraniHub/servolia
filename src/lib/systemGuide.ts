@@ -15,11 +15,11 @@ export const MAIN_FLOW: FlowStep[] = [
   { step: "1. Attention", detail: "SEO (niche + country landing pages) and outbound bring a clinic owner to the site." },
   { step: "2. Capture", detail: "They land on /free-audit (or /fr/audit) or talk to Solia, the site chatbot. Either way a lead row is created and you get a Telegram ping." },
   { step: "3. Qualify", detail: "You work the lead in the Pipeline. A written scope document is generated and sent for e-signature." },
-  { step: "4. Payment", detail: "They pay a 50% deposit through Stripe Checkout. Buyers from a /fr/ page get a French-language Stripe page and lang:\"fr\" in the session metadata. The webhook creates/updates the build and marks the lead deposit_paid." },
+  { step: "4. Payment", detail: "They pay the €490 installation IN FULL through Stripe Checkout — nothing is owed on delivery. Buyers from a /fr/ page get a French-language Stripe page and lang:\"fr\" in the session metadata. The webhook creates/updates the build and moves the lead to the deposit_paid stage (column name predates the model change)." },
   { step: "5. Intake", detail: "They complete the intake — /onboarding in English, /fr/demarrage in French (Stripe sends them to the right one). Their answers land on the build as intake_data — this is what the generator reads, so French answers in means a French site out." },
   { step: "6. Generate", detail: "You click Generate on the build. configFromIntake() builds the mechanical draft, then Claude writes the copy. Result: a DRAFT client site." },
   { step: "7. Approve", detail: "The draft is private — only you can see it. You review, then hit Publish. Only then is it public." },
-  { step: "8. Live + recurring", detail: "The site runs their AI receptionist and booking form. They subscribe to a Care plan; leads, reports and add-ons show in their portal." },
+  { step: "8. Live + recurring", detail: "The site runs their AI receptionist and booking form. They subscribe to a monthly plan (Essentiel / Croissance / Performance); leads, reports and add-ons show in their portal." },
 ];
 
 /* ── 2. Data model ──────────────────────────────────────────────────────── */
@@ -83,7 +83,7 @@ export const FEATURES: SystemFeature[] = [
     ],
     use: [
       "Check /admin/traffic after publishing content or launching an ad — referrers and utm_campaign tell you what actually landed.",
-      "In a renewal conversation, open the client's Visitors tab: visitors → enquiries in one screen is the whole argument for the care plan.",
+      "In a renewal conversation, open the client's Visitors tab: visitors → enquiries in one screen is the whole argument for the monthly plan.",
     ],
     cost: "None — no third-party analytics bill, just Supabase rows.",
     value: "GA can tell a client how many people visited. It can't tell them how many of those became enquiries, because it doesn't know what a booking is. Ours can, because traffic and leads sit in the same database. That funnel is the retention story.",
@@ -140,17 +140,17 @@ export const FEATURES: SystemFeature[] = [
       "Client opens /scope/[token], types their name and accepts. Name + IP + timestamp + user-agent are stored.",
       "They get a confirmation email; you get a Telegram ping; the lead advances to qualified.",
     ],
-    use: ["Send the scope link before taking the deposit.", "Direct /pricing purchases auto-create a scope so nobody pays without one."],
+    use: ["Send the scope link before taking payment.", "Direct /pricing purchases auto-create a scope so nobody pays without one."],
     cost: "Free (email via Resend).",
     value: "Protects you in a dispute and removes 'that's not what I ordered' arguments.",
     code: "src/lib/scopeDocument.ts · src/app/scope/[token] · /api/scope/[token]/accept",
   },
   {
     name: "Payments (Stripe)",
-    summary: "Four money paths: build deposits, Care subscriptions, add-ons, and one-off custom work.",
+    summary: "Four money paths: the one-time installation, monthly subscriptions, add-ons, and one-off custom work.",
     how: [
-      "Build: 50% deposit via Checkout → webhook creates/updates the build (status stays 'intake' until they fill the form).",
-      "Care: monthly or annual subscription (annual = 11× monthly, one month free) → creates a client row.",
+      "Installation: charged in full via Checkout → webhook creates/updates the build (status stays 'intake' until they fill the form). balance_due is written as 0 — nothing is owed on delivery.",
+      "Subscription: monthly or annual (annual = 10× monthly, two months free) → creates a client row.",
       "Add-ons: self-serve recurring subscription from the portal → triggers provisioning.",
       "Custom work: one-off payment link created from the build page → marks the request paid.",
     ],
@@ -340,7 +340,7 @@ export const FEATURES: SystemFeature[] = [
       "LEGAL GATE: payPerBookingEligible(niche) runs server-side — dental/medical is refused no matter what the link says (French compérage rules; see pricing.ts). Never weaken it.",
       "On payment the webhook (kind=ppb_setup) creates the build + an active clients row with billing_mode 'per_booking' and the €60 rate snapshotted (a later price change never re-prices existing clients).",
       "On the 1st at 09:00, /api/cron/monthly-invoice tallies each per-booking client's unbilled qualified bookings, writes ONE pay_per_booking_invoices ledger row per period (unique constraint — re-runs are no-ops, never double-charges), stamps chat_sessions.billed_at, then creates and sends a real Stripe invoice with 7 days to pay.",
-      "invoice.paid marks the ledger row paid; a failed invoice flows into the same dunning path as Care plans (banner → grace → suspend).",
+      "invoice.paid marks the ledger row paid; a failed invoice flows into the same dunning path as subscriptions (banner → grace → suspend).",
     ],
     use: [
       "Close an aesthetic prospect by sending the GET checkout link with their niche — nothing to build manually.",
@@ -348,7 +348,7 @@ export const FEATURES: SystemFeature[] = [
       "A 'PENDING (no Stripe customer)' line in the summary means the client has no card on file — chase manually.",
     ],
     cost: "Stripe's per-transaction fee on the setup + each monthly invoice.",
-    value: "Removes the biggest objection in the niche ('what if it doesn't work?') by pricing on results. 15 attended bookings/month = €900/mo recurring from one client — triple a Scale care plan.",
+    value: "Removes the biggest objection in the niche ('what if it doesn't work?') by pricing on results. 15 attended bookings/month = €900/mo recurring from one client — double a Performance subscription.",
     code: "src/lib/pricing.ts (PAY_PER_BOOKING, payPerBookingEligible) · /api/checkout-ppb · /api/webhooks/stripe (ppb_setup) · /api/cron/monthly-invoice · supabase/schema.sql (pay-per-booking block)",
   },
   {
@@ -414,7 +414,7 @@ export const FEATURES: SystemFeature[] = [
     how: [
       "Magic-link or password login (client_auth). Full EN/FR with a language switch; greeting uses their saved profile name, falling back to their business name.",
       "Overview = tool hub: Quick actions (view site, copy link, share on WhatsApp, copy email signature, message us) + lifetime value card + subscription + monthly stats + build status + add-ons.",
-      "Upgrade card: reads the client's highest plan tier and pitches exactly the next step — starter sees the AI receptionist, growth sees the Client System, pro without a subscription sees Care plans. The CTA drops a prefilled message into the Messages tab, so every upsell lands as a warm founder-led conversation.",
+      "Upgrade card: reads the client's SUBSCRIPTION tier and pitches exactly the next step — no plan sees 'start your monthly plan', Essentiel sees Croissance, Croissance sees Performance, Performance sees nothing. The CTA drops a prefilled message into the Messages tab, so every upsell lands as a warm founder-led conversation.",
       "My leads: pipeline statuses (new→contacted→booked→won/lost), private notes, one-tap call/WhatsApp/email buttons per lead, search, filters, CSV export.",
       "Visitors: their own site's traffic funnel. Reports: monthly numbers. Messages: direct thread with you (with photos).",
     ],
@@ -460,7 +460,7 @@ export const FEATURES: SystemFeature[] = [
     use: [
       "Nothing to run — it fills itself from their real data.",
       "Reference it when a client asks 'is this worth it?'. The after-hours number is the one that answers.",
-      "Push annual prepay (one month free): a year paid up front is a year retained.",
+      "Push annual prepay (two months free): a year paid up front is a year retained.",
     ],
     cost: "None — reuses data already captured.",
     value: "Churn happens when a client stops seeing value, not when value stops. A monthly report can look thin; a lifetime total rarely does.",
@@ -516,7 +516,7 @@ export const FEATURES: SystemFeature[] = [
     how: ["A cron runs monthly, aggregates each client's chat_sessions into metrics, stores a client_reports row and emails it."],
     use: ["Nothing manual — check Admin → Clients. Clients see it under Reports in their portal."],
     cost: "Email send only.",
-    value: "Proves ROI every month. This is what justifies the Care plan renewing.",
+    value: "Proves ROI every month. This is what justifies the monthly plan renewing.",
     code: "/api/cron/monthly-report · /api/portal/reports",
   },
   {

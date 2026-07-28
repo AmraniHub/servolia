@@ -32,7 +32,7 @@ export default function AboutPage() {
               <span className="bg-gradient-to-r from-[#36671E] to-[#295115] bg-clip-text text-transparent">in 7 days, at a fixed price.</span>
             </h1>
             <p className="text-lg text-[#52525B] leading-relaxed">
-              Servolia is an AI client acquisition systems agency for service businesses — dental clinics, aesthetic clinics, med-spas, and home services. We don&apos;t do retainers, we don&apos;t do open-ended projects. We deliver a working system in a week, then we keep it running for a small monthly fee.
+              Servolia is an AI client acquisition systems agency for service businesses — dental clinics, aesthetic clinics, med-spas, and home services. We don&apos;t do retainers, we don&apos;t do open-ended projects. We deliver a working system in a week, then we keep it running and improving on a monthly plan.
             </p>
           </div>
         </section>
@@ -60,7 +60,7 @@ export default function AboutPage() {
                   <Heart className="w-5 h-5 text-[#FAFAF7]" />
                 </div>
                 <h3 className="font-black text-[#18181B] mb-2">Long after launch</h3>
-                <p className="text-sm text-[#52525B] leading-relaxed">Your monthly care plan keeps the system fast, the AI sharp, and the reports honest. We grow with you.</p>
+                <p className="text-sm text-[#52525B] leading-relaxed">Your monthly plan keeps the system fast, the AI sharp, and the reports honest. We grow with you.</p>
               </div>
             </div>
           </div>
@@ -81,7 +81,7 @@ export default function AboutPage() {
                 Servolia exists to fix that. We replace your old website with an AI-powered client acquisition system — site, chatbot, booking flow, lead capture, full tracking — in 7 days, for a price you know in advance.
               </p>
               <p>
-                Then we stay on. Your monthly care plan keeps everything running: hosting, security, AI retraining, monthly performance reports, and one improvement per month. The kind of partnership a local agency promises but rarely delivers.
+                Then we stay on. Your monthly plan keeps everything running: hosting, security, AI retraining, monthly performance reports, and one improvement per month. The kind of partnership a local agency promises but rarely delivers.
               </p>
             </div>
           </div>
@@ -95,7 +95,7 @@ export default function AboutPage() {
               {[
                 ["Free audit before anything else.", "We record a 5-minute Loom of your current online presence — what's working, what's costing you clients, and what we'd fix. No commitment, no call required."],
                 ["Scope in writing before you pay.", "Every project starts with a 1-page scope document. Fixed deliverables. Fixed price. Fixed deadline. Approved by you before any invoice."],
-                ["50% deposit, 50% on delivery.", "You see your finished system before paying the balance. If you're not happy, we revise. If we miss the deadline through our fault, we refund 10% per day late."],
+                ["A fixed installation fee, then a monthly plan.", "The installation is quoted in writing before we start — no deposit, no balance owed on delivery day. You see your finished system before it goes live, and the monthly plan is cancellable any time with 30 days notice. If we miss the deadline through our fault, we refund 10% per day late."],
                 ["One revision included.", "Major scope additions are quoted separately. No surprise invoices, no hourly billing, no agency games."],
                 ["We never go silent.", "Weekly progress updates. Same-day responses to email. Loom walkthroughs at every milestone."],
               ].map(([title, body], i) => (

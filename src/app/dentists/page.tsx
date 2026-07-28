@@ -6,6 +6,7 @@ import Link from "next/link";
 import { CheckCircle, ArrowRight, Bot, Calendar, BarChart3, Globe, Clock, Lock, TrendingUp } from "lucide-react";
 import type { Metadata } from "next";
 import ValueStack from "@/components/ValueStack";
+import { SETUP_PLAN, PLANS } from "@/lib/pricing";
 
 export const metadata: Metadata = {
   title: "AI Booking System for Dental Clinics — Servolia",
@@ -37,53 +38,51 @@ export default function DentistsPage() {
     "Automatic follow-up for unbooked leads after 48 hours",
   ];
 
+  // Prices from src/lib/pricing.ts — never hardcode a tier price here.
   const packages = [
     {
-      name: "Starter Clinic",
-      price: "€290",
-      delivery: "3 days",
+      name: PLANS.essentiel.name,
+      price: `€${PLANS.essentiel.monthlyEur}/mo`,
+      meter: `${PLANS.essentiel.conversations} AI conversations/mo`,
       features: [
-        "5-page dental website",
-        "Appointment request form",
-        "Google Analytics 4",
+        "Dental website, written for your practice",
+        "AI receptionist trained on your treatments",
+        "Appointment request flow",
+        "Instant lead alerts + client portal",
         "GDPR compliant pages",
-        "Mobile optimized",
-        "Google My Business setup tips",
+        "Hosting, domain and pro email included",
       ],
-      cta: "Get Starter",
+      cta: `Start ${PLANS.essentiel.name}`,
       popular: false,
     },
     {
-      name: "AI Clinic System",
-      price: "€590",
-      delivery: "5 days",
+      name: PLANS.croissance.name,
+      price: `€${PLANS.croissance.monthlyEur}/mo`,
+      meter: `${PLANS.croissance.conversations} AI conversations/mo`,
       features: [
-        "10-page website",
-        "AI receptionist chatbot",
+        `Everything in ${PLANS.essentiel.name}`,
         "Online booking flow",
-        "Patient lead capture",
-        "Email notification to clinic",
-        "Google Analytics 4",
-        "GDPR compliant pages",
-        "CRM Google Sheet sync",
+        "Lead pipeline + patient history",
+        "Google reviews automation",
+        "SMS reminders",
+        "Monthly performance report",
       ],
-      cta: "Get AI System",
+      cta: `Start ${PLANS.croissance.name}`,
       popular: true,
     },
     {
-      name: "Full Clinic Pro",
-      price: "€990",
-      delivery: "7 days",
+      name: PLANS.performance.name,
+      price: `€${PLANS.performance.monthlyEur}/mo`,
+      meter: `${PLANS.performance.conversations} AI conversations/mo`,
       features: [
-        "Everything in AI System",
-        "Admin patient dashboard",
-        "Appointment pipeline",
-        "Auto reminder emails",
-        "WhatsApp lead notification",
-        "Monthly analytics report",
-        "A/B landing pages",
+        `Everything in ${PLANS.croissance.name}`,
+        "Multi-practitioner routing",
+        "Google + Meta ad landing pages",
+        "Closed-loop ads tracking",
+        "Custom AI training",
+        "Quarterly strategy call",
       ],
-      cta: "Get Full Pro",
+      cta: `Start ${PLANS.performance.name}`,
       popular: false,
     },
   ];
@@ -196,7 +195,7 @@ export default function DentistsPage() {
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <p className="text-xs font-black text-[#36671E] uppercase tracking-widest mb-4">What it&apos;s built to do</p>
           <blockquote className="text-lg text-[#18181B] font-medium leading-relaxed mb-3">
-            A typical clinic running the AI Booking System is designed to move from a handful of online bookings a month to 15+ — with the chatbot handling after-hours enquiries automatically and dropping every lead into the CRM.
+            A typical clinic running a Servolia system is designed to move from a handful of online bookings a month to 15+ — with the AI receptionist handling after-hours enquiries automatically and dropping every lead into the portal.
           </blockquote>
           <p className="text-xs text-[#A1A1AA]">Illustrative target based on typical dental-practice benchmarks. Actual results vary.</p>
         </div>
@@ -206,9 +205,9 @@ export default function DentistsPage() {
       <section className="py-16 lg:py-20 bg-[#FAFAF7]">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-10">
-            <p className="text-sm font-bold text-[#36671E] uppercase tracking-widest mb-2">Clinic Packages</p>
+            <p className="text-sm font-bold text-[#36671E] uppercase tracking-widest mb-2">Monthly plans</p>
             <h2 className="text-3xl font-black text-[#18181B] mb-3">Choose your plan</h2>
-            <p className="text-[#71717A]">All prices exclude VAT. 50% deposit · Balance on delivery.</p>
+            <p className="text-[#71717A]">All prices exclude VAT. €{SETUP_PLAN.totalEur} installation to start — waived on an annual plan, and nothing owed on delivery.</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {packages.map((p, i) => (
@@ -222,7 +221,7 @@ export default function DentistsPage() {
                 <div className="text-3xl font-black text-[#18181B] mb-1">{p.price}</div>
                 <div className="flex items-center gap-1.5 mb-4">
                   <Clock className="w-3.5 h-3.5 text-[#059669]" />
-                  <span className="text-xs font-semibold text-[#059669]">Delivered in {p.delivery}</span>
+                  <span className="text-xs font-semibold text-[#059669]">{p.meter}</span>
                 </div>
                 <ul className="flex flex-col gap-2 mb-6">
                   {p.features.map((f, j) => (

@@ -114,7 +114,7 @@ export default function NewLeadPage() {
 
         <div>
           <label className={label}>Plan interest</label>
-          <input value={form.plan_interest} onChange={(e) => set("plan_interest", e.target.value)} className={input} placeholder="Booking System €590" />
+          <input value={form.plan_interest} onChange={(e) => set("plan_interest", e.target.value)} className={input} placeholder="Croissance €249/mo" />
         </div>
 
         <div>

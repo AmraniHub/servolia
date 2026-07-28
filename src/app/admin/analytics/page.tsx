@@ -91,7 +91,7 @@ export default async function AnalyticsPage() {
       {/* KPI strip */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
         <Kpi label="Pipeline value" value={`€${pipelineValue.toLocaleString()}`} sub={`${openLeads.length} open leads`} accent />
-        <Kpi label="Won value" value={`€${wonValue.toLocaleString()}`} sub="Deposit paid + live" />
+        <Kpi label="Won value" value={`€${wonValue.toLocaleString()}`} sub="Installation paid + live" />
         <Kpi label="Avg response" value={avgResponseHours > 0 ? `${avgResponseHours.toFixed(1)}h` : "—"} sub="Lead → first contact" />
         <Kpi label="Chat → lead rate" value={`${chatConvRate}%`} sub={`${qualifiedChats} of ${totalChats}`} />
       </div>

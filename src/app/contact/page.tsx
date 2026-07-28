@@ -5,9 +5,17 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Mail, Clock, Shield, CheckCircle, ArrowRight, Zap } from "lucide-react";
 import ValueStack from "@/components/ValueStack";
+import { PLANS, PLAN_ORDER } from "@/lib/pricing";
 
-const plans = ["Not sure yet — audit first", "Website System (€290)", "Booking System (€590)", "Client System (€990)", "Custom / Add-on"];
-const industries = ["Dental Clinic", "Aesthetic / Med Spa", "Real Estate", "Home Services (HVAC, Roofing…)", "Restaurant / Food", "Legal / Accounting", "Other"];
+// These strings land in leads.plan_interest, which estimateLeadValue() matches
+// on by substring — so the plan NAME has to appear verbatim or every lead
+// scores at the fallback. Built from pricing.ts for exactly that reason.
+const plans = [
+  "Not sure yet — audit first",
+  ...PLAN_ORDER.map((k) => `${PLANS[k].name} (€${PLANS[k].monthlyEur}/mo)`),
+  "Custom / Add-on",
+];
+const industries = ["Dental Clinic", "Aesthetic / Med Spa", "Cosmetic Surgery", "Veterinary", "Home Services (HVAC, Roofing…)", "Other"];
 
 export default function ContactPage() {
   const [submitted, setSubmitted] = useState(false);

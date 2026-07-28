@@ -8,11 +8,11 @@ import type { ClientSiteConfig } from "@/lib/clientSites";
  * reply in one tap."
  *
  * Delivers the pricing-page promises:
- *  - "Lead capture + email notification" (Booking System €590)
- *  - "WhatsApp lead notification" (Client System €990) — the email carries a
- *    one-tap wa.me reply link to the LEAD's phone with a prefilled greeting,
- *    plus a tel: link. (True API-sent WhatsApp messages need the WhatsApp
- *    Business API — roadmap, via Twilio.)
+ *  - "Instant lead alerts" — in every monthly plan, from Essentiel up.
+ *  - "WhatsApp lead notification" — the email carries a one-tap wa.me reply
+ *    link to the LEAD's phone with a prefilled greeting, plus a tel: link.
+ *    (True API-sent WhatsApp messages need the WhatsApp Business API —
+ *    roadmap, via Twilio.)
  *  - "Google Sheets CRM integration" — when config.sheetsWebhookUrl is set,
  *    every lead is POSTed there as a JSON row (same Apps Script pattern as
  *    Servolia's own GOOGLE_SHEETS_WEBHOOK_URL).

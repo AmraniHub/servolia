@@ -40,7 +40,7 @@ const STAGES = [
   { key: "new",          label: "New" },
   { key: "audit_sent",   label: "Audit sent" },
   { key: "qualified",    label: "Qualified" },
-  { key: "deposit_paid", label: "Deposit paid" },
+  { key: "deposit_paid", label: "Installation paid" },
   { key: "live",         label: "Live" },
   { key: "lost",         label: "Lost" },
 ];

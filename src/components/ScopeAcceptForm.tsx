@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { CheckCircle, Loader2 } from "lucide-react";
 import CheckoutButton from "@/components/CheckoutButton";
+import { SETUP_PLAN } from "@/lib/pricing";
 
 export default function ScopeAcceptForm({
   token, planKey, leadId, planLabel,
@@ -37,11 +38,11 @@ export default function ScopeAcceptForm({
       <div className="bg-white border border-[#E8E6E0] rounded-2xl p-6 text-center">
         <CheckCircle className="w-10 h-10 text-[#36671E] mx-auto mb-3" />
         <h2 className="text-lg font-black text-[#18181B] mb-1">Scope accepted</h2>
-        <p className="text-sm text-[#71717A] mb-5">Thanks, {name.trim()}. Next: pay your 50% deposit to lock in your build slot.</p>
+        <p className="text-sm text-[#71717A] mb-5">Thanks, {name.trim()}. Next: pay your €{SETUP_PLAN.totalEur} installation to lock in your build slot — nothing else is due on delivery.</p>
         <CheckoutButton
           plan={planKey}
           leadId={leadId ?? undefined}
-          label={`Pay deposit — ${planLabel}`}
+          label={`Pay installation — ${planLabel}`}
           className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-[#36671E] to-[#295115] text-white font-black hover:opacity-90 transition-opacity disabled:opacity-60"
         />
       </div>

@@ -6,6 +6,7 @@ import { ArrowRight, FileText, Video, CreditCard, ClipboardList, Hammer, Eye, Ro
 import type { Metadata } from "next";
 import ValueStack from "@/components/ValueStack";
 import Guarantee from "@/components/Guarantee";
+import { SETUP_PLAN, PLANS } from "@/lib/pricing";
 
 const DEMO_VIDEO_ID = process.env.NEXT_PUBLIC_DEMO_VIDEO_ID;
 
@@ -59,18 +60,18 @@ const steps = [
     title: "Scope confirmed in writing",
     who: "Servolia",
     time: "Same day",
-    desc: "We send a 1-page scope document: exactly what we build, what's not included, the fixed price, and the delivery deadline. You approve it before paying anything.",
+    desc: `We send a 1-page scope document: exactly what we build, what's not included, the €${SETUP_PLAN.totalEur} installation, the monthly plan you're starting on, and the delivery deadline. You approve it before paying anything.`,
     detail: "This protects you. Scope creep is impossible because everything is agreed in writing first. If you want to add something later, we price it separately — no surprises.",
     color: "from-[#F59E0B] to-[#D97706]",
   },
   {
     num: "05",
     icon: <CreditCard className="w-5 h-5" />,
-    title: "50% deposit via Stripe",
+    title: `€${SETUP_PLAN.totalEur} installation via Stripe`,
     who: "You",
     time: "2 minutes",
-    desc: "Pay your 50% deposit through our Stripe checkout. You get an instant receipt, and the build starts the next working day.",
-    detail: "We accept all major cards. EUR and USD supported. Your payment is protected by Stripe — the most trusted payment infrastructure in the world. The remaining 50% is due only on delivery.",
+    desc: `Pay the €${SETUP_PLAN.totalEur} installation through our Stripe checkout. You get an instant receipt, and the build starts the next working day. Start on an annual plan and the installation is waived entirely.`,
+    detail: "We accept all major cards. EUR and USD supported. Your payment is protected by Stripe — the most trusted payment infrastructure in the world. Nothing is owed on delivery day: your monthly plan simply starts when you go live.",
     color: "from-[#6366F1] to-[#8B5CF6]",
   },
   {
@@ -99,17 +100,17 @@ const steps = [
     title: "Loom walkthrough of your draft",
     who: "Servolia",
     time: "Day 3–5",
-    desc: "We record a full walkthrough of your draft — page by page, feature by feature. You see everything before we ask for final payment.",
+    desc: "We record a full walkthrough of your draft — page by page, feature by feature. You see everything before anything goes live.",
     detail: "This is where you give feedback. We include one round of revisions in every package. You can request copy changes, design adjustments, and feature tweaks. Major scope changes are quoted separately.",
     color: "from-[#06B6D4] to-[#3B82F6]",
   },
   {
     num: "09",
-    icon: <CreditCard className="w-5 h-5" />,
-    title: "Final payment → go live",
+    icon: <CheckCircle className="w-5 h-5" />,
+    title: "You approve → we go live",
     who: "You",
     time: "Day 5–7",
-    desc: "Once you're happy with the draft, we send a Stripe Payment Link for the remaining 50%. Payment clears → we go live within 24 hours.",
+    desc: "Once you're happy with the draft, you give the green light and we go live within 24 hours. There is nothing left to pay — the installation is already settled.",
     detail: "Going live includes: domain connection, SSL setup, final testing on mobile and desktop, Google Analytics activation, and chatbot activation.",
     color: "from-[#059669] to-[#059669]",
   },
@@ -126,11 +127,11 @@ const steps = [
   {
     num: "11",
     icon: <BarChart3 className="w-5 h-5" />,
-    title: "Monthly care plan activates",
+    title: "Your monthly plan runs the system",
     who: "Servolia",
-    time: "Day 30",
-    desc: "On day 30, your monthly plan charges automatically via Stripe. This covers hosting, uptime monitoring, chatbot retraining, and your monthly report.",
-    detail: "You receive a 1-page PDF on the 5th of each month showing: leads captured, bookings made, top traffic source, chatbot conversations, and one improvement recommendation for next month.",
+    time: "From launch",
+    desc: "Your monthly plan starts the day you go live — not 30 days later. It covers hosting, domain, SSL, professional email, uptime monitoring, the client portal and your included AI conversations. It renews automatically via Stripe and you can cancel any time with 30 days notice.",
+    detail: `Included conversations depend on your tier: ${PLANS.essentiel.conversations} on ${PLANS.essentiel.name} (€${PLANS.essentiel.monthlyEur}/mo), ${PLANS.croissance.conversations} on ${PLANS.croissance.name} (€${PLANS.croissance.monthlyEur}/mo), ${PLANS.performance.conversations} on ${PLANS.performance.name} (€${PLANS.performance.monthlyEur}/mo). Go over and we simply move you up a tier — never a surprise overage bill. From ${PLANS.croissance.name} up you also receive a 1-page ROI report on the 5th of each month: leads captured, bookings made, top traffic source, AI conversations, and one improvement recommendation.`,
     color: "from-[#36671E] to-[#295115]",
   },
 ];
@@ -154,7 +155,7 @@ export default function HowItWorksPage() {
               A fixed process, a fixed price, and a fixed deadline — confirmed in writing before you pay a single cent.
             </p>
             <div className="flex flex-wrap justify-center gap-6 text-sm text-[#71717A]">
-              {["Free audit → no commitment", "Scope in writing first", "50% deposit to start", "Balance only on delivery", "Live in 7 days or money back"].map((t, i) => (
+              {["Free audit → no commitment", "Scope in writing first", `€${SETUP_PLAN.totalEur} installation to start`, "Nothing owed on delivery day", "Live in 7 days or money back"].map((t, i) => (
                 <div key={i} className="flex items-center gap-1.5">
                   <CheckCircle className="w-4 h-4 text-[#36671E]" />{t}
                 </div>
@@ -219,8 +220,8 @@ export default function HowItWorksPage() {
                 { q: "What if I don't have a logo?", a: "That's fine. We'll work with what you have or suggest a simple wordmark that matches your style." },
                 { q: "Can I request changes after seeing the draft?", a: "Yes — one full round of revisions is included in every package. Major scope additions are quoted separately." },
                 { q: "What language is the site built in?", a: "Your choice: French, English, or both. We're bilingual and have delivered sites in both." },
-                { q: "Who hosts the website?", a: "We host it on Vercel (the same infrastructure powering major global platforms) through your monthly care plan." },
-                { q: "What if you miss the deadline?", a: "Our CGV guarantees 10% of your payment back per day late if we miss through our own fault." },
+                { q: "Who hosts the website?", a: "We host it on Vercel (the same infrastructure powering major global platforms) — hosting is included in your monthly plan, along with your domain, SSL and professional email." },
+                { q: "What if you miss the deadline?", a: "Our CGV guarantees 10% of the price back per day late, capped at 50%, if we miss through our own fault. Delays caused on your side don't count." },
               ].map((faq, i) => (
                 <div key={i} className="p-5 rounded-2xl bg-[#FAFAF7] border border-[#E8E6E0]">
                   <h3 className="text-sm font-black text-[#18181B] mb-2">{faq.q}</h3>

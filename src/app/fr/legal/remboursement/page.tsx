@@ -1,6 +1,7 @@
 import FrenchNav from "@/components/FrenchNav";
 import FrenchFooter from "@/components/FrenchFooter";
 import Link from "next/link";
+import { SETUP_PLAN, PLANS } from "@/lib/pricing";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -32,23 +33,23 @@ export default function RemboursementPage() {
           <div className="space-y-8 text-[#3F3F46] text-sm leading-relaxed">
             <div>
               <h2 className="text-lg font-black text-[#18181B] mb-3">1. Notre engagement</h2>
-              <p>Servolia livre des prestations numériques (sites web, réceptionnistes IA, systèmes de réservation, tableaux de bord) à périmètre, prix et délai fixes. Chaque projet étant réalisé sur mesure, les remboursements fonctionnent différemment de ceux des biens physiques — cette page explique exactement quand et comment un remboursement s&apos;applique.</p>
+              <p>Servolia livre des prestations numériques (sites web, réceptionnistes IA, portails client, alertes de contact) sous forme d&apos;une mise en place unique, à périmètre et délai fixes, suivie d&apos;un abonnement mensuel. Chaque projet étant réalisé sur mesure, les remboursements fonctionnent différemment de ceux des biens physiques — cette page explique exactement quand et comment un remboursement s&apos;applique.</p>
             </div>
             <div>
               <h2 className="text-lg font-black text-[#18181B] mb-3">2. Garantie de livraison</h2>
-              <p>Si nous manquons la date de livraison convenue de notre propre fait, vous avez droit à un remboursement de <strong>10 % du prix du projet par jour de retard</strong>, plafonné à 50 % du prix total. Le délai court à partir de la réception de votre acompte et de la complétion de votre formulaire d&apos;intake.</p>
+              <p>Si nous manquons la date de livraison convenue de notre propre fait, vous avez droit à un remboursement de <strong>10 % du prix du projet par jour de retard</strong>, plafonné à 50 % du prix total. Le délai court à partir de la réception de vos frais de mise en place et de la complétion de votre formulaire d&apos;intake. Les retards qui vous sont imputables ne sont pas comptabilisés dans cette garantie.</p>
             </div>
             <div>
-              <h2 className="text-lg font-black text-[#18181B] mb-3">3. Remboursement de l&apos;acompte</h2>
-              <p>L&apos;acompte de 50 % est <strong>non remboursable une fois le travail commencé</strong> — il couvre le temps de conception et de développement déjà engagé sur votre projet. Si Servolia ne peut pas livrer du tout le périmètre convenu, votre acompte vous est <strong>intégralement remboursé</strong>.</p>
+              <h2 className="text-lg font-black text-[#18181B] mb-3">3. Remboursement des frais de mise en place</h2>
+              <p>Les frais de mise en place de {SETUP_PLAN.totalEur} € sont <strong>non remboursables une fois le travail commencé</strong> — ils couvrent le temps de conception et de développement déjà engagé sur votre projet. Si Servolia ne peut pas livrer du tout le périmètre convenu, ils vous sont <strong>intégralement remboursés</strong>.</p>
             </div>
             <div>
-              <h2 className="text-lg font-black text-[#18181B] mb-3">4. Paiement final</h2>
-              <p>Le solde de 50 % est dû le jour de la livraison, après que vous avez relu et validé le livrable. Le solde n&apos;est jamais prélevé pour un travail que vous n&apos;avez pas approuvé.</p>
+              <h2 className="text-lg font-black text-[#18181B] mb-3">4. Le jour de la livraison</h2>
+              <p>Rien n&apos;est dû le jour de la livraison : il n&apos;y a pas de solde à régler. Une fois votre site en ligne, relu et validé par vos soins, votre abonnement mensuel démarre simplement. Vous n&apos;êtes jamais facturé pour un travail que vous n&apos;avez pas approuvé.</p>
             </div>
             <div>
               <h2 className="text-lg font-black text-[#18181B] mb-3">5. Abonnements mensuels</h2>
-              <p>Les formules mensuelles (hébergement, support, mises à jour) sont facturées automatiquement chaque mois. En cas d&apos;annulation dans les <strong>5 jours</strong> suivant la date de facturation du mois, le mois est intégralement remboursé. Au-delà, le mois en cours n&apos;est pas remboursable, mais vous pouvez résilier à tout moment pour arrêter la facturation future — sans pénalité, avec 30 jours de préavis par email.</p>
+              <p>Votre formule mensuelle ({PLANS.essentiel.monthlyEur} €, {PLANS.croissance.monthlyEur} € ou {PLANS.performance.monthlyEur} € selon la formule — le site, la réceptionniste IA, l&apos;hébergement, le domaine et l&apos;email) est facturée automatiquement chaque mois. En cas d&apos;annulation dans les <strong>5 jours</strong> suivant la date de facturation du mois, le mois est intégralement remboursé. Au-delà, le mois en cours n&apos;est pas remboursable, mais vous pouvez résilier à tout moment pour arrêter la facturation future — sans pénalité, avec 30 jours de préavis par email.</p>
             </div>
             <div>
               <h2 className="text-lg font-black text-[#18181B] mb-3">6. Ce qui n&apos;est pas couvert</h2>

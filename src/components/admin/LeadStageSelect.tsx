@@ -7,7 +7,7 @@ const STAGES = [
   { key: "new",          label: "New",          bg: "#DBEAFE", fg: "#1D4ED8" },
   { key: "audit_sent",   label: "Audit sent",   bg: "#FEF3C7", fg: "#92400E" },
   { key: "qualified",    label: "Qualified",    bg: "#EDE9FE", fg: "#5B21B6" },
-  { key: "deposit_paid", label: "Deposit paid", bg: "#EEF5EA", fg: "#36671E" },
+  { key: "deposit_paid", label: "Installation paid", bg: "#EEF5EA", fg: "#36671E" },
   { key: "live",         label: "Live",         bg: "#D1FAE5", fg: "#065F46" },
   { key: "lost",         label: "Lost",         bg: "#FEE2E2", fg: "#991B1B" },
 ];

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { FileText, Copy, Check, Send, Link as LinkIcon, MessageCircle, Loader2 } from "lucide-react";
-import { BUILD_PLANS, CARE_PLANS } from "@/lib/pricing";
+import { BUILD_PLANS, SELLABLE_BUILD_PLANS, SETUP_PLAN, PLANS } from "@/lib/pricing";
 import { generateScopeDocument } from "@/lib/scopeDocument";
 import { waLink } from "@/lib/whatsapp";
 
@@ -21,9 +21,12 @@ export default function ScopeDocumentPanel({
   leadId, businessName, contactName, email, phone, suggestedPlan,
 }: { leadId: string; businessName: string; contactName?: string | null; email?: string | null; phone?: string | null; suggestedPlan?: string | null }) {
   const router = useRouter();
-  const initialPlan = (Object.keys(BUILD_PLANS).find((k) => suggestedPlan?.toLowerCase().includes(k)) ?? "growth") as keyof typeof BUILD_PLANS;
+  // Only ever preselect a plan that's still on sale — a retired one would be
+  // refused at checkout.
+  const initialPlan = (SELLABLE_BUILD_PLANS.find((p) => suggestedPlan?.toLowerCase().includes(p.key))?.key
+    ?? SETUP_PLAN.key) as keyof typeof BUILD_PLANS;
   const [planKey, setPlanKey] = useState<keyof typeof BUILD_PLANS>(initialPlan);
-  const [careKey, setCareKey] = useState<keyof typeof CARE_PLANS | "">("");
+  const [careKey, setCareKey] = useState<keyof typeof PLANS | "">("");
 
   const [linkUrl, setLinkUrl] = useState<string | null>(null);
   const [creatingLink, setCreatingLink] = useState(false);
@@ -87,7 +90,7 @@ export default function ScopeDocumentPanel({
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           type: "email",
-          description: `📄 Scope document sent — ${BUILD_PLANS[planKey].name} (€${BUILD_PLANS[planKey].totalEur})${careKey ? ` + ${CARE_PLANS[careKey].name} care plan` : ""}`,
+          description: `📄 Scope document sent — ${BUILD_PLANS[planKey].name} (€${BUILD_PLANS[planKey].totalEur})${careKey ? ` + ${PLANS[careKey].name} monthly plan` : ""}`,
         }),
       });
       if (!res.ok) { setMarkError("Failed to log — try again"); return; }
@@ -107,14 +110,14 @@ export default function ScopeDocumentPanel({
       <div className="grid grid-cols-2 gap-2 mb-3">
         <select value={planKey} onChange={(e) => setPlanKey(e.target.value as keyof typeof BUILD_PLANS)}
           className="text-sm px-2.5 py-2 rounded-lg border border-[#E8E6E0] focus:outline-none focus:border-[#36671E]">
-          {Object.values(BUILD_PLANS).map((p) => (
+          {SELLABLE_BUILD_PLANS.map((p) => (
             <option key={p.key} value={p.key}>{p.name} — €{p.totalEur}</option>
           ))}
         </select>
-        <select value={careKey} onChange={(e) => setCareKey(e.target.value as keyof typeof CARE_PLANS | "")}
+        <select value={careKey} onChange={(e) => setCareKey(e.target.value as keyof typeof PLANS | "")}
           className="text-sm px-2.5 py-2 rounded-lg border border-[#E8E6E0] focus:outline-none focus:border-[#36671E]">
-          <option value="">No care plan</option>
-          {Object.values(CARE_PLANS).map((c) => (
+          <option value="">No monthly plan</option>
+          {Object.values(PLANS).map((c) => (
             <option key={c.key} value={c.key}>{c.name} — €{c.monthlyEur}/mo</option>
           ))}
         </select>
@@ -143,7 +146,7 @@ export default function ScopeDocumentPanel({
             )}
           </div>
           <p className="text-[11px] text-[#71717A] mt-2 leading-relaxed">
-            Client reviews, types their name, and accepts on this page — recorded automatically, then handed straight to the deposit checkout. Shows up on this lead's timeline once accepted.
+            Client reviews, types their name, and accepts on this page — recorded automatically, then handed straight to checkout. Shows up on this lead's timeline once accepted.
           </p>
         </div>
       )}

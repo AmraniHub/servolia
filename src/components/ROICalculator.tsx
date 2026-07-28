@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { TrendingUp, ArrowRight } from "lucide-react";
 import Link from "next/link";
+import { SETUP_PLAN, PLANS } from "@/lib/pricing";
 
 /**
  * ROICalculator — models the potential upside of capturing missed enquiries.
@@ -13,7 +14,13 @@ import Link from "next/link";
 // Transparent, conservative model assumptions
 const AI_RECOVERY = 0.6;  // share of currently-missed enquiries the AI recovers
 const CLOSE_RATE = 0.3;   // share of recovered enquiries that become paying clients
-const SYSTEM_PRICE = 590; // AI Booking System, € — keep in sync with src/lib/pricing.ts
+
+/**
+ * What payback is measured against: the real first-year cost of the anchor
+ * tier — installation plus twelve months of Croissance. Imported, never
+ * hardcoded, so a price change here can't silently go stale.
+ */
+const FIRST_YEAR_COST = SETUP_PLAN.totalEur + PLANS.croissance.monthlyEur * 12;
 
 function fmt(n: number) {
   return n.toLocaleString("en-US", { maximumFractionDigits: 0 });
@@ -28,7 +35,7 @@ const COPY = {
     assume: (r: number, c: number) => `Model assumes the AI recovers ${r}% of currently-missed enquiries and ${c}% of those become paying clients. Conservative estimate for illustration — your numbers will vary.`,
     potential: "Modeled potential", perMonth: "extra revenue per month",
     extraClients: "Extra clients / mo", extraYear: "Extra revenue / yr",
-    payback: (d: number) => <>The €590 Booking System would pay for itself in <span className="font-black text-[#ABDF90]">~{d} days</span>.</>,
+    payback: (d: number) => <>A full year on {PLANS.croissance.name} — installation included, €{fmt(FIRST_YEAR_COST)} — would pay for itself in <span className="font-black text-[#ABDF90]">~{d} days</span>.</>,
     adjust: "Adjust the sliders to model your potential upside.",
     cta: "Get my real numbers — free audit",
   },
@@ -40,7 +47,7 @@ const COPY = {
     assume: (r: number, c: number) => `Le modèle suppose que l'IA récupère ${r}% des demandes actuellement manquées et que ${c}% deviennent des clients payants. Estimation prudente à titre indicatif — vos chiffres varieront.`,
     potential: "Potentiel estimé", perMonth: "de revenus supplémentaires par mois",
     extraClients: "Clients en plus / mois", extraYear: "Revenus en plus / an",
-    payback: (d: number) => <>Le Système de Réservation à 590 € serait rentabilisé en <span className="font-black text-[#ABDF90]">~{d} jours</span>.</>,
+    payback: (d: number) => <>Une année complète en {PLANS.croissance.nameFr} — mise en place incluse, {fmt(FIRST_YEAR_COST)} € — serait rentabilisée en <span className="font-black text-[#ABDF90]">~{d} jours</span>.</>,
     adjust: "Déplacez les curseurs pour estimer votre potentiel.",
     cta: "Obtenir mes vrais chiffres — audit gratuit",
   },
@@ -57,7 +64,7 @@ export default function ROICalculator({ lang = "en" }: { lang?: "en" | "fr" }) {
     const extraClients = recovered * CLOSE_RATE;
     const extraMonthly = extraClients * value;
     const extraYearly = extraMonthly * 12;
-    const paybackDays = extraMonthly > 0 ? Math.max(1, Math.round((SYSTEM_PRICE / extraMonthly) * 30)) : 0;
+    const paybackDays = extraMonthly > 0 ? Math.max(1, Math.round((FIRST_YEAR_COST / extraMonthly) * 30)) : 0;
     return { extraClients, extraMonthly, extraYearly, paybackDays };
   }, [enquiries, value, missed]);
 

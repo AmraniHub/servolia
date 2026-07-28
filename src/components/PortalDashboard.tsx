@@ -6,7 +6,7 @@ import Link from "next/link";
 import type { Build, Client } from "@/lib/supabase";
 import { toCsv } from "@/lib/csv";
 import AutoRefresh from "@/components/AutoRefresh";
-import { ADDONS } from "@/lib/pricing";
+import { ADDONS, PLAN_ORDER, resolvePlan } from "@/lib/pricing";
 import { countryName } from "@/lib/traffic";
 import {
   LogOut, Send, MessageSquare, Clock, CreditCard, CheckCircle2, Users, CalendarCheck,
@@ -361,16 +361,21 @@ export default function PortalDashboard({
     setCopied2(key); setTimeout(() => setCopied2(null), 1600);
   }
 
-  // Plan-aware upgrade card: the highest tier they own decides the next step.
-  const planRank = (p: string) => /pro|client|pay_per_booking/.test(p) ? 3 : /growth|booking/.test(p) ? 2 : /starter|website/.test(p) ? 1 : 0;
-  const maxRank = Math.max(0, ...builds.map((b) => planRank((b.plan ?? "").toLowerCase())));
-  const upsell = maxRank === 1
-    ? { h: t.upStarterH, b: t.upStarterB, cta: t.upStarterCta, prefill: t.upStarterPrefill }
-    : maxRank === 2
-    ? { h: t.upGrowthH, b: t.upGrowthB, cta: t.upGrowthCta, prefill: t.upGrowthPrefill }
-    : maxRank >= 3 && !subscription
-    ? { h: t.upCareH, b: t.upCareB, cta: t.upCareCta, prefill: t.upCarePrefill }
-    : null;
+  // Plan-aware upgrade card. Driven by the SUBSCRIPTION tier, not the build
+  // plan — under the current model every build is the same €490 installation,
+  // so the build plan carries no signal. resolvePlan() also maps the retired
+  // care/care_growth/care_scale keys, so long-standing clients rank correctly.
+  const currentTier = resolvePlan(subscription?.plan);
+  const tierRank = currentTier
+    ? PLAN_ORDER.indexOf(currentTier.key as (typeof PLAN_ORDER)[number])
+    : -1;
+  const upsell = tierRank < 0
+    ? { h: t.upNoPlanH, b: t.upNoPlanB, cta: t.upNoPlanCta, prefill: t.upNoPlanPrefill }
+    : tierRank === 0
+    ? { h: t.upEssentielH, b: t.upEssentielB, cta: t.upEssentielCta, prefill: t.upEssentielPrefill }
+    : tierRank === 1
+    ? { h: t.upCroissanceH, b: t.upCroissanceB, cta: t.upCroissanceCta, prefill: t.upCroissancePrefill }
+    : null; // Performance — nothing left to sell them
   function askUpgrade(prefill: string) {
     setInput(prefill);
     setTab("messages");

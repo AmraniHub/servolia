@@ -5,6 +5,7 @@ import { ArrowRight, Clock, CheckCircle } from "lucide-react";
 import type { Metadata } from "next";
 import ValueStack from "@/components/ValueStack";
 import Guarantee from "@/components/Guarantee";
+import { PLANS } from "@/lib/pricing";
 
 export const metadata: Metadata = {
   title: "Exemples de déploiements — Ce qu'un système Servolia est conçu pour livrer",
@@ -25,9 +26,9 @@ const cases = [
     id: "scenario-dentaire",
     badge: "Cabinet dentaire · Europe de l'Ouest",
     name: "Scénario cabinet dentaire",
-    system: "Système de Réservation IA",
-    plan: "Forfait Growth (99 €/mois)",
-    timeline: "Construction en 5 jours · conçu pour des résultats dès la semaine 1",
+    system: "Site + réceptionniste IA",
+    plan: `${PLANS.croissance.nameFr} (${PLANS.croissance.monthlyEur} €/mois)`,
+    timeline: "Mise en place en 7 jours · conçu pour des résultats dès la semaine 1",
     headline: "Transformer les demandes hors horaires en rendez-vous réservés.",
     challenge:
       "Un cabinet type est complet en journée mais perd les patients qui appellent après la fermeture. Sans réservation en ligne, chaque appel manqué peut partir chez un confrère — et le secrétariat passe des heures chaque jour à gérer les rendez-vous par téléphone au lieu de s'occuper des patients.",
@@ -54,9 +55,9 @@ const cases = [
     id: "scenario-esthetique",
     badge: "Clinique esthétique · Europe",
     name: "Scénario clinique esthétique",
-    system: "Système Client IA",
-    plan: "Forfait Scale (199 €/mois)",
-    timeline: "Construction en 7 jours · conçu pour une première réservation en semaine 1",
+    system: "Site + réceptionniste IA + couche croissance",
+    plan: `${PLANS.performance.nameFr} (${PLANS.performance.monthlyEur} €/mois)`,
+    timeline: "Mise en place en 7 jours · conçu pour une première réservation en semaine 1",
     headline: "Convertir l'intérêt Instagram qui ne menait nulle part.",
     challenge:
       "Une clinique avec quelques milliers d'abonnés Instagram reçoit un flux régulier de messages privés sur les consultations Botox et acide hyaluronique, mais aucun système pour les convertir. Les clientes potentielles écrivent, attendent une réponse trop lente, et réservent chez un concurrent — la demande est forte mais le chiffre stagne.",
@@ -84,9 +85,9 @@ const cases = [
     id: "scenario-services",
     badge: "CVC / services à domicile · États-Unis",
     name: "Scénario services à domicile",
-    system: "Système de Réservation IA",
-    plan: "Forfait Growth (199 $/mois)",
-    timeline: "Construction en 4 jours · conçu pour des demandes de devis en semaine 1",
+    system: "Site + réceptionniste IA",
+    plan: `${PLANS.croissance.nameFr} (${PLANS.croissance.monthlyEur} €/mois)`,
+    timeline: "Mise en place en 7 jours · conçu pour des demandes de devis en semaine 1",
     headline: "Remplacer le bouche-à-oreille seul par un moteur de leads 24h/24.",
     challenge:
       "Une entreprise de chauffage-climatisation prospère fonctionne entièrement au bouche-à-oreille, sans site ni présence en ligne. Le gérant passe plus de 10 heures par semaine au téléphone à qualifier les demandes, planifier les devis et relancer ceux qui ne répondent plus.",
@@ -136,9 +137,9 @@ export default function FrenchCaseStudiesPage() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-3xl mx-auto">
               {[
                 { n: "7 jours", label: "Du démarrage à la mise en ligne" },
-                { n: "50 %", label: "Acompte pour démarrer" },
+                { n: "0 €", label: "À payer le jour de la livraison" },
                 { n: "10 %", label: "Remboursés par jour de retard" },
-                { n: "100 %", label: "Propriété au paiement final" },
+                { n: "30 jours", label: "De préavis pour résilier, sans pénalité" },
               ].map((s, i) => (
                 <div key={i} className="p-4 rounded-2xl bg-[#F5F4EF] border border-[#D4D2CC] text-center">
                   <p className="text-2xl font-black text-[#18181B] mb-1">{s.n}</p>

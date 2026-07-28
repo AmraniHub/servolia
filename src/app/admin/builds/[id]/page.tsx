@@ -55,8 +55,14 @@ export default async function BuildDetailPage({ params }: { params: Promise<{ id
       </div>
 
       <div className="grid sm:grid-cols-3 gap-4 mb-6">
-        <Stat icon={<CreditCard className="w-4 h-4" />} label="Deposit paid"  value={`€${Number(build.deposit_paid).toLocaleString()}`} accent />
-        <Stat icon={<CreditCard className="w-4 h-4" />} label="Balance due"   value={`€${Number(build.balance_due).toLocaleString()}`} />
+        <Stat icon={<CreditCard className="w-4 h-4" />} label="Installation paid" value={`€${Number(build.deposit_paid).toLocaleString()}`} accent />
+        {/* Nothing is owed on delivery any more, so this only earns its tile for
+            builds sold under the retired 50/50 model. */}
+        <Stat
+          icon={<CreditCard className="w-4 h-4" />}
+          label={Number(build.balance_due) > 0 ? "Balance due (legacy)" : "Owed on delivery"}
+          value={Number(build.balance_due) > 0 ? `€${Number(build.balance_due).toLocaleString()}` : "Nothing"}
+        />
         <Stat icon={<Calendar className="w-4 h-4" />}   label="Deadline"      value={build.deadline ? new Date(build.deadline).toLocaleDateString() : "Not set"} />
       </div>
 

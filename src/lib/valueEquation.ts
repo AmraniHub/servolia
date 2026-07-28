@@ -13,7 +13,7 @@
  *     Y…"), never a result Servolia claims to have produced. There are no
  *     delivered clients yet, so any "we generated…" line would be invented.
  *  2. Likelihood lines may only promise what src/app/legal/refund and the CGV
- *     actually grant. The deposit is non-refundable once work begins.
+ *     actually grant. The installation fee is non-refundable once work begins.
  *  3. No invented statistics, and no testimonials until real ones exist.
  */
 
@@ -110,12 +110,12 @@ const STATIC: Record<Exclude<ValueLever["kind"], "outcome">, Record<Lang, { labe
     en: {
       label: "Certainty",
       headline: "Committed in writing before you pay",
-      body: "Fixed scope, fixed price, fixed delivery date — signed off before any work starts. Miss the date and you get 10% back per day late. Can't deliver at all and your deposit is refunded in full.",
+      body: "Fixed scope, fixed price, fixed delivery date — signed off before any work starts. Miss the date and you get 10% back per day late. Can't deliver at all and your installation fee is refunded in full.",
     },
     fr: {
       label: "Certitude",
       headline: "Engagé par écrit avant tout paiement",
-      body: "Périmètre, prix et date de livraison fixes — validés avant le moindre travaux. Date manquée : 10 % remboursés par jour de retard. Livraison impossible : acompte intégralement remboursé.",
+      body: "Périmètre, prix et date de livraison fixes — validés avant le début des travaux. Date manquée : 10 % remboursés par jour de retard. Livraison impossible : frais de mise en place intégralement remboursés.",
     },
   },
   speed: {

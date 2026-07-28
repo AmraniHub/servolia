@@ -38,7 +38,7 @@ export default function SettingsPage() {
             <CreditCard className="w-5 h-5 text-[#B91C1C] mt-0.5 shrink-0" />
             <div>
               <p className="text-sm font-black text-[#B91C1C]">Stripe is in {stripeMode.toUpperCase()} mode</p>
-              <p className="text-xs text-[#7F1D1D] mt-0.5">No real money is collected until a <code className="font-mono">sk_live_…</code> key is set in Vercel. Everything else (checkout, Care, add-ons) already works.</p>
+              <p className="text-xs text-[#7F1D1D] mt-0.5">No real money is collected until a <code className="font-mono">sk_live_…</code> key is set in Vercel. Everything else (checkout, subscriptions, add-ons) already works.</p>
             </div>
           </div>
         )}

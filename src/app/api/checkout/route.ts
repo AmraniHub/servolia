@@ -2,17 +2,23 @@ import Stripe from "stripe";
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { sendMetaCapiEvent } from "@/lib/metaCapi";
-import { SELLABLE_BUILD_PLANS, depositCents, balanceCents } from "@/lib/pricing";
+import { SELLABLE_BUILD_PLANS, PLANS as SUB_PLANS, SETUP_PLAN } from "@/lib/pricing";
 
-// 50% deposit amounts in cents (EUR) — prices come from src/lib/pricing.ts
-// Retired plans are deliberately absent, so a stale link to one can't be paid for.
-const PLANS: Record<string, { name: string; nameFr: string; deposit: number; balance: number }> =
+// One-time amounts in cents (EUR) — prices come from src/lib/pricing.ts.
+// Charged IN FULL: under the current model the installation is the only
+// one-time payment and nothing is owed on delivery. Retired plans are
+// deliberately absent, so a stale link to one can't be paid for.
+const PLANS: Record<string, { name: string; nameFr: string; delivery: string; amount: number }> =
   Object.fromEntries(
     SELLABLE_BUILD_PLANS.map((p) => [
       p.key,
-      { name: p.name, nameFr: p.nameFr, deposit: depositCents(p), balance: balanceCents(p) },
+      { name: p.name, nameFr: p.nameFr, delivery: p.delivery, amount: p.totalEur * 100 },
     ])
   );
+
+/** First-year value of a lead who just started checkout — installation plus a
+ *  year of the anchor tier. Matches estimateLeadValue() in src/lib/supabase.ts. */
+const FIRST_YEAR_ESTIMATE = SETUP_PLAN.totalEur + SUB_PLANS.croissance.monthlyEur * 12;
 
 export async function POST(req: NextRequest) {
   const key = process.env.STRIPE_SECRET_KEY;
@@ -39,13 +45,13 @@ export async function POST(req: NextRequest) {
           price_data: {
             currency: "eur",
             product_data: {
-              name: fr ? `${p.nameFr} — acompte de 50 %` : `${p.name} — 50% Deposit`,
+              name: fr ? p.nameFr : p.name,
               description: fr
-                ? `Solde de ${(p.balance / 100).toLocaleString("fr-FR")} € à la livraison. Prix fixe, délai fixe.`
-                : `Balance of €${(p.balance / 100).toLocaleString()} due on delivery. Fixed price, fixed deadline.`,
+                ? `Paiement unique. Rien n'est dû à la livraison — votre abonnement mensuel démarre une fois le site en ligne. Délai : ${p.delivery}.`
+                : `One-time payment. Nothing is due on delivery — your monthly plan starts once the site is live. Delivery: ${p.delivery}.`,
               images: ["https://servolia.com/og-image.png"],
             },
-            unit_amount: p.deposit,
+            unit_amount: p.amount,
           },
           quantity: 1,
         },
@@ -60,8 +66,8 @@ export async function POST(req: NextRequest) {
       custom_text: {
         submit: {
           message: fr
-            ? "50 % maintenant · Solde à la livraison · Délai fixé par écrit"
-            : "50% now · Balance on delivery · Fixed deadline in writing",
+            ? "Paiement unique · Rien à la livraison · Délai fixé par écrit"
+            : "One-time payment · Nothing on delivery · Fixed deadline in writing",
         },
       },
     });
@@ -79,7 +85,7 @@ export async function POST(req: NextRequest) {
           source: "direct-purchase",
           stage: "qualified",
           plan_interest: plan,
-          value_estimate: (p.deposit + p.balance) / 100,
+          value_estimate: FIRST_YEAR_ESTIMATE,
         }).select("id").single();
         if (newLead) finalLeadId = newLead.id;
       }
@@ -89,19 +95,20 @@ export async function POST(req: NextRequest) {
         business: "Pending intake",
         plan,
         plan_name: p.name,
-        total_price: (p.deposit + p.balance) / 100,
-        balance_due: p.balance / 100,
+        total_price: p.amount / 100,
+        balance_due: 0, // nothing is owed on delivery under the current model
+
         status: "intake",
         checkout_session_id: session.id,
       });
 
-      // Mark the lead as awaiting payment (will flip to deposit_paid on webhook)
+      // Mark the lead as awaiting payment (the webhook flips it once paid).
       if (finalLeadId) {
         await db.from("leads").update({ stage: "qualified" }).eq("id", finalLeadId);
         await db.from("lead_activities").insert({
           lead_id: finalLeadId,
           type: "payment",
-          description: `Started checkout for ${p.name} — €${(p.deposit / 100).toLocaleString()} deposit`,
+          description: `Started checkout for ${p.name} — €${(p.amount / 100).toLocaleString()}`,
         });
       }
     }
@@ -109,7 +116,7 @@ export async function POST(req: NextRequest) {
     // Meta Conversions API — checkout started (fire and forget)
     sendMetaCapiEvent({
       eventName: "InitiateCheckout",
-      value: p.deposit / 100,
+      value: p.amount / 100,
       currency: "EUR",
       eventSourceUrl: "https://servolia.com/pricing",
       req,

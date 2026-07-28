@@ -6,6 +6,7 @@ import StickyMobileCTA from "@/components/StickyMobileCTA";
 import Guarantee from "@/components/Guarantee";
 import ValueStack from "@/components/ValueStack";
 import { FR_GEO_NICHE_MAP, FR_CITY_MAP, allFrGeoCombos } from "@/lib/content/frGeo";
+import { SETUP_PLAN, PLANS, PLAN_ORDER, POPULAR_PLAN_KEY } from "@/lib/pricing";
 
 /**
  * FR Geo-SEO landing: /fr/[niche]/[ville].
@@ -17,11 +18,22 @@ import { FR_GEO_NICHE_MAP, FR_CITY_MAP, allFrGeoCombos } from "@/lib/content/frG
  *     FAQPage JSON-LD + a canonical Q&A block that reads cleanly when lifted.
  */
 
-const packages = [
-  { name: "Cabinet Essentiel", price: "290 €", delivery: "3 jours", popular: false, blurb: "Site pro + formulaire — pour ne plus rien perdre." },
-  { name: "Système IA Cabinet", price: "590 €", delivery: "5 jours", popular: true, blurb: "Site + assistante IA + prise de RDV — la formule qui rentabilise le plus vite." },
-  { name: "Cabinet Pro Complet", price: "990 €", delivery: "7 jours", popular: false, blurb: "Formule premium avec pages soins détaillées, IA multilingue, suivi ROI." },
-];
+// Tarifs issus de src/lib/pricing.ts. Ces cartes alimentent AUSSI le JSON-LD
+// Offer plus bas, donc un prix périmé ici se retrouve dans Google.
+const BLURBS: Record<string, string> = {
+  essentiel: "Site pro + assistante IA — pour ne plus perdre une demande, même la nuit.",
+  croissance: "Tout Essentiel + pipeline, avis Google, rappels SMS et rapport mensuel.",
+  performance: "Multi-praticiens, suivi publicitaire en boucle fermée et IA sur mesure.",
+};
+
+const packages = PLAN_ORDER.map((k) => ({
+  name: PLANS[k].nameFr,
+  monthlyEur: PLANS[k].monthlyEur,
+  price: `${PLANS[k].monthlyEur} €/mois`,
+  meter: `${PLANS[k].conversations} conversations IA/mois`,
+  popular: k === POPULAR_PLAN_KEY,
+  blurb: BLURBS[k],
+}));
 
 export function generateStaticParams() {
   return allFrGeoCombos();
@@ -75,12 +87,18 @@ export default async function FrGeoPage({ params }: { params: Promise<{ niche: s
           containedInPlace: { "@type": "AdministrativeArea", name: c.region },
         },
         serviceType: `Site web professionnel avec réceptionniste IA pour ${n.labelSingular}`,
+        // Recurring offers — a bare `price` would read as a one-time fee.
         offers: packages.map((p) => ({
           "@type": "Offer",
           name: p.name,
-          price: p.price.replace(/[^\d]/g, ""),
           priceCurrency: "EUR",
           description: p.blurb,
+          priceSpecification: {
+            "@type": "UnitPriceSpecification",
+            price: p.monthlyEur,
+            priceCurrency: "EUR",
+            referenceQuantity: { "@type": "QuantitativeValue", value: 1, unitCode: "MON" },
+          },
         })),
       },
       {
@@ -168,7 +186,7 @@ export default async function FrGeoPage({ params }: { params: Promise<{ niche: s
           <div className="text-center mb-10">
             <p className="text-sm font-bold text-[#36671E] uppercase tracking-widest mb-2">Formules Servolia</p>
             <h2 className="text-3xl font-black text-[#18181B] mb-3">Choisissez votre formule</h2>
-            <p className="text-[#71717A]">Prix HT (EUR). Acompte de 50 % · Solde à la livraison.</p>
+            <p className="text-[#71717A]">Prix HT (EUR). Mise en place de {SETUP_PLAN.totalEur} € au démarrage — offerte en annuel, rien à payer à la livraison.</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {packages.map((p, i) => (
@@ -182,7 +200,7 @@ export default async function FrGeoPage({ params }: { params: Promise<{ niche: s
                 <div className="text-3xl font-black text-[#18181B] mb-1">{p.price}</div>
                 <div className="flex items-center gap-1.5 mb-3">
                   <Clock className="w-3.5 h-3.5 text-[#059669]" />
-                  <span className="text-xs font-semibold text-[#059669]">Livré en {p.delivery}</span>
+                  <span className="text-xs font-semibold text-[#059669]">{p.meter}</span>
                 </div>
                 <p className="text-sm text-[#52525B] mb-4 leading-relaxed">{p.blurb}</p>
                 <Link href="/fr/audit" className={`block text-center py-3 rounded-xl font-bold text-sm transition-all ${p.popular ? "bg-gradient-to-r from-[#36671E] to-[#295115] text-[#FAFAF7] hover:opacity-90" : "border border-[#E8E6E0] text-[#18181B] hover:border-[#36671E] hover:text-[#36671E]"}`}>
@@ -242,7 +260,7 @@ export default async function FrGeoPage({ params }: { params: Promise<{ niche: s
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {[
               `Prix ferme écrit avant de démarrer — jamais de surprise sur la facture.`,
-              `Livraison en 7 jours ou remboursement total de l'acompte.`,
+              `Livraison en 7 jours, ou 10 % remboursés par jour de retard (plafonné à 50 %).`,
               `Hébergement inclus, sécurité et RGPD gérés — vous n'avez rien à installer ${c.nameWithArticle}.`,
               `Aucun engagement de durée sur la maintenance — vous partez quand vous voulez.`,
             ].map((line, i) => (

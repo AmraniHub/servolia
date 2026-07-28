@@ -95,7 +95,7 @@ DELIVERY
   Live within ${plan.delivery} of ${isSetup ? "the installation fee" : "the deposit"} being received + your completed intake form.
 
 GUARANTEE
-  Live on time or 10% of your payment refunded per day late, if the delay is Servolia's fault — per our Terms of Service (servolia.com/legal/cgv).
+  Live on time or 10% of your payment refunded per day late, capped at 50%, if the delay is Servolia's fault — per our Terms of Service (servolia.com/legal/cgv).
 
 ${footer}`;
 }

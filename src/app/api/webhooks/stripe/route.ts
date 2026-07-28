@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import Stripe from "stripe";
 import { supabaseAdmin } from "@/lib/supabase";
-import { sendEmail, depositReceivedEmail } from "@/lib/email";
+import { sendEmail, installationPaidEmail } from "@/lib/email";
 import { sendMetaCapiEvent } from "@/lib/metaCapi";
 import { generateScopeDocument } from "@/lib/scopeDocument";
 import { BUILD_PLANS, resolvePlan } from "@/lib/pricing";
@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ received: true });
       }
 
-      // ── CARE PLAN branch: recurring subscription, not a one-time deposit ──
+      // ── MONTHLY PLAN branch: recurring subscription, not the installation ──
       if (session.mode === "subscription") {
         const customerEmail = session.customer_details?.email ?? session.customer_email ?? null;
         const amount = (session.amount_total ?? 0) / 100;
@@ -115,8 +115,8 @@ export async function POST(req: NextRequest) {
       }
 
       // ── CUSTOM REQUEST branch: a one-off payment for personalized extra work.
-      // Must run before the build-deposit logic below, or it would be mistaken
-      // for a deposit on the client's original build.
+      // Must run before the build-payment logic below, or it would be mistaken
+      // for the installation payment on the client's original build.
       if (session.metadata?.kind === "custom_request") {
         const requestId = session.metadata?.requestId;
         const amount = (session.amount_total ?? 0) / 100;
@@ -196,7 +196,7 @@ export async function POST(req: NextRequest) {
         if (customerEmail) {
           const firstName = customerEmail.split("@")[0];
           const emailLang = session.metadata?.lang === "fr" ? "fr" : "en";
-          const tpl = depositReceivedEmail(firstName, "Pay-per-booking", amount, emailLang);
+          const tpl = installationPaidEmail(firstName, "Pay-per-booking", amount, emailLang);
           sendEmail(customerEmail, tpl.subject, tpl.html).catch(() => {});
         }
         return NextResponse.json({ received: true });
@@ -225,9 +225,11 @@ export async function POST(req: NextRequest) {
           email: customerEmail,
           plan: planMeta,
           plan_name: planMeta,
-          total_price: amountPaid * 2,        // assume 50% deposit
-          deposit_paid: amountPaid,
-          balance_due: amountPaid,
+          // One-time payments are charged IN FULL (see /api/checkout), so what
+          // they paid IS the project price and nothing is outstanding.
+          total_price: amountPaid,
+          deposit_paid: amountPaid,           // column name predates the model change
+          balance_due: 0,
           status: "intake",
           checkout_session_id: sessionId,
           customer_id: (session.customer as string) ?? null,
@@ -249,16 +251,16 @@ export async function POST(req: NextRequest) {
           await db.from("lead_activities").insert({
             lead_id: build.lead_id,
             type: "payment",
-            description: `Deposit received — €${amountPaid.toLocaleString()} via Stripe`,
+            description: `Installation paid — €${amountPaid.toLocaleString()} via Stripe`,
           });
         }
       }
 
       // Auto-create a scope acceptance if this build's lead doesn't already have
       // one. Direct /pricing purchases skip the audit funnel entirely, so
-      // without this they'd pay a deposit having never seen or accepted a
-      // written scope -- directly contradicting the pricing page's own
-      // promised process ("02. Approve scope" before "03. 50% deposit"). This
+      // without this they'd pay having never seen or accepted a written
+      // scope -- directly contradicting the pricing page's own promised
+      // process ("02. Approve scope" before "03. €490 installation"). This
       // doesn't gate payment (keeps the self-serve path fast); it just makes
       // sure the scope exists and is reachable from the portal right after.
       if (build?.lead_id) {
@@ -279,12 +281,12 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // Send deposit received email to client, in the language they bought in
-      // (set at checkout — see /api/checkout's metadata.lang).
+      // Send the payment-received email to the client, in the language they
+      // bought in (set at checkout — see /api/checkout's metadata.lang).
       if (customerEmail && build) {
         const firstName = customerEmail.split("@")[0];
         const emailLang = session.metadata?.lang === "fr" ? "fr" : "en";
-        const tpl = depositReceivedEmail(firstName, build.plan_name ?? "system", amountPaid, emailLang);
+        const tpl = installationPaidEmail(firstName, build.plan_name ?? "system", amountPaid, emailLang);
         sendEmail(customerEmail, tpl.subject, tpl.html).catch(() => {});
       }
 
@@ -301,7 +303,7 @@ export async function POST(req: NextRequest) {
       const tgToken = process.env.TELEGRAM_BOT_TOKEN;
       const tgChatId = process.env.TELEGRAM_CHAT_ID;
       if (tgToken && tgChatId) {
-        const msg = `💰 *Deposit received — €${amountPaid}*\n` +
+        const msg = `💰 *Payment received — €${amountPaid}*\n` +
                     `${customerEmail ?? "no email"}\n` +
                     `Plan: ${build?.plan_name ?? session.metadata?.plan ?? "?"}\n\n` +
                     (build ? `[Open build in CRM](https://servolia.com/admin/builds/${build.id})` : "");
@@ -374,7 +376,7 @@ export async function POST(req: NextRequest) {
       } catch { /* ledger table not created yet — never drop the webhook */ }
     }
 
-    // ── Care plan cancelled (in Stripe or by the client) ──────────────────
+    // ── Subscription cancelled (in Stripe or by the client) ───────────────
     if (event.type === "customer.subscription.deleted") {
       const sub = event.data.object as Stripe.Subscription;
       await db.from("clients").update({
@@ -386,7 +388,7 @@ export async function POST(req: NextRequest) {
       const tgChatId = process.env.TELEGRAM_CHAT_ID;
       if (tgToken && tgChatId) {
         const { data: client } = await db.from("clients").select("business, email").eq("subscription_id", sub.id).maybeSingle();
-        const msg = `⚠️ *Care plan cancelled*\n${client?.business ?? client?.email ?? "Unknown client"}`;
+        const msg = `⚠️ *Subscription cancelled*\n${client?.business ?? client?.email ?? "Unknown client"}`;
         fetch(`https://api.telegram.org/bot${tgToken}/sendMessage`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },

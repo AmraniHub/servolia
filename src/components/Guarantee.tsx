@@ -4,11 +4,12 @@ import { ShieldCheck, RefreshCw, CalendarCheck } from "lucide-react";
  * Risk-reversal — the "perceived likelihood" lever of the value equation.
  *
  * Every claim here must match src/app/legal/refund and the CGV exactly. The
- * deposit is non-refundable once work has begun, so we do NOT promise a
- * no-questions setup refund; we promise the two things the policy genuinely
- * grants (10%/day for lateness, full refund if we never deliver) plus a
- * performance floor the system itself controls. No medical claims, and no
- * track-record claims until there are real delivered clients to point at.
+ * installation fee is non-refundable once work has begun, so we do NOT promise
+ * a no-questions setup refund; we promise the three things the policy
+ * genuinely grants (10%/day for lateness capped at 50%, full refund of the
+ * installation if we never deliver, cancel the monthly plan on 30 days'
+ * notice) plus a performance floor the system itself controls. No medical
+ * claims, and no track-record claims until there are real delivered clients.
  */
 
 const COPY = {
@@ -17,9 +18,9 @@ const COPY = {
     h: "You risk nothing. We only win when you do.",
     sub: "The deadline, the price, and the scope are committed in writing before you pay a cent.",
     cards: [
-      { icon: CalendarCheck, title: "Live in 7 days — or you're paid back", body: "Your delivery date is committed in writing. If we miss it through our own fault, you get 10% of the project price back for every day we're late." },
+      { icon: CalendarCheck, title: "Live in 7 days — or you're paid back", body: "Your delivery date is committed in writing. If we miss it through our own fault, you get 10% of the price back for every day we're late, up to half the installation fee." },
       { icon: ShieldCheck, title: "It answers every enquiry — guaranteed", body: "If your assistant isn't capturing enquiries 24/7 in month one, we keep fixing it free until it does." },
-      { icon: RefreshCw, title: "We don't deliver, you don't pay", body: "If we can't deliver the scope we agreed, you get a full refund of your deposit. The scope is signed off before any work starts." },
+      { icon: RefreshCw, title: "We don't deliver, you don't pay", body: "If we can't deliver the scope we agreed, your installation fee comes back in full. The scope is signed off before any work starts, and the monthly plan is cancellable on 30 days' notice." },
     ],
   },
   fr: {
@@ -27,9 +28,9 @@ const COPY = {
     h: "Vous ne risquez rien. On ne gagne que si vous gagnez.",
     sub: "Le délai, le prix et le périmètre sont engagés par écrit avant le moindre paiement.",
     cards: [
-      { icon: CalendarCheck, title: "En ligne en 7 jours — ou vous êtes remboursé", body: "Votre date de livraison est engagée par écrit. Si nous la manquons de notre fait, vous récupérez 10 % du prix par jour de retard." },
+      { icon: CalendarCheck, title: "En ligne en 7 jours — ou vous êtes remboursé", body: "Votre date de livraison est engagée par écrit. Si nous la manquons de notre fait, vous récupérez 10 % du prix par jour de retard, jusqu'à la moitié des frais de mise en place." },
       { icon: ShieldCheck, title: "Chaque demande répondue — garanti", body: "Si votre assistant ne capte pas vos demandes 24h/24 le premier mois, nous corrigeons gratuitement jusqu'à ce que ce soit le cas." },
-      { icon: RefreshCw, title: "Pas livré, pas payé", body: "Si nous ne pouvons pas livrer le périmètre convenu, votre acompte est intégralement remboursé. Le périmètre est validé avant tout début de travaux." },
+      { icon: RefreshCw, title: "Pas livré, pas payé", body: "Si nous ne pouvons pas livrer le périmètre convenu, vos frais de mise en place sont intégralement remboursés. Le périmètre est validé avant tout début de travaux, et l'abonnement est résiliable avec 30 jours de préavis." },
     ],
   },
 };

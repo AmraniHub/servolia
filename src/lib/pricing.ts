@@ -229,12 +229,19 @@ export function payPerBookingEligible(niche?: string | null): boolean {
   return PAY_PER_BOOKING_ELIGIBLE.test(n);
 }
 
-/** 50% deposit in Stripe cents (used by the legacy build-plan checkout). */
+/**
+ * 50% deposit in Stripe cents — RETIRED BUILD PLANS ONLY.
+ *
+ * The live installation is charged IN FULL (see /api/checkout); nothing is
+ * owed on delivery. These two helpers survive purely so a scope document
+ * regenerated for a build sold before 2026-07-28 still shows the deposit and
+ * balance that client actually agreed to. Never use them for a new sale.
+ */
 export function depositCents(plan: BuildPlan): number {
   return Math.round((plan.totalEur * 100) / 2);
 }
 
-/** Remaining balance in Stripe cents. */
+/** Remaining balance in Stripe cents — retired build plans only. */
 export function balanceCents(plan: BuildPlan): number {
   return plan.totalEur * 100 - depositCents(plan);
 }

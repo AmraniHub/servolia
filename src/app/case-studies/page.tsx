@@ -7,6 +7,7 @@ import { ArrowRight, Clock, CheckCircle } from "lucide-react";
 import type { Metadata } from "next";
 import ValueStack from "@/components/ValueStack";
 import Guarantee from "@/components/Guarantee";
+import { PLANS } from "@/lib/pricing";
 
 export const dynamic = "force-dynamic";
 
@@ -28,9 +29,9 @@ const cases = [
     id: "dental-scenario",
     badge: "Dental clinic · Western Europe",
     name: "Dental clinic scenario",
-    system: "AI Booking System",
-    plan: "Growth Plan (€99/mo)",
-    timeline: "5-day build · designed for results in week 1",
+    system: "Site + AI receptionist",
+    plan: `${PLANS.croissance.name} (€${PLANS.croissance.monthlyEur}/mo)`,
+    timeline: "7-day installation · designed for results in week 1",
     headline: "Turning after-hours enquiries into booked appointments.",
     challenge:
       "A typical practice is full during the day but loses patients who call after hours. With no online booking, every missed call can go to a competitor — and the front desk burns hours each day managing appointments by phone instead of treating patients.",
@@ -58,9 +59,9 @@ const cases = [
     id: "aesthetic-scenario",
     badge: "Aesthetic clinic · Europe",
     name: "Aesthetic clinic scenario",
-    system: "AI Client System",
-    plan: "Authority Plan (€199/mo)",
-    timeline: "7-day build · designed for first booking in week 1",
+    system: "Site + AI receptionist + growth layer",
+    plan: `${PLANS.performance.name} (€${PLANS.performance.monthlyEur}/mo)`,
+    timeline: "7-day installation · designed for first booking in week 1",
     headline: "Converting Instagram interest that was going nowhere.",
     challenge:
       "A clinic with a few thousand Instagram followers gets steady DM interest in Botox and filler consultations, but no system to convert it. Potential clients message, wait for a slow reply, and book with a competitor — demand is strong but revenue stays flat.",
@@ -89,9 +90,9 @@ const cases = [
     id: "hvac-scenario",
     badge: "HVAC / home services · US",
     name: "Home services scenario",
-    system: "AI Booking System",
-    plan: "Growth Plan ($99/mo)",
-    timeline: "4-day build · designed for quote requests in week 1",
+    system: "Site + AI receptionist",
+    plan: `${PLANS.croissance.name} (€${PLANS.croissance.monthlyEur}/mo)`,
+    timeline: "7-day installation · designed for quote requests in week 1",
     headline: "Replacing word-of-mouth-only with a 24/7 lead engine.",
     challenge:
       "A successful HVAC business runs entirely on word-of-mouth with no website or online presence. The owner spends 10+ hours a week on the phone just qualifying leads, scheduling quotes, and chasing people who go quiet.",
@@ -148,9 +149,9 @@ export default async function CaseStudiesPage() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-3xl mx-auto">
               {[
                 { n: "7 days", label: "Kickoff to live system" },
-                { n: "50%", label: "Deposit to start" },
+                { n: "€0", label: "Owed on delivery day" },
                 { n: "10%", label: "Back per day if late" },
-                { n: "100%", label: "Ownership on payment" },
+                { n: "30 days", label: "Notice to cancel, no penalty" },
               ].map((s, i) => (
                 <div key={i} className="p-4 rounded-2xl bg-[#F5F4EF] border border-[#D4D2CC] text-center">
                   <p className="text-2xl font-black text-[#18181B] mb-1">{s.n}</p>

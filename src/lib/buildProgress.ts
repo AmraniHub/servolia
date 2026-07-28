@@ -4,7 +4,7 @@ import { daysUntil } from "@/lib/dates";
 /**
  * DELIVERY PROGRESS — the checklist that fills itself in.
  *
- * Every step of a Servolia delivery is already recorded somewhere (a deposit
+ * Every step of a Servolia delivery is already recorded somewhere (a payment
  * on the build, an accepted scope, an intake blob, a published client_site, a
  * clients row). So instead of asking the founder to tick boxes — which drifts
  * from reality the moment someone forgets — we DERIVE the checklist from the
@@ -109,7 +109,10 @@ export function buildProgress(b: BuildLike, facts: ProgressFacts): BuildProgress
 
   const steps: DeliveryStep[] = [
     {
-      key: "deposit", label: "Deposit paid", owner: "client",
+      // Key stays "deposit" — it's the builds.deposit_paid column and things
+      // downstream match on it. Under the current model this is the €490
+      // installation, charged in full; only the label moved.
+      key: "deposit", label: "Installation paid", owner: "client",
       done: Number(b.deposit_paid) > 0,
       hint: "Send the checkout link to start the build.",
     },
@@ -133,15 +136,16 @@ export function buildProgress(b: BuildLike, facts: ProgressFacts): BuildProgress
       done: site?.status === "published",
       hint: "Review the draft, then Publish.",
     },
+    // No "balance paid" step: the installation is charged in full up front and
+    // nothing is owed on delivery. The step used to sit here and could never
+    // complete for a live build, which parked every delivery on "waiting on the
+    // client" forever — and with it the delivery-guarantee pause below.
     {
-      key: "balance", label: "Balance paid", owner: "client",
-      done: Number(b.balance_due) === 0,
-      hint: "Invoice the remaining balance on delivery.",
-    },
-    {
-      key: "care", label: "Care plan started", owner: "us",
+      // Key stays "care" for legacy reasons — the old plan family was named
+      // that, and things downstream match on the key. Only the label moved.
+      key: "care", label: "Monthly plan started", owner: "us",
       done: facts.clientByBuild.has(b.id),
-      hint: "Sell the Care plan — this is the recurring revenue.",
+      hint: "Start their monthly plan — this is the recurring revenue.",
     },
   ];
 

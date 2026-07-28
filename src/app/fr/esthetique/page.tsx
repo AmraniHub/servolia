@@ -4,7 +4,7 @@ import StickyMobileCTA from "@/components/StickyMobileCTA";
 import Guarantee from "@/components/Guarantee";
 import { CheckCircle, ArrowRight, Bot, Calendar, BarChart3, Globe, Clock, Lock, TrendingUp, Sparkles } from "lucide-react";
 import ValueStack from "@/components/ValueStack";
-import { PAY_PER_BOOKING } from "@/lib/pricing";
+import { PAY_PER_BOOKING, SETUP_PLAN, PLANS } from "@/lib/pricing";
 
 /**
  * FR aesthetic-clinic funnel — the beachhead-rung-2 page, mirroring the depth
@@ -43,53 +43,51 @@ const gains = [
   "Chaque contact est enregistré — plus aucune demande ne s'évapore",
 ];
 
+// Tarifs issus de src/lib/pricing.ts — ne jamais coder un prix en dur ici.
 const packages = [
   {
-    name: "Clinique Essentielle",
-    price: "290 €",
-    delivery: "3 jours",
+    name: PLANS.essentiel.nameFr,
+    price: `${PLANS.essentiel.monthlyEur} €/mois`,
+    meter: `${PLANS.essentiel.conversations} conversations IA/mois`,
     features: [
-      "Site clinique 5 pages",
+      "Site clinique rédigé pour vos soins",
+      "Assistante IA entraînée sur vos protocoles",
       "Formulaire de demande de RDV",
-      "Google Analytics 4",
+      "Alertes de demandes instantanées + espace client",
       "Pages RGPD conformes",
-      "Optimisé mobile",
-      "Conseils fiche Google Business",
+      "Hébergement, domaine et email pro inclus",
     ],
-    cta: "Choisir Essentielle",
+    cta: `Choisir ${PLANS.essentiel.nameFr}`,
     popular: false,
   },
   {
-    name: "Système IA Clinique",
-    price: "590 €",
-    delivery: "5 jours",
+    name: PLANS.croissance.nameFr,
+    price: `${PLANS.croissance.monthlyEur} €/mois`,
+    meter: `${PLANS.croissance.conversations} conversations IA/mois`,
     features: [
-      "Site 10 pages",
-      "Assistante IA de qualification",
-      "Parcours de réservation en ligne",
-      "Capture des demandes clientes",
-      "Notification email à la clinique",
-      "Google Analytics 4",
-      "Pages RGPD conformes",
-      "Synchronisation CRM",
+      `Tout ${PLANS.essentiel.nameFr}`,
+      "Parcours de réservation par type de soin",
+      "Pipeline de demandes + historique clientes",
+      "Automatisation des avis Google",
+      "Rappels SMS à 48 h",
+      "Rapport de performance mensuel",
     ],
-    cta: "Choisir Système IA",
+    cta: `Choisir ${PLANS.croissance.nameFr}`,
     popular: true,
   },
   {
-    name: "Clinique Pro Complète",
-    price: "990 €",
-    delivery: "7 jours",
+    name: PLANS.performance.nameFr,
+    price: `${PLANS.performance.monthlyEur} €/mois`,
+    meter: `${PLANS.performance.conversations} conversations IA/mois`,
     features: [
-      "Tout le Système IA",
-      "Tableau de bord clientes",
-      "Pipeline de rendez-vous",
-      "Emails de rappel automatiques",
-      "Notification WhatsApp",
-      "Rapport analytique mensuel",
-      "Pages A/B testées",
+      `Tout ${PLANS.croissance.nameFr}`,
+      "Routage multi-praticiennes",
+      "Landing pages Google + Meta",
+      "Suivi publicitaire en boucle fermée",
+      "IA entraînée sur mesure",
+      "Point stratégique trimestriel",
     ],
-    cta: "Choisir Pro",
+    cta: `Choisir ${PLANS.performance.nameFr}`,
     popular: false,
   },
 ];
@@ -269,9 +267,9 @@ export default function FrenchAestheticPage() {
       <section className="py-16 lg:py-20 bg-[#FAFAF7]">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-10">
-            <p className="text-sm font-bold text-[#36671E] uppercase tracking-widest mb-2">Formules Clinique</p>
+            <p className="text-sm font-bold text-[#36671E] uppercase tracking-widest mb-2">Formules mensuelles</p>
             <h2 className="text-3xl font-black text-[#18181B] mb-3">Ou choisissez une formule fixe</h2>
-            <p className="text-[#71717A]">Prix HT. Acompte de 50 % · Solde à la livraison.</p>
+            <p className="text-[#71717A]">Prix HT. Mise en place de {SETUP_PLAN.totalEur} € au démarrage — offerte en annuel, et rien à payer le jour de la livraison.</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {packages.map((p, i) => (
@@ -285,7 +283,7 @@ export default function FrenchAestheticPage() {
                 <div className="text-3xl font-black text-[#18181B] mb-1">{p.price}</div>
                 <div className="flex items-center gap-1.5 mb-4">
                   <Clock className="w-3.5 h-3.5 text-[#059669]" />
-                  <span className="text-xs font-semibold text-[#059669]">Livré en {p.delivery}</span>
+                  <span className="text-xs font-semibold text-[#059669]">{p.meter}</span>
                 </div>
                 <ul className="flex flex-col gap-2 mb-6">
                   {p.features.map((f, j) => (

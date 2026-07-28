@@ -33,7 +33,7 @@ export default function FrenchAboutPage() {
               <span className="bg-gradient-to-r from-[#36671E] to-[#295115] bg-clip-text text-transparent">en 7 jours, à prix fixe.</span>
             </h1>
             <p className="text-lg text-[#52525B] leading-relaxed">
-              Servolia est une agence de systèmes d&apos;acquisition client par IA pour les entreprises de services — cabinets dentaires, cliniques esthétiques, agents immobiliers et services à domicile. Pas de projets sans fin ni de facturation à l&apos;heure : nous livrons un système opérationnel en une semaine, puis nous le faisons tourner pour un petit forfait mensuel.
+              Servolia est une agence de systèmes d&apos;acquisition client par IA pour les entreprises de services — cabinets dentaires, cliniques esthétiques, med-spas et services à domicile. Pas de projets sans fin ni de facturation à l&apos;heure : nous livrons un système opérationnel en une semaine, puis nous le faisons tourner et l&apos;améliorons avec une formule mensuelle.
             </p>
           </div>
         </section>
@@ -61,7 +61,7 @@ export default function FrenchAboutPage() {
                   <Heart className="w-5 h-5 text-[#FAFAF7]" />
                 </div>
                 <h3 className="font-black text-[#18181B] mb-2">Bien après le lancement</h3>
-                <p className="text-sm text-[#52525B] leading-relaxed">Votre forfait mensuel garde le système rapide, l&apos;IA affûtée et les rapports honnêtes. Nous grandissons avec vous.</p>
+                <p className="text-sm text-[#52525B] leading-relaxed">Votre formule mensuelle garde le système rapide, l&apos;IA affûtée et les rapports honnêtes. Nous grandissons avec vous.</p>
               </div>
             </div>
           </div>
@@ -82,7 +82,7 @@ export default function FrenchAboutPage() {
                 Servolia existe pour corriger ça. Nous remplaçons votre ancien site par un système d&apos;acquisition client propulsé par l&apos;IA — site, chatbot, réservation, capture de leads, suivi complet — en 7 jours, pour un prix connu à l&apos;avance.
               </p>
               <p>
-                Puis nous restons. Votre forfait mensuel maintient tout en marche : hébergement, sécurité, réentraînement de l&apos;IA, rapports de performance mensuels et une amélioration par mois. Le genre de partenariat qu&apos;une agence locale promet mais tient rarement.
+                Puis nous restons. Votre formule mensuelle maintient tout en marche : hébergement, sécurité, réentraînement de l&apos;IA, rapports de performance mensuels et une amélioration par mois. Le genre de partenariat qu&apos;une agence locale promet mais tient rarement.
               </p>
             </div>
           </div>
@@ -96,7 +96,7 @@ export default function FrenchAboutPage() {
               {[
                 ["Audit gratuit avant tout.", "Nous enregistrons une vidéo de 5 minutes sur votre présence en ligne actuelle — ce qui fonctionne, ce qui vous coûte des clients, et ce que nous corrigerions. Sans engagement, sans appel."],
                 ["Périmètre écrit avant tout paiement.", "Chaque projet commence par un document d'une page. Livrables fixes. Prix fixe. Date fixe. Validé par vous avant toute facture."],
-                ["50 % d'acompte, 50 % à la livraison.", "Vous voyez votre système terminé avant de payer le solde. Si vous n'êtes pas satisfait, nous révisons. Si nous manquons la date par notre faute, nous remboursons 10 % par jour de retard."],
+                ["Des frais de mise en place fixes, puis une formule mensuelle.", "La mise en place est chiffrée par écrit avant de commencer — pas d'acompte, pas de solde à régler le jour de la livraison. Vous voyez votre système terminé avant sa mise en ligne, et la formule mensuelle est résiliable à tout moment avec 30 jours de préavis. Si nous manquons la date par notre faute, nous remboursons 10 % par jour de retard."],
                 ["Une série de révisions incluse.", "Les ajouts majeurs sont chiffrés séparément. Pas de factures surprises, pas de facturation à l'heure, pas de jeux d'agence."],
                 ["Nous ne disparaissons jamais.", "Point d'avancement chaque semaine. Réponse aux emails le jour même. Vidéos explicatives à chaque étape clé."],
               ].map(([title, body], i) => (

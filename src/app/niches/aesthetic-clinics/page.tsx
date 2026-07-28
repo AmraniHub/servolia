@@ -1,10 +1,11 @@
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import Link from "next/link";
-import { CheckCircle, ArrowRight, Bot, Calendar, BarChart3, Globe, Clock, TrendingUp, XCircle } from "lucide-react";
+import { CheckCircle, ArrowRight, Bot, Calendar, BarChart3, Globe, Clock, XCircle } from "lucide-react";
 import type { Metadata } from "next";
 import ValueStack from "@/components/ValueStack";
 import Guarantee from "@/components/Guarantee";
+import { SETUP_PLAN, PLANS } from "@/lib/pricing";
 
 export const metadata: Metadata = {
   title: "AI Client System for Aesthetic Clinics — Servolia",
@@ -28,45 +29,46 @@ export default function AestheticClinicsPage() {
     "Automatic follow-up sequences for cold leads and past clients",
   ];
 
+  // Prices from src/lib/pricing.ts — never hardcode a tier price here.
   const packages = [
     {
-      name: "AI Website System",
-      price: "€290",
-      description: "A high-converting clinic website with treatment pages and lead capture form.",
+      name: PLANS.essentiel.name,
+      price: `€${PLANS.essentiel.monthlyEur}/mo`,
+      description: "The clinic site plus a receptionist that answers every enquiry, day or night.",
       features: [
         "Treatment showcase pages (Botox, fillers, laser, skin)",
         "Before/after gallery section",
-        "Lead capture form with qualification",
-        "AI chatbot for visitor questions",
-        "Google Analytics 4",
-        "Delivered in 7 days",
+        "AI receptionist trained on your treatments",
+        `${PLANS.essentiel.conversations} AI conversations per month`,
+        "Instant lead alerts + client portal",
+        "Hosting, domain and pro email included",
       ],
     },
     {
-      name: "AI Booking System",
-      price: "€590",
-      description: "Everything in the Website System plus a full online booking flow for consultations.",
+      name: PLANS.croissance.name,
+      price: `€${PLANS.croissance.monthlyEur}/mo`,
+      description: "Everything above, plus the booking flow and the tracking that shows what it earned.",
       features: [
-        "Everything in Website System",
+        `Everything in ${PLANS.essentiel.name}`,
+        `${PLANS.croissance.conversations} AI conversations per month`,
         "Online booking per treatment type",
-        "Automated email + SMS confirmation",
-        "48-hour pre-appointment reminder",
-        "Cancellation & reschedule flow",
-        "Lead CRM dashboard",
+        "48-hour reminders + SMS confirmations",
+        "Lead pipeline + Google reviews automation",
+        "Monthly performance report",
       ],
       highlighted: true,
     },
     {
-      name: "AI Client System",
-      price: "€990",
-      description: "The complete system — website, booking, AI receptionist, tracking, and monthly reports.",
+      name: PLANS.performance.name,
+      price: `€${PLANS.performance.monthlyEur}/mo`,
+      description: "For multi-practitioner clinics running Google and Meta ads.",
       features: [
-        "Everything in Booking System",
-        "AI receptionist trained on your treatments",
-        "Lead recovery sequence (for unbooked enquiries)",
+        `Everything in ${PLANS.croissance.name}`,
+        `${PLANS.performance.conversations} AI conversations per month`,
+        "Multi-practitioner routing",
         "Google + Meta ad landing pages",
-        "Monthly performance report",
-        "Priority support + 1 update/month",
+        "Closed-loop ads tracking",
+        "Custom AI training + quarterly strategy call",
       ],
     },
   ];
@@ -97,7 +99,7 @@ export default function AestheticClinicsPage() {
     },
     {
       q: "How long does it take?",
-      a: "We deliver in 7 working days for Website and Booking systems. The full Client System is 10–14 days due to AI training and integrations.",
+      a: `Live in ${SETUP_PLAN.delivery} from the start of work, whichever plan you choose — the date is committed in writing, and our CGV guarantees 10% back per day late if we miss it through our own fault.`,
     },
     {
       q: "Do I need a technical person to manage it?",
@@ -214,9 +216,9 @@ export default function AestheticClinicsPage() {
         <section className="py-20 lg:py-28 bg-[#FAFAF7]">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-12">
-              <p className="text-sm font-bold text-[#36671E] uppercase tracking-widest mb-3">Packages</p>
-              <h2 className="text-3xl sm:text-4xl font-black text-[#18181B] mb-3">Choose your system</h2>
-              <p className="text-[#52525B]">All prices are fixed. No hourly billing. No surprises.</p>
+              <p className="text-sm font-bold text-[#36671E] uppercase tracking-widest mb-3">Monthly plans</p>
+              <h2 className="text-3xl sm:text-4xl font-black text-[#18181B] mb-3">Choose your plan</h2>
+              <p className="text-[#52525B]">All prices are fixed. No hourly billing. No surprises. Two months free when you pay yearly.</p>
             </div>
             <div className="grid md:grid-cols-3 gap-6">
               {packages.map((pkg) => (
@@ -254,7 +256,7 @@ export default function AestheticClinicsPage() {
                 </div>
               ))}
             </div>
-            <p className="text-center text-sm text-[#A1A1AA] mt-6">50% deposit · 50% on delivery · Stripe secured</p>
+            <p className="text-center text-sm text-[#A1A1AA] mt-6">€{SETUP_PLAN.totalEur} installation to start, waived on an annual plan · Nothing owed on delivery · Stripe secured</p>
           </div>
         </section>
 

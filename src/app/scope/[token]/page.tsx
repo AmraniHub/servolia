@@ -45,7 +45,7 @@ export default async function ScopeAcceptancePage({ params }: { params: Promise<
               <CheckoutButton
                 plan={scope.plan_key}
                 leadId={scope.lead_id ?? undefined}
-                label={`Pay deposit — ${planLabel}`}
+                label={`Pay installation — ${planLabel}`}
                 className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-[#36671E] to-[#295115] text-white font-black hover:opacity-90 transition-opacity disabled:opacity-60"
               />
             </div>

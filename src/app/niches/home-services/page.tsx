@@ -5,6 +5,7 @@ import { CheckCircle, ArrowRight, Bot, Phone, MapPin, Zap, XCircle, Clock } from
 import type { Metadata } from "next";
 import ValueStack from "@/components/ValueStack";
 import Guarantee from "@/components/Guarantee";
+import { SETUP_PLAN, PLANS } from "@/lib/pricing";
 
 export const metadata: Metadata = {
   title: "AI Booking System for HVAC, Plumbing & Home Services — Servolia",
@@ -37,45 +38,48 @@ export default function HomeServicesPage() {
     "Smart home & home automation",
   ];
 
+  // Prices from src/lib/pricing.ts — never hardcode a tier price here.
+  // Quoted in EUR like every other Servolia surface; USD figures on this page
+  // were a leftover from the retired ladder.
   const packages = [
     {
-      name: "Website System",
-      price: "$590",
-      description: "Professional contractor website built for local trust and emergency calls.",
+      name: PLANS.essentiel.name,
+      price: `€${PLANS.essentiel.monthlyEur}/mo`,
+      description: "Professional contractor website plus a receptionist that picks up when you're under a sink.",
       features: [
-        "5–7 page contractor website",
+        "Contractor website built for local trust",
         "Service area + emergency call CTA",
-        "Trust signals (licenses, insurance, BBB)",
-        "Google Analytics 4 + tracking",
-        "Mobile-optimized for on-the-go users",
-        "Google Business Profile setup",
+        "AI receptionist (qualifies service, urgency, budget)",
+        `${PLANS.essentiel.conversations} AI conversations per month`,
+        "Instant lead alerts to your phone",
+        "Hosting, domain and pro email included",
       ],
     },
     {
-      name: "AI Booking System",
-      price: "$1,190",
-      description: "AI receptionist + website + instant lead alerts. Most popular for contractors who want to stop missing calls.",
+      name: PLANS.croissance.name,
+      price: `€${PLANS.croissance.monthlyEur}/mo`,
+      description: "Most chosen by contractors who want every quote request followed up automatically.",
       features: [
-        "Everything in Website System",
-        "AI receptionist (qualifies service, urgency, budget)",
+        `Everything in ${PLANS.essentiel.name}`,
+        `${PLANS.croissance.conversations} AI conversations per month`,
         "Online quote request flow",
-        "Instant SMS/push alerts to your phone",
         "Automated 24h + 72h follow-up",
-        "Lead CRM dashboard",
+        "Lead pipeline + Google reviews automation",
+        "Monthly ROI report",
       ],
       highlighted: true,
     },
     {
-      name: "AI Client System",
-      price: "$2,190",
-      description: "Complete system for contractors running ads or scaling a team — full pipeline visibility and reporting.",
+      name: PLANS.performance.name,
+      price: `€${PLANS.performance.monthlyEur}/mo`,
+      description: "For contractors running ads or scaling a crew — full pipeline visibility and reporting.",
       features: [
-        "Everything in AI Booking System",
+        `Everything in ${PLANS.croissance.name}`,
+        `${PLANS.performance.conversations} AI conversations per month`,
         "Landing pages for Google Ads",
         "Meta CAPI + Google Ads conversion tracking",
         "Pipeline CRM with job status",
-        "Monthly ROI report by lead source",
-        "Priority support + monthly optimization",
+        "Custom AI training + quarterly strategy call",
       ],
     },
   ];
@@ -124,7 +128,7 @@ export default function HomeServicesPage() {
               Servolia builds AI lead systems for home service contractors — AI receptionist, instant quote flows, automated follow-up, and full pipeline tracking. Fixed price. Live in 7 days.
             </p>
             <p className="text-base font-semibold text-[#18181B] mb-10">
-              Fixed price · Fixed deadline · 50% deposit, balance on delivery
+              Fixed price · Fixed deadline · Nothing owed on delivery
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link href="/free-audit"
@@ -252,7 +256,7 @@ export default function HomeServicesPage() {
                 </div>
               ))}
             </div>
-            <p className="text-center text-sm text-[#A1A1AA] mt-6">50% deposit · 50% on delivery · Monthly care from $49/mo</p>
+            <p className="text-center text-sm text-[#A1A1AA] mt-6">€{SETUP_PLAN.totalEur} installation to start, waived on an annual plan · Nothing owed on delivery · Two months free when you pay yearly</p>
           </div>
         </section>
 

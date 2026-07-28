@@ -4,12 +4,15 @@ import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { CheckCircle, ArrowRight, ChevronRight, MessageCircle } from "lucide-react";
 import { businessWaLink } from "@/lib/whatsapp";
-import { BUILD_PLANS } from "@/lib/pricing";
+import { BUILD_PLANS, SETUP_PLAN, PAY_PER_BOOKING } from "@/lib/pricing";
 
 type Lang = "en" | "fr";
 
 /** Plan names are shown to the client, so they follow the page language — the `plan` key sent to the API stays canonical. */
 const planLabel = (plan: string, lang: Lang) => {
+  // Aesthetic clinics arrive here from the pay-per-booking checkout, which is
+  // not a build plan — name it properly instead of falling through to generic.
+  if (plan === PAY_PER_BOOKING.key) return lang === "fr" ? PAY_PER_BOOKING.nameFr : PAY_PER_BOOKING.name;
   const p = BUILD_PLANS[plan];
   if (!p) return lang === "fr" ? "Système Servolia" : "Servolia System";
   return lang === "fr" ? p.nameFr : p.name;
@@ -23,8 +26,8 @@ const planLabel = (plan: string, lang: Lang) => {
 const COPY = {
   en: {
     steps: ["Business", "Branding", "Services", "Goals", "Technical"],
-    banner: (plan: string) => `Payment received — ${plan} deposit confirmed. Complete your intake below.`,
-    title: (plan: string) => `Set up your ${plan}`,
+    banner: (plan: string) => `Payment received — your ${plan} is confirmed. Complete your intake below.`,
+    title: (plan: string) => `${plan} — let's set up your system`,
     subtitle: "5 quick steps — takes about 8 minutes. This is everything we need to start building.",
     s0: {
       heading: "Your business",
@@ -102,8 +105,8 @@ const COPY = {
       timeline: [
         ["Within 24h", "We review your intake and start building"],
         ["Day 3–5", "You receive a Loom walkthrough of the draft"],
-        ["After approval", "Final payment → live in 24h"],
-        ["Day 30", "Your monthly care plan activates automatically"],
+        ["After approval", "We go live within 24h — nothing more to pay"],
+        ["At launch", "Your monthly plan starts and runs the system"],
       ] as [string, string][],
       wa: (biz: string, plan: string) => `Hi! I just completed my intake for ${biz} (${plan}).`,
       waFallbackBiz: "my business",
@@ -113,8 +116,8 @@ const COPY = {
   },
   fr: {
     steps: ["Entreprise", "Marque", "Services", "Objectifs", "Technique"],
-    banner: (plan: string) => `Paiement reçu — acompte ${plan} confirmé. Complétez votre brief ci-dessous.`,
-    title: (plan: string) => `Configurons votre ${plan}`,
+    banner: (plan: string) => `Paiement reçu — nous confirmons votre ${plan}. Complétez votre brief ci-dessous.`,
+    title: (plan: string) => `${plan} — configurons votre système`,
     subtitle: "5 étapes rapides — environ 8 minutes. C'est tout ce dont nous avons besoin pour commencer.",
     s0: {
       heading: "Votre entreprise",
@@ -192,8 +195,8 @@ const COPY = {
       timeline: [
         ["Sous 24 h", "Nous étudions votre brief et lançons la production"],
         ["Jour 3–5", "Vous recevez une vidéo Loom de la première version"],
-        ["Après validation", "Solde réglé → en ligne sous 24 h"],
-        ["Jour 30", "Votre forfait de suivi mensuel s'active automatiquement"],
+        ["Après validation", "Mise en ligne sous 24 h — plus rien à régler"],
+        ["Au lancement", "Votre formule mensuelle démarre et fait tourner le système"],
       ] as [string, string][],
       wa: (biz: string, plan: string) => `Bonjour ! Je viens de compléter mon brief pour ${biz} (${plan}).`,
       waFallbackBiz: "mon entreprise",
@@ -206,7 +209,8 @@ const COPY = {
 function Form({ lang }: { lang: Lang }) {
   const t = COPY[lang];
   const params = useSearchParams();
-  const plan = params.get("plan") ?? "growth";
+  // Default to the installation — "growth" was a build plan retired 2026-07-28.
+  const plan = params.get("plan") ?? SETUP_PLAN.key;
   const planName = planLabel(plan, lang);
   const sessionId = params.get("session_id");
 

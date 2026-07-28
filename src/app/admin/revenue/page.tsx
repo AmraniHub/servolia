@@ -116,7 +116,7 @@ export default async function RevenuePage() {
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <Card label="MRR" value={`€${mrr.toLocaleString()}`} accent />
         <Card label="ARR (projected)" value={`€${arr.toLocaleString()}`} />
-        <Card label="Deposits collected (180d)" value={`€${depositsTotal.toLocaleString()}`} />
+        <Card label="Installations collected (180d)" value={`€${depositsTotal.toLocaleString()}`} />
         <Card label="Balance due (180d)" value={`€${balancesTotal.toLocaleString()}`} />
       </div>
 
@@ -222,7 +222,7 @@ export default async function RevenuePage() {
 
         <div className="bg-white border border-[#E8E6E0] rounded-2xl p-6">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-black text-[#18181B] uppercase tracking-widest">Recent deposits</h2>
+            <h2 className="text-sm font-black text-[#18181B] uppercase tracking-widest">Recent installations</h2>
             <TrendingUp className="w-4 h-4 text-[#36671E]" />
           </div>
           {allBuilds.filter(b => b.deposit_paid > 0).length === 0 ? (

@@ -7,7 +7,7 @@ import StickyMobileCTA from "@/components/StickyMobileCTA";
 import FrenchNav from "@/components/FrenchNav";
 import FrenchFooter from "@/components/FrenchFooter";
 import Guarantee from "@/components/Guarantee";
-import { CheckCircle, ArrowRight, Shield, Clock, Globe, Bot, Building2, Lock } from "lucide-react";
+import { CheckCircle, ArrowRight, Shield, Clock, Globe, Bot, Lock } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Tarifs — Servolia",
@@ -95,6 +95,14 @@ export default function FrenchPricingPage() {
                   </li>
                 ))}
               </ul>
+              {/* Réglée en une fois — /api/checkout ne découpe plus en acompte,
+                  donc le bouton et la carte disent la même chose. */}
+              <CheckoutButton
+                plan={SETUP_PLAN.key}
+                lang="fr"
+                label={`Régler la mise en place — ${SETUP_PLAN.totalEur} €`}
+                className="w-full text-center py-3 rounded-xl font-black text-sm bg-[#36671E] text-[#FAFAF7] hover:bg-[#295115] transition-colors disabled:opacity-60 mb-3"
+              />
               <div className="rounded-xl bg-[#EEF5EA] p-3">
                 <p className="text-xs font-black text-[#36671E]">Offerte si vous démarrez sur une formule annuelle.</p>
               </div>
@@ -171,7 +179,7 @@ export default function FrenchPricingPage() {
         </div>
       </section>
 
-      {/* Care plans (all-in, mensuel/annuel — 1 mois offert) */}
+      {/* Formules mensuelles (tout compris, mensuel/annuel — 2 mois offerts) */}
       <div id="formules" />
       <CarePlansSection lang="fr" />
 

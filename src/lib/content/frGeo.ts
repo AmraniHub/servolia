@@ -17,7 +17,12 @@
  *
  * SLUGS NOTE: niche slugs are SINGULAR (dentiste, clinique-esthetique) to
  * avoid colliding with the existing static /fr/dentistes/ route (plural).
+ *
+ * PRICES: interpolated from src/lib/pricing.ts, never typed as literals. These
+ * answers are also served as FAQPage JSON-LD, so a stale number here is a
+ * stale number inside Google and LLM overviews for months.
  */
+import { SETUP_PLAN, PLANS, PAY_PER_BOOKING } from "@/lib/pricing";
 
 export interface FrCity {
   slug: string;
@@ -89,7 +94,7 @@ export const FR_GEO_NICHES: FrGeoNiche[] = [
       { q: `Que se passe-t-il si un patient pose une question médicale ?`,
         a: `L'assistante répond aux questions administratives (soins proposés, tarifs de base, horaires, préparation à un RDV) mais renvoie systématiquement vers un praticien pour tout diagnostic ou avis médical — RGPD-friendly et conforme au code de déontologie.` },
       { q: `Combien coûte un site + assistante IA pour cabinet dentaire ${c} ?`,
-        a: `Trois formules : 290 € (site essentiel), 590 € (avec IA + prise de RDV, la formule qui rentabilise le plus vite ${c}), 990 € (formule complète avec pages soins détaillées et suivi ROI). Prix écrit, pas d'abonnement piégé.` },
+        a: `Une mise en place unique de ${SETUP_PLAN.totalEur} € (site construit, IA entraînée sur vos soins, tout mis en ligne), puis une formule mensuelle : ${PLANS.essentiel.nameFr} ${PLANS.essentiel.monthlyEur} €/mois, ${PLANS.croissance.nameFr} ${PLANS.croissance.monthlyEur} €/mois (la plus choisie ${c} — elle ajoute le pipeline, les avis Google et le rapport mensuel), ${PLANS.performance.nameFr} ${PLANS.performance.monthlyEur} €/mois pour les cabinets à plusieurs praticiens. Rien n'est dû à la livraison, et en paiement annuel la mise en place est offerte avec deux mois gratuits.` },
     ],
   },
   {
@@ -109,7 +114,7 @@ export const FR_GEO_NICHES: FrGeoNiche[] = [
       { q: `Récupère-t-elle les demandes Instagram et WhatsApp aussi ?`,
         a: `Le site + l'IA sur le site sont livrés dans la formule de base. La reprise des DM Instagram et WhatsApp est un module supplémentaire (auto-répondeur qualifié) qui se branche en 48 h une fois le site en ligne.` },
       { q: `Facturation à la performance possible pour une clinique esthétique ${c} ?`,
-        a: `Oui — pour les cliniques esthétiques et médi-esthétiques (pas médicales / dentaires) nous proposons un modèle 990 € de mise en place + 60 € par rendez-vous honoré. Aligne notre rémunération sur votre remplissage réel.` },
+        a: `Oui — pour les cliniques esthétiques et médi-esthétiques (pas médicales / dentaires) nous proposons un modèle ${PAY_PER_BOOKING.setupEur} € de mise en place + ${PAY_PER_BOOKING.perBookingEur} € par rendez-vous honoré. Aligne notre rémunération sur votre remplissage réel.` },
       { q: `Le RGPD est-il géré ?`,
         a: `Chaque conversation est chiffrée, aucune donnée n'est vendue à un tiers, et le consentement RGPD est demandé avant toute collecte de coordonnées — obligatoire pour une clinique esthétique ${c}, et intégré par défaut.` },
       { q: `Combien de temps avant que ça produise ses premiers rendez-vous ?`,
@@ -133,7 +138,7 @@ export const FR_GEO_NICHES: FrGeoNiche[] = [
       { q: `Comment ça se compare à Allo-Voisins ou StarOfService ?`,
         a: `Ces plateformes prennent 15-30 % de commission et vous mettent en concurrence avec 4-5 autres artisans sur chaque demande. Ici, chaque lead est à vous, non partagé, sans commission — vous récupérez la marge complète.` },
       { q: `Ça fonctionne pour un artisan seul ou seulement pour une entreprise ?`,
-        a: `Les deux — la formule 290 € convient à un artisan solo qui veut arrêter de perdre des appels ; la formule 590 € ajoute l'IA de qualification et convient dès qu'on a une secrétaire à décharger.` },
+        a: `Les deux — la formule ${PLANS.essentiel.nameFr} (${PLANS.essentiel.monthlyEur} €/mois) convient à un artisan solo qui veut arrêter de perdre des appels ; ${PLANS.croissance.nameFr} (${PLANS.croissance.monthlyEur} €/mois) ajoute le pipeline, les relances et le rapport mensuel, et se justifie dès qu'on a une secrétaire à décharger.` },
       { q: `Est-ce que ça remonte bien sur Google Maps ${c} ?`,
         a: `Le site est optimisé pour le SEO local (schema LocalBusiness, avis, zones d'intervention ${c}) et se connecte à votre fiche Google Business Profile — indispensable pour être trouvé sur "plombier ${c}" ou "électricien urgence ${c}".` },
       { q: `Combien de temps avant les premiers résultats ?`,

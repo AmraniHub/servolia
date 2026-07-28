@@ -25,7 +25,7 @@ const COLUMNS = [
   { key: "new",          label: "New",          color: "#2563EB" },
   { key: "audit_sent",   label: "Audit sent",   color: "#D97706" },
   { key: "qualified",    label: "Qualified",    color: "#8B5CF6" },
-  { key: "deposit_paid", label: "Deposit paid", color: "#36671E" },
+  { key: "deposit_paid", label: "Installation paid", color: "#36671E" },
   { key: "live",         label: "Live",         color: "#059669" },
   { key: "lost",         label: "Lost",         color: "#991B1B" },
 ];

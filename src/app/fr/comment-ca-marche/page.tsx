@@ -6,6 +6,7 @@ import { ArrowRight, FileText, Video, CreditCard, ClipboardList, Hammer, Eye, Ro
 import type { Metadata } from "next";
 import ValueStack from "@/components/ValueStack";
 import Guarantee from "@/components/Guarantee";
+import { SETUP_PLAN, PLANS } from "@/lib/pricing";
 
 const DEMO_VIDEO_ID = process.env.NEXT_PUBLIC_DEMO_VIDEO_ID;
 
@@ -60,18 +61,18 @@ const steps = [
     title: "Périmètre confirmé par écrit",
     who: "Servolia",
     time: "Le jour même",
-    desc: "Nous envoyons un document d'une page : exactement ce que nous construisons, ce qui n'est pas inclus, le prix fixe et la date de livraison. Vous validez avant tout paiement.",
+    desc: `Nous envoyons un document d'une page : exactement ce que nous construisons, ce qui n'est pas inclus, la mise en place à ${SETUP_PLAN.totalEur} €, la formule mensuelle choisie et la date de livraison. Vous validez avant tout paiement.`,
     detail: "Cela vous protège. Aucune dérive de périmètre possible puisque tout est convenu par écrit d'abord. Si vous voulez ajouter quelque chose plus tard, nous le chiffrons séparément — sans surprise.",
     color: "from-[#F59E0B] to-[#D97706]",
   },
   {
     num: "05",
     icon: <CreditCard className="w-5 h-5" />,
-    title: "Acompte de 50 % via Stripe",
+    title: `Mise en place ${SETUP_PLAN.totalEur} € via Stripe`,
     who: "Vous",
     time: "2 minutes",
-    desc: "Réglez votre acompte de 50 % via notre paiement Stripe. Reçu immédiat, et la construction démarre le jour ouvré suivant.",
-    detail: "Toutes les cartes principales acceptées. EUR et USD. Votre paiement est protégé par Stripe — l'infrastructure de paiement la plus fiable au monde. Les 50 % restants ne sont dus qu'à la livraison.",
+    desc: `Réglez la mise en place de ${SETUP_PLAN.totalEur} € via notre paiement Stripe. Reçu immédiat, et la construction démarre le jour ouvré suivant. Si vous démarrez sur une formule annuelle, la mise en place est offerte.`,
+    detail: "Toutes les cartes principales acceptées. EUR et USD. Votre paiement est protégé par Stripe — l'infrastructure de paiement la plus fiable au monde. Rien n'est dû le jour de la livraison : votre formule mensuelle démarre simplement à la mise en ligne.",
     color: "from-[#6366F1] to-[#8B5CF6]",
   },
   {
@@ -100,17 +101,17 @@ const steps = [
     title: "Présentation vidéo de votre maquette",
     who: "Servolia",
     time: "Jour 3–5",
-    desc: "Nous enregistrons une présentation complète de votre version de travail — page par page, fonction par fonction. Vous voyez tout avant le paiement final.",
+    desc: "Nous enregistrons une présentation complète de votre version de travail — page par page, fonction par fonction. Vous voyez tout avant la moindre mise en ligne.",
     detail: "C'est ici que vous donnez votre avis. Une série de révisions est incluse dans chaque formule : textes, ajustements de design, réglages de fonctionnalités. Les ajouts majeurs sont chiffrés séparément.",
     color: "from-[#06B6D4] to-[#3B82F6]",
   },
   {
     num: "09",
-    icon: <CreditCard className="w-5 h-5" />,
-    title: "Paiement final → mise en ligne",
+    icon: <CheckCircle className="w-5 h-5" />,
+    title: "Vous validez → mise en ligne",
     who: "Vous",
     time: "Jour 5–7",
-    desc: "Une fois la maquette validée, nous envoyons un lien de paiement Stripe pour les 50 % restants. Paiement reçu → mise en ligne sous 24 heures.",
+    desc: "Une fois la maquette validée, vous donnez le feu vert et nous mettons en ligne sous 24 heures. Il n'y a plus rien à régler — la mise en place est déjà payée.",
     detail: "La mise en ligne comprend : connexion du domaine, SSL, tests finaux mobile et ordinateur, activation de Google Analytics, vérification du Pixel Meta (si inclus) et activation du chatbot.",
     color: "from-[#059669] to-[#059669]",
   },
@@ -127,11 +128,11 @@ const steps = [
   {
     num: "11",
     icon: <BarChart3 className="w-5 h-5" />,
-    title: "Votre forfait mensuel s'active",
+    title: "Votre formule mensuelle fait tourner le système",
     who: "Servolia",
-    time: "Jour 30",
-    desc: "Au jour 30, votre forfait mensuel est prélevé automatiquement via Stripe. Il couvre l'hébergement, la surveillance, le réentraînement du chatbot et votre rapport mensuel.",
-    detail: "Vous recevez un PDF d'une page le 5 de chaque mois : leads capturés, rendez-vous pris, principale source de trafic, conversations du chatbot et une recommandation d'amélioration pour le mois suivant.",
+    time: "Dès le lancement",
+    desc: "Votre formule mensuelle démarre le jour de la mise en ligne — pas 30 jours plus tard. Elle couvre l'hébergement, le domaine, le SSL, l'email professionnel, la surveillance, l'espace client et vos conversations IA incluses. Prélèvement automatique via Stripe, résiliable à tout moment avec 30 jours de préavis.",
+    detail: `Les conversations incluses dépendent de votre formule : ${PLANS.essentiel.conversations} avec ${PLANS.essentiel.nameFr} (${PLANS.essentiel.monthlyEur} €/mois), ${PLANS.croissance.conversations} avec ${PLANS.croissance.nameFr} (${PLANS.croissance.monthlyEur} €/mois), ${PLANS.performance.conversations} avec ${PLANS.performance.nameFr} (${PLANS.performance.monthlyEur} €/mois). Au-delà, vous passez simplement à la formule supérieure — jamais de facture surprise. À partir de ${PLANS.croissance.nameFr}, vous recevez aussi un rapport ROI d'une page le 5 de chaque mois : leads capturés, rendez-vous pris, principale source de trafic, conversations IA et une recommandation d'amélioration.`,
     color: "from-[#36671E] to-[#295115]",
   },
 ];
@@ -155,7 +156,7 @@ export default function FrenchHowItWorksPage() {
               Un processus fixe, un prix fixe et une date fixe — confirmés par écrit avant que vous ne payiez un seul centime.
             </p>
             <div className="flex flex-wrap justify-center gap-6 text-sm text-[#71717A]">
-              {["Audit gratuit → sans engagement", "Périmètre écrit d'abord", "Acompte de 50 % pour démarrer", "Solde uniquement à la livraison", "En ligne en 7 jours ou remboursé"].map((t, i) => (
+              {["Audit gratuit → sans engagement", "Périmètre écrit d'abord", `Mise en place ${SETUP_PLAN.totalEur} € pour démarrer`, "Rien à régler à la livraison", "En ligne en 7 jours ou remboursé"].map((t, i) => (
                 <div key={i} className="flex items-center gap-1.5">
                   <CheckCircle className="w-4 h-4 text-[#36671E]" />{t}
                 </div>
@@ -215,8 +216,8 @@ export default function FrenchHowItWorksPage() {
                 { q: "Et si je n'ai pas de logo ?", a: "Aucun problème. Nous travaillons avec ce que vous avez, ou proposons un logotype simple qui correspond à votre style." },
                 { q: "Puis-je demander des modifications après avoir vu la maquette ?", a: "Oui — une série complète de révisions est incluse dans chaque formule. Les ajouts majeurs sont chiffrés séparément." },
                 { q: "Dans quelle langue le site est-il construit ?", a: "Au choix : français, anglais ou les deux. Nous sommes bilingues et avons livré des sites dans les deux langues." },
-                { q: "Qui héberge le site ?", a: "Nous l'hébergeons sur Vercel (la même infrastructure que de grandes plateformes mondiales) via votre forfait mensuel." },
-                { q: "Et si vous manquez la date de livraison ?", a: "Nos CGV garantissent 10 % de votre paiement remboursés par jour de retard si le retard vient de nous. Nous n'avons jamais eu à le payer." },
+                { q: "Qui héberge le site ?", a: "Nous l'hébergeons sur Vercel (la même infrastructure que de grandes plateformes mondiales) — l'hébergement est inclus dans votre formule mensuelle, avec le domaine, le SSL et l'email professionnel." },
+                { q: "Et si vous manquez la date de livraison ?", a: "Nos CGV garantissent 10 % du prix remboursés par jour de retard, plafonnés à 50 %, si le retard vient de nous. Les retards de votre côté ne comptent pas." },
               ].map((faq, i) => (
                 <div key={i} className="p-5 rounded-2xl bg-[#FAFAF7] border border-[#E8E6E0]">
                   <h3 className="text-sm font-black text-[#18181B] mb-2">{faq.q}</h3>

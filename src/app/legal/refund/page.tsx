@@ -1,6 +1,7 @@
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import Link from "next/link";
+import { SETUP_PLAN, PLANS } from "@/lib/pricing";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -24,23 +25,23 @@ export default function RefundPolicyPage() {
           <div className="space-y-8 text-[#3F3F46] text-sm leading-relaxed">
             <div>
               <h2 className="text-lg font-black text-[#18181B] mb-3">1. Our commitment</h2>
-              <p>Servolia LLC delivers digital services (websites, AI receptionists, booking systems, CRM dashboards) under a fixed scope, fixed price, and fixed delivery window. Because each project is custom-built, refunds are handled differently than for physical goods — this policy explains exactly when and how a refund applies.</p>
+              <p>Servolia LLC delivers digital services (websites, AI receptionists, client portals, lead alerts) as a one-time installation with a fixed scope and a fixed delivery window, followed by a monthly plan. Because each project is custom-built, refunds are handled differently than for physical goods — this policy explains exactly when and how a refund applies.</p>
             </div>
             <div>
               <h2 className="text-lg font-black text-[#18181B] mb-3">2. Late-delivery guarantee</h2>
-              <p>If we miss the agreed delivery deadline through our own fault, you are entitled to a refund of <strong>10% of the project price per day of delay</strong>, up to a maximum of 50% of the total price. The delivery window begins once your deposit is received and your intake form is completed.</p>
+              <p>If we miss the agreed delivery deadline through our own fault, you are entitled to a refund of <strong>10% of the project price per day of delay</strong>, up to a maximum of 50% of the total price. The delivery window begins once your installation fee is received and your intake form is completed. Delays caused by you do not count toward this guarantee.</p>
             </div>
             <div>
-              <h2 className="text-lg font-black text-[#18181B] mb-3">3. Deposit refunds</h2>
-              <p>The 50% deposit is <strong>non-refundable once work has begun</strong> — this reflects the design and development time already committed to your project. If Servolia is unable to deliver the agreed scope at all, you are entitled to a <strong>full refund</strong> of your deposit.</p>
+              <h2 className="text-lg font-black text-[#18181B] mb-3">3. Installation fee refunds</h2>
+              <p>The €{SETUP_PLAN.totalEur} installation fee is <strong>non-refundable once work has begun</strong> — this reflects the design and development time already committed to your project. If Servolia is unable to deliver the agreed scope at all, you are entitled to a <strong>full refund</strong> of that fee.</p>
             </div>
             <div>
-              <h2 className="text-lg font-black text-[#18181B] mb-3">4. Final payment</h2>
-              <p>The remaining 50% balance is due on delivery day, after you&apos;ve reviewed and approved the deliverable. You are not charged the balance for work you haven&apos;t approved.</p>
+              <h2 className="text-lg font-black text-[#18181B] mb-3">4. Delivery day</h2>
+              <p>Nothing is owed on delivery day — there is no balance payment. Once your site is live and you&apos;ve reviewed and approved it, your monthly plan simply starts. You are never charged for work you haven&apos;t approved.</p>
             </div>
             <div>
-              <h2 className="text-lg font-black text-[#18181B] mb-3">5. Monthly care plans &amp; retainers</h2>
-              <p>Monthly plans (hosting, support, updates) are billed automatically each month. If you cancel within <strong>5 days</strong> of that month&apos;s billing date, the charge for that month is refunded in full. After the 5-day window, that month&apos;s fee is non-refundable, but you may still cancel at any time to stop future billing — no penalty, 30 days notice by email.</p>
+              <h2 className="text-lg font-black text-[#18181B] mb-3">5. Monthly plans</h2>
+              <p>Your monthly plan (€{PLANS.essentiel.monthlyEur}, €{PLANS.croissance.monthlyEur} or €{PLANS.performance.monthlyEur} depending on the tier — the site, the AI receptionist, hosting, domain and email) is billed automatically each month. If you cancel within <strong>5 days</strong> of that month&apos;s billing date, the charge for that month is refunded in full. After the 5-day window, that month&apos;s fee is non-refundable, but you may still cancel at any time to stop future billing — no penalty, 30 days notice by email.</p>
             </div>
             <div>
               <h2 className="text-lg font-black text-[#18181B] mb-3">6. What&apos;s not covered</h2>

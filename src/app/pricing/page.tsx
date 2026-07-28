@@ -7,8 +7,7 @@ import Guarantee from "@/components/Guarantee";
 import Link from "next/link";
 import {
   CheckCircle, ArrowRight, Shield, Clock, Zap,
-  Globe, Bot, BarChart3,
-  Building2, Star,
+  Globe, Bot, Building2,
 } from "lucide-react";
 import type { Metadata } from "next";
 
@@ -97,6 +96,13 @@ export default function PricingPage() {
                   </li>
                 ))}
               </ul>
+              {/* Charged in full — /api/checkout no longer splits this into a
+                  deposit, so the button and the card agree. */}
+              <CheckoutButton
+                plan={SETUP_PLAN.key}
+                label={`Pay the €${SETUP_PLAN.totalEur} installation`}
+                className="w-full text-center py-3 rounded-xl font-black text-sm bg-[#36671E] text-[#FAFAF7] hover:bg-[#295115] transition-colors disabled:opacity-60 mb-3"
+              />
               <div className="rounded-xl bg-[#EEF5EA] p-3">
                 <p className="text-xs font-black text-[#36671E]">Waived when you start on an annual plan.</p>
               </div>

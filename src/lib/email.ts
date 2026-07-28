@@ -144,23 +144,29 @@ export const auditInProgressEmail = (firstName: string) => ({
   `),
 });
 
-/** Sent post-payment, immediately after Stripe checkout completes. */
-export const depositReceivedEmail = (firstName: string, planName: string, amount: number, lang: "en" | "fr" = "en") => {
+/**
+ * Sent post-payment, immediately after Stripe checkout completes.
+ *
+ * The installation is charged in full at checkout — there is no balance and no
+ * "final payment" step. What starts on day 7 is the monthly plan, so the
+ * timeline ends at go-live, not at another invoice.
+ */
+export const installationPaidEmail = (firstName: string, planName: string, amount: number, lang: "en" | "fr" = "en") => {
   const wa = businessWaLink(
     lang === "fr"
-      ? `Bonjour, je viens de payer mon acompte pour le ${planName} — hâte de commencer !`
-      : `Hi, I just paid my deposit for the ${planName} — excited to get started!`
+      ? `Bonjour, je viens de régler ma mise en place — hâte de commencer !`
+      : `Hi, I just paid for my installation — excited to get started!`
   );
   const intakeUrl = lang === "fr" ? "https://servolia.com/fr/demarrage" : "https://servolia.com/onboarding";
 
   if (lang === "fr") {
     return {
-      subject: `Acompte reçu — votre ${planName} est en cours de création`,
+      subject: `Paiement reçu — votre ${planName} démarre`,
       html: wrapper(`
         <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">Bienvenue chez Servolia 🎉</h1>
         <p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#3F3F46;">Bonjour ${firstName},</p>
         <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#3F3F46;">
-          Votre acompte de ${amount.toLocaleString()} € pour le <strong>${planName}</strong> vient d'être validé. La création démarre maintenant.
+          Votre paiement de ${amount.toLocaleString()} € (<strong>${planName}</strong>) vient d'être validé. La création démarre maintenant — et rien ne sera dû le jour de la livraison.
         </p>
         <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#3F3F46;">
           <strong>Votre planning :</strong>
@@ -168,7 +174,8 @@ export const depositReceivedEmail = (firstName: string, planName: string, amount
         <ul style="margin:0 0 16px;padding-left:20px;font-size:15px;line-height:1.7;color:#3F3F46;">
           <li><strong>Jour 1 (aujourd'hui) :</strong> Complétez le formulaire d'intake en 8 minutes (lien ci-dessous)</li>
           <li><strong>Jour 3–5 :</strong> Vous recevez une vidéo Loom présentant votre brouillon</li>
-          <li><strong>Jour 5–7 :</strong> Paiement final → mise en ligne sous 24h</li>
+          <li><strong>Jour 5–7 :</strong> Votre validation → mise en ligne sous 24h</li>
+          <li><strong>Ensuite :</strong> Votre abonnement mensuel démarre, une fois le site en ligne</li>
         </ul>
         ${btn(intakeUrl, "Compléter le formulaire →")}
         ${wa ? waBtn(wa, "Discuter sur WhatsApp 💬") : ""}
@@ -180,12 +187,12 @@ export const depositReceivedEmail = (firstName: string, planName: string, amount
   }
 
   return {
-    subject: `Deposit received — your ${planName} is being built`,
+    subject: `Payment received — your ${planName} is under way`,
     html: wrapper(`
       <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">Welcome to Servolia 🎉</h1>
       <p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#3F3F46;">Hi ${firstName},</p>
       <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#3F3F46;">
-        Your €${amount.toLocaleString()} deposit for the <strong>${planName}</strong> just cleared. The build officially starts now.
+        Your €${amount.toLocaleString()} payment for the <strong>${planName}</strong> just cleared. The build officially starts now — and nothing will be owed on delivery day.
       </p>
       <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#3F3F46;">
         <strong>Your timeline:</strong>
@@ -193,7 +200,8 @@ export const depositReceivedEmail = (firstName: string, planName: string, amount
       <ul style="margin:0 0 16px;padding-left:20px;font-size:15px;line-height:1.7;color:#3F3F46;">
         <li><strong>Day 1 (today):</strong> Complete your 8-minute intake form (link below)</li>
         <li><strong>Day 3–5:</strong> You get a Loom walkthrough of your draft</li>
-        <li><strong>Day 5–7:</strong> Final payment → we go live within 24 hours</li>
+        <li><strong>Day 5–7:</strong> Your approval → we go live within 24 hours</li>
+        <li><strong>Then:</strong> Your monthly plan starts, once the site is live</li>
       </ul>
       ${btn(intakeUrl, "Complete intake form →")}
       ${wa ? waBtn(wa, "Chat on WhatsApp 💬") : ""}

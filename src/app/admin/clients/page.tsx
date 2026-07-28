@@ -24,7 +24,7 @@ export default async function ClientsPage() {
       {(clients?.length ?? 0) === 0 ? (
         <div className="bg-white border border-[#E8E6E0] rounded-2xl p-12 text-center">
           <UserCircle className="w-10 h-10 text-[#A1A1AA] mx-auto mb-3" />
-          <p className="text-sm text-[#71717A]">No active clients yet. After delivery and care plan activation, clients appear here.</p>
+          <p className="text-sm text-[#71717A]">No active clients yet. After delivery and monthly plan activation, clients appear here.</p>
         </div>
       ) : (
         <div className="bg-white border border-[#E8E6E0] rounded-2xl overflow-hidden">

@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { SETUP_PLAN, PLANS } from "@/lib/pricing";
 
 /**
  * Supabase clients. We support two roles:
@@ -132,11 +133,34 @@ export interface CrmKpis {
 
 /**
  * Estimate the value of a lead based on niche + plan interest.
+ *
+ * A lead is worth its FIRST YEAR: the one-time installation fee plus twelve
+ * months of the tier they're most likely to land on. The subscription IS the
+ * product now, so scoring a lead at a one-time build price undercounted it by
+ * roughly an order of magnitude.
+ *
+ * Retired plan keys still map to the one-time price they were actually sold
+ * at, so leads quoted under the old model keep scoring as they were quoted.
+ *
  * Used for pipeline value calculation in the CRM.
  */
 export function estimateLeadValue(niche?: string | null, plan?: string | null): number {
-  // Keep in sync with src/lib/pricing.ts (BUILD_PLANS)
+  // First-year value: installation + 12 months. Prices from src/lib/pricing.ts.
+  const firstYear = (monthlyEur: number) => SETUP_PLAN.totalEur + monthlyEur * 12;
+
+  // Order matters — the first key found inside the plan string wins, so the
+  // subscription tier (the real signal) is checked before the setup fee.
   const planValues: Record<string, number> = {
+    performance: firstYear(PLANS.performance.monthlyEur),  // 490 + 12 × 449
+    croissance: firstYear(PLANS.croissance.monthlyEur),    // 490 + 12 × 249
+    essentiel: firstYear(PLANS.essentiel.monthlyEur),      // 490 + 12 × 149
+    // Only "they want the installation" — assume the anchor tier.
+    setup: firstYear(PLANS.croissance.monthlyEur),
+    installation: firstYear(PLANS.croissance.monthlyEur),
+    "mise en place": firstYear(PLANS.croissance.monthlyEur),
+
+    // Retired 2026-07-28 — the old one-time build prices, kept so historical
+    // leads still score at what they were actually quoted.
     starter: 290, website: 290,
     growth: 590, booking: 590,
     pro: 990, client: 990,
@@ -151,16 +175,17 @@ export function estimateLeadValue(niche?: string | null, plan?: string | null): 
     }
   }
 
-  // Niche-based defaults if no plan specified
+  // Niche-based defaults if no plan specified — same first-year basis, using
+  // the tier that niche typically lands on.
   // Excluded niches (real-estate, legal, wealth) pruned 2026-07-27 — a lead
   // that self-identifies as one of those just gets the default estimate.
   const nicheValues: Record<string, number> = {
-    dental: 590,
-    aesthetic: 990,
-    "med-spa": 990,
-    "home-services": 590,
-    "cosmetic-surgery": 990,
-    veterinary: 590,
+    dental: firstYear(PLANS.croissance.monthlyEur),
+    aesthetic: firstYear(PLANS.performance.monthlyEur),
+    "med-spa": firstYear(PLANS.performance.monthlyEur),
+    "home-services": firstYear(PLANS.croissance.monthlyEur),
+    "cosmetic-surgery": firstYear(PLANS.performance.monthlyEur),
+    veterinary: firstYear(PLANS.croissance.monthlyEur),
   };
 
   if (niche) {
@@ -170,5 +195,5 @@ export function estimateLeadValue(niche?: string | null, plan?: string | null): 
     }
   }
 
-  return 590; // default mid-tier estimate
+  return firstYear(PLANS.croissance.monthlyEur); // default: a year on the anchor tier
 }

@@ -93,7 +93,7 @@ export default function CaseStudiesManager() {
             <Inp label="Business *" v={form.business} on={(v) => set("business", v)} ph="Cabinet Dentaire Lumière" />
             <Inp label="City" v={form.city} on={(v) => set("city", v)} ph="Lyon" />
             <Inp label="Niche" v={form.niche} on={(v) => set("niche", v)} ph="dental" />
-            <Inp label="Plan" v={form.plan} on={(v) => set("plan", v)} ph="Booking System · €99/mo" />
+            <Inp label="Plan" v={form.plan} on={(v) => set("plan", v)} ph="Croissance · €249/mo" />
           </div>
           <Inp label="Headline *" v={form.headline} on={(v) => set("headline", v)} ph="How Cabinet Lumière booked 38 extra consultations in 60 days" />
           <Inp label="Summary" v={form.summary} on={(v) => set("summary", v)} ph="One line under the headline" />
