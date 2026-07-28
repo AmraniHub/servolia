@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { supabaseAdmin, type Lead, type Build, type CrmKpis } from "@/lib/supabase";
-import { ArrowRight, Users, Hammer, UserCircle, TrendingUp, Sparkles, Plus, CreditCard, MessageSquare, Clock, CheckCircle, Coins, Layers } from "lucide-react";
+import { ArrowRight, Users, Hammer, UserCircle, TrendingUp, Sparkles, Plus, CreditCard, MessageSquare, Clock, CheckCircle, Coins, Layers, MapPin, Wand2, Globe, Send, BarChart3, CalendarDays, Target, Kanban } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -104,6 +104,53 @@ export default async function AdminDashboard() {
         <KpiCard label="Qualified leads" value={kpis.qualified} sub="Ready to convert" icon={<CheckCircle className="w-4 h-4" />} />
         <KpiCard label="Deposits (30d)" value={`€${Number(kpis.deposits_30d).toLocaleString()}`} sub="Collected this month" icon={<Coins className="w-4 h-4" />} />
         <KpiCard label="Pipeline value" value={`€${recent.reduce((s, l) => s + Number(l.value_estimate ?? 0), 0).toLocaleString()}`} sub="From recent open leads" icon={<Layers className="w-4 h-4" />} />
+      </div>
+
+      {/* WHAT DO YOU WANT TO DO — actions grouped by intent, so the next step
+          is obvious instead of hunting through 23 sidebar links. */}
+      <div className="mb-10">
+        <h2 className="text-base font-black text-[#18181B] mb-1">What do you want to do?</h2>
+        <p className="text-sm text-[#71717A] mb-4">Every tool, grouped by the job it does.</p>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <ActionGroup
+            title="Find clients"
+            hint="Fill the top of the funnel"
+            actions={[
+              { href: "/admin/prospects", icon: <MapPin className="w-4 h-4" />, label: "Import from Google Maps", desc: "Search a city, get 20 prospects" },
+              { href: "/admin/leads/new", icon: <Plus className="w-4 h-4" />, label: "Add a lead", desc: "Someone who reached out" },
+              { href: "/admin/pipeline", icon: <Kanban className="w-4 h-4" />, label: "Work the pipeline", desc: "Move deals forward" },
+              { href: "/admin/broadcast", icon: <Send className="w-4 h-4" />, label: "Email your list", desc: "Broadcast to subscribers" },
+            ]}
+          />
+          <ActionGroup
+            title="Win the deal"
+            hint="Turn interest into a deposit"
+            actions={[
+              { href: "/admin/demo", icon: <Wand2 className="w-4 h-4" />, label: "Generate a demo", desc: "A live site in their name" },
+              { href: "/admin/bookings", icon: <CalendarDays className="w-4 h-4" />, label: "Discovery calls", desc: "Who's booked with you" },
+              { href: "/admin/leads", icon: <Target className="w-4 h-4" />, label: "All leads", desc: "Scored, newest first" },
+            ]}
+          />
+          <ActionGroup
+            title="Deliver"
+            hint="Build it and get it live"
+            actions={[
+              { href: "/admin/builds", icon: <Hammer className="w-4 h-4" />, label: "Builds in progress", desc: "Generate, review, publish" },
+              { href: "/admin/sites", icon: <Globe className="w-4 h-4" />, label: "Client sites", desc: "Publish or edit a site" },
+              { href: "/admin/deadlines", icon: <Clock className="w-4 h-4" />, label: "Deadlines", desc: "What's due and what's late" },
+            ]}
+          />
+          <ActionGroup
+            title="Keep & grow"
+            hint="Retention and reach"
+            actions={[
+              { href: "/admin/messages", icon: <MessageSquare className="w-4 h-4" />, label: "Client messages", desc: "Reply to your clients" },
+              { href: "/admin/clients", icon: <UserCircle className="w-4 h-4" />, label: "Clients & billing", desc: "Plans and payment status" },
+              { href: "/admin/content", icon: <Sparkles className="w-4 h-4" />, label: "Content engine", desc: "Approve blog + LinkedIn" },
+              { href: "/admin/analytics", icon: <BarChart3 className="w-4 h-4" />, label: "Analytics", desc: "What's actually working" },
+            ]}
+          />
+        </div>
       </div>
 
       {/* Pipeline columns + recent leads */}
@@ -240,6 +287,39 @@ export default async function AdminDashboard() {
           </div>
         </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+/** One intent group in the "What do you want to do?" panel. */
+function ActionGroup({ title, hint, actions }: {
+  title: string;
+  hint: string;
+  actions: { href: string; icon: React.ReactNode; label: string; desc: string }[];
+}) {
+  return (
+    <div className="bg-white border border-[#E8E6E0] rounded-2xl overflow-hidden flex flex-col">
+      <div className="px-4 py-3 bg-[#FAFAF7] border-b border-[#E8E6E0]">
+        <p className="text-xs font-black text-[#18181B] uppercase tracking-widest">{title}</p>
+        <p className="text-[11px] text-[#A1A1AA] mt-0.5">{hint}</p>
+      </div>
+      <div className="flex-1 divide-y divide-[#F5F4EF]">
+        {actions.map((a) => (
+          <Link
+            key={a.href}
+            href={a.href}
+            className="group flex items-start gap-2.5 px-4 py-3 hover:bg-[#FAFAF7] transition-colors"
+          >
+            <span className="w-7 h-7 shrink-0 rounded-lg bg-[#F0EFEA] text-[#36671E] flex items-center justify-center group-hover:bg-[#EEF5EA] transition-colors">
+              {a.icon}
+            </span>
+            <span className="min-w-0">
+              <span className="block text-sm font-bold text-[#18181B] leading-tight">{a.label}</span>
+              <span className="block text-[11px] text-[#71717A] mt-0.5 leading-snug">{a.desc}</span>
+            </span>
+          </Link>
+        ))}
       </div>
     </div>
   );

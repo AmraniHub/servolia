@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard, Users, Hammer, UserCircle, MessageSquare, Mail,
-  TrendingUp, Settings, LogOut, Menu, X, BarChart3, Kanban, Search, Globe, Sparkles, RefreshCcw, Wand2, CalendarClock, Target, Star, Bot, Sun, Moon, Database, BookOpen, Send, Eye,
+  TrendingUp, Settings, LogOut, Menu, X, BarChart3, Kanban, Search, Globe, Sparkles, RefreshCcw, Wand2, CalendarClock, Target, Star, Bot, Sun, Moon, Database, BookOpen, Send, Eye, CalendarDays,
 } from "lucide-react";
 import CommandPalette from "./CommandPalette";
 import AutoRefresh from "@/components/AutoRefresh";
@@ -17,6 +17,12 @@ import Copilot from "./Copilot";
  * grow → run the machine.
  */
 const navGroups: { group: string; items: { label: string; href: string; icon: typeof Users }[] }[] = [
+  {
+    group: "Run the day",
+    items: [
+      { label: "Deadlines", href: "/admin/deadlines", icon: CalendarDays },
+    ],
+  },
   {
     group: "Acquisition",
     items: [
