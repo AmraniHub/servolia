@@ -1,6 +1,6 @@
 import Stripe from "stripe";
 import { NextRequest, NextResponse } from "next/server";
-import { CARE_PLANS, careAmountCents } from "@/lib/pricing";
+import { resolvePlan, planAmountCents } from "@/lib/pricing";
 
 export async function POST(req: NextRequest) {
   const key = process.env.STRIPE_SECRET_KEY;
@@ -14,20 +14,21 @@ export async function POST(req: NextRequest) {
       plan: string; email?: string; billing?: "monthly" | "annual"; lang?: "en" | "fr";
     };
     const fr = lang === "fr";
-    const p = CARE_PLANS[plan];
+    // resolvePlan tolerates the pre-2026-07-28 keys (care / care_growth / care_scale).
+    const p = resolvePlan(plan);
     if (!p) {
-      return NextResponse.json({ error: "Unknown care plan" }, { status: 400 });
+      return NextResponse.json({ error: "Unknown plan" }, { status: 400 });
     }
 
     const interval: "month" | "year" = billing === "annual" ? "year" : "month";
-    const amount = careAmountCents(p, interval === "year" ? "annual" : "monthly");
+    const amount = planAmountCents(p, interval === "year" ? "annual" : "monthly");
     const origin = req.headers.get("origin") ?? "https://servolia.com";
 
     const productName = interval === "year"
-      ? `Servolia ${p.name} Plan — Annual (1 month free)`
-      : `Servolia ${p.name} Plan — Monthly`;
+      ? `Servolia ${p.name} — Annual (2 months free)`
+      : `Servolia ${p.name} — Monthly`;
     const submitMsg = interval === "year"
-      ? "Billed yearly · one month free · renews annually"
+      ? "Billed yearly · two months free · renews annually"
       : "Billed monthly · Cancel anytime with 30 days notice";
 
     const session = await stripe.checkout.sessions.create({

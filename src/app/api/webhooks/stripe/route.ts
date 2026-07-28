@@ -5,7 +5,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { sendEmail, depositReceivedEmail } from "@/lib/email";
 import { sendMetaCapiEvent } from "@/lib/metaCapi";
 import { generateScopeDocument } from "@/lib/scopeDocument";
-import { BUILD_PLANS } from "@/lib/pricing";
+import { BUILD_PLANS, resolvePlan } from "@/lib/pricing";
 import { provisionAddon } from "@/lib/provisioning";
 
 export const runtime = "nodejs";
@@ -77,8 +77,9 @@ export async function POST(req: NextRequest) {
       if (session.mode === "subscription") {
         const customerEmail = session.customer_details?.email ?? session.customer_email ?? null;
         const amount = (session.amount_total ?? 0) / 100;
-        const planKey = session.metadata?.plan ?? "care";
-        const planLabel = planKey === "care_growth" ? "Growth" : planKey === "care_scale" ? "Scale" : "Care";
+        const planKey = session.metadata?.plan ?? "essentiel";
+        // resolvePlan also maps the retired care/care_growth/care_scale keys.
+        const planLabel = resolvePlan(planKey)?.name ?? "Essentiel";
 
         const { data: client } = await db.from("clients").insert({
           business: customerEmail ?? "Unknown",

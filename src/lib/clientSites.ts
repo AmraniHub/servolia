@@ -269,6 +269,9 @@ export interface IntakeSource {
  */
 export function planFeatures(plan?: string | null): { chat: boolean } {
   const p = (plan ?? "").toLowerCase();
+  // Since the 2026-07-28 pricing change the AI receptionist is in EVERY plan —
+  // tiers differ by included conversation volume, not by whether it exists.
+  // Only the retired €290 Website System shipped without it.
   if (p === "starter" || p === "website") return { chat: false };
   return { chat: true };
 }

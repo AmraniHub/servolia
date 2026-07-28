@@ -11,6 +11,15 @@ import { BUILD_PLANS, CARE_PLANS, depositCents, balanceCents, type BuildPlan } f
  */
 
 const WHATS_INCLUDED: Record<string, string[]> = {
+  setup: [
+    "Conversion-focused multi-page website, written for your practice",
+    "Your 24/7 AI receptionist, trained on your services and hours",
+    "Online booking / enquiry capture, wired to instant alerts",
+    "Domain, hosting, SSL and professional email set up for you",
+    "GDPR pages and cookie consent included",
+    "One round of revisions before we go live",
+  ],
+  // ── Retired plans, kept so historical scopes still render ──
   starter: ["Conversion-focused website (up to 6 pages)", "Mobile-optimized, fast-loading", "Contact form wired to your email", "Basic on-page SEO setup"],
   growth:  ["Everything in the Website System", "AI receptionist chatbot (trained on your business)", "Booking/enquiry capture into a client dashboard", "GDPR-compliant data handling"],
   pro:     ["Everything in the Booking System", "Admin dashboard: leads, pipeline, messages", "Monthly performance report (PDF)", "CRM access for your team"],
@@ -43,6 +52,9 @@ export function generateScopeDocument(input: ScopeDocInput): string {
   const included = WHATS_INCLUDED[input.planKey] ?? [];
   const deposit = (depositCents(plan) / 100).toLocaleString();
   const balance = (balanceCents(plan) / 100).toLocaleString();
+  // The current model is one installation fee + a monthly plan. Retired build
+  // plans keep the old 50/50 deposit wording so historical scopes still read right.
+  const isSetup = input.planKey === "setup";
   const today = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
 
   const footer = input.forWeb
@@ -68,12 +80,19 @@ WHAT'S NOT INCLUDED
 ${EXCLUSIONS.map((i) => `  • ${i}`).join("\n")}
 
 PRICE
-  Total: €${plan.totalEur.toLocaleString()}
+${isSetup
+  ? `  Installation: €${plan.totalEur.toLocaleString()} — one-time, due to start.${care ? `\n  Waived if you start on the annual plan below.` : ""}`
+  : `  Total: €${plan.totalEur.toLocaleString()}
   Deposit (50%, due to start): €${deposit}
-  Balance (50%, due on delivery): €${balance}${plan.monthlyEur ? `\n  Recurring platform fee: €${plan.monthlyEur}/month` : ""}
-${care ? `\nMONTHLY CARE PLAN (optional, starts 30 days after launch)\n  ${care.name} — €${care.monthlyEur}/month: hosting, uptime monitoring, chatbot retraining, monthly report.\n` : ""}
+  Balance (50%, due on delivery): €${balance}${plan.monthlyEur ? `\n  Recurring platform fee: €${plan.monthlyEur}/month` : ""}`}
+${care ? `\nYOUR PLAN — ${care.name}
+  €${care.monthlyEur}/month, or €${care.annualEur.toLocaleString()}/year (two months free).
+  Includes ${care.conversations} AI conversations per month, plus hosting, domain,
+  professional email, your client portal and ongoing support. Go over the included
+  conversations and we simply move you up a plan — never a surprise bill.
+  Cancel any time with 30 days' notice.\n` : ""}
 DELIVERY
-  Live within ${plan.delivery} of deposit received + completed intake form.
+  Live within ${plan.delivery} of ${isSetup ? "the installation fee" : "the deposit"} being received + your completed intake form.
 
 GUARANTEE
   Live on time or 10% of your payment refunded per day late, if the delay is Servolia's fault — per our Terms of Service (servolia.com/legal/cgv).
