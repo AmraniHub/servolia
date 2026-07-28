@@ -1,4 +1,9 @@
 import { supabaseAdmin } from "@/lib/supabase";
+import { loadProgressFacts, buildProgress, type BuildLike } from "@/lib/buildProgress";
+import { localDateKey, toLocalDay, daysUntil, relativeDays, monthGrid, refundRiskEur } from "@/lib/dates";
+
+// Re-exported so existing pages can keep importing them from here.
+export { localDateKey, toLocalDay, daysUntil, relativeDays, monthGrid, refundRiskEur };
 
 /**
  * DEADLINES — every dated commitment across the business on one calendar.
@@ -28,43 +33,6 @@ export interface DeadlineEvent {
   atRiskEur?: number;
 }
 
-/** YYYY-MM-DD from a Date's LOCAL components. See the date-key rule above. */
-export function localDateKey(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
-/** Local midnight for a stored timestamp/date string. */
-export function toLocalDay(v: string | Date): Date {
-  const d = v instanceof Date ? new Date(v) : new Date(v);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-
-/** Whole days from today (negative = overdue). */
-export function daysUntil(v: string | Date): number {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return Math.round((toLocalDay(v).getTime() - today.getTime()) / 86_400_000);
-}
-
-export function relativeDays(v: string | Date): string {
-  const d = daysUntil(v);
-  if (d === 0) return "today";
-  if (d === 1) return "tomorrow";
-  if (d === -1) return "yesterday";
-  return d > 0 ? `in ${d}d` : `${-d}d late`;
-}
-
-/**
- * The delivery guarantee, priced. CGV: 10% of the project price per day of
- * delay, capped at 50%. Only counts builds that are actually late and not yet
- * delivered — the number a slipping project is costing you right now.
- */
-export function refundRiskEur(totalPrice: number, daysLate: number): number {
-  if (daysLate <= 0) return 0;
-  return Math.round(Math.min(0.5, 0.1 * daysLate) * Number(totalPrice || 0));
-}
-
 interface BuildRow { id: string; business: string; plan_name: string | null; plan: string; deadline: string | null; status: string; total_price: number }
 interface BookingRow { id: string; name: string; business: string | null; slot_start: string; status: string }
 interface ClientRow { id: string; business: string; email: string | null; suspend_at: string | null; payment_status: string | null }
@@ -91,19 +59,26 @@ export async function collectDeadlines(): Promise<DeadlineEvent[]> {
   ]);
 
   // 1. BUILD DELIVERY DEADLINES — the money-critical ones.
-  for (const b of ((builds.data ?? []) as BuildRow[])) {
+  // Reuses the same derivation as /admin/builds so the two pages can never
+  // disagree about what's at risk (and so client-caused delay is excluded).
+  const buildRows = (builds.data ?? []) as BuildRow[];
+  const facts = await loadProgressFacts(buildRows as unknown as BuildLike[]);
+  for (const b of buildRows) {
     if (!b.deadline || b.status === "delivered" || b.status === "live") continue;
+    const p = buildProgress(b as unknown as BuildLike, facts);
     const late = daysUntil(b.deadline) < 0;
-    const atRisk = late ? refundRiskEur(b.total_price, -daysUntil(b.deadline)) : 0;
+    const detail = p.waitingOnClient
+      ? `waiting on client · ${p.current?.label.toLowerCase() ?? "them"}`
+      : p.current?.label.toLowerCase() ?? b.status;
     out.push({
       date: localDateKey(toLocalDay(b.deadline)),
       kind: late ? "late" : "build",
       label: `${b.business} — delivery due`,
-      sub: late
-        ? `${b.plan_name ?? b.plan} · ${b.status} · €${atRisk.toLocaleString()} refund risk`
-        : `${b.plan_name ?? b.plan} · ${b.status}`,
-      href: `/admin/builds`,
-      atRiskEur: atRisk,
+      sub: p.atRiskEur > 0
+        ? `${b.plan_name ?? b.plan} · ${detail} · €${p.atRiskEur.toLocaleString()} refund risk`
+        : `${b.plan_name ?? b.plan} · ${detail}`,
+      href: `/admin/builds/${b.id}`,
+      atRiskEur: p.atRiskEur,
     });
   }
 
@@ -179,14 +154,3 @@ export const KIND_META: Record<DeadlineKind, { label: string; icon: string; chip
   scope:   { label: "Scope to chase", icon: "📄", chip: "bg-[#DCFCE7] text-[#166534]", dot: "bg-[#166534]" },
 };
 
-/** Monday-first month grid (France). Nulls pad the leading/trailing week. */
-export function monthGrid(year: number, month: number): (Date | null)[] {
-  const first = new Date(year, month, 1);
-  const startDow = (first.getDay() + 6) % 7; // Monday = 0
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const cells: (Date | null)[] = [];
-  for (let i = 0; i < startDow; i++) cells.push(null);
-  for (let d = 1; d <= daysInMonth; d++) cells.push(new Date(year, month, d));
-  while (cells.length % 7) cells.push(null);
-  return cells;
-}

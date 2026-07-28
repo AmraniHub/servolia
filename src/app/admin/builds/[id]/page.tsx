@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabase";
-import { ArrowLeft, Calendar, CreditCard, User } from "lucide-react";
+import { ArrowLeft, Calendar, CreditCard, User, Check, AlertTriangle, Clock } from "lucide-react";
+import { loadProgressFacts, buildProgress, type BuildLike } from "@/lib/buildProgress";
 import BuildStatusActions from "@/components/admin/BuildStatusActions";
 import ClientMessageThread from "@/components/admin/ClientMessageThread";
 import CustomRequests from "@/components/admin/CustomRequests";
@@ -24,6 +25,10 @@ export default async function BuildDetailPage({ params }: { params: Promise<{ id
   const { data: lead } = build.lead_id
     ? await db.from("leads").select("id, business, email").eq("id", build.lead_id).maybeSingle()
     : { data: null };
+
+  // Delivery checklist, derived from the same source the builds board uses.
+  const facts = await loadProgressFacts([build as BuildLike]);
+  const progress = buildProgress(build as BuildLike, facts);
 
   // The generated site for this build (if any) — used to scope the local edit command.
   let siteSlug: string | null = null;
@@ -53,6 +58,75 @@ export default async function BuildDetailPage({ params }: { params: Promise<{ id
         <Stat icon={<CreditCard className="w-4 h-4" />} label="Deposit paid"  value={`€${Number(build.deposit_paid).toLocaleString()}`} accent />
         <Stat icon={<CreditCard className="w-4 h-4" />} label="Balance due"   value={`€${Number(build.balance_due).toLocaleString()}`} />
         <Stat icon={<Calendar className="w-4 h-4" />}   label="Deadline"      value={build.deadline ? new Date(build.deadline).toLocaleDateString() : "Not set"} />
+      </div>
+
+      {/* DELIVERY CHECKLIST — derived from the data, never hand-ticked. */}
+      <div className="bg-white border border-[#E8E6E0] rounded-2xl p-6 mb-6">
+        <div className="flex items-center justify-between gap-3 mb-1 flex-wrap">
+          <h2 className="text-sm font-black text-[#18181B] uppercase tracking-widest">Delivery checklist</h2>
+          <span className="text-xs font-bold text-[#71717A]">{progress.doneCount}/{progress.total} done</span>
+        </div>
+        <p className="text-xs text-[#71717A] mb-4">
+          Filled in automatically from your data — nothing to tick by hand.
+        </p>
+
+        <div className="h-1.5 rounded-full bg-[#F0EFEA] overflow-hidden mb-5">
+          <div className="h-full rounded-full bg-[#36671E] transition-all"
+            style={{ width: `${Math.round((progress.doneCount / progress.total) * 100)}%` }} />
+        </div>
+
+        <ol className="space-y-1">
+          {progress.steps.map((s) => {
+            const isCurrent = progress.current?.key === s.key;
+            return (
+              <li key={s.key}
+                className={`flex items-start gap-3 rounded-xl px-3 py-2.5 ${isCurrent ? (s.owner === "client" ? "bg-[#FEF3C7]" : "bg-[#EEF5EA]") : ""}`}>
+                <span className={`mt-0.5 w-4 h-4 shrink-0 rounded-full flex items-center justify-center ${
+                  s.done ? "bg-[#36671E]" : isCurrent ? "bg-white border-2 border-[#D97706]" : "bg-[#F0EFEA]"
+                }`}>
+                  {s.done && <Check className="w-2.5 h-2.5 text-white" strokeWidth={4} />}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className={`block text-sm ${s.done ? "text-[#A1A1AA] line-through" : "font-bold text-[#18181B]"}`}>
+                    {s.label}
+                  </span>
+                  {isCurrent && (
+                    <span className={`block text-xs mt-0.5 ${s.owner === "client" ? "text-[#92400E]" : "text-[#36671E]"}`}>
+                      {s.hint}
+                    </span>
+                  )}
+                </span>
+                {!s.done && (
+                  <span className={`shrink-0 text-[9px] font-black px-1.5 py-0.5 rounded-full ${
+                    s.owner === "client" ? "bg-[#FDE68A] text-[#92400E]" : "bg-[#D6E2CF] text-[#36671E]"
+                  }`}>
+                    {s.owner === "client" ? "CLIENT" : "YOU"}
+                  </span>
+                )}
+              </li>
+            );
+          })}
+        </ol>
+
+        {progress.atRiskEur > 0 && (
+          <div className="mt-4 flex items-start gap-2 p-3 rounded-xl bg-[#FEE2E2] border border-[#B91C1C]/20">
+            <AlertTriangle className="w-4 h-4 text-[#B91C1C] shrink-0 mt-0.5" />
+            <p className="text-xs text-[#B91C1C]">
+              <strong>€{progress.atRiskEur.toLocaleString()} refund risk</strong> — {progress.daysLate} day
+              {progress.daysLate > 1 ? "s" : ""} past the promised date, and the ball is in your court.
+              The CGV owe 10% per day late, capped at 50%.
+            </p>
+          </div>
+        )}
+        {progress.waitingOnClient && progress.daysLate > 0 && (
+          <div className="mt-4 flex items-start gap-2 p-3 rounded-xl bg-[#F5F4EF] border border-[#E8E6E0]">
+            <Clock className="w-4 h-4 text-[#71717A] shrink-0 mt-0.5" />
+            <p className="text-xs text-[#52525B]">
+              {progress.daysLate} day{progress.daysLate > 1 ? "s" : ""} past target, but you&apos;re waiting on
+              the client — the delivery guarantee is paused (CGV: client-caused delays don&apos;t extend it).
+            </p>
+          </div>
+        )}
       </div>
 
       <div className="bg-white border border-[#E8E6E0] rounded-2xl p-6 mb-6">
