@@ -2,6 +2,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import CheckoutButton from "@/components/CheckoutButton";
 import CarePlansSection from "@/components/CarePlansSection";
+import { SETUP_PLAN, PLANS } from "@/lib/pricing";
 import Guarantee from "@/components/Guarantee";
 import Link from "next/link";
 import {
@@ -13,7 +14,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Pricing — Servolia",
-  description: "Fixed pricing for AI websites, booking systems, and client management. No surprises. 50% deposit, balance on delivery.",
+  description: "One €490 installation, then €149–€449/month all-in: site, 24/7 AI receptionist, hosting, domain and pro email. Pay yearly and get two months free.",
   alternates: {
     canonical: "https://servolia.com/pricing",
     languages: {
@@ -24,83 +25,13 @@ export const metadata: Metadata = {
   },
 };
 
-const tiers = [
-  {
-    plan: "starter",
-    name: "Website System",
-    price: "€290",
-    deposit: "€145",
-    usd: "~$315",
-    delivery: "3 days",
-    for: "For businesses that need a trusted, professional online presence",
-    desc: "A conversion-first website that builds trust and turns visitors into inquiries.",
-    icon: <Globe className="w-5 h-5" />,
-    color: "from-[#36671E] to-[#143424]",
-    popular: false,
-    features: [
-      "5-page professional website",
-      "Booking & contact CTA",
-      "Mobile-first responsive design",
-      "GDPR pages included",
-      "Google Analytics 4",
-      "SSL & fast hosting setup",
-      "2 revision rounds",
-    ],
-  },
-  {
-    plan: "growth",
-    name: "Booking System",
-    price: "€590",
-    deposit: "€295",
-    usd: "~$640",
-    delivery: "5 days",
-    for: "For businesses that want leads and appointments booked automatically",
-    desc: "AI receptionist + website + full tracking. Your business works for you 24/7.",
-    icon: <Bot className="w-5 h-5" />,
-    color: "from-[#295115] to-[#6B8439]",
-    popular: true,
-    features: [
-      "10-page professional website",
-      "AI receptionist chatbot (24/7)",
-      "Lead capture + email notification",
-      "Appointment booking flow",
-      "Google Sheets CRM integration",
-      "Google Analytics 4",
-      "GDPR compliant pages",
-      "3 revision rounds",
-    ],
-  },
-  {
-    plan: "pro",
-    name: "Client System",
-    price: "€990",
-    deposit: "€495",
-    usd: "~$1,070",
-    delivery: "7 days",
-    for: "For businesses that want full tracking, dashboard, and automation",
-    desc: "Complete AI lead system with dashboard, pipeline, automations, and monthly reports.",
-    icon: <Building2 className="w-5 h-5" />,
-    color: "from-[#F59E0B] to-[#D97706]",
-    popular: false,
-    features: [
-      "Everything in Booking System",
-      "Admin business dashboard",
-      "Lead pipeline with statuses",
-      "Client notes & history",
-      "Automated email notifications",
-      "WhatsApp lead notification",
-      "Monthly analytics report",
-      "Unlimited revisions (first month)",
-    ],
-  },
-];
 
 const process = [
   { num: "01", title: "Free audit", desc: "Fill a 5-question form. We send a PDF audit within 24h." },
   { num: "02", title: "Approve scope", desc: "We write the full scope in writing. You review and sign off." },
-  { num: "03", title: "50% deposit", desc: "Pay the 50% deposit via Stripe to start the build." },
-  { num: "04", title: "We build", desc: "3–7 days build. You get Loom walkthroughs at every step." },
-  { num: "05", title: "Review + launch", desc: "You review, approve, pay balance. We go live and hand over everything." },
+  { num: "03", title: "€490 installation", desc: "Pay the installation via Stripe to start — waived if you pay the first year up front." },
+  { num: "04", title: "We build", desc: "7-day build. You get Loom walkthroughs at every step." },
+  { num: "05", title: "Review + launch", desc: "You review, approve, and your monthly plan starts. We go live and hand over everything." },
 ];
 
 export default function PricingPage() {
@@ -113,12 +44,12 @@ export default function PricingPage() {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <p className="text-sm font-bold text-[#36671E] uppercase tracking-widest mb-3">Pricing</p>
           <h1 className="text-4xl sm:text-5xl font-black text-[#18181B] mb-4 leading-tight">
-            Choose the system{" "}
+            Choose the plan{" "}
             <span className="gradient-text">your business needs.</span>
           </h1>
           <p className="text-[#52525B] text-lg mb-8 max-w-2xl mx-auto leading-relaxed">
-            From a professional website to a complete AI client acquisition system.
-            Fixed price, clear scope, delivered fast.
+            One installation fee, then a monthly plan that keeps answering your patients.
+            Fixed price, clear scope, cancel any time.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-[#52525B]">
             <div className="flex items-center gap-1.5"><Shield className="w-4 h-4 text-[#059669]" /> GDPR compliant</div>
@@ -127,73 +58,90 @@ export default function PricingPage() {
               <div className="w-4 h-4 rounded bg-[#635bff] flex items-center justify-center">
                 <span className="text-white text-[7px] font-black">S</span>
               </div>
-              50% deposit via Stripe
+              €490 installation via Stripe
             </div>
             <div className="flex items-center gap-1.5"><Zap className="w-4 h-4 text-[#36671E]" /> No hidden fees</div>
           </div>
         </div>
       </section>
 
-      {/* ── SYSTEM TIERS ── */}
+      {/* ── HOW IT'S PRICED: one installation, then the plan ── */}
       <section className="py-16 lg:py-20 bg-[#FAFAF7]">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {tiers.map((t, i) => (
-              <div key={i} className={`bg-white rounded-2xl border-2 p-7 relative flex flex-col ${
-                t.popular ? "border-[#36671E] shadow-2xl shadow-[#ABDF90]/12" : "border-[#E8E6E0]"
-              }`}>
-                {t.popular && (
-                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-gradient-to-r from-[#36671E] to-[#295115] text-[#FAFAF7] text-xs font-black whitespace-nowrap">
-                    MAIN OFFER
-                  </div>
-                )}
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid md:grid-cols-2 gap-6 items-stretch">
+            {/* Step 1 — the only one-time cost */}
+            <div className="bg-white rounded-2xl border-2 border-[#E8E6E0] p-7 flex flex-col">
+              <p className="text-[11px] font-black uppercase tracking-widest text-[#A1A1AA] mb-3">Step 1 · once</p>
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#36671E] to-[#143424] flex items-center justify-center text-[#FAFAF7] mb-3 shadow-md">
+                <Globe className="w-5 h-5" />
+              </div>
+              <h2 className="text-xl font-black text-[#18181B] mb-1">{SETUP_PLAN.name}</h2>
+              <div className="flex items-baseline gap-2 mb-1">
+                <span className="text-4xl font-black text-[#18181B]">€{SETUP_PLAN.totalEur}</span>
+                <span className="text-[#52525B] text-sm">one-time</span>
+              </div>
+              <div className="flex items-center gap-1.5 mb-4">
+                <Clock className="w-3.5 h-3.5 text-[#059669]" />
+                <span className="text-sm font-semibold text-[#059669]">Live in {SETUP_PLAN.delivery}</span>
+              </div>
+              <ul className="flex flex-col gap-2.5 mb-6 flex-1">
+                {[
+                  "Your site, written and built for your practice",
+                  "Your AI receptionist trained on your services",
+                  "Domain, hosting, SSL and pro email set up",
+                  "GDPR pages and cookie consent included",
+                  "One round of revisions before launch",
+                ].map((f, j) => (
+                  <li key={j} className="flex items-start gap-2 text-sm text-[#3F3F46]">
+                    <CheckCircle className="w-4 h-4 text-[#059669] flex-shrink-0 mt-0.5" />{f}
+                  </li>
+                ))}
+              </ul>
+              <div className="rounded-xl bg-[#EEF5EA] p-3">
+                <p className="text-xs font-black text-[#36671E]">Waived when you start on an annual plan.</p>
+              </div>
+            </div>
 
-                {/* Header */}
-                <div className="mb-5">
-                  <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${t.color} flex items-center justify-center text-[#FAFAF7] mb-3 shadow-md`}>
-                    {t.icon}
-                  </div>
-                  <h2 className="text-xl font-black text-[#18181B] mb-1">{t.name}</h2>
-                  <p className="text-xs font-semibold text-[#36671E] mb-3">{t.for}</p>
-                  <div className="flex items-baseline gap-2 mb-1">
-                    <span className="text-4xl font-black text-[#18181B]">{t.price}</span>
-                    <span className="text-[#52525B] text-sm">{t.usd}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 mb-3">
-                    <Clock className="w-3.5 h-3.5 text-[#059669]" />
-                    <span className="text-sm font-semibold text-[#059669]">Delivered in {t.delivery}</span>
-                  </div>
-                  <p className="text-[#71717A] text-sm leading-relaxed">{t.desc}</p>
+            {/* Step 2 — the product */}
+            <div className="bg-[#0A1F14] rounded-2xl border-2 border-[#36671E] p-7 flex flex-col relative overflow-hidden">
+              <div className="absolute -top-10 -right-10 w-40 h-40 bg-[#36671E] opacity-50 rounded-full blur-3xl pointer-events-none" />
+              <div className="relative flex flex-col h-full">
+                <p className="text-[11px] font-black uppercase tracking-widest text-[#ABDF90] mb-3">Step 2 · monthly</p>
+                <div className="w-10 h-10 rounded-xl bg-[#BEF264]/20 flex items-center justify-center text-[#ABDF90] mb-3">
+                  <Bot className="w-5 h-5" />
                 </div>
-
-                {/* Features — one ticked list, same as /fr/tarifs */}
+                <h2 className="text-xl font-black text-[#FAFAF7] mb-1">Your plan</h2>
+                <div className="flex items-baseline gap-2 mb-4">
+                  <span className="text-4xl font-black text-[#FAFAF7]">€{PLANS.essentiel.monthlyEur}–{PLANS.performance.monthlyEur}</span>
+                  <span className="text-[#ABDF90]/70 text-sm">/month</span>
+                </div>
+                <p className="text-[#ABDF90]/80 text-sm leading-relaxed mb-4">
+                  This is the product. Your site stays hosted and updated, your AI receptionist keeps
+                  answering, and every enquiry lands in your portal. Plans differ by how many
+                  conversations you need each month — nothing is locked behind a higher tier.
+                </p>
                 <ul className="flex flex-col gap-2.5 mb-6 flex-1">
-                  {t.features.map((f, j) => (
-                    <li key={j} className="flex items-start gap-2 text-sm text-[#3F3F46]">
-                      <CheckCircle className="w-4 h-4 text-[#059669] flex-shrink-0 mt-0.5" />{f}
+                  {[
+                    "24/7 AI receptionist in every plan",
+                    "Hosting, domain and pro email included",
+                    "Instant lead alerts + client portal",
+                    "Two months free when you pay yearly",
+                  ].map((f, j) => (
+                    <li key={j} className="flex items-start gap-2 text-sm text-[#FAFAF7]/85">
+                      <CheckCircle className="w-4 h-4 text-[#BEF264] flex-shrink-0 mt-0.5" />{f}
                     </li>
                   ))}
                 </ul>
-
-                {/* CTA */}
-                <CheckoutButton
-                  plan={t.plan}
-                  label={`Pay ${t.deposit} deposit →`}
-                  className={`w-full py-3.5 rounded-xl font-bold text-sm transition-all disabled:opacity-60 ${
-                    t.popular
-                      ? "bg-gradient-to-r from-[#36671E] to-[#295115] text-[#FAFAF7] hover:opacity-90 shadow-lg shadow-blue-500/15"
-                      : "border-2 border-[#E8E6E0] text-[#18181B] hover:border-[#36671E] hover:text-[#36671E]"
-                  }`}
-                />
-                <p className="text-center text-xs text-[#52525B] mt-2.5">
-                  50% now via Stripe · Balance on delivery
-                </p>
+                <a href="#plans"
+                  className="block text-center w-full py-3.5 rounded-xl font-bold text-sm bg-[#BEF264] text-[#0A1F14] hover:bg-[#D9F99D] transition-colors">
+                  Compare the plans ↓
+                </a>
               </div>
-            ))}
+            </div>
           </div>
 
           <p className="text-center text-[#52525B] text-sm mt-8">
-            All prices exclude VAT · Prices in EUR · US clients quoted in USD separately
+            All prices exclude VAT · Prices in EUR · Cancel any time with 30 days notice
           </p>
         </div>
       </section>
@@ -225,6 +173,7 @@ export default function PricingPage() {
       </section>
 
       {/* ── CARE PLANS (all-in, monthly/annual) ── */}
+      <div id="plans" />
       <CarePlansSection lang="en" />
 
       <Guarantee lang="en" />
@@ -237,10 +186,10 @@ export default function PricingPage() {
           </div>
           <div className="flex flex-col gap-4">
             {[
-              { q: "How does payment work?", a: "50% upfront via Stripe to start the project. The remaining 50% is due on delivery day — before we transfer domain ownership and all assets to you." },
+              { q: "How does payment work?", a: "A €490 installation fee via Stripe to start — waived if you pay your first year up front. After that it's just your monthly plan, cancellable any time with 30 days notice." },
               { q: "Are there any hidden fees?", a: "Never. The price quoted is the price you pay. Third-party tools (hosting, domain, Stripe fees) are extra and disclosed upfront. Our service fee has no surprises." },
               { q: "Do you offer refunds?", a: "If we miss the agreed delivery deadline, we refund 10% per day of delay. If we fail to deliver at all, full refund. See our full refund policy in the CGV." },
-              { q: "Can I upgrade plans after delivery?", a: "Yes. If you start on Website System and want to add AI chatbot or a dashboard later, we quote an upgrade price — never the full plan price." },
+              { q: "Can I change plan later?", a: "Any time, up or down. If you go over your included conversations we simply move you to the next plan — you never get a surprise overage bill." },
             ].map((f, i) => (
               <div key={i} className="bg-white rounded-xl border border-[#E8E6E0] p-5 shadow-sm">
                 <h3 className="font-bold text-[#18181B] text-sm mb-2">{f.q}</h3>

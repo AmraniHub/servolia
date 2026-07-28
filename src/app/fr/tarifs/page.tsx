@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import CheckoutButton from "@/components/CheckoutButton";
 import CarePlansSection from "@/components/CarePlansSection";
+import { SETUP_PLAN, PLANS } from "@/lib/pricing";
 import StickyMobileCTA from "@/components/StickyMobileCTA";
 import FrenchNav from "@/components/FrenchNav";
 import FrenchFooter from "@/components/FrenchFooter";
@@ -11,7 +12,7 @@ import { CheckCircle, ArrowRight, Shield, Clock, Globe, Bot, Building2, Lock } f
 export const metadata: Metadata = {
   title: "Tarifs — Servolia",
   description:
-    "Prix fixes pour sites IA, systèmes de réservation et gestion de clients. Aucune surprise. Acompte de 50 %, solde à la livraison.",
+    "Une mise en place à 490 €, puis 149 à 449 €/mois tout compris : site, assistante IA 24 h/24, hébergement, domaine et email pro. Deux mois offerts en annuel.",
   alternates: {
     canonical: "https://servolia.com/fr/tarifs",
     languages: {
@@ -22,87 +23,20 @@ export const metadata: Metadata = {
   },
 };
 
-const tiers = [
-  {
-    plan: "starter",
-    name: "Système Site Web",
-    price: "290 €",
-    deposit: "145 €",
-    delivery: "3 jours",
-    forWho: "Pour les entreprises qui ont besoin d'une présence en ligne professionnelle et fiable",
-    desc: "Un site orienté conversion qui inspire confiance et transforme les visiteurs en demandes.",
-    icon: <Globe className="w-5 h-5" />,
-    color: "from-[#36671E] to-[#143424]",
-    popular: false,
-    features: [
-      "Site professionnel 5 pages",
-      "Boutons réservation & contact",
-      "Design mobile-first",
-      "Pages RGPD incluses",
-      "Google Analytics 4",
-      "SSL & hébergement rapide",
-      "2 séries de révisions",
-    ],
-  },
-  {
-    plan: "growth",
-    name: "Système de Réservation",
-    price: "590 €",
-    deposit: "295 €",
-    delivery: "5 jours",
-    forWho: "Pour les entreprises qui veulent des demandes et des rendez-vous réservés automatiquement",
-    desc: "Réceptionniste IA + site + suivi complet. Votre entreprise travaille pour vous 24h/24.",
-    icon: <Bot className="w-5 h-5" />,
-    color: "from-[#295115] to-[#6B8439]",
-    popular: true,
-    features: [
-      "Site professionnel 10 pages",
-      "Chatbot réceptionniste IA (24h/24)",
-      "Capture de leads + notification email",
-      "Parcours de réservation",
-      "Synchronisation CRM",
-      "Google Analytics 4",
-      "Pages RGPD conformes",
-      "3 séries de révisions",
-    ],
-  },
-  {
-    plan: "pro",
-    name: "Système Client",
-    price: "990 €",
-    deposit: "495 €",
-    delivery: "7 jours",
-    forWho: "Pour les entreprises qui veulent suivi complet, tableau de bord et automatisations",
-    desc: "Système de leads IA complet : tableau de bord, pipeline, automatisations, rapports mensuels.",
-    icon: <Building2 className="w-5 h-5" />,
-    color: "from-[#36671E] to-[#6B8439]",
-    popular: false,
-    features: [
-      "Tout le Système de Réservation",
-      "Tableau de bord de gestion",
-      "Pipeline de leads avec statuts",
-      "Notes & historique clients",
-      "Notifications automatiques",
-      "Notification WhatsApp",
-      "Rapport analytique mensuel",
-      "Révisions illimitées (1er mois)",
-    ],
-  },
-];
 
 const processus = [
   { num: "01", title: "Audit gratuit", desc: "Remplissez un formulaire de 5 questions. Vous recevez un audit PDF sous 24 h." },
   { num: "02", title: "Validation du périmètre", desc: "Nous rédigeons le périmètre complet par écrit. Vous relisez et validez." },
-  { num: "03", title: "Acompte de 50 %", desc: "Réglez l'acompte de 50 % via Stripe pour lancer la production." },
-  { num: "04", title: "Nous construisons", desc: "3 à 7 jours de production. Vous recevez une vidéo Loom à chaque étape." },
-  { num: "05", title: "Validation + mise en ligne", desc: "Vous validez, réglez le solde. Nous mettons en ligne et vous remettons tout." },
+  { num: "03", title: "Mise en place 490 €", desc: "Réglez la mise en place via Stripe pour lancer la production — offerte si vous payez la première année." },
+  { num: "04", title: "Nous construisons", desc: "7 jours de production. Vous recevez une vidéo Loom à chaque étape." },
+  { num: "05", title: "Validation + mise en ligne", desc: "Vous validez et votre formule mensuelle démarre. Nous mettons en ligne et vous remettons tout." },
 ];
 
 const faqs = [
-  { q: "Comment se passe le paiement ?", a: "50 % à la commande via Stripe pour lancer le projet. Les 50 % restants sont dus le jour de la livraison — avant le transfert du nom de domaine et de tous les fichiers." },
+  { q: "Comment se passe le paiement ?", a: "Une mise en place de 490 € via Stripe pour lancer le projet — offerte si vous réglez votre première année. Ensuite, uniquement votre formule mensuelle, résiliable à tout moment avec 30 jours de préavis." },
   { q: "Y a-t-il des frais cachés ?", a: "Jamais. Le prix annoncé est le prix payé. Les outils tiers (hébergement, domaine, frais Stripe) sont en supplément et annoncés dès le départ. Nos honoraires ne réservent aucune surprise." },
   { q: "Proposez-vous des remboursements ?", a: "Si nous manquons la date de livraison convenue, nous remboursons 10 % par jour de retard. Si nous ne livrons pas du tout, remboursement intégral. Voir la politique complète dans les CGV." },
-  { q: "Puis-je changer de formule après la livraison ?", a: "Oui. Si vous commencez avec le Système Site Web et souhaitez ajouter le chatbot IA ou un tableau de bord plus tard, nous chiffrons la mise à niveau — jamais le prix complet de la formule." },
+  { q: "Puis-je changer de formule ?", a: "À tout moment, vers le haut comme vers le bas. Si vous dépassez vos conversations incluses, nous vous faisons simplement passer à la formule au-dessus — jamais de facture surprise." },
 ];
 
 export default function FrenchPricingPage() {
@@ -119,7 +53,7 @@ export default function FrenchPricingPage() {
             <span className="bg-gradient-to-r from-[#36671E] to-[#6B8439] bg-clip-text text-transparent">Livré en 7 jours.</span>
           </h1>
           <p className="text-[#52525B] text-lg max-w-2xl mx-auto mb-6">
-            Le prix est convenu par écrit avant de commencer. Acompte de 50 % via Stripe, solde à la livraison. Si un seul client récupéré par mois couvre le système, le calcul est vite fait.
+            Le prix est convenu par écrit avant de commencer. Mise en place via Stripe, puis votre formule mensuelle. Si un seul client récupéré par mois couvre le système, le calcul est vite fait.
           </p>
           <div className="flex flex-wrap justify-center gap-6 text-sm text-[#52525B]">
             <span className="flex items-center gap-1.5"><Clock className="w-4 h-4 text-[#36671E]" /> Livraison en 7 jours ou 10 % remboursés/jour</span>
@@ -132,52 +66,76 @@ export default function FrenchPricingPage() {
       {/* Systems */}
       <section className="py-12 lg:py-16 bg-[#FAFAF7]">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {tiers.map((t, i) => (
-              <div key={i} className={`bg-white rounded-2xl border-2 p-7 relative flex flex-col ${
-                t.popular ? "border-[#36671E] shadow-2xl shadow-[#ABDF90]/12" : "border-[#E8E6E0]"
-              }`}>
-                {t.popular && (
-                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-gradient-to-r from-[#36671E] to-[#295115] text-[#FAFAF7] text-xs font-black whitespace-nowrap">
-                    OFFRE PRINCIPALE
-                  </div>
-                )}
-                <div className="mb-5">
-                  <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${t.color} flex items-center justify-center text-[#FAFAF7] mb-3 shadow-md`}>
-                    {t.icon}
-                  </div>
-                  <h2 className="text-xl font-black text-[#18181B] mb-1">{t.name}</h2>
-                  <p className="text-xs font-semibold text-[#36671E] mb-3">{t.forWho}</p>
-                  <div className="flex items-baseline gap-2 mb-1">
-                    <span className="text-4xl font-black text-[#18181B]">{t.price}</span>
-                    <span className="text-xs text-[#71717A]">HT</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 mb-3">
-                    <Clock className="w-3.5 h-3.5 text-[#059669]" />
-                    <span className="text-xs font-semibold text-[#059669]">Livré en {t.delivery}</span>
-                  </div>
-                  <p className="text-sm text-[#52525B]">{t.desc}</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Etape 1 — le seul cout unique */}
+            <div className="bg-white rounded-2xl border-2 border-[#E8E6E0] p-7 flex flex-col">
+              <p className="text-[11px] font-black uppercase tracking-widest text-[#A1A1AA] mb-3">Étape 1 · une seule fois</p>
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#36671E] to-[#143424] flex items-center justify-center text-[#FAFAF7] mb-3 shadow-md">
+                <Globe className="w-5 h-5" />
+              </div>
+              <h2 className="text-xl font-black text-[#18181B] mb-1">{SETUP_PLAN.nameFr}</h2>
+              <div className="flex items-baseline gap-2 mb-1">
+                <span className="text-4xl font-black text-[#18181B]">{SETUP_PLAN.totalEur} €</span>
+                <span className="text-xs text-[#71717A]">HT, une fois</span>
+              </div>
+              <div className="flex items-center gap-1.5 mb-4">
+                <Clock className="w-3.5 h-3.5 text-[#059669]" />
+                <span className="text-xs font-semibold text-[#059669]">En ligne en 7 jours</span>
+              </div>
+              <ul className="flex flex-col gap-2 mb-6 flex-1">
+                {[
+                  "Votre site, rédigé et construit pour votre cabinet",
+                  "Votre assistante IA formée sur vos prestations",
+                  "Nom de domaine, hébergement, SSL et email pro configurés",
+                  "Pages RGPD et bandeau cookies inclus",
+                  "Un tour de modifications avant la mise en ligne",
+                ].map((f, j) => (
+                  <li key={j} className="flex items-start gap-2 text-sm text-[#3F3F46]">
+                    <CheckCircle className="w-4 h-4 text-[#36671E] flex-shrink-0 mt-0.5" />{f}
+                  </li>
+                ))}
+              </ul>
+              <div className="rounded-xl bg-[#EEF5EA] p-3">
+                <p className="text-xs font-black text-[#36671E]">Offerte si vous démarrez sur une formule annuelle.</p>
+              </div>
+            </div>
+
+            {/* Etape 2 — le produit */}
+            <div className="bg-[#0A1F14] rounded-2xl border-2 border-[#36671E] p-7 flex flex-col relative overflow-hidden">
+              <div className="absolute -top-10 -right-10 w-40 h-40 bg-[#36671E] opacity-50 rounded-full blur-3xl pointer-events-none" />
+              <div className="relative flex flex-col h-full">
+                <p className="text-[11px] font-black uppercase tracking-widest text-[#ABDF90] mb-3">Étape 2 · chaque mois</p>
+                <div className="w-10 h-10 rounded-xl bg-[#BEF264]/20 flex items-center justify-center text-[#ABDF90] mb-3">
+                  <Bot className="w-5 h-5" />
                 </div>
+                <h2 className="text-xl font-black text-[#FAFAF7] mb-1">Votre formule</h2>
+                <div className="flex items-baseline gap-2 mb-4">
+                  <span className="text-4xl font-black text-[#FAFAF7]">{PLANS.essentiel.monthlyEur}–{PLANS.performance.monthlyEur} €</span>
+                  <span className="text-[#ABDF90]/70 text-sm">/mois</span>
+                </div>
+                <p className="text-[#ABDF90]/80 text-sm leading-relaxed mb-4">
+                  C&apos;est le produit. Votre site reste hébergé et à jour, votre assistante IA continue de
+                  répondre, et chaque demande arrive dans votre espace client. Les formules diffèrent par
+                  le nombre de conversations incluses — rien n&apos;est réservé aux formules supérieures.
+                </p>
                 <ul className="flex flex-col gap-2 mb-6 flex-1">
-                  {t.features.map((f, j) => (
-                    <li key={j} className="flex items-start gap-2 text-sm text-[#3F3F46]">
-                      <CheckCircle className="w-4 h-4 text-[#36671E] flex-shrink-0 mt-0.5" />{f}
+                  {[
+                    "Assistante IA 24 h/24 dans toutes les formules",
+                    "Hébergement, domaine et email pro inclus",
+                    "Alertes immédiates + espace client",
+                    "Deux mois offerts en paiement annuel",
+                  ].map((f, j) => (
+                    <li key={j} className="flex items-start gap-2 text-sm text-[#FAFAF7]/85">
+                      <CheckCircle className="w-4 h-4 text-[#BEF264] flex-shrink-0 mt-0.5" />{f}
                     </li>
                   ))}
                 </ul>
-                <CheckoutButton
-                  plan={t.plan}
-                  lang="fr"
-                  label={`Payer l'acompte de ${t.deposit} →`}
-                  className={`w-full py-3.5 rounded-xl font-bold text-sm transition-all disabled:opacity-60 ${
-                    t.popular
-                      ? "bg-gradient-to-r from-[#36671E] to-[#295115] text-[#FAFAF7] hover:opacity-90"
-                      : "border border-[#E8E6E0] text-[#18181B] hover:border-[#36671E] hover:text-[#36671E]"
-                  }`}
-                />
-                <p className="text-center text-[10px] text-[#A1A1AA] mt-2">Solde de {t.deposit} à la livraison · Stripe sécurisé</p>
+                <a href="#formules"
+                  className="block text-center w-full py-3.5 rounded-xl font-bold text-sm bg-[#BEF264] text-[#0A1F14] hover:bg-[#D9F99D] transition-colors">
+                  Comparer les formules ↓
+                </a>
               </div>
-            ))}
+            </div>
           </div>
           <p className="text-center text-sm text-[#71717A] mt-8">
             Vous hésitez ? Commencez par l&apos;
@@ -214,6 +172,7 @@ export default function FrenchPricingPage() {
       </section>
 
       {/* Care plans (all-in, mensuel/annuel — 1 mois offert) */}
+      <div id="formules" />
       <CarePlansSection lang="fr" />
 
       {/* Guarantee */}

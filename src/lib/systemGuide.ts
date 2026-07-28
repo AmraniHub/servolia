@@ -220,6 +220,25 @@ export const FEATURES: SystemFeature[] = [
     code: "src/lib/clientNotify.ts · /api/sites/[slug]/lead · /api/chat · /api/portal/leads (PATCH) · src/components/PortalDashboard.tsx · src/app/sites/[slug]/confidentialite · supabase/schema.sql (pipeline block)",
   },
   {
+    name: "The pricing model — installation + a metered subscription",
+    summary: "One €490 installation, then the subscription IS the product: Essentiel €149 / Croissance €249 / Performance €449 per month, tiered by included AI conversations. Annual is pay 10, get 12.",
+    how: [
+      "src/lib/pricing.ts is the single source of truth. PLANS holds the three tiers with their included conversation volume (100 / 300 / 800 per month); SETUP_PLAN is the one-time €490 installation, waived when the client starts on annual.",
+      "The tiers differ by VOLUME, not by whether the AI receptionist exists — every plan includes it. Going over the included conversations auto-upgrades to the next tier rather than billing surprise overage: predictable for them, automatic expansion revenue for you.",
+      "resolvePlan() maps the retired care / care_growth / care_scale keys onto the new plans, so old Stripe metadata and any existing clients row keep working. Old build plans (€290/€590/€990) are marked retired rather than deleted so historical builds still render their real names.",
+      "Why the meter is conversations and not bookings: a fee per patient booked is tied to patient volume, which French compérage rules restrict for regulated professions — that's exactly why pay-per-booking is aesthetic-only. Metering AI conversations is metering a technical resource, so the same grow-with-them property is available in the dental beachhead. UNCONFIRMED legally — see the roadmap item before using it in public copy.",
+      "Pay-per-booking (€990 + €60/attended consultation) survives as the risk-reversal close for a skeptical AESTHETIC clinic only — a sales tool, not the main model.",
+    ],
+    use: [
+      "Changing a price: edit pricing.ts, then grep the repo for the old number — marketing pages hard-code display strings and cf-worker/ is a separate deploy that can't import the file.",
+      "Selling: lead with annual. Two months free is real value for them, and for you it's a year of cash on day one plus twelve months locked against churn — the single most valuable thing a solo founder can get from a deal.",
+      "Never unbundle domain, hosting and email from the plan. Bundled, leaving means losing their whole presence; itemised, each one becomes a line to cancel.",
+    ],
+    cost: "Stripe's per-transaction fee. Claude inference scales with conversations, which is exactly what the meter charges for — the tiers are designed so usage and cost move together.",
+    value: "The old shape (€990 once + €49/mo) front-loaded the cash while the value and costs recurred, so income only existed while new clients kept closing. 20 clients on Croissance is €4,980/mo recurring versus €980 on the old Care plan — same work, and 20 clients is manageable solo. €249 is about 15% of the value of ONE extra implant patient.",
+    code: "src/lib/pricing.ts · src/components/CarePlansSection.tsx · /api/checkout-subscription · /api/checkout-ppb · src/lib/scopeDocument.ts",
+  },
+  {
     name: "Costs & subscriptions overview",
     summary: "Every dollar this app can cost you, in one place — what's a fixed subscription, what scales with usage, and what's free — with the live active/inactive state pulled from your actual env vars.",
     how: [
