@@ -25,6 +25,7 @@ import {
 import {
   isHomeServicesNiche, HOME_SERVICES_WHY_US, HOME_SERVICES_FAQS, HOME_SERVICES_AI_TONE, homeServicesAiGreeting,
   HOME_SERVICES_HERO_IMAGES, HOME_SERVICES_PAGE_BANNERS, HOME_SERVICES_PROCESS, HOME_SERVICES_VALUES, HOME_SERVICES_ADVICE, homeServicesTagline,
+  HOME_SERVICES_EMERGENCY_NOTE, HOME_SERVICES_PRACTICAL_INFO,
 } from "@/lib/niches/homeServices";
 
 export interface ClientService {
@@ -379,6 +380,7 @@ export function configFromIntake(src: IntakeSource): ClientSiteConfig {
           heroImages: intakeHero ? undefined : HOME_SERVICES_HERO_IMAGES,
           pageBanners: HOME_SERVICES_PAGE_BANNERS, process: HOME_SERVICES_PROCESS[lang],
           values: HOME_SERVICES_VALUES[lang], advice: HOME_SERVICES_ADVICE[lang],
+          emergencyNote: HOME_SERVICES_EMERGENCY_NOTE[lang], practicalInfo: HOME_SERVICES_PRACTICAL_INFO[lang],
         }
       : {};
 
@@ -817,6 +819,172 @@ const DEMO_SITES: ClientSiteConfig[] = [
     ],
     aiTone: "chaleureux, discret, sans jugement",
     aiGreeting: "Bonjour 👋 Bienvenue à l'Institut Luméa. Souhaitez-vous réserver un bilan de peau, ou avez-vous une question sur un soin ? Je vous réponds en toute discrétion.",
+    isDemo: true,
+    demoContactUrl: "https://servolia.com/call",
+    status: "published",
+  },
+  {
+    // HOME-SERVICES SHOWCASE — completes the demo trio (dental / aesthetic /
+    // artisan). Same rules as the others: a FICTIONAL business ("Bardin
+    // Plomberie & Chauffage"), invented team names on illustrative stock
+    // portraits, no real prices, no invented review counts. Social icons
+    // route back to Servolia. A real client's build replaces all of it.
+    slug: "demo-bardin",
+    businessName: "Bardin Plomberie & Chauffage",
+    niche: "home-services",
+    language: "fr",
+    accent: "#C05621",
+    city: "Villeurbanne",
+    country: "France",
+    address: "27 Rue Anatole France, 69100 Villeurbanne",
+    phone: "04 78 85 30 30",
+    email: "contact@bardin-plomberie.fr",
+    hours: "Lun–Ven, 8h00–18h30 · Urgences 7j/7",
+    tagline: "Plombier-chauffagiste · Villeurbanne & Lyon Est",
+    expandedHeader: true,
+    multiPage: true,
+    socialLinks: [
+      { platform: "facebook", url: "https://servolia.com" },
+      { platform: "instagram", url: "https://servolia.com" },
+    ],
+    heroImageUrl: "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=1600&q=80&auto=format&fit=crop",
+    heroImages: [
+      "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=1600&q=80&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=1600&q=80&auto=format&fit=crop",
+    ],
+    pageBanners: {
+      cabinet: [
+        "https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=1600&q=80&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1581092918056-0c4c3acd3789?w=1600&q=80&auto=format&fit=crop",
+      ],
+      expertise: [
+        "https://images.unsplash.com/photo-1621905252472-e8de7d8b9c66?w=1600&q=80&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?w=1600&q=80&auto=format&fit=crop",
+      ],
+      conseils: [
+        "https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=1600&q=80&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=1600&q=80&auto=format&fit=crop",
+      ],
+    },
+    heroHeadline: "Un plombier qui décroche. Même quand il est sur un chantier.",
+    heroSub: "Plombier-chauffagiste à Villeurbanne et Lyon Est. Notre assistant répond à votre demande en quelques secondes, qualifie l'urgence et planifie l'intervention — pendant que l'équipe travaille.",
+    about: "Bardin Plomberie & Chauffage intervient à Villeurbanne et dans l'Est lyonnais pour le dépannage, l'installation et l'entretien : fuites, chauffe-eau, chaudières, sanitaires et rénovation de salles de bain. Une entreprise familiale qui tient à deux choses : un devis écrit avant chaque intervention, et un chantier laissé propre.",
+    stats: [
+      { value: "7j/7", label: "urgences fuites & pannes" },
+      { value: "Devis", label: "écrit avant toute intervention" },
+      { value: "0", label: "frais surprise le jour J" },
+      { value: "Est", label: "lyonnais couvert en entier" },
+    ],
+    highlights: [
+      {
+        title: "L'urgence, traitée comme une urgence",
+        body: "Fuite, panne de chauffe-eau, chaudière en rade : l'assistant qualifie la gravité immédiatement et vous oriente vers le créneau du jour — ou vers les premiers gestes de sécurité en attendant.",
+        imageUrl: "https://images.unsplash.com/photo-1581092918056-0c4c3acd3789?w=1200&q=80&auto=format&fit=crop",
+        ctaLabel: "En savoir plus",
+      },
+      {
+        title: "Le devis d'abord, toujours",
+        body: "Envoyez des photos du problème via l'assistant : l'équipe chiffre plus vite et plus juste. Le devis est écrit, détaillé, et rien ne démarre sans votre accord.",
+        imageUrl: "https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?w=1200&q=80&auto=format&fit=crop",
+        ctaLabel: "En savoir plus",
+      },
+      {
+        title: "Chauffage : installation & entretien",
+        body: "Chaudières, chauffe-eau, radiateurs — installation, remplacement et contrats d'entretien annuels pour éviter la panne de janvier.",
+        imageUrl: "https://images.unsplash.com/photo-1621905252472-e8de7d8b9c66?w=1200&q=80&auto=format&fit=crop",
+        ctaLabel: "Voir notre expertise",
+      },
+    ],
+    expertiseIntro: "Du dépannage du dimanche soir à la rénovation complète de salle de bain — une seule équipe, un seul interlocuteur, un devis écrit à chaque fois.",
+    expertise: [
+      {
+        eyebrow: "Réactivité",
+        title: "Le dépannage, notre quotidien",
+        body: "Fuites, canalisations bouchées, chauffe-eau en panne : l'essentiel de notre activité, traité avec des créneaux d'urgence quotidiens et un camion équipé pour réparer du premier coup.",
+        bullets: [
+          "Créneaux d'urgence réservés chaque jour, 7j/7",
+          "Diagnostic par photos via l'assistant pour arriver avec la bonne pièce",
+          "Réparation durable privilégiée sur le remplacement systématique",
+        ],
+        imageUrl: "https://images.unsplash.com/photo-1581092918056-0c4c3acd3789?w=1200&q=80&auto=format&fit=crop",
+      },
+      {
+        eyebrow: "Confort & durabilité",
+        title: "Chauffage et rénovation, en confiance",
+        body: "Installation et remplacement de chaudières et chauffe-eau, contrats d'entretien annuels, et rénovation complète de salles de bain — planifiés, chiffrés et tenus dans les délais annoncés.",
+        bullets: [
+          "Devis écrit et détaillé avant chaque chantier",
+          "Techniciens agréés et assurés pour chaque domaine",
+          "Chantier protégé et laissé propre, à chaque fois",
+        ],
+        imageUrl: "https://images.unsplash.com/photo-1621905252472-e8de7d8b9c66?w=1200&q=80&auto=format&fit=crop",
+      },
+    ],
+    solutions: [
+      { title: "Fuite d'eau", body: "Localisation et réparation, avec les premiers gestes de sécurité expliqués dès votre message." },
+      { title: "Chauffe-eau & cumulus", body: "Dépannage, remplacement et conseil sur la bonne capacité pour votre foyer." },
+      { title: "Chaudière", body: "Panne, entretien annuel ou remplacement — avec un calendrier clair." },
+      { title: "Canalisations bouchées", body: "Débouchage et inspection pour traiter la cause, pas seulement le symptôme." },
+      { title: "Sanitaires", body: "Installation et remplacement de WC, robinetterie, éviers et douches." },
+      { title: "Rénovation de salle de bain", body: "Du plan au dernier joint, avec un seul interlocuteur du début à la fin." },
+    ],
+    process: [
+      { meta: "2 min", title: "Décrivez le problème", body: "Par message, avec des photos si possible — l'assistant signale immédiatement toute urgence." },
+      { meta: "Sous 24h", title: "Devis écrit", body: "Un chiffrage clair et détaillé, établi d'après vos photos ou une visite — sans frais surprise." },
+      { meta: "Au créneau annoncé", title: "Intervention", body: "L'équipe arrive équipée pour réparer du premier coup, et laisse le chantier propre." },
+    ],
+    services: [
+      { name: "Dépannage plomberie d'urgence", description: "Fuites, ruptures, engorgements — créneaux réservés chaque jour, 7j/7." },
+      { name: "Chauffe-eau & cumulus", description: "Dépannage, remplacement et installation, toutes énergies." },
+      { name: "Chaudières", description: "Installation, remplacement et contrats d'entretien annuels." },
+      { name: "Débouchage canalisations", description: "Débouchage et inspection caméra pour traiter la cause." },
+      { name: "Robinetterie & sanitaires", description: "Installation et remplacement de WC, robinets, éviers, douches." },
+      { name: "Rénovation salle de bain", description: "Rénovation complète, du plan à la pose, avec un seul interlocuteur." },
+    ],
+    whyUs: [
+      "Des créneaux d'urgence réservés chaque jour, 7j/7",
+      "Devis écrit avant toute intervention — zéro frais surprise",
+      "Diagnostic par photos : on arrive avec la bonne pièce",
+      "Techniciens agréés et assurés",
+      "Une entreprise familiale de Villeurbanne, pas une plateforme",
+    ],
+    values: [
+      { title: "Le devis avant les travaux", body: "Un prix écrit et détaillé avant toute intervention — jamais de surprise sur la facture." },
+      { title: "La réparation d'abord", body: "Quand une réparation durable est possible, on répare — on ne pousse pas au remplacement." },
+      { title: "Un chantier propre", body: "Sols protégés, gravats évacués, chantier laissé comme on l'a trouvé — en mieux." },
+      { title: "Joignables, vraiment", body: "L'assistant répond à toute heure, qualifie l'urgence et vous donne l'heure d'arrivée — même quand l'équipe est sur un chantier." },
+    ],
+    advice: [
+      { title: "Fuite d'eau : les premiers réflexes", body: "Couper l'arrivée d'eau, protéger le sol, photographier — les bons gestes avant notre arrivée." },
+      { title: "Odeur de gaz : que faire", body: "Ni flamme ni interrupteur — aérez, sortez, appelez les secours d'abord. Puis nous appelez pour la suite." },
+      { title: "Entretenir son chauffe-eau", body: "Les vérifications simples qui rallongent sa durée de vie et évitent la panne d'eau chaude." },
+      { title: "Préparer l'hiver", body: "Purge des radiateurs, entretien chaudière, protection des canalisations extérieures — la check-list d'automne." },
+      { title: "Obtenir un devis précis", body: "Les photos et informations qui permettent à l'équipe de chiffrer juste, du premier coup." },
+      { title: "Réparer ou remplacer ?", body: "Les signes qui indiquent qu'un remplacement s'impose vraiment — et ceux qui ne le justifient pas." },
+    ],
+    // Team: FICTIONAL placeholder people (invented names + illustrative stock
+    // portraits) — same rule as the other demos.
+    team: [
+      { name: "Marc Bardin", role: "Gérant · plombier-chauffagiste", bio: "Vingt ans de métier dans l'Est lyonnais. Il établit chaque devis lui-même et intervient sur les chantiers les plus techniques.", photoUrl: "https://images.unsplash.com/photo-1600486913747-55e5470d6f40?w=600&q=80&auto=format&fit=crop" },
+      { name: "Karim Haddad", role: "Technicien chauffage", bio: "Spécialiste chaudières et chauffe-eau, il assure les dépannages urgents et les entretiens annuels.", photoUrl: "https://images.unsplash.com/photo-1540569014015-19a7be504e3a?w=600&q=80&auto=format&fit=crop" },
+      { name: "Julie Perrin", role: "Planification & suivi", bio: "Elle coordonne les interventions et vous tient informé de l'heure d'arrivée — votre contact du devis à la fin du chantier.", photoUrl: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=600&q=80&auto=format&fit=crop" },
+    ],
+    faqs: [
+      { q: "Intervenez-vous en urgence le week-end ?", a: "Oui — des créneaux d'urgence sont réservés chaque jour, 7j/7, pour les fuites, pannes de chauffe-eau et chaudières. Écrivez à l'assistant : il qualifie l'urgence et vous donne le créneau le plus proche." },
+      { q: "Combien coûte une intervention ?", a: "Chaque chantier est différent — l'équipe chiffre d'après vos photos ou une visite, et vous recevez un devis écrit avant toute intervention. Jamais d'estimation à l'aveugle, jamais de frais surprise." },
+      { q: "Couvrez-vous mon adresse ?", a: "Nous intervenons à Villeurbanne et dans l'Est lyonnais. Partagez votre adresse à l'assistant : il confirme en quelques secondes." },
+      { q: "Êtes-vous assurés ?", a: "Oui — techniciens agréés et pleinement assurés pour chaque type d'intervention réalisé." },
+      { q: "Proposez-vous des contrats d'entretien ?", a: "Oui — entretien annuel de chaudière et de chauffe-eau, avec rappel automatique à l'échéance. Demandez à l'assistant." },
+    ],
+    practicalInfo: [
+      { title: "Devis & tarifs", body: "Un devis écrit avant toute intervention — confirmé d'après vos photos ou une visite. Aucun frais surprise le jour J." },
+      { title: "Moyens de paiement", body: "Carte bancaire, virement et chèques. Les modalités exactes figurent sur votre devis écrit." },
+      { title: "Zone d'intervention", body: "Villeurbanne et l'Est lyonnais (Bron, Vaulx-en-Velin, Décines, Croix-Luizet). Partagez votre adresse à l'assistant pour confirmation immédiate." },
+      { title: "En cas d'urgence, les premiers réflexes", body: "Fuite : coupez l'arrivée d'eau. Danger électrique : coupez au tableau. Odeur de gaz : ni flamme ni interrupteur — aérez, sortez, appelez d'abord les secours." },
+    ],
+    emergencyNote: "Une urgence ? Des créneaux le jour même sont réservés aux fuites, pannes et dépannages urgents — 7j/7.",
+    aiTone: "direct, fiable, rassurant dans l'urgence",
+    aiGreeting: "Bonjour 👋 Ici l'assistant de Bardin Plomberie & Chauffage. Avez-vous une urgence (fuite, panne), ou souhaitez-vous un devis ?",
     isDemo: true,
     demoContactUrl: "https://servolia.com/call",
     status: "published",

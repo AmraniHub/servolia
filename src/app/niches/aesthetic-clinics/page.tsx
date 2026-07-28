@@ -135,6 +135,10 @@ export default function AestheticClinicsPage() {
               >
                 Get a Free Audit →
               </Link>
+              <a href="/sites/demo-lumea" target="_blank" rel="noopener noreferrer"
+                className="px-8 py-4 rounded-xl border-2 border-[#36671E]/30 text-[#36671E] font-bold text-base hover:bg-[#EEF5EA] transition-colors">
+                ✨ See a live demo
+              </a>
               <Link
                 href="/pricing"
                 className="px-8 py-4 rounded-xl border border-[#A1A1AA] text-[#18181B] font-semibold text-base hover:bg-[#F5F4EF] transition-colors"

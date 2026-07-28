@@ -121,6 +121,10 @@ export default function DentistsPage() {
             <Link href="/free-audit" className="px-7 py-3.5 rounded-xl bg-gradient-to-r from-[#36671E] to-[#295115] text-[#FAFAF7] font-bold text-base hover:opacity-90 glow-button flex items-center gap-2">
               Get Free Clinic Audit <ArrowRight className="w-4 h-4" />
             </Link>
+            <a href="/sites/demo-metay" target="_blank" rel="noopener noreferrer"
+              className="px-6 py-3.5 rounded-xl border-2 border-[#36671E]/30 text-[#36671E] font-bold text-base hover:bg-[#EEF5EA] transition-colors">
+              🦷 See a live demo
+            </a>
             <Link href="/pricing" className="text-[#52525B] hover:text-[#18181B] text-sm font-semibold transition-colors">
               View pricing →
             </Link>

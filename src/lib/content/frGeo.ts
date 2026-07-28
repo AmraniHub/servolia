@@ -33,6 +33,7 @@ export interface FrGeoNiche {
   labelSingular: string;     // "dentiste"
   labelPlural: string;       // "cabinets dentaires"
   clientNoun: string;        // "patients"
+  demoUrl: string;           // the niche's live showcase demo — the strongest element on the page
   problemSlug: string;       // "les patients ne peuvent pas prendre rendez-vous en dehors des horaires"
   seoTitle: (city: string) => string;
   seoDesc: (city: string) => string;
@@ -69,6 +70,7 @@ export const FR_CITY_MAP: Record<string, FrCity> = Object.fromEntries(FR_CITIES.
 export const FR_GEO_NICHES: FrGeoNiche[] = [
   {
     slug: "dentiste",
+    demoUrl: "/sites/demo-metay",
     labelSingular: "cabinet dentaire",
     labelPlural: "cabinets dentaires",
     clientNoun: "patients",
@@ -92,6 +94,7 @@ export const FR_GEO_NICHES: FrGeoNiche[] = [
   },
   {
     slug: "clinique-esthetique",
+    demoUrl: "/sites/demo-lumea",
     labelSingular: "clinique esthétique",
     labelPlural: "cliniques esthétiques",
     clientNoun: "clientes",
@@ -115,6 +118,7 @@ export const FR_GEO_NICHES: FrGeoNiche[] = [
   },
   {
     slug: "services-a-domicile",
+    demoUrl: "/sites/demo-bardin",
     labelSingular: "artisan / service à domicile",
     labelPlural: "artisans et services à domicile",
     clientNoun: "clients",

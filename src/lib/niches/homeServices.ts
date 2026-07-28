@@ -145,6 +145,31 @@ export const HOME_SERVICES_ADVICE: Bilingual<ClientAdvice[]> = {
   ],
 };
 
+/** Urgent-callout strip under the header — same-day emergency work is the
+ *  core of this niche's economics (a missed urgent call = a competitor's job). */
+export const HOME_SERVICES_EMERGENCY_NOTE: Bilingual<string> = {
+  en: "Emergency? Same-day slots are kept for leaks, outages and urgent repairs.",
+  fr: "Une urgence ? Des créneaux le jour même sont réservés aux fuites, pannes et dépannages urgents.",
+};
+
+/** "Infos pratiques" defaults — generic-true for any home-services business;
+ *  softened wherever a claim could vary by company. Service area and travel
+ *  fees are the client's to specify — never invented here. */
+export const HOME_SERVICES_PRACTICAL_INFO: Bilingual<{ title: string; body: string }[]> = {
+  en: [
+    { title: "Quotes & pricing", body: "A written quote before any work starts — confirmed after seeing the job, in person or from your photos. No surprise fees on the day." },
+    { title: "Payment methods", body: "Card, bank transfer and cheques are commonly accepted — the exact terms are stated on your written quote." },
+    { title: "Service area", body: "Share your address with the assistant and it confirms in seconds whether you're in the intervention zone." },
+    { title: "In an emergency, first reflexes", body: "Active leak: shut off the water supply. Electrical hazard: cut the power at the panel. Gas smell: no flames or switches — ventilate, leave, and call emergency services first." },
+  ],
+  fr: [
+    { title: "Devis & tarifs", body: "Un devis écrit avant toute intervention — confirmé après avoir vu le chantier, sur place ou d'après vos photos. Aucun frais surprise le jour J." },
+    { title: "Moyens de paiement", body: "Carte bancaire, virement et chèques généralement acceptés — les modalités exactes figurent sur votre devis écrit." },
+    { title: "Zone d'intervention", body: "Partagez votre adresse à l'assistant : il confirme en quelques secondes si vous êtes dans la zone d'intervention." },
+    { title: "En cas d'urgence, les premiers réflexes", body: "Fuite active : coupez l'arrivée d'eau. Danger électrique : coupez le courant au tableau. Odeur de gaz : ni flamme ni interrupteur — aérez, sortez, et appelez d'abord les secours." },
+  ],
+};
+
 /** Short descriptive subtitle under the business name in the header. */
 export function homeServicesTagline(city: string | undefined, lang: "en" | "fr"): string {
   const base = lang === "fr" ? "Services à domicile" : "Home services";

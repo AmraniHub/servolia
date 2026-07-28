@@ -131,6 +131,10 @@ export default function HomeServicesPage() {
                 className="px-8 py-4 rounded-xl bg-[#36671E] text-[#FAFAF7] font-bold text-base hover:bg-[#295115] transition-colors shadow-card">
                 Get a Free Audit →
               </Link>
+              <a href="/sites/demo-bardin" target="_blank" rel="noopener noreferrer"
+                className="px-8 py-4 rounded-xl border-2 border-[#36671E]/30 text-[#36671E] font-bold text-base hover:bg-[#EEF5EA] transition-colors">
+                🔧 See a live demo
+              </a>
               <Link href="/pricing"
                 className="px-8 py-4 rounded-xl border border-[#D4D2CC] bg-white text-[#18181B] font-semibold text-base hover:bg-[#F5F4EF] transition-colors">
                 See Pricing
