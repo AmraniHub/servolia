@@ -52,6 +52,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${base}/free-audit`,                  lastModified: now, changeFrequency: "monthly", priority: 0.9 },
     { url: `${base}/how-it-works`,                lastModified: now, changeFrequency: "monthly", priority: 0.9 },
     { url: `${base}/case-studies`,               lastModified: now, changeFrequency: "monthly", priority: 0.9 },
+    { url: `${base}/examples`,                    lastModified: now, changeFrequency: "monthly", priority: 0.8 },
+    { url: `${base}/fr/exemples`,                  lastModified: now, changeFrequency: "monthly", priority: 0.8 },
     { url: `${base}/blog`,                         lastModified: now, changeFrequency: "weekly",  priority: 0.8 },
     { url: `${base}/about`,                        lastModified: now, changeFrequency: "monthly", priority: 0.7 },
     { url: `${base}/dentists`,                    lastModified: now, changeFrequency: "monthly", priority: 0.8 },

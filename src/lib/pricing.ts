@@ -41,6 +41,7 @@ export interface BuildPlan {
   nameFr: string;
   totalEur: number;   // full price in EUR
   delivery: string;   // e.g. "7 days"
+  deliveryFr?: string; // e.g. "7 jours" — FR pages must not render the EN string
   monthlyEur?: number; // optional recurring component
   /**
    * Retired plans are no longer sold: they're hidden from every public page and
@@ -52,7 +53,7 @@ export interface BuildPlan {
 
 export const BUILD_PLANS: Record<string, BuildPlan> = {
   // The only thing sold up front: installation of the system.
-  setup:   { key: "setup",   name: "Installation", nameFr: "Mise en place",        totalEur: 490, delivery: "7 days" },
+  setup:   { key: "setup",   name: "Installation", nameFr: "Mise en place",        totalEur: 490, delivery: "7 days", deliveryFr: "7 jours" },
 
   // ── Retired 2026-07-28 — the three-way build choice was replaced by one
   // setup fee plus a subscription tier. Kept so historical builds render. ──

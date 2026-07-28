@@ -276,6 +276,25 @@ export const FEATURES: SystemFeature[] = [
     code: "src/lib/clientSites.ts (planFeatures) · src/components/ClientSite.tsx · /api/chat (gate) · src/lib/siteArchive.ts · /api/admin/archive-site · /api/admin/set-site-status (auto-archive)",
   },
   {
+    name: "Templates system — registry, auto-wire, and the public catalog",
+    summary: "The ready-to-deliver template catalog (2026-07-28): one registry file lists every fully-wired niche template, a paying client's draft site generates itself the moment their intake lands, and prospects can click the live product before choosing a plan.",
+    how: [
+      "src/lib/templates.ts is the single registry — one SITE_TEMPLATES entry per niche template that is wired end-to-end (niche module + AI copy playbook + receptionist prompt + a live fictional showcase). The registry is METADATA ONLY: it never changes what a template generates, so adding an entry can't ship unreviewed defaults. An entry only exists when the wiring is complete — that's the gate.",
+      "Auto-wire: when a paid client submits the intake form, /api/contact links the answers to their build and immediately runs generateSiteForBuild() (src/lib/generateSite.ts — the same shared path the admin Generate button uses: configFromIntake → aiEnrichConfig → draft client_sites row). By the time you open the admin, the draft is already waiting. Failure is swallowed — intake never breaks because generation hiccupped — and the Telegram intake alert says whether the draft is ready or needs a manual generate.",
+      "/admin/templates is the readiness board: per template — wiring checklist, live demo link, real-site counts from client_sites, and the 5-step 'how a new client gets wired' strip (pays installation → fills intake → draft auto-generates → you review & polish → publish, plan starts).",
+      "Public catalog: /examples and /fr/exemples show each template with what's included and a click-through to the live fictional demo (Cabinet Nicolas Metay · Institut Luméa · Bardin Plomberie). The homepage's old fake-named 'scenario' cards were replaced by LiveShowcase — scaled live iframes of the real demos in browser frames. Honesty rule everywhere: demos are labeled fictional; the credibility comes from the product being clickable, not from invented results.",
+    ],
+    use: [
+      "New client, happy path: nothing. They pay, they fill the intake, you get a Telegram with the draft link — open /admin/sites, polish, publish.",
+      "If the Telegram says generation failed (usually no Anthropic credits): open the build in /admin/builds and hit Generate — same code path, safe to re-run.",
+      "Selling: send a prospect /examples (or /fr/exemples), or generate a personalized demo with THEIR name from /admin/demo — the registry page links both.",
+      "New niche template: ship the three wiring touchpoints + a demo site first, THEN add the SITE_TEMPLATES entry. Never the other way round.",
+    ],
+    cost: "Free — one Claude call per intake (same call the manual Generate made; ~cents).",
+    value: "Delivery time per new client drops to a review-and-publish, the sales page can prove the product is real without fake testimonials, and the founder can see at a glance which niches are actually ready to sell.",
+    code: "src/lib/templates.ts · src/lib/generateSite.ts · /api/contact (intake) · src/app/admin/templates · src/app/examples + src/app/fr/exemples · src/components/LiveShowcase.tsx",
+  },
+  {
     name: "Security model — logins, rate limits, 2FA",
     summary: "How the admin and client doors are locked: fail-closed JWT secrets, constant-time checks, cross-instance rate limiting, optional TOTP 2FA for the admin, and site-wide security headers.",
     how: [

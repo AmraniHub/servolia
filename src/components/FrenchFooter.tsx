@@ -7,6 +7,7 @@ const systemes = [
   { label: "Tarifs", href: "/fr/tarifs" },
   { label: "Comment ça marche", href: "/fr/comment-ca-marche" },
   { label: "Cas clients", href: "/fr/cas-clients" },
+  { label: "Exemples", href: "/fr/exemples" },
 ];
 
 const entreprise = [

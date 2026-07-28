@@ -6,6 +6,7 @@ import Link from "next/link";
 import HeroProduct from "@/components/HeroProduct";
 import AIReceptionistDemo from "@/components/AIReceptionistDemo";
 import ShowcaseSlider from "@/components/ShowcaseSlider";
+import LiveShowcase from "@/components/LiveShowcase";
 import ROICalculator from "@/components/ROICalculator";
 import StickyMobileCTA from "@/components/StickyMobileCTA";
 import FrenchNav from "@/components/FrenchNav";
@@ -433,15 +434,13 @@ export default function FrenchHome() {
             </p>
           </FadeUp>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             {[
               { emoji: "🦷", title: "Cabinets dentaires & implants", pain: "Les réservations du soir partent chez les confrères", avg: "1,5k–5k € par patient", href: "/fr/dentistes" },
               { emoji: "💉", title: "Cliniques esthétiques & med spas", pain: "Des DMs Instagram qui convertissent à 5 %", avg: "500–3k € par visite", href: "/fr/esthetique" },
-              { emoji: "🏠", title: "Immobilier de prestige", pain: "10 min de délai de réponse = mandat perdu", avg: "10k–100k € de commission", href: "/fr/contact" },
               { emoji: "🌬️", title: "CVC & services à domicile", pain: "L'accueil téléphonique seul coûte 10h/semaine", avg: "3k–30k $ par chantier", href: "/fr/contact" },
               { emoji: "🔬", title: "Chirurgie esthétique", pain: "Consultations réservées 6 semaines à l'avance", avg: "5k–25k $ par intervention", href: "/fr/contact" },
               { emoji: "🐾", title: "Vétérinaires spécialisés", pain: "Des références bloquées au téléphone", avg: "1k–10k $ par cas", href: "/fr/contact" },
-              { emoji: "⚖️", title: "Cabinets d'avocats", pain: "Des leads qualifiés jamais relancés", avg: "5k–50k € par dossier", href: "/fr/contact" },
               { emoji: "💎", title: "Cliniques PMA & fertilité", pain: "Les patients internationaux ne peuvent pas réserver", avg: "8k–20k € par cycle", href: "/fr/contact" },
             ].map((n, i) => (
               <FadeUp key={n.title} delay={i * 0.05}>
@@ -672,41 +671,9 @@ export default function FrenchHome() {
       </section>
 
       {/* ══════════════════════════════════════════════════════════════
-          EXAMPLE RESULTS
+          LIVE SHOWCASE — les vrais templates, intégrés en direct
       ══════════════════════════════════════════════════════════════ */}
-      <section className="py-20 lg:py-28 bg-[#FAFAF7]">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <FadeUp className="text-center mb-12">
-            <p className="text-xs font-black text-[#36671E] uppercase tracking-widest mb-3">Exemples de résultats</p>
-            <h2 className="text-3xl sm:text-4xl font-black text-[#18181B] mb-3">Ce qu&apos;un système Servolia peut livrer.</h2>
-            <p className="text-xs text-[#71717A] max-w-2xl mx-auto">
-              Résultats illustratifs basés sur des références typiques du secteur. Les résultats individuels varient. Voir les{" "}
-              <Link href="/fr/cas-clients" className="text-[#36671E] underline">exemples de déploiements</Link>.
-            </p>
-          </FadeUp>
-          <div className="grid md:grid-cols-3 gap-5">
-            {[
-              { name: "Scénario cabinet dentaire", role: "Cabinet moyen · Europe de l'Ouest", text: "Après l'installation du Système de Réservation IA, un cabinet type passe de quelques réservations en ligne par mois à 15+ dès les premières semaines — le chatbot gère automatiquement toutes les demandes hors horaires.", result: "+400 % de réservations" },
-              { name: "Scénario immobilier", role: "Agent indépendant · Grande ville", text: "Un agent type passe de la qualification manuelle de chaque demande à des leads pré-qualifiés reçus sur son téléphone — système entièrement en ligne en 5 jours.", result: "Leads qualifiés en automatique" },
-              { name: "Scénario services à domicile", role: "Entreprise CVC · Marché américain", text: "Le chatbot IA qualifie les demandes 24h/24 — les entreprises de services gagnent typiquement 10h+ par semaine d'administratif téléphonique et récupèrent les réservations qui partaient en messagerie vocale.", result: "10 h/semaine gagnées" },
-            ].map((t, i) => (
-              <FadeUp key={i} delay={i * 0.1}>
-                <div className="bg-white rounded-2xl p-7 border border-[#E8E6E0] hover:shadow-card transition-all duration-300 h-full flex flex-col">
-                  <div className="flex items-center justify-between mb-5">
-                    <span className="text-[10px] font-black text-[#71717A] bg-[#F5F4EF] px-2.5 py-1 rounded-full uppercase tracking-widest">Scénario</span>
-                    <span className="text-[10px] font-black text-[#36671E] bg-[#EEF5EA] px-2.5 py-1 rounded-full">{t.result}</span>
-                  </div>
-                  <p className="text-[#52525B] text-sm leading-relaxed flex-1 mb-5">{t.text}</p>
-                  <div className="border-t border-[#F5F4EF] pt-4">
-                    <p className="font-bold text-[#18181B] text-sm">{t.name}</p>
-                    <p className="text-[#A1A1AA] text-xs mt-0.5">{t.role}</p>
-                  </div>
-                </div>
-              </FadeUp>
-            ))}
-          </div>
-        </div>
-      </section>
+      <LiveShowcase lang="fr" />
 
       {/* ══════════════════════════════════════════════════════════════
           FORMULES MENSUELLES — le produit. Prix : src/lib/pricing.ts.

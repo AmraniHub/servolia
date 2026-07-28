@@ -1,13 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
+import { after } from "next/server";
 import { supabaseAdmin, estimateLeadValue, type LeadSource } from "@/lib/supabase";
 import { sendEmail, auditConfirmationEmail } from "@/lib/email";
 import { sendMetaCapiEvent } from "@/lib/metaCapi";
+import { generateSiteForBuild } from "@/lib/generateSite";
+import { sendTelegramMessage, telegramConfigured } from "@/lib/telegram";
+
+export const runtime = "nodejs";
+// The intake auto-wire runs AFTER the response (see after() below) but shares
+// this route's duration budget — the Claude copy call needs the room.
+export const maxDuration = 60;
 
 /**
  * Receives every form submission: free-audit, contact, intake.
  * 1. Writes to Supabase (CRM source of truth)
  * 2. Notifies Telegram (instant alert)
  * 3. Pushes to Google Sheets (backup / external workflows)
+ * Intake submissions additionally auto-generate the draft client site.
  */
 
 export async function POST(req: NextRequest) {
@@ -73,7 +82,7 @@ export async function POST(req: NextRequest) {
         const { data: build } = await db.from("builds")
           .select("id, lead_id").eq("checkout_session_id", sessionId).maybeSingle();
         if (build) {
-          await db.from("builds").update({
+          const { error: updateErr } = await db.from("builds").update({
             intake_data: body,
             business: resolvedBiz || undefined,
             status: "building",
@@ -84,6 +93,33 @@ export async function POST(req: NextRequest) {
               lead_id: build.lead_id,
               type: "note",
               description: "✅ Intake form completed — build started",
+            });
+          }
+
+          // ── 1c. Auto-generate the draft site from the fresh intake ──────
+          // Runs AFTER the response is sent (next/server after()), so the
+          // client who just submitted the form never waits on the 10–30s
+          // Claude copywriting call. By the time the founder opens the admin,
+          // the draft should already exist — the founder reviews and publishes
+          // in /admin/sites; auto-generation only prepares the draft.
+          // Strictly best-effort: generateSiteForBuild returns null instead
+          // of throwing, and the try/catch is belt-and-braces. The outcome
+          // arrives as a second, silent Telegram message.
+          if (!updateErr) {
+            const buildId = build.id as string;
+            after(async () => {
+              let draftSite: { slug: string; ai: boolean } | null = null;
+              try {
+                draftSite = await generateSiteForBuild(buildId);
+              } catch {
+                draftSite = null;
+              }
+              if (telegramConfigured()) {
+                const text = draftSite
+                  ? `🪄 *Draft site ready* — review & publish\nhttps://servolia.com/sites/${draftSite.slug}\n[Open in admin](https://servolia.com/admin/sites)`
+                  : `⚠️ *Draft generation failed* for the new intake — generate manually from [the build page](https://servolia.com/admin/builds/${buildId})`;
+                await sendTelegramMessage(text, undefined, { silent: true }); // follow-up to the intake alert — no second buzz
+              }
             });
           }
         }

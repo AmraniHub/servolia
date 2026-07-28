@@ -9,6 +9,7 @@ import ChatWidget from "@/components/ChatWidget";
 import HeroProduct from "@/components/HeroProduct";
 import AIReceptionistDemo from "@/components/AIReceptionistDemo";
 import ShowcaseSlider from "@/components/ShowcaseSlider";
+import LiveShowcase from "@/components/LiveShowcase";
 import ROICalculator from "@/components/ROICalculator";
 import StickyMobileCTA from "@/components/StickyMobileCTA";
 import { FaqSchema } from "@/components/StructuredData";
@@ -504,14 +505,13 @@ export default function HomePage() {
             </p>
           </FadeUp>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             {[
               { emoji: "🦷", title: "Dental & Implant Clinics", pain: "After-hours bookings going to competitors", avg: "€1.5k–€5k per patient", href: "/dentists" },
               { emoji: "💉", title: "Aesthetic & Med Spas", pain: "Instagram DMs converting at 5%", avg: "€500–€3k per visit", href: "/niches/aesthetic-clinics" },
               { emoji: "🌬️", title: "HVAC & Home Services", pain: "Phone-only intake costs 10h/week", avg: "$3k–$30k per job", href: "/niches/home-services" },
               { emoji: "🔬", title: "Cosmetic Surgery", pain: "Consultations booked 6 weeks out", avg: "$5k–$25k per procedure", href: "/contact" },
               { emoji: "🐾", title: "Veterinary Specialty", pain: "Referrals stuck in phone tag", avg: "$1k–$10k per case", href: "/contact" },
-              { emoji: "⚖️", title: "Law Firms", pain: "Qualified leads getting no follow-up", avg: "€5k–€50k per case", href: "/contact" },
               { emoji: "💎", title: "IVF & Fertility Clinics", pain: "International patients can't book online", avg: "€8k–€20k per cycle", href: "/contact" },
             ].map((n, i) => (
               <FadeUp key={n.title} delay={i * 0.05}>
@@ -751,41 +751,9 @@ export default function HomePage() {
       </section>
 
       {/* ══════════════════════════════════════════════════════════════
-          EXAMPLE RESULTS
+          LIVE SHOWCASE — the real templates, embedded live
       ══════════════════════════════════════════════════════════════ */}
-      <section className="py-20 lg:py-28 bg-[#FAFAF7]">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <FadeUp className="text-center mb-12">
-            <p className="text-xs font-black text-[#36671E] uppercase tracking-widest mb-3">Example Results</p>
-            <h2 className="text-3xl sm:text-4xl font-black text-[#18181B] mb-3">What a Servolia system can deliver.</h2>
-            <p className="text-xs text-[#71717A] max-w-2xl mx-auto">
-              Illustrative outcomes based on typical service-business benchmarks. Individual results vary. See the full{" "}
-              <Link href="/case-studies" className="text-[#36671E] underline">example deployments</Link>.
-            </p>
-          </FadeUp>
-          <div className="grid md:grid-cols-3 gap-5">
-            {[
-              { name: "Dental clinic scenario", role: "Mid-size practice · Western Europe", text: "After installing the AI Booking System, a typical clinic moves from a handful of online bookings per month to 15+ in the first weeks — the chatbot handles all after-hours enquiries automatically.", result: "+400% online bookings" },
-              { name: "Real estate scenario", role: "Solo agent · Major city", text: "A typical agent goes from manually qualifying every enquiry to receiving pre-qualified leads on their phone — system fully live in 5 days.", result: "Qualified leads on autopilot" },
-              { name: "Home services scenario", role: "HVAC business · US market", text: "The AI chatbot qualifies leads 24/7 — service businesses typically save 10+ hours per week on phone admin and recover bookings that previously went to voicemail.", result: "10 hrs/week saved" },
-            ].map((t, i) => (
-              <FadeUp key={i} delay={i * 0.1}>
-                <div className="bg-white rounded-2xl p-7 border border-[#E8E6E0] hover:shadow-card transition-all duration-300 h-full flex flex-col">
-                  <div className="flex items-center justify-between mb-5">
-                    <span className="text-[10px] font-black text-[#71717A] bg-[#F5F4EF] px-2.5 py-1 rounded-full uppercase tracking-widest">Scenario</span>
-                    <span className="text-[10px] font-black text-[#36671E] bg-[#EEF5EA] px-2.5 py-1 rounded-full">{t.result}</span>
-                  </div>
-                  <p className="text-[#52525B] text-sm leading-relaxed flex-1 mb-5">{t.text}</p>
-                  <div className="border-t border-[#F5F4EF] pt-4">
-                    <p className="font-bold text-[#18181B] text-sm">{t.name}</p>
-                    <p className="text-[#A1A1AA] text-xs mt-0.5">{t.role}</p>
-                  </div>
-                </div>
-              </FadeUp>
-            ))}
-          </div>
-        </div>
-      </section>
+      <LiveShowcase lang="en" />
 
       {/* ══════════════════════════════════════════════════════════════
           MONTHLY PLANS — the product. Prices from src/lib/pricing.ts.

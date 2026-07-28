@@ -21,6 +21,7 @@ const niches = [
 const company = [
   { label: "How it Works", href: "/how-it-works" },
   { label: "Case Studies", href: "/case-studies" },
+  { label: "Examples", href: "/examples" },
   { label: "Insights", href: "/blog" },
   { label: "Pricing", href: "/pricing" },
   { label: "Free Audit", href: "/free-audit" },
