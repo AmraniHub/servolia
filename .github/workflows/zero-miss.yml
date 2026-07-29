@@ -1,0 +1,19 @@
+name: Zero-Miss guarantee watchdog
+
+# The CGV (section 4 bis) refund a client's whole month if a single enquiry
+# goes unanswered past 60 seconds. This checks daily so a breach reaches the
+# founder before it reaches the client. Silent when everything is compliant.
+
+on:
+  schedule:
+    - cron: "0 7 * * *" # every day, 07:00 UTC
+  workflow_dispatch: {}
+
+jobs:
+  watchdog:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Scan response times against the 60s guarantee
+        run: |
+          curl -sf -X POST "https://servolia.com/api/cron/zero-miss" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"

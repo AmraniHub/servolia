@@ -16,6 +16,8 @@ import {
 } from "lucide-react";
 import type { PaymentAlert } from "@/lib/clientBilling";
 import { T, locale, formatDate, formatPeriod, type Lang, type Dict } from "@/components/portal/portalDict";
+import ZeroMissPanel from "@/components/portal/ZeroMissPanel";
+import type { ComplianceReport } from "@/lib/zeroMiss";
 import { PStat, PPanel, PBars, PChart } from "@/components/portal/TrafficWidgets";
 
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
@@ -64,8 +66,8 @@ interface PortalTraffic {
 }
 
 export default function PortalDashboard({
-  email, builds, subscription, siteSlugs, scopesByLeadId, paymentAlert,
-}: { email: string; builds: Build[]; subscription?: Client | null; siteSlugs?: Record<string, string>; scopesByLeadId?: Record<string, { token: string; accepted: boolean }>; paymentAlert?: PaymentAlert | null }) {
+  email, builds, subscription, siteSlugs, scopesByLeadId, paymentAlert, zeroMiss,
+}: { email: string; builds: Build[]; subscription?: Client | null; siteSlugs?: Record<string, string>; scopesByLeadId?: Record<string, { token: string; accepted: boolean }>; paymentAlert?: PaymentAlert | null; zeroMiss?: ComplianceReport | null }) {
   const router = useRouter();
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [lang, setLang] = useState<Lang>("en");
@@ -542,6 +544,10 @@ export default function PortalDashboard({
                 </button>
               </div>
             )}
+
+            {/* Response-time guarantee — CGV 4 bis requires the client can
+                consult their own measured response times here. */}
+            {zeroMiss && <ZeroMissPanel report={zeroMiss} lang={lang} />}
 
             {/* Subscription */}
             <div className="rounded-2xl border border-[var(--p-border)] bg-[var(--p-surface)] p-4 sm:p-5 flex flex-wrap items-center gap-4" style={{ boxShadow: "var(--p-shadow)" }}>

@@ -160,6 +160,13 @@ export async function POST(req: NextRequest) {
       siteSlug?: string;
     };
 
+    // ZERO-MISS CLOCK. The CGV (s4 bis) guarantee a reply within 60 seconds,
+    // measured on Servolia's own server-side timestamps — so the clock starts
+    // the moment the enquiry lands here and is stamped onto the assistant
+    // message we persist. Without this the guarantee is unverifiable, which is
+    // worse than not offering one. See src/lib/zeroMiss.ts.
+    const replyClockStart = Date.now();
+
     const cfConfigured = !!(process.env.CLOUDFLARE_ACCOUNT_ID && process.env.CLOUDFLARE_AI_TOKEN);
     if (!process.env.ANTHROPIC_API_KEY && !cfConfigured) {
       // No AI backend at all — tell the widget to degrade to its lead-capture form.
@@ -192,7 +199,11 @@ export async function POST(req: NextRequest) {
       // Best-effort persistence tagged to the client (never blocks the reply).
       if (db && sessionId) {
         try {
-          const fullMessages = [...messages, { role: "assistant" as const, content: reply }];
+          const replyMs = Date.now() - replyClockStart;
+          const fullMessages = [
+            ...messages,
+            { role: "assistant" as const, content: reply, ts: new Date().toISOString(), ms: replyMs },
+          ];
           const allText = fullMessages.map(m => m.content).join(" ");
           const emailMatch = allText.match(/[\w.+-]+@[\w-]+\.[\w.-]+/);
           const phoneMatch = allText.match(/\+?[\d\s().-]{8,}/);
@@ -270,7 +281,11 @@ export async function POST(req: NextRequest) {
 
     // ── Persist chat session ──────────────────────────────────────────────
     if (db && sessionId) {
-      const fullMessages = [...messages, { role: "assistant" as const, content: reply }];
+      const replyMs = Date.now() - replyClockStart;
+      const fullMessages = [
+        ...messages,
+        { role: "assistant" as const, content: reply, ts: new Date().toISOString(), ms: replyMs },
+      ];
       const allText = fullMessages.map(m => m.content).join(" ");
       const emailMatch = allText.match(/[\w.+-]+@[\w-]+\.[\w.-]+/);
       const phoneMatch = allText.match(/\+?[\d\s().-]{8,}/);

@@ -3,6 +3,7 @@ import { getClientEmail } from "@/lib/clientAuth";
 import { supabaseAdmin, type Build, type Client } from "@/lib/supabase";
 import PortalDashboard from "@/components/PortalDashboard";
 import { paymentAlertFrom } from "@/lib/clientBilling";
+import { complianceFor, type ComplianceReport } from "@/lib/zeroMiss";
 
 export const dynamic = "force-dynamic";
 
@@ -50,5 +51,11 @@ export default async function PortalPage() {
 
   const paymentAlert = paymentAlertFrom(subscription);
 
-  return <PortalDashboard email={email} builds={builds} subscription={subscription} siteSlugs={siteSlugs} scopesByLeadId={scopesByLeadId} paymentAlert={paymentAlert} />;
+  // CGV 4 bis promises the client can consult their own response times here.
+  // Read for their primary published site; skipped when they have none yet.
+  const primarySlug = Object.values(siteSlugs)[0] ?? null;
+  let zeroMiss: ComplianceReport | null = null;
+  if (primarySlug) zeroMiss = await complianceFor(primarySlug);
+
+  return <PortalDashboard email={email} builds={builds} subscription={subscription} siteSlugs={siteSlugs} scopesByLeadId={scopesByLeadId} paymentAlert={paymentAlert} zeroMiss={zeroMiss} />;
 }
