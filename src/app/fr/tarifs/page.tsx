@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import CheckoutButton from "@/components/CheckoutButton";
 import CarePlansSection from "@/components/CarePlansSection";
 import { SETUP_PLAN, PLANS } from "@/lib/pricing";
 import StickyMobileCTA from "@/components/StickyMobileCTA";
@@ -105,16 +104,12 @@ export default async function FrenchPricingPage() {
                   </li>
                 ))}
               </ul>
-              {/* Réglée en une fois — /api/checkout ne découpe plus en acompte,
-                  donc le bouton et la carte disent la même chose. */}
-              <CheckoutButton
-                plan={SETUP_PLAN.key}
-                lang="fr"
-                label={`Régler la mise en place — ${SETUP_PLAN.totalEur} €`}
-                className="w-full text-center py-3 rounded-xl font-black text-sm bg-[#36671E] text-[#FAFAF7] hover:bg-[#295115] transition-colors disabled:opacity-60 mb-3"
-              />
+              {/* Pas de bouton séparé : la mise en place est encaissée par le
+                  paiement de la formule ci-dessous — un seul endroit pour payer,
+                  aucun risque d'avoir réglé l'un sans l'autre. */}
               <div className="rounded-xl bg-[#EEF5EA] p-3">
-                <p className="text-xs font-black text-[#36671E]">Offerte si vous démarrez sur une formule annuelle.</p>
+                <p className="text-xs font-black text-[#36671E] mb-1">Offerte si vous démarrez sur une formule annuelle.</p>
+                <p className="text-xs text-[#52525B]">En mensuel, elle est prélevée une seule fois avec votre premier paiement ci-dessous — rien à acheter séparément.</p>
               </div>
             </div>
 

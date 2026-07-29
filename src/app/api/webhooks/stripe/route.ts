@@ -5,7 +5,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { sendEmail, installationPaidEmail } from "@/lib/email";
 import { sendMetaCapiEvent } from "@/lib/metaCapi";
 import { generateScopeDocument } from "@/lib/scopeDocument";
-import { BUILD_PLANS, resolvePlan } from "@/lib/pricing";
+import { BUILD_PLANS, SETUP_PLAN, resolvePlan } from "@/lib/pricing";
 import { provisionAddon } from "@/lib/provisioning";
 
 export const runtime = "nodejs";
@@ -91,11 +91,50 @@ export async function POST(req: NextRequest) {
           subscription_id: (session.subscription as string) ?? null,
         }).select("id").single();
 
+        // ── Open a build so delivery actually starts ──────────────────────
+        // A self-serve subscriber has no build: they never went through the
+        // scope flow. Without this they'd be an active paying client with
+        // nothing in the pipeline, no intake, and no site ever generated.
+        // Guarded on email so a client who DID come through the scope flow
+        // (and already has a build) doesn't get a duplicate.
+        const installationCents = Number(session.metadata?.installation_cents ?? 0);
+        const installationPaid = Number.isFinite(installationCents) ? installationCents / 100 : 0;
+        let buildOpened = false;
+        if (customerEmail) {
+          const { data: existingBuild } = await db.from("builds")
+            .select("id").eq("email", customerEmail).maybeSingle();
+          if (!existingBuild) {
+            const { error: buildErr } = await db.from("builds").insert({
+              business: "Pending intake",
+              email: customerEmail,
+              plan: SETUP_PLAN.key,
+              plan_name: SETUP_PLAN.name,
+              total_price: installationPaid,
+              deposit_paid: installationPaid, // column name predates the model change
+              balance_due: 0,
+              status: "intake",
+              customer_id: (session.customer as string) ?? null,
+            });
+            buildOpened = !buildErr;
+          }
+        }
+
+        // Send them to the intake form — the build cannot start without it.
+        if (customerEmail && buildOpened) {
+          const firstName = customerEmail.split("@")[0];
+          const emailLang = session.metadata?.lang === "fr" ? "fr" : "en";
+          const tpl = installationPaidEmail(firstName, planLabel, installationPaid, emailLang);
+          sendEmail(customerEmail, tpl.subject, tpl.html).catch(() => {});
+        }
+
         const tgToken = process.env.TELEGRAM_BOT_TOKEN;
         const tgChatId = process.env.TELEGRAM_CHAT_ID;
         if (tgToken && tgChatId) {
-          const msg = `🔁 *New ${planLabel} plan subscriber — €${amount}/mo*\n${customerEmail ?? "no email"}\n\n` +
-                      (client ? `[Open in CRM](https://servolia.com/admin/clients/${client.id})` : "");
+          const billingLabel = session.metadata?.billing === "annual" ? "annual" : "monthly";
+          const msg = `🔁 *New ${planLabel} subscriber — €${amount} ${billingLabel}*\n${customerEmail ?? "no email"}\n` +
+                      `Installation collected: €${installationPaid.toLocaleString()}${billingLabel === "annual" ? " (waived — annual)" : ""}\n` +
+                      (buildOpened ? "🧱 Build opened — waiting on their intake form\n" : "ℹ️ Existing build found — no new build opened\n") +
+                      (client ? `\n[Open in CRM](https://servolia.com/admin/clients/${client.id})` : "");
           fetch(`https://api.telegram.org/bot${tgToken}/sendMessage`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },

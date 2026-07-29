@@ -9,8 +9,11 @@ import { PLANS, PLAN_ORDER, POPULAR_PLAN_KEY, ADDONS, SETUP_PLAN } from "@/lib/p
  * The subscription section — the actual product, on every marketing page.
  *
  * Post-2026-07-28 model: one installation fee, then a monthly plan tiered by
- * included AI conversations. Annual is presented as the default because it
- * brings a year of cash up front and locks twelve months against churn.
+ * included AI conversations. ONE checkout collects both — the monthly path
+ * charges the installation as a one-time line item beside the subscription,
+ * the annual path genuinely waives it. There is deliberately no separate
+ * "buy the installation" button anywhere, so nobody can pay one without the
+ * other. See /api/checkout-subscription.
  * (File name kept as CarePlansSection so every existing import keeps working;
  * "Care" is no longer a plan name.)
  */
@@ -29,8 +32,8 @@ const T = {
     monthly: "Monthly", annual: "Annual", twoFree: "2 months free",
     perMo: "/mo", perYr: "/yr",
     effMo: (n: number) => `≈ €${n}/mo · 2 months free`,
-    setupLine: `+ €${SETUP_PLAN.totalEur} installation, once — waived on annual`,
-    setupLineAnnual: "Installation included — you're paying yearly",
+    setupLine: `+ €${SETUP_PLAN.totalEur} installation, charged once with this payment`,
+    setupLineAnnual: "Installation waived — you're paying yearly",
     subscribe: "Get started →", popular: "MOST CHOSEN",
     convo: (n: number) => `${n} AI conversations / month`,
     convoNote: "Go over and we simply move you up a plan — never a surprise bill.",
@@ -79,7 +82,7 @@ const T = {
     monthly: "Mensuel", annual: "Annuel", twoFree: "2 mois offerts",
     perMo: "/mois", perYr: "/an",
     effMo: (n: number) => `≈ ${n} €/mois · 2 mois offerts`,
-    setupLine: `+ ${SETUP_PLAN.totalEur} € de mise en place, une seule fois — offerte en annuel`,
+    setupLine: `+ ${SETUP_PLAN.totalEur} € de mise en place, prélevés une fois avec ce paiement`,
     setupLineAnnual: "Mise en place offerte — vous payez à l'année",
     subscribe: "Démarrer →", popular: "LE PLUS CHOISI",
     convo: (n: number) => `${n} conversations IA / mois`,
@@ -144,7 +147,7 @@ export default function CarePlansSection({ lang = "en" }: { lang?: "en" | "fr" }
           <p className="text-[#71717A] max-w-lg mx-auto text-sm">{t.sub}</p>
         </div>
 
-        {/* Billing toggle — annual is pre-selected */}
+        {/* Billing toggle — monthly is pre-selected; see the note on `billing` */}
         <div className="flex justify-center mb-10">
           <div className="inline-flex items-center gap-1 p-1 rounded-xl bg-white border border-[#E8E6E0]">
             {(["monthly", "annual"] as Billing[]).map((b) => (
