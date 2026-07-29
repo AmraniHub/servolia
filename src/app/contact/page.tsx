@@ -21,7 +21,7 @@ export default function ContactPage() {
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
-  const [form, setForm] = useState({ name: "", email: "", business: "", industry: "", plan: "", website: "", problem: "" });
+  const [form, setForm] = useState({ name: "", email: "", business: "", industry: "", plan: "", website: "", problem: "", url: "" });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -133,6 +133,13 @@ export default function ContactPage() {
               ) : (
                 <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-[#E8E6E0] p-8 shadow-sm">
                   <h2 className="text-xl font-black text-[#18181B] mb-6">Tell us about your business</h2>
+
+                  {/* Honeypot — invisible to real visitors, bait for bots that fill every field */}
+                  <div style={{ position: "absolute", left: "-9999px", top: "auto", width: 1, height: 1, overflow: "hidden" }} aria-hidden="true">
+                    <label htmlFor="url">Leave this field empty</label>
+                    <input type="text" id="url" name="url" tabIndex={-1} autoComplete="off"
+                      value={form.url} onChange={handleChange} />
+                  </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-5">
                     <div>
