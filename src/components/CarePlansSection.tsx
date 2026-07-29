@@ -126,9 +126,12 @@ const T = {
 
 export default function CarePlansSection({ lang = "en" }: { lang?: "en" | "fr" }) {
   const t = T[lang === "fr" ? "fr" : "en"];
-  // Annual first: it's better for the client (2 months free) and much better
-  // for cash flow and churn.
-  const [billing, setBilling] = useState<Billing>("annual");
+  // MONTHLY is the default view. Annual is the better deal and better for cash
+  // flow, but landing on a yearly figure makes the plan look several times more
+  // expensive than it is at the exact moment a visitor is deciding whether to
+  // keep reading. Show the monthly number first and let the toggle (which keeps
+  // its "2 months free" badge) sell the upgrade.
+  const [billing, setBilling] = useState<Billing>("monthly");
   const fr = lang === "fr";
   const price = (n: number) => (fr ? `${n.toLocaleString("fr-FR")} €` : `€${n.toLocaleString()}`);
 
