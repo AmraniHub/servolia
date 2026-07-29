@@ -305,6 +305,7 @@ export const FEATURES: SystemFeature[] = [
       "Rate limiter: rate_limits table in Supabase (one row per key) = one global window across all serverless instances; degrades gracefully to per-instance memory until the SQL block is run.",
       "Headers on every response: HSTS (1 year), X-Content-Type-Options nosniff, X-Frame-Options SAMEORIGIN, Referrer-Policy strict-origin-when-cross-origin, Permissions-Policy denying camera/mic/geo/payment.",
       "Already solid before this pass: Stripe webhook signature verification, Bearer-token crons, admin-auth checks on every /api/admin route, portal-session checks on every /api/portal route, server-side upload validation, no Supabase anon key in the browser.",
+      "/api/contact spam gate (2026-07-29, after a flood of fake 'Dental Clinic' leads with gibberish LLC names + nonsense domains): a hidden honeypot field named \"url\" (rendered on /contact + /fr/contact, invisible to real visitors) silently no-ops the request if filled; server-side now also requires a real email format and, for type=contact, a non-empty name + problem (the bot was posting straight to the API and skipping fields the Telegram alert doesn't echo back); plus the same 8/15min per-IP limiter used on admin login. Don't click the website links on suspicious leads in the CRM — treat gibberish-domain leads as spam bait, not prospects.",
     ],
     use: [
       "Enable 2FA today: log in → open /api/admin/2fa-setup in the browser → follow the 4 instructions in the response.",
@@ -313,7 +314,7 @@ export const FEATURES: SystemFeature[] = [
     ],
     cost: "None.",
     value: "The CRM holds every lead, client conversation and revenue number. This pass closes the realistic attack paths (forged sessions, brute force, email bombing, clickjacking) at zero recurring cost.",
-    code: "src/lib/security.ts · src/lib/auth.ts · src/lib/clientAuth.ts · /api/admin/login · /api/admin/2fa-setup · /api/portal/request-link · /api/portal/login-password · next.config.ts (headers) · supabase/schema.sql (rate_limits)",
+    code: "src/lib/security.ts · src/lib/auth.ts · src/lib/clientAuth.ts · /api/admin/login · /api/admin/2fa-setup · /api/portal/request-link · /api/portal/login-password · /api/contact (honeypot + rate limit) · next.config.ts (headers) · supabase/schema.sql (rate_limits)",
   },
   {
     name: "Telegram notification policy — the phone only buzzes for money",

@@ -5,6 +5,9 @@ import { sendEmail, auditConfirmationEmail } from "@/lib/email";
 import { sendMetaCapiEvent } from "@/lib/metaCapi";
 import { generateSiteForBuild } from "@/lib/generateSite";
 import { sendTelegramMessage, telegramConfigured } from "@/lib/telegram";
+import { rateLimited, clientIp } from "@/lib/security";
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export const runtime = "nodejs";
 // The intake auto-wire runs AFTER the response (see after() below) but shares
@@ -28,6 +31,26 @@ export async function POST(req: NextRequest) {
 
     const resolvedNiche = niche || industry || null;
     const resolvedBiz   = business || businessName || null;
+
+    // ── 0. Spam gate ───────────────────────────────────────────────────────
+    // "url" is a decoy field: real forms never render or submit it, but bots
+    // that blindly fill every input (or replay a guessed schema) tend to.
+    // Answer 200/ok so the bot reads it as a success and doesn't adapt.
+    if (typeof body.url === "string" && body.url.trim()) {
+      return NextResponse.json({ ok: true });
+    }
+    if (!EMAIL_RE.test(String(email ?? "").trim())) {
+      return NextResponse.json({ error: "Invalid email" }, { status: 400 });
+    }
+    // The rendered contact form always sends a non-empty name + problem
+    // (both are HTML-required) — a bot posting straight to this API tends to
+    // skip whatever it can't see reflected back in the Telegram alert.
+    if (type === "contact" && (!String(name ?? "").trim() || !String(problem ?? "").trim())) {
+      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    }
+    if (await rateLimited(`contact:${clientIp(req.headers)}`, 8, 900)) {
+      return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+    }
 
     // ── 1. Persist to Supabase ────────────────────────────────────────────
     const db = supabaseAdmin();
