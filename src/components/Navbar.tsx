@@ -86,10 +86,10 @@ export default function Navbar({ heroDark = false }: { heroDark?: boolean }) {
               Client Login
             </Link>
             <Link
-              href="/call"
+              href="/free-audit"
               className="px-4 py-2 rounded-lg bg-[#36671E] text-[#FAFAF7] text-sm font-semibold hover:bg-[#295115] transition-colors shadow-soft"
             >
-              Book a Call →
+              Get my free audit →
             </Link>
           </div>
 
@@ -125,11 +125,11 @@ export default function Navbar({ heroDark = false }: { heroDark?: boolean }) {
             Client Login
           </Link>
           <Link
-            href="/call"
+            href="/free-audit"
             onClick={() => setOpen(false)}
             className="mt-2 px-4 py-3 rounded-lg bg-[#36671E] text-[#FAFAF7] text-sm font-semibold text-center"
           >
-            Book a Call →
+            Get my free audit →
           </Link>
         </div>
       )}

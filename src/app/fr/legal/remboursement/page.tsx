@@ -40,6 +40,10 @@ export default function RemboursementPage() {
               <p>Si nous manquons la date de livraison convenue de notre propre fait, vous avez droit à un remboursement de <strong>10 % du prix du projet par jour de retard</strong>, plafonné à 50 % du prix total. Le délai court à partir de la réception de vos frais de mise en place et de la complétion de votre formulaire d&apos;intake. Les retards qui vous sont imputables ne sont pas comptabilisés dans cette garantie.</p>
             </div>
             <div>
+              <h2 className="text-lg font-black text-[#18181B] mb-3">2 bis. Garantie de temps de réponse (« Zéro demande manquée »)</h2>
+              <p>Une fois votre site en ligne, chaque demande adressée à votre réceptionniste IA reçoit une réponse <strong>en moins de 60 secondes, 24 h/24</strong>. Si une seule demande d&apos;un mois civil reste sans réponse au-delà de 60 secondes, <strong>l&apos;abonnement de ce mois est intégralement remboursé</strong> &mdash; automatiquement si nous le détectons en premier, ou sur simple demande. Les temps de réponse proviennent d&apos;horodatages serveur que vous pouvez vérifier vous-même dans votre espace client. Les exclusions et le texte complet figurent à l&apos;article 4 bis des <Link href="/fr/legal/cgv" className="text-[#36671E] underline">CGV</Link>.</p>
+            </div>
+            <div>
               <h2 className="text-lg font-black text-[#18181B] mb-3">3. Remboursement des frais de mise en place</h2>
               <p>Les frais de mise en place de {SETUP_PLAN.totalEur} € sont <strong>non remboursables une fois le travail commencé</strong> — ils couvrent le temps de conception et de développement déjà engagé sur votre projet. Si Servolia ne peut pas livrer du tout le périmètre convenu, ils vous sont <strong>intégralement remboursés</strong>.</p>
             </div>

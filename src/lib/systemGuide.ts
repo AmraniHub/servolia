@@ -276,6 +276,27 @@ export const FEATURES: SystemFeature[] = [
     code: "src/lib/clientSites.ts (planFeatures) · src/components/ClientSite.tsx · /api/chat (gate) · src/lib/siteArchive.ts · /api/admin/archive-site · /api/admin/set-site-status (auto-archive)",
   },
   {
+    name: "Sell-without-calls — instant audit, honest scarcity, Zero-Miss guarantee",
+    summary: "The acquisition layer (2026-07-28): a prospect scores their own site in 20 seconds, sees what the gaps cost them in their own money, and can buy — without ever booking a call. Servolia no longer offers sales calls at all.",
+    how: [
+      "No calls, by design. /call and /fr/appel are gone (301 → the audit), the booking widget and its public API are deleted, and every CTA now points at the audit. This is a FEATURE for the buyer, not a limitation: a dentist cannot take a 15-minute sales call between patients, so 'read it and decide at 23:00' beats 'find a slot'. In value-equation terms it drives Effort toward zero, which is the hardest lever to compete with.",
+      "Instant audit (/api/audit + src/lib/auditEngine.ts): fetches the prospect's live page and scores 7 weighted dimensions — booking capture (25%), after-hours answering (20%), mobile (15%), trust signals (15%), 5-second clarity (10%), page weight (10%), GDPR (5%). Every finding is a deterministic check against their real markup, so any of them can be verified in ten seconds. A check that cannot run scores null and is excluded rather than counted as a failure.",
+      "The result is framed as Hormozi's value equation — Value = (Dream Outcome × Perceived Likelihood) ÷ (Time Delay × Effort). Outcome is THEIR arithmetic (their patient value × their enquiry volume × a conservative 10–25% band that scales with the gaps found), always labelled an estimate. Likelihood cites only what the CGV actually grant. Time is the 7-day delivery. Effort is the 10-minute form.",
+      "The endpoint fetches attacker-supplied URLs, so it is hardened accordingly: http/https only, private + link-local + carrier-grade-NAT ranges blocked (including the cloud metadata address), redirects followed manually with the host re-checked at every hop, 2 MB body cap, 12s timeout, 10 audits per IP per 10 minutes. Nothing is persisted — the score is anonymous until the visitor asks for the written teardown.",
+      "Honest scarcity (src/lib/capacity.ts): the pricing pages show real delivery capacity read from the builds table — 3 installations a week, because one person with a written 7-day deadline genuinely cannot start a fourth. If the database is unreachable it states the cap and shows no live count; it never invents 'only 1 slot left'.",
+      "Zero-Miss guarantee: every enquiry answered within 60 seconds, 24/7, or that month's plan fee is refunded. Written into both CGV (section 4 bis) and both refund policies (2 bis), with real exclusions, capped at the month's plan fee, measured on server-side timestamps the client can check in their portal.",
+    ],
+    use: [
+      "Send a prospect straight to /free-audit (or /fr/audit). They score themselves, see the money, and can go to /examples and /pricing without you touching anything.",
+      "Run the audit yourself from the same page before writing a cold email — the worst finding IS the opening line of the email.",
+      "Nothing to do for scarcity; it follows the builds table. Change WEEKLY_INSTALL_CAPACITY in src/lib/capacity.ts if your real throughput changes.",
+      "Before pushing the guarantee in outbound, make sure Anthropic credits are funded — it is a real refund liability that assumes the receptionist keeps answering.",
+    ],
+    cost: "Free — one outbound HTTP fetch per audit, no AI call, no storage.",
+    value: "Removes the founder from the top of the funnel entirely. The audit was previously a promise of a manual 5-minute Loom within 24 hours, which capped outbound at roughly a dozen prospects before the day was gone; it is now instant and unlimited, and the buyer never has to find a slot in their diary.",
+    code: "src/lib/auditEngine.ts · /api/audit · src/components/AuditScorecard.tsx · src/lib/capacity.ts · src/components/CapacityBadge.tsx · legal/cgv §4 bis (EN+FR) · next.config.ts (call redirects)",
+  },
+  {
     name: "Templates system — registry, auto-wire, and the public catalog",
     summary: "The ready-to-deliver template catalog (2026-07-28): one registry file lists every fully-wired niche template, a paying client's draft site generates itself the moment their intake lands, and prospects can click the live product before choosing a plan.",
     how: [

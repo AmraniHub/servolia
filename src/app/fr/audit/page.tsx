@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import AuditForm from "@/components/AuditForm";
 import ValueStack from "@/components/ValueStack";
+import AuditScorecard from "@/components/AuditScorecard";
 
 export const metadata: Metadata = {
   title: "Audit gratuit — Servolia",
@@ -33,6 +34,22 @@ export default function FrenchAuditPage() {
           </Link>
         </div>
       </nav>
+
+      {/* Note instantanée en libre-service d'abord — le visiteur reçoit une
+          vraie valeur avant qu'on lui demande quoi que ce soit. Le formulaire
+          en dessous est le suivi humain pour l'audit écrit approfondi. */}
+      <section className="pt-28 pb-12">
+        <div className="px-4 sm:px-6 lg:px-8">
+          <AuditScorecard lang="fr" />
+        </div>
+      </section>
+      <section className="py-4">
+        <p className="max-w-3xl mx-auto px-4 text-center text-sm text-[#71717A]">
+          Vous voulez l&apos;analyse approfondie — votre fiche Google, vos concurrents dans la même
+          ville, et ce que nous changerions en premier ? Laissez vos coordonnées ci-dessous et nous
+          vous l&apos;envoyons par écrit. Nous ne prenons jamais de rendez-vous commercial.
+        </p>
+      </section>
 
       <AuditForm lang="fr" />
 

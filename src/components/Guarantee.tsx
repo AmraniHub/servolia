@@ -6,10 +6,11 @@ import { ShieldCheck, RefreshCw, CalendarCheck } from "lucide-react";
  * Every claim here must match src/app/legal/refund and the CGV exactly. The
  * installation fee is non-refundable once work has begun, so we do NOT promise
  * a no-questions setup refund; we promise the three things the policy
- * genuinely grants (10%/day for lateness capped at 50%, full refund of the
- * installation if we never deliver, cancel the monthly plan on 30 days'
- * notice) plus a performance floor the system itself controls. No medical
- * claims, and no track-record claims until there are real delivered clients.
+ * genuinely grants: 10%/day for lateness capped at 50% (CGV s4), the
+ * Zero-Miss response-time guarantee — a reply within 60 seconds or that
+ * month's plan fee back (CGV s4 bis), and a full refund of the installation
+ * if we never deliver (CGV s8). No medical claims, and no track-record
+ * claims until there are real delivered clients.
  */
 
 const COPY = {
@@ -19,7 +20,7 @@ const COPY = {
     sub: "The deadline, the price, and the scope are committed in writing before you pay a cent.",
     cards: [
       { icon: CalendarCheck, title: "Live in 7 days — or you're paid back", body: "Your delivery date is committed in writing. If we miss it through our own fault, you get 10% of the price back for every day we're late, up to half the installation fee." },
-      { icon: ShieldCheck, title: "It answers every enquiry — guaranteed", body: "If your assistant isn't capturing enquiries 24/7 in month one, we keep fixing it free until it does." },
+      { icon: ShieldCheck, title: "Answered in 60 seconds — or the month is free", body: "Every enquiry to your AI receptionist gets a reply within 60 seconds, 24/7. Miss one in a month and that month's plan fee comes back — measured on timestamps you can check yourself." },
       { icon: RefreshCw, title: "We don't deliver, you don't pay", body: "If we can't deliver the scope we agreed, your installation fee comes back in full. The scope is signed off before any work starts, and the monthly plan is cancellable on 30 days' notice." },
     ],
   },
@@ -29,7 +30,7 @@ const COPY = {
     sub: "Le délai, le prix et le périmètre sont engagés par écrit avant le moindre paiement.",
     cards: [
       { icon: CalendarCheck, title: "En ligne en 7 jours — ou vous êtes remboursé", body: "Votre date de livraison est engagée par écrit. Si nous la manquons de notre fait, vous récupérez 10 % du prix par jour de retard, jusqu'à la moitié des frais de mise en place." },
-      { icon: ShieldCheck, title: "Chaque demande répondue — garanti", body: "Si votre assistant ne capte pas vos demandes 24h/24 le premier mois, nous corrigeons gratuitement jusqu'à ce que ce soit le cas." },
+      { icon: ShieldCheck, title: "Réponse en 60 secondes — ou le mois est offert", body: "Chaque demande à votre réceptionniste IA reçoit une réponse en moins de 60 secondes, 24 h/24. Une seule manquée dans le mois et l'abonnement de ce mois vous est remboursé — sur des horodatages que vous pouvez vérifier." },
       { icon: RefreshCw, title: "Pas livré, pas payé", body: "Si nous ne pouvons pas livrer le périmètre convenu, vos frais de mise en place sont intégralement remboursés. Le périmètre est validé avant tout début de travaux, et l'abonnement est résiliable avec 30 jours de préavis." },
     ],
   },

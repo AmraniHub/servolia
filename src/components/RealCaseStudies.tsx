@@ -75,7 +75,7 @@ export default function RealCaseStudies({ studies }: { studies: CaseStudy[] }) {
                       </div>
                     ))}
                   </div>
-                  <Link href="/call" className="mt-7 inline-flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-[#BEF264] text-[#0A1F14] font-black text-sm hover:bg-[#D9F99D] transition-colors">
+                  <Link href="/free-audit" className="mt-7 inline-flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-[#BEF264] text-[#0A1F14] font-black text-sm hover:bg-[#D9F99D] transition-colors">
                     Get results like this <ArrowRight className="w-4 h-4" />
                   </Link>
                 </div>

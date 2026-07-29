@@ -32,6 +32,10 @@ export default function RefundPolicyPage() {
               <p>If we miss the agreed delivery deadline through our own fault, you are entitled to a refund of <strong>10% of the project price per day of delay</strong>, up to a maximum of 50% of the total price. The delivery window begins once your installation fee is received and your intake form is completed. Delays caused by you do not count toward this guarantee.</p>
             </div>
             <div>
+              <h2 className="text-lg font-black text-[#18181B] mb-3">2 bis. Response-time guarantee (&quot;Zero-Miss&quot;)</h2>
+              <p>Once your site is live, every enquiry to your AI receptionist gets a reply <strong>within 60 seconds, 24/7</strong>. If a single enquiry in a calendar month goes unanswered beyond 60 seconds, <strong>that month&apos;s plan fee is refunded in full</strong> &mdash; automatically where we spot it first, or on request. Response times come from server-side timestamps you can check yourself in your portal. Exclusions and the full wording are in section 4 bis of the <Link href="/legal/cgv" className="text-[#36671E] underline">CGV</Link>.</p>
+            </div>
+            <div>
               <h2 className="text-lg font-black text-[#18181B] mb-3">3. Installation fee refunds</h2>
               <p>The €{SETUP_PLAN.totalEur} installation fee is <strong>non-refundable once work has begun</strong> — this reflects the design and development time already committed to your project. If Servolia is unable to deliver the agreed scope at all, you are entitled to a <strong>full refund</strong> of that fee.</p>
             </div>

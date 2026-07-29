@@ -29,6 +29,13 @@ const nextConfig: NextConfig = {
       // they're just no longer actively marketed to.
       { source: "/niches/real-estate", destination: "/contact", permanent: true },
       { source: "/niches/lawyers", destination: "/contact", permanent: true },
+      // Servolia sells without sales calls — the whole funnel is async by
+      // design (scored audit → personalised demo → self-serve checkout).
+      // "No call required" is a feature for a clinician who cannot take one,
+      // not a limitation. The old booking pages redirect to the audit, which
+      // is what a discovery call used to produce anyway.
+      { source: "/call", destination: "/free-audit", permanent: true },
+      { source: "/fr/appel", destination: "/fr/audit", permanent: true },
     ];
   },
 };

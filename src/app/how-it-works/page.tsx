@@ -47,11 +47,11 @@ const steps = [
   {
     num: "03",
     icon: <MessageSquare className="w-5 h-5" />,
-    title: "Optional 15-min discovery call",
-    who: "You (optional)",
-    time: "Your choice",
-    desc: "If you want to discuss the audit, ask questions, or get more detail — we're available. If the audit is enough to convince you, you can skip straight to step 4.",
-    detail: "No hard sell. If Servolia is the right fit, it's obvious from the audit. We don't chase or pressure. If you're ready, we send the scope document.",
+    title: "Ask anything — in writing, no call",
+    who: "You",
+    time: "Answered same day",
+    desc: "Questions about the audit, the scope or the price? Reply to the email, or ask our own AI receptionist on this site. We do not book sales calls — there is nothing to sit through.",
+    detail: "You are running a practice; your day is already full of appointments. Everything here is designed to be read and decided when it suits you, at 07:00 or at 23:00. If you are ready, the scope document follows in writing.",
     color: "from-[#059669] to-[#059669]",
   },
   {

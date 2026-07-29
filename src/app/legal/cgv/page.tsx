@@ -39,6 +39,12 @@ export default function CGVPage() {
               <p>Servolia commits to delivering the agreed scope within the stated delivery window ({SETUP_PLAN.delivery} from the start of work). The delivery window begins from the day the installation fee is received and the client intake form is completed. If Servolia misses the agreed deadline through its own fault, the client is entitled to a 10% refund per day of delay, up to a maximum of 50%. Delays caused by the client do not count toward this guarantee.</p>
             </div>
             <div>
+              <h2 className="text-lg font-black text-[#18181B] mb-3">4 bis. Response-time guarantee (&quot;Zero-Miss&quot;)</h2>
+              <p>From the day the site goes live, Servolia guarantees that <strong>every enquiry submitted to the AI receptionist on the client&apos;s Servolia-hosted site receives a reply within 60 seconds, 24 hours a day</strong>. Response times are measured from Servolia&apos;s own server-side timestamps, which the client can consult at any time in their client portal.</p>
+              <p className="mt-3">If a single enquiry in a given calendar month goes unanswered beyond 60 seconds, the client&apos;s monthly plan fee for <strong>that month is refunded in full</strong>, on request or automatically where Servolia detects the miss first. The installation fee and any add-ons are not covered by this guarantee. The remedy is limited to that month&apos;s plan fee and does not extend to consequential loss.</p>
+              <p className="mt-3">The guarantee does not apply where the failure results from: an outage of the client&apos;s own domain, DNS or hosting where the client has taken over management; suspension for non-payment; a change made by the client or a third party to the site or the AI receptionist&apos;s configuration; scheduled maintenance announced at least 48 hours in advance; or force majeure, including a failure of an upstream AI provider that persists despite Servolia&apos;s fallback systems.</p>
+            </div>
+            <div>
               <h2 className="text-lg font-black text-[#18181B] mb-3">5. Revisions</h2>
               <p>The installation includes <strong>one round of revisions</strong> before go-live. A revision round is defined as a consolidated list of changes submitted in one document. Additional revision rounds, and any change requested after the site is live, are billed at €50/hour or quoted as a fixed price beforehand.</p>
             </div>

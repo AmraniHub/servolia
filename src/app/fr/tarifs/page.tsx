@@ -7,6 +7,8 @@ import StickyMobileCTA from "@/components/StickyMobileCTA";
 import FrenchNav from "@/components/FrenchNav";
 import FrenchFooter from "@/components/FrenchFooter";
 import Guarantee from "@/components/Guarantee";
+import CapacityBadge from "@/components/CapacityBadge";
+import { getCapacity } from "@/lib/capacity";
 import { CheckCircle, ArrowRight, Shield, Clock, Globe, Bot, Lock } from "lucide-react";
 
 export const metadata: Metadata = {
@@ -39,7 +41,12 @@ const faqs = [
   { q: "Puis-je changer de formule ?", a: "À tout moment, vers le haut comme vers le bas. Si vous dépassez vos conversations incluses, nous vous faisons simplement passer à la formule au-dessus — jamais de facture surprise." },
 ];
 
-export default function FrenchPricingPage() {
+// La capacité est lue à chaque requête — la rareté affichée ne doit jamais
+// être périmée.
+export const dynamic = "force-dynamic";
+
+export default async function FrenchPricingPage() {
+  const capacity = await getCapacity();
   return (
     <main className="flex flex-col bg-white">
       <FrenchNav enHref="/pricing" />
@@ -59,6 +66,9 @@ export default function FrenchPricingPage() {
             <span className="flex items-center gap-1.5"><Clock className="w-4 h-4 text-[#36671E]" /> Livraison en 7 jours ou 10 % remboursés/jour</span>
             <span className="flex items-center gap-1.5"><Lock className="w-4 h-4 text-[#36671E]" /> Prix fixe par écrit</span>
             <span className="flex items-center gap-1.5"><Shield className="w-4 h-4 text-[#36671E]" /> Paiement sécurisé Stripe</span>
+          </div>
+          <div className="mt-8 flex justify-center">
+            <CapacityBadge state={capacity} lang="fr" />
           </div>
         </div>
       </section>

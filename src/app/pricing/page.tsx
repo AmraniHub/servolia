@@ -4,6 +4,8 @@ import CheckoutButton from "@/components/CheckoutButton";
 import CarePlansSection from "@/components/CarePlansSection";
 import { SETUP_PLAN, PLANS } from "@/lib/pricing";
 import Guarantee from "@/components/Guarantee";
+import CapacityBadge from "@/components/CapacityBadge";
+import { getCapacity } from "@/lib/capacity";
 import Link from "next/link";
 import {
   CheckCircle, ArrowRight, Shield, Clock, Zap,
@@ -33,7 +35,11 @@ const process = [
   { num: "05", title: "Review + launch", desc: "You review, approve, and your monthly plan starts. We go live and hand over everything." },
 ];
 
-export default function PricingPage() {
+// Live capacity is read per request — the scarcity line must never be stale.
+export const dynamic = "force-dynamic";
+
+export default async function PricingPage() {
+  const capacity = await getCapacity();
   return (
     <main className="flex flex-col bg-white">
       <Navbar />
@@ -60,6 +66,9 @@ export default function PricingPage() {
               €490 installation via Stripe
             </div>
             <div className="flex items-center gap-1.5"><Zap className="w-4 h-4 text-[#36671E]" /> No hidden fees</div>
+          </div>
+          <div className="mt-8 flex justify-center">
+            <CapacityBadge state={capacity} lang="en" />
           </div>
         </div>
       </section>

@@ -48,11 +48,11 @@ const steps = [
   {
     num: "03",
     icon: <MessageSquare className="w-5 h-5" />,
-    title: "Appel découverte de 15 min (optionnel)",
-    who: "Vous (optionnel)",
-    time: "À votre convenance",
-    desc: "Si vous voulez discuter de l'audit, poser des questions ou approfondir — nous sommes disponibles. Si l'audit suffit à vous convaincre, passez directement à l'étape 4.",
-    detail: "Aucune vente forcée. Si Servolia est le bon choix, l'audit le rend évident. Nous ne relançons pas avec pression. Si vous êtes prêt, nous envoyons le document de périmètre.",
+    title: "Posez vos questions — par écrit, sans appel",
+    who: "Vous",
+    time: "Réponse le jour même",
+    desc: "Des questions sur l'audit, le périmètre ou le prix ? Répondez à l'email, ou interrogez notre propre réceptionniste IA sur ce site. Nous ne prenons pas de rendez-vous commerciaux — il n'y a aucun appel à subir.",
+    detail: "Vous dirigez un cabinet ; votre journée est déjà pleine de rendez-vous. Tout ici est conçu pour être lu et décidé quand cela vous arrange, à 7 h comme à 23 h. Si vous êtes prêt, le document de périmètre suit par écrit.",
     color: "from-[#059669] to-[#059669]",
   },
   {
