@@ -17,6 +17,7 @@ import {
 import type { PaymentAlert } from "@/lib/clientBilling";
 import { T, locale, formatDate, formatPeriod, type Lang, type Dict } from "@/components/portal/portalDict";
 import ZeroMissPanel from "@/components/portal/ZeroMissPanel";
+import PortalChatDock from "@/components/portal/PortalChatDock";
 import type { ComplianceReport } from "@/lib/zeroMiss";
 import { PStat, PPanel, PBars, PChart } from "@/components/portal/TrafficWidgets";
 
@@ -986,6 +987,15 @@ export default function PortalDashboard({
         {/* ── ACCOUNT ── */}
         {tab === "account" && <AccountTab email={email} onLogout={handleLogout} t={t} />}
       </div>
+
+      {/* Messenger-style help dock — follows the client across every tab.
+          Assistant (instant AI) and Abdelali (human) stay separate channels;
+          the arrow button opens the full Messages tab for a long thread. */}
+      <PortalChatDock
+        lang={lang}
+        unreadHuman={unreadCount}
+        onOpenFullThread={() => setTab("messages")}
+      />
     </div>
   );
 }

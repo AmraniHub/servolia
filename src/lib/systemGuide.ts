@@ -276,6 +276,27 @@ export const FEATURES: SystemFeature[] = [
     code: "src/lib/clientSites.ts (planFeatures) · src/components/ClientSite.tsx · /api/chat (gate) · src/lib/siteArchive.ts · /api/admin/archive-site · /api/admin/set-site-status (auto-archive)",
   },
   {
+    name: "Client support — AI assistant and the human thread, kept separate",
+    summary: "A Messenger-style dock in the portal (2026-07-30) with two deliberately separate channels: an assistant that answers instantly from the client's own account data, and the direct line to you. Questions with a factual answer stop landing in your Telegram.",
+    how: [
+      "The dock is a floating launcher on every portal tab, like Messenger's popup — the full Messages tab still exists for reading a long thread. Inside it, two tabs that never mix: ASSISTANT (instant AI) and ABDELALI (the human thread in client_messages, unchanged).",
+      "The assistant is grounded, not generic: src/lib/portalAssistant.ts loads that client's plan, included conversations, site slug and status, build stage, qualified-lead count and this month's Zero-Miss record, then hands it to Claude as the only account facts it may use. Context is loaded server-side from the session email — never from the request — so it can only ever answer about the account that is logged in.",
+      "Two hard prompt rules: never invent an account fact (if it isn't in the context, the honest answer is 'I can't see that, ask Abdelali'), and never promise work, dates, discounts, refunds or scope — those are yours to give. It explains and points; it does not commit Servolia to anything.",
+      "The client is never trapped with the bot. The human tab is one tap away at all times, and every assistant conversation shows a handoff button that writes the whole transcript into the human thread — so nothing is retyped and you arrive with full context.",
+      "No AI key or a failed call degrades honestly: it says it can't answer and points at Messages, rather than stalling or guessing.",
+      "/admin/assistant is a listening post, not an inbox — nobody needs to reply, the AI already did. Its value is that a repeated question is a missing button, not a bad answer. Rate limited to 30 questions per client per 10 minutes because inference costs money.",
+    ],
+    use: [
+      "Nothing per client — the dock appears for everyone in the portal automatically.",
+      "Read /admin/assistant weekly. Three clients asking the same thing is a feature request; build the button and the question disappears.",
+      "Anything the assistant couldn't handle arrives in /admin/messages with the transcript attached, so you answer once with the full picture.",
+      "Transcripts need the portal_ai_chats table — /admin/assistant prints the SQL when it's missing (see roadmap).",
+    ],
+    cost: "Fractions of a cent per question on Haiku; nothing when the table or key is absent.",
+    value: "Removes you from the top of the support funnel the same way the audit removed you from the top of the sales funnel. A client gets an answer in two seconds instead of waiting hours for you, and you only see the conversations that genuinely need a human.",
+    code: "src/lib/portalAssistant.ts · /api/portal/assistant · src/components/portal/PortalChatDock.tsx · src/app/admin/assistant · existing: /api/portal/messages + src/components/admin/MessagesInbox.tsx",
+  },
+  {
     name: "Sell-without-calls — instant audit, honest scarcity, Zero-Miss guarantee",
     summary: "The acquisition layer (2026-07-28): a prospect scores their own site in 20 seconds, sees what the gaps cost them in their own money, and can buy — without ever booking a call. Servolia no longer offers sales calls at all.",
     how: [

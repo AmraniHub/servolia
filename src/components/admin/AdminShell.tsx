@@ -50,6 +50,7 @@ const navGroups: { group: string; items: { label: string; href: string; icon: ty
       { label: "Clients",    href: "/admin/clients",  icon: UserCircle },
       { label: "Messages",   href: "/admin/messages", icon: MessageSquare },
       { label: "Chat inbox", href: "/admin/chat",     icon: Bot },
+      { label: "Assistant",  href: "/admin/assistant", icon: Sparkles },
     ],
   },
   {
