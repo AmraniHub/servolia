@@ -276,6 +276,42 @@ export const FEATURES: SystemFeature[] = [
     code: "src/lib/clientSites.ts (planFeatures) · src/components/ClientSite.tsx · /api/chat (gate) · src/lib/siteArchive.ts · /api/admin/archive-site · /api/admin/set-site-status (auto-archive)",
   },
   {
+    name: "Delivery deadlines + the self-deriving build checklist",
+    summary: "The delivery board answers one question — who is blocking, you or the client — and it never drifts, because nothing is hand-ticked.",
+    how: [
+      "src/lib/buildProgress.ts derives a 6-step checklist from data that already exists: installation paid → scope accepted → intake in → site generated → published → monthly plan started. Every step is read from a real row, so a box can only be ticked by the thing actually happening.",
+      "Each step records an OWNER — 'us' or 'client'. That's the important part: a build parked ten days because the client never sent their intake is a completely different situation from one you haven't started, and the CGV agree (client-caused delay doesn't count against the delivery guarantee).",
+      "Refund exposure follows from that: atRiskEur is 10% per day late capped at 50%, but ZERO while the ball is in the client's court. The number shown in the admin is the one that would survive a dispute.",
+      "src/lib/deadlines.ts aggregates five sources into /admin/deadlines: build deadlines, client suspensions from dunning, lead SLA (last contact +2 days), unsigned scopes (+3 days), and bookings. KIND_META holds literal Tailwind classes rather than inline styles so the admin dark theme can override them.",
+      "Dates use LOCAL components via src/lib/dates.ts, never toISOString().slice(0,10) — that converts to UTC and rolls a Paris date back a day, which would silently show the wrong deadline.",
+    ],
+    use: [
+      "Open /admin/deadlines each morning: it is sorted by what is closest to hurting, not by what is newest.",
+      "On a build page, read the current step before messaging a client — if the owner is 'client', chase them; if it's 'us', the guarantee clock is running.",
+    ],
+    cost: "Free — derived from rows you already have, no extra storage.",
+    value: "You cannot forget a step you never had to tick, and you can prove whose delay it was. That is what makes a written 7-day guarantee safe to offer as a solo operator.",
+    code: "src/lib/buildProgress.ts · src/lib/deadlines.ts · src/lib/dates.ts · src/app/admin/deadlines · src/app/admin/builds/[id]",
+  },
+  {
+    name: "Zero-Miss enforcement — how the 60-second guarantee is proven",
+    summary: "The guarantee is only worth what it can be measured by. Reply latency is stamped server-side on every answer, watched daily, and shown to the client in their own portal.",
+    how: [
+      "MEASUREMENT: /api/chat starts a clock the moment an enquiry lands and stamps `ts` + `ms` onto the assistant message it persists. Both branches are instrumented — client sites and Servolia's own Solia. The clock is deliberately server-side only: network time to and from the visitor is not observable here, so it is never claimed. That is exactly what CGV 4 bis says is measured.",
+      "COMPLIANCE: src/lib/zeroMiss.ts reports per site per calendar month — replies measured, breaches over 60s, slowest reply. Replies with no recorded latency count as UNMEASURED, never silently as compliant: `compliant` requires at least one measured reply AND zero breaches. Conversations from before this shipped fall in that bucket honestly.",
+      "WATCHDOG: /api/cron/zero-miss runs daily at 07:00 UTC. A breach sends a LOUD Telegram naming the sites and what is owed; unverifiable replies send a quiet one; all-clear sends NOTHING — a daily 'everything is fine' is what trains you to stop reading the channel the real alert arrives on.",
+      "CLIENT VIEW: the portal panel reads the same function the watchdog uses, so both sides always see identical numbers. On a breach it states plainly that the refund will be processed without them asking. That panel is a contractual obligation, not a feature — CGV 4 bis promises it.",
+    ],
+    use: [
+      "Nothing routine — silence means compliant. Act only when Telegram fires.",
+      "On a breach: the month's plan fee is owed. Refund it before the client asks; that is the whole point of watching.",
+      "Before pushing the guarantee in outbound, make sure Anthropic credits are funded — it assumes the receptionist keeps answering.",
+    ],
+    cost: "Free — one indexed scan a day over chat_sessions.",
+    value: "A guarantee nobody can audit is marketing; one the client can check in their own portal is a moat. It is also the reason the promise is safe to make: the AI genuinely never sleeps, and now there is proof.",
+    code: "src/lib/zeroMiss.ts · /api/chat (stamping) · /api/cron/zero-miss · src/components/portal/ZeroMissPanel.tsx · legal/cgv §4 bis (EN+FR)",
+  },
+  {
     name: "Client support — AI assistant and the human thread, kept separate",
     summary: "A Messenger-style dock in the portal (2026-07-30) with two deliberately separate channels: an assistant that answers instantly from the client's own account data, and the direct line to you. Questions with a factual answer stop landing in your Telegram.",
     how: [
@@ -381,7 +417,7 @@ export const FEATURES: SystemFeature[] = [
     summary: "Every automated job, where it's scheduled, and why there are two systems — so nobody 'rediscovers' this topology again.",
     how: [
       "VERCEL CRONS (vercel.json, GET, Authorization auto-injected from CRON_SECRET): daily-brief 07:00 · monthly-report 08:00 on the 1st · monthly-invoice 09:00 on the 1st (pay-per-booking).",
-      "GITHUB ACTIONS (.github/workflows/*.yml, POST via curl with the CRON_SECRET repo secret — set 2026-07-15): follow-up daily 09:30 UTC (48h lead nudge) · daily-stats 07:15 (GA4 → Telegram) · weekly-seo Monday 08:15 · client-reports 5th 08:00 (AI narrative per care client) · blog-generator Mon/Wed/Fri 08:00 · linkedin-generator Mon/Wed/Fri 07:00 · uptime every ~2h (independent of Vercel, alerts even if the site is down).",
+      "GITHUB ACTIONS (.github/workflows/*.yml, POST via curl with the CRON_SECRET repo secret — set 2026-07-15): follow-up daily 09:30 UTC (48h lead nudge) · daily-stats 07:15 (GA4 → Telegram) · weekly-seo Monday 08:15 · client-reports 5th 08:00 (AI narrative per subscribed client) · zero-miss daily 07:00 (the 60s response guarantee — silent unless a client is owed a refund) · blog-generator Mon/Wed/Fri 08:00 · linkedin-generator Mon/Wed/Fri 07:00 · uptime every ~2h (independent of Vercel, alerts even if the site is down).",
       "Why two systems: Actions workflows POST (Vercel crons can only GET), give a manual 'Run workflow' button, survive a Vercel outage (uptime), and don't count against Vercel's cron limits.",
       "monthly-report (1st) and client-reports (5th) are NOT duplicates: the 1st sends the metrics snapshot; the 5th sends the Claude-written narrative + recommendation for active care clients.",
     ],

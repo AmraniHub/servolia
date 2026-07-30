@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { runAudit, type AuditInput } from "@/lib/auditEngine";
 import { rateLimited } from "@/lib/security";
+import { supabaseAdmin, estimateLeadValue } from "@/lib/supabase";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -131,6 +132,7 @@ export async function POST(req: NextRequest) {
     patientValueEur?: number | string;
     monthlyEnquiries?: number | string;
     niche?: string;
+    email?: string;
   };
 
   const target = normalizeUrl(body.url ?? "");
@@ -164,5 +166,59 @@ export async function POST(req: NextRequest) {
     monthlyEnquiries: num(body.monthlyEnquiries),
   };
 
-  return NextResponse.json(runAudit(input));
+  const result = runAudit(input);
+
+  // ── Log the run ────────────────────────────────────────────────────────
+  // Anonymous by default: no email is asked for before the score, because
+  // gating the result kills the conversion this page exists for. But an
+  // unlogged run is a prospect who scored 3/10 and vanished without trace,
+  // so we record the run itself — the audited URL, the score, the worst
+  // finding — as a `prospects` row. That makes audit volume countable and
+  // gives every run an outreach angle.
+  //
+  // If they DID give an email (the form below the scorecard posts it here),
+  // it becomes a real lead instead. Best-effort throughout: a logging
+  // failure must never cost the visitor their result.
+  try {
+    const db = supabaseAdmin();
+    if (db) {
+      const host = (() => { try { return new URL(result.url).hostname.replace(/^www\./, ""); } catch { return result.url; } })();
+      const worst = result.findings[0];
+      const angle = worst
+        ? `Scored ${result.score}/10 — weakest: ${worst.dimension} (${worst.score}/10)`
+        : `Scored ${result.score}/10`;
+      const email = typeof body.email === "string" && body.email.includes("@") ? body.email.trim() : null;
+
+      if (email) {
+        await db.from("leads").insert({
+          business: host,
+          email,
+          website: result.url,
+          niche: body.niche ?? null,
+          source: "free-audit",
+          stage: "new",
+          value_estimate: estimateLeadValue(body.niche ?? null, null),
+          problems: worst ? [angle] : null,
+          raw_data: { audit: { score: result.score, verdict: result.verdict, url: result.url } },
+        });
+      } else {
+        // Unique on website so re-running the same site doesn't inflate counts.
+        const { data: seen } = await db.from("prospects")
+          .select("id").eq("website", result.url).maybeSingle();
+        if (!seen) {
+          // Columns match supabase/schema.sql exactly: prospects has no
+          // `source`, and its pipeline starts at 'to_contact'.
+          await db.from("prospects").insert({
+            business: host,
+            website: result.url,
+            niche: body.niche ?? "dental",
+            status: "to_contact",
+            notes: `Ran the self-audit. ${angle}`,
+          });
+        }
+      }
+    }
+  } catch { /* never let logging cost the visitor their result */ }
+
+  return NextResponse.json(result);
 }
