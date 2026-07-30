@@ -710,3 +710,43 @@ create table if not exists rate_limits (
 -- client_status: new, contacted, booked, won, lost.
 alter table chat_sessions add column if not exists client_status text;
 alter table chat_sessions add column if not exists client_note text;
+
+-- ============================================================================
+-- PORTAL ASSISTANT TRANSCRIPTS (2026-07-30)
+-- What clients ask the in-portal AI assistant. The assistant works without
+-- this table — clients still get answers — but /admin/assistant has nothing
+-- to read, and you lose the signal it exists for: a question asked three
+-- times is a missing button, not a bad answer.
+-- ============================================================================
+create table if not exists portal_ai_chats (
+  id uuid primary key default gen_random_uuid(),
+  email text not null,
+  business text,
+  messages jsonb not null default '[]',
+  message_count int default 0,
+  lang text default 'en',
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+create index if not exists portal_ai_chats_email_idx on portal_ai_chats (email);
+create index if not exists portal_ai_chats_updated_idx on portal_ai_chats (updated_at desc);
+
+-- ============================================================================
+-- CRM KPIS — the admin dashboard's header numbers.
+-- A VIEW, not a table: every figure is derived, so it can never drift from
+-- the rows it counts. Selected with .single() by /admin and /api/admin/kpis,
+-- which is why it must always return exactly one row.
+-- ============================================================================
+create or replace view crm_kpis as
+select
+  (select count(*) from leads where created_at >= now() - interval '30 days')          as leads_30d,
+  (select count(*) from leads where created_at >= now() - interval '7 days')           as leads_7d,
+  -- Stages are: new, audit_sent, qualified, deposit_paid, live, lost.
+  -- "Awaiting response" = they came in and we owe them the next move.
+  (select count(*) from leads where stage in ('new', 'audit_sent'))                    as awaiting_response,
+  (select count(*) from leads where stage = 'qualified')                               as qualified,
+  (select count(*) from builds where status in ('intake', 'building', 'review'))       as active_builds,
+  (select count(*) from clients where status = 'active')                               as live_clients,
+  (select coalesce(sum(monthly_amount), 0) from clients where status = 'active')       as mrr,
+  (select coalesce(sum(deposit_paid), 0) from builds
+     where created_at >= now() - interval '30 days')                                   as deposits_30d;
