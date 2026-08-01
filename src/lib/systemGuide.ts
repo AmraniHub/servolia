@@ -289,6 +289,7 @@ export const FEATURES: SystemFeature[] = [
       "Before spending anything on ads or outreach tools: check the max-CAC number. Under it, spend freely; over it, you are buying revenue with cash you don't have.",
       "Watch the Proof check. It flips to passing the day your first client result is published, and that single flip is worth more to conversion than any copy change.",
       "The figures sharpen automatically as clients arrive — nothing to maintain.",
+      "Linda (the admin copilot) reads all of this too: the payback ceiling, remaining build capacity, any Zero-Miss breach, and the open priority-1 board. Ask her 'can I afford to spend X on ads' or 'what next' and she answers from these numbers rather than from opinion — and will refuse to endorse a spend above the ceiling.",
     ],
     cost: "Free — three indexed queries per page load.",
     value: "Turns the two frameworks that actually decide whether a business compounds — payback speed and offer strength — from a spreadsheet you'd never update into a page that is always current.",

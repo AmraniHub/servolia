@@ -1,10 +1,26 @@
 import { supabaseAdmin } from "@/lib/supabase";
+import { loadEconomics, offerChecks } from "@/lib/economics";
+import { getCapacity } from "@/lib/capacity";
+import { scanAllSites, monthKey } from "@/lib/zeroMiss";
+import { ROADMAP } from "@/lib/roadmap";
 
 /**
  * Compact, live snapshot of the whole business for the admin copilot.
- * Everything the founder might ask about — KPIs, pipeline, bookings, unread
- * messages, prospects — condensed into a small text block the model reasons over.
- * Read-only.
+ *
+ * Linda can only reason about what is in here, so this block is the real
+ * boundary on how useful she is. It carries four things beyond the CRM
+ * numbers, because those are what turn "here are your stats" into advice:
+ *
+ *   UNIT ECONOMICS — the 30-day payback ceiling and margin, so she can answer
+ *     "can I afford to spend on this?" with a number instead of an opinion.
+ *   DELIVERY CAPACITY — how many builds she may commit you to this week.
+ *   GUARANTEE STATE — any Zero-Miss breach is money owed, so it outranks
+ *     everything else she might raise.
+ *   THE OPEN BOARD — the priority-1 roadmap items, so her "what next" matches
+ *     the founder's actual blockers rather than inventing new work.
+ *
+ * Everything is read-only and every figure carries its confidence, so she can
+ * say "not measurable yet" instead of treating a zero as a finding.
  */
 export async function buildCrmSnapshot(): Promise<string> {
   const db = supabaseAdmin();
@@ -45,6 +61,24 @@ export async function buildCrmSnapshot(): Promise<string> {
   const upcoming = (bookingsUpcoming.data ?? []).map((b: { name: string; business: string; slot_start: string }) =>
     `- ${b.name}${b.business ? ` (${b.business})` : ""} · ${new Date(b.slot_start).toLocaleString("en-GB", { timeZone: "Europe/Paris", weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })} Paris`).join("\n") || "none scheduled";
 
+  // The four things that turn stats into advice. All independently failsafe:
+  // each returns a defined shape rather than throwing, so a snapshot never
+  // breaks because one source is unavailable.
+  const [econ, capacity, guarantee] = await Promise.all([
+    loadEconomics(),
+    getCapacity(),
+    scanAllSites(monthKey(now)),
+  ]);
+  const breached = guarantee.filter((g) => g.misses.length > 0);
+  const failingChecks = offerChecks(econ).filter((c) => c.pass === false);
+  const openP1 = ROADMAP
+    .filter((r) => r.priority === 1 && r.status !== "done")
+    .map((r) => `- [${r.status}] ${r.title}${r.needs ? ` — needs: ${r.needs}` : ""}`)
+    .join("\n") || "none";
+
+  const fig = (label: string, mtr: { value: number | null; confidence: string }, unit = "EUR") =>
+    `- ${label}: ${mtr.value == null ? "not measurable yet" : unit === "EUR" ? `EUR ${mtr.value.toLocaleString()}` : `${mtr.value}${unit}`} (${mtr.confidence})`;
+
   const clients = (activeClients.data ?? []) as { business: string; plan: string; monthly_amount: number }[];
   const clientList = clients.map((c) => `- ${c.business} · ${c.plan} · €${Number(c.monthly_amount)}/mo`).join("\n") || "none yet";
   const unreadCount = (unreadMsgs.data ?? []).length;
@@ -72,5 +106,26 @@ Upcoming discovery calls:
 ${upcoming}
 
 Active subscriptions:
-${clientList}`;
+${clientList}
+
+UNIT ECONOMICS (every figure tagged measured/assumed — never treat "assumed" as fact):
+${fig("MRR", econ.mrr)}
+${fig("ARPU", econ.arpu)}
+${fig("Fixed monthly costs", econ.fixedCosts)}
+${fig("Gross margin", econ.grossMarginPct, "%")}
+${fig("Clients to break even", econ.breakEvenClients, "")}
+${fig("LTV per client", econ.ltv)}
+- MAX SPEND TO ACQUIRE ONE CLIENT (30-day payback ceiling): EUR ${econ.maxCacFor30DayPayback.value?.toLocaleString() ?? "?"} — EUR ${econ.day0Cash} of it is collected on day 0 as the installation. Advise spending BELOW this; above it, each new client worsens cash.
+- Offer weak levers: ${failingChecks.length ? failingChecks.map((c) => c.name).join(", ") : "none"}
+
+DELIVERY CAPACITY THIS WEEK:
+- ${capacity.capacity} installations/week is the honest ceiling (one person, written 7-day deadline).${capacity.inFlight != null ? ` ${capacity.inFlight} in flight, ${capacity.slotsLeft} slot(s) left.` : " Live count unavailable."}${capacity.full ? " THE WEEK IS FULL — do not promise a start before next week." : ""}
+
+ZERO-MISS GUARANTEE (${monthKey(now)}):
+${breached.length
+  ? `BREACHED for ${breached.length} site(s): ${breached.map((g) => `${g.siteSlug} (${g.misses.length} miss)`).join(", ")}. Per CGV 4 bis each is owed this month's plan fee. This outranks everything else.`
+  : "No breach detected this month."}
+
+OPEN PRIORITY-1 BOARD (from roadmap.ts — the founder's real blockers):
+${openP1}`;
 }
