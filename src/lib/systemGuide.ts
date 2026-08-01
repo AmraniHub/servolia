@@ -276,6 +276,25 @@ export const FEATURES: SystemFeature[] = [
     code: "src/lib/clientSites.ts (planFeatures) · src/components/ClientSite.tsx · /api/chat (gate) · src/lib/siteArchive.ts · /api/admin/archive-site · /api/admin/set-site-status (auto-archive)",
   },
   {
+    name: "Unit economics — the money model and offer, scored automatically",
+    summary: "Hormozi's money model and value equation computed from your own rows at /admin/economics, so the decision 'may I spend to acquire a client' has a number instead of a feeling.",
+    how: [
+      "THE GATE: 30-day CAC payback. If a new client hasn't repaid what it cost to win them inside a month, growth eats cash however good the ROAS looks. The page shows the maximum CAC that still clears it — and Servolia's unusual edge is that €490 of that lands on DAY 0 as the installation, before a single subscription payment.",
+      "MONEY MODEL: MRR, ARPU, fixed costs (from costs.ts, active flat-fee services only), gross margin, clients-to-break-even and LTV — all from clients/builds rows.",
+      "VALUE EQUATION: two of the four levers are measurable and are measured — Time Delay from the median days across delivered builds, Perceived Likelihood from real delivered clients + published case studies. The other two are stated as what the offer claims and labelled as such.",
+      "OFFER STRENGTH: the 7-point validation checklist. Checks data can settle are settled; 'Proof' is the one that currently FAILS, and it fails honestly — no delivered client, no published case study, so the live demos and the guarantees carry the whole lever.",
+      "Every figure is tagged MEASURED / ASSUMED / NO DATA. With zero clients most of this is unknowable, and the page says so rather than rendering 0% margin as though it were a finding. Retention is a stated 12-month default until someone actually renews — assuming 12 before a first renewal would flatter LTV by design.",
+    ],
+    use: [
+      "Before spending anything on ads or outreach tools: check the max-CAC number. Under it, spend freely; over it, you are buying revenue with cash you don't have.",
+      "Watch the Proof check. It flips to passing the day your first client result is published, and that single flip is worth more to conversion than any copy change.",
+      "The figures sharpen automatically as clients arrive — nothing to maintain.",
+    ],
+    cost: "Free — three indexed queries per page load.",
+    value: "Turns the two frameworks that actually decide whether a business compounds — payback speed and offer strength — from a spreadsheet you'd never update into a page that is always current.",
+    code: "src/lib/economics.ts · src/app/admin/economics · reads src/lib/costs.ts + src/lib/pricing.ts",
+  },
+  {
     name: "Delivery deadlines + the self-deriving build checklist",
     summary: "The delivery board answers one question — who is blocking, you or the client — and it never drifts, because nothing is hand-ticked.",
     how: [
