@@ -19,6 +19,8 @@ import { T, locale, formatDate, formatPeriod, type Lang, type Dict } from "@/com
 import ZeroMissPanel from "@/components/portal/ZeroMissPanel";
 import PortalChatDock from "@/components/portal/PortalChatDock";
 import type { ComplianceReport } from "@/lib/zeroMiss";
+import DomainPanel from "@/components/portal/DomainPanel";
+import type { DomainRow } from "@/lib/domains";
 import { PStat, PPanel, PBars, PChart } from "@/components/portal/TrafficWidgets";
 
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
@@ -67,8 +69,8 @@ interface PortalTraffic {
 }
 
 export default function PortalDashboard({
-  email, builds, subscription, siteSlugs, scopesByLeadId, paymentAlert, zeroMiss,
-}: { email: string; builds: Build[]; subscription?: Client | null; siteSlugs?: Record<string, string>; scopesByLeadId?: Record<string, { token: string; accepted: boolean }>; paymentAlert?: PaymentAlert | null; zeroMiss?: ComplianceReport | null }) {
+  email, builds, subscription, siteSlugs, scopesByLeadId, paymentAlert, zeroMiss, domain,
+}: { email: string; builds: Build[]; subscription?: Client | null; siteSlugs?: Record<string, string>; scopesByLeadId?: Record<string, { token: string; accepted: boolean }>; paymentAlert?: PaymentAlert | null; zeroMiss?: ComplianceReport | null; domain?: DomainRow | null }) {
   const router = useRouter();
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [lang, setLang] = useState<Lang>("en");
@@ -549,6 +551,9 @@ export default function PortalDashboard({
             {/* Response-time guarantee — CGV 4 bis requires the client can
                 consult their own measured response times here. */}
             {zeroMiss && <ZeroMissPanel report={zeroMiss} lang={lang} />}
+
+            {/* Your domain — CGV 7 bis made visible. */}
+            {domain && <DomainPanel domain={domain} lang={lang} />}
 
             {/* Subscription */}
             <div className="rounded-2xl border border-[var(--p-border)] bg-[var(--p-surface)] p-4 sm:p-5 flex flex-wrap items-center gap-4" style={{ boxShadow: "var(--p-shadow)" }}>

@@ -4,6 +4,7 @@ import { supabaseAdmin, type Build, type Client } from "@/lib/supabase";
 import PortalDashboard from "@/components/PortalDashboard";
 import { paymentAlertFrom } from "@/lib/clientBilling";
 import { complianceFor, type ComplianceReport } from "@/lib/zeroMiss";
+import { domainForEmail, type DomainRow } from "@/lib/domains";
 
 export const dynamic = "force-dynamic";
 
@@ -57,5 +58,8 @@ export default async function PortalPage() {
   let zeroMiss: ComplianceReport | null = null;
   if (primarySlug) zeroMiss = await complianceFor(primarySlug);
 
-  return <PortalDashboard email={email} builds={builds} subscription={subscription} siteSlugs={siteSlugs} scopesByLeadId={scopesByLeadId} paymentAlert={paymentAlert} zeroMiss={zeroMiss} />;
+  // CGV 7 bis: the client owns their domain. The panel proves it back to them.
+  const domain: DomainRow | null = await domainForEmail(email);
+
+  return <PortalDashboard email={email} builds={builds} subscription={subscription} siteSlugs={siteSlugs} scopesByLeadId={scopesByLeadId} paymentAlert={paymentAlert} zeroMiss={zeroMiss} domain={domain} />;
 }

@@ -65,6 +65,13 @@ export default function CgvFrPage() {
               <p>Au paiement intégral, le client devient pleinement propriétaire de tous les fichiers, maquettes et contenus créés par Servolia. Servolia conserve le droit de présenter le projet dans son portfolio, sauf accord écrit contraire.</p>
             </div>
             <div>
+              <h2 className="text-lg font-black text-[#18181B] mb-3">7 bis. Propriété du nom de domaine</h2>
+              <p>Lorsque Servolia enregistre un nom de domaine dans le cadre de la prestation, <strong>le client en est le titulaire — le propriétaire légal du domaine.</strong> Servolia figure uniquement comme contact technique et gère les DNS pour le compte du client. Servolia ne devient à aucun moment propriétaire du nom de domaine d&apos;un client.</p>
+              <p className="mt-3">Les frais d&apos;enregistrement et de renouvellement d&apos;un domaine standard sont inclus dans l&apos;abonnement mensuel tant que celui-ci est actif. Servolia assure les renouvellements pendant la durée de l&apos;abonnement, et le bureau d&apos;enregistrement, le titulaire et la date d&apos;expiration sont consultables à tout moment par le client dans son espace client.</p>
+              <p className="mt-3">En cas de résiliation, le client conserve son domaine. Servolia fournit le code d&apos;autorisation (code de transfert) et libère le domaine vers le client ou le bureau d&apos;enregistrement de son choix, sans frais, dans les 5 jours ouvrés suivant une demande écrite. Servolia ne retiendra jamais un domaine, ni un code de transfert, comme moyen de pression dans un litige commercial. À la fin de l&apos;abonnement, les frais de renouvellement incombent au client.</p>
+              <p className="mt-3">Les domaines premium ou à tarification particulière, ainsi que tout domaine supplémentaire, sont chiffrés séparément avant achat.</p>
+            </div>
+            <div>
               <h2 className="text-lg font-black text-[#18181B] mb-3">8. Remboursements</h2>
               <p>Les frais de mise en place de {SETUP_PLAN.totalEur} € ne sont pas remboursables une fois le travail commencé. Si Servolia ne livre pas du tout le périmètre convenu, ils sont intégralement remboursés. L&apos;abonnement mensuel est remboursable pour le mois en cours si l&apos;annulation intervient dans les 5 jours suivant la date de facturation de ce mois. Au-delà de cette fenêtre, le mois en cours n&apos;est pas remboursable, mais la facturation future s&apos;arrête.</p>
             </div>

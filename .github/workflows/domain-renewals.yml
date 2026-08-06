@@ -1,0 +1,19 @@
+name: Domain renewal watchdog
+
+# Cloudflare's Registrar API cannot renew a domain, so renewal is manual.
+# A lapsed domain takes down a client's site and email at once — this makes
+# sure that never happens by surprise. Silent unless something is due.
+
+on:
+  schedule:
+    - cron: "0 8 * * 1" # Mondays, 08:00 UTC
+  workflow_dispatch: {}
+
+jobs:
+  renewals:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check domains approaching expiry
+        run: |
+          curl -sf -X POST "https://servolia.com/api/cron/domain-renewals" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"

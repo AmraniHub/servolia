@@ -57,6 +57,13 @@ export default function CGVPage() {
               <p>Upon receipt of full payment, the client receives full ownership of all website files, designs, and content created by Servolia. Servolia retains the right to display the project in its portfolio unless otherwise agreed in writing.</p>
             </div>
             <div>
+              <h2 className="text-lg font-black text-[#18181B] mb-3">7 bis. Domain name ownership</h2>
+              <p>Where Servolia registers a domain name as part of the service, <strong>the client is the registrant — the legal owner of that domain.</strong> Servolia is listed only as the technical contact and manages DNS on the client&apos;s behalf. Servolia does not, at any point, take ownership of a client&apos;s domain name.</p>
+              <p className="mt-3">The registration and renewal fees for one standard domain are included in the monthly plan for as long as that plan is active. Servolia manages renewals while the plan is running, and the current registrar, registrant and expiry date are visible to the client at any time in their client portal.</p>
+              <p className="mt-3">On cancellation the client keeps the domain. Servolia will provide the authorisation (transfer) code and release the domain to the client or to a registrar of their choosing, at no charge, within 5 business days of a written request. Servolia will never withhold a domain, or a transfer code, as leverage in a commercial dispute. After the plan ends, responsibility for renewal fees passes to the client.</p>
+              <p className="mt-3">Premium or unusually priced domains, and any second or subsequent domain, are quoted separately before purchase.</p>
+            </div>
+            <div>
               <h2 className="text-lg font-black text-[#18181B] mb-3">8. Refunds</h2>
               <p>The €{SETUP_PLAN.totalEur} installation fee is non-refundable after work has begun. If Servolia fails to deliver the agreed scope at all, the installation fee is refunded in full. Monthly plan fees are refundable for the current month if cancellation is requested within 5 days of that month&apos;s billing date. After the 5-day window the current month is not refundable, but future billing stops.</p>
             </div>

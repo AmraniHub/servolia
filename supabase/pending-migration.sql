@@ -177,3 +177,44 @@ drop trigger if exists ideas_touch_updated_at on ideas;
 create trigger ideas_touch_updated_at
   before update on ideas
   for each row execute function touch_ideas_updated_at();
+
+-- 7 ────────────────────────────────────────────────────────────────────────
+-- CLIENT DOMAINS (2026-08-01)
+-- Servolia MANAGES client domains; it never owns them. The client is the
+-- legal registrant — this table records that fact so the portal can prove it
+-- back to them, and so renewals can be alarmed on.
+--
+-- Renewal matters more than it looks: Cloudflare's Registrar API (beta) can
+-- register but CANNOT yet renew, transfer, or update contacts. A missed
+-- renewal takes down a clinic's website AND its email, so expires_at is
+-- watched by a cron rather than trusted to memory.
+-- ============================================================================
+create table if not exists client_domains (
+  id            uuid primary key default gen_random_uuid(),
+  created_at    timestamptz default now(),
+  updated_at    timestamptz default now(),
+
+  client_id     uuid references clients(id) on delete set null,
+  build_id      uuid,
+  email         text,                       -- portal owner, for lookup before a client row exists
+
+  domain        text not null unique,
+  registrar     text not null default 'cloudflare',
+  -- The legal owner. NOT Servolia — see CGV section 7 bis.
+  registrant_name  text,
+  registrant_org   text,
+  registrant_email text,
+
+  status        text not null default 'active',   -- active | pending | expired | transferred_out
+  registered_at timestamptz,
+  expires_at    timestamptz,
+  auto_renew    boolean default true,
+  notes         text
+);
+
+alter table client_domains drop constraint if exists client_domains_status_check;
+alter table client_domains add constraint client_domains_status_check
+  check (status in ('active','pending','expired','transferred_out'));
+
+create index if not exists client_domains_expiry_idx on client_domains (expires_at);
+create index if not exists client_domains_email_idx  on client_domains (email);

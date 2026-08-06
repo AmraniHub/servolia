@@ -276,6 +276,26 @@ export const FEATURES: SystemFeature[] = [
     code: "src/lib/clientSites.ts (planFeatures) · src/components/ClientSite.tsx · /api/chat (gate) · src/lib/siteArchive.ts · /api/admin/archive-site · /api/admin/set-site-status (auto-archive)",
   },
   {
+    name: "Client domains — we manage, the client owns",
+    summary: "Every domain Servolia registers is in the CLIENT's name. Servolia holds the technical keys and runs DNS, and never takes ownership — written into CGV 7 bis and proven back to the client in their portal.",
+    how: [
+      "THE DECISION, and why: holding a client's domain buys lock-in and costs more than it is worth here. The beachhead is 200–500 dentists who all know each other, so one story of 'they wouldn't release my domain' travels the whole niche. And Servolia is one person — owning every domain means one unreachable founder takes down every clinic's site AND email simultaneously, which for a medical practice is not an inconvenience. The real moat is the bundle: leaving means losing site, receptionist, hosting, email and lead history together. That is earned switching cost; hostage is not.",
+      "CGV 7 bis (EN + FR) states it: the client is the registrant, Servolia is technical contact, renewal is included while the plan runs, and on cancellation the transfer code is released free within 5 working days — explicitly never withheld as leverage in a dispute.",
+      "src/lib/domains.ts wraps the Cloudflare Registrar API (verified against the docs 2026-08-01, beta): search, check, register. Contacts CAN be supplied at registration, which is the only reason the client-as-registrant model works. registerDomain() REFUSES to run without a registrant rather than falling back to the account default — defaulting would silently put Servolia on the WHOIS record, the exact outcome the model exists to avoid.",
+      "THREE THINGS THE BETA API CANNOT DO, all of which shaped the design: it cannot RENEW (so expiry is tracked in client_domains and watched by a weekly cron — a lapsed domain kills a clinic's site and email and the name can be bought by anyone); it cannot TRANSFER (a client leaving is a dashboard action by hand); and it cannot UPDATE CONTACTS (so registrant details are effectively one-shot and must be right at registration).",
+      "The portal panel shows the client their own name as registrant, the registrar, the expiry, and — deliberately — how to leave. A client who can see the exit does not feel trapped and does not go looking for it.",
+    ],
+    use: [
+      "Registering for a client: always pass their name, organisation, email and country. Never your own.",
+      "Renewals: act on the Monday alert. It is silent when nothing is due and loud when something is inside 14 days.",
+      "A client leaving: hand over the transfer code from the Cloudflare dashboard within 5 working days. This is a contractual obligation, not a courtesy.",
+      "Needs CLOUDFLARE_ACCOUNT_ID + CLOUDFLARE_API_TOKEN with Registrar WRITE. Without them the code paths return a clear 'not configured' rather than failing oddly.",
+    ],
+    cost: "At cost — Cloudflare Registrar adds no markup (~€10/year for a .fr or .com), absorbed inside the monthly plan.",
+    value: "Turns the thing most agencies use as a leash into a selling point. 'The domain is in your name and you can take it anywhere' is exactly what a clinic burned by a previous web agency needs to hear — and it removes a single point of failure that could otherwise take out every client at once.",
+    code: "src/lib/domains.ts · /api/cron/domain-renewals · src/components/portal/DomainPanel.tsx · legal/cgv §7 bis (EN+FR) · client_domains table",
+  },
+  {
     name: "Ideas board — how work gets handed to Claude",
     summary: "A kanban at /admin/ideas of everything discussed but not built. Move a card to In progress, copy the brief, paste it into a message — that is the whole handover.",
     how: [
@@ -457,7 +477,7 @@ export const FEATURES: SystemFeature[] = [
     summary: "Every automated job, where it's scheduled, and why there are two systems — so nobody 'rediscovers' this topology again.",
     how: [
       "VERCEL CRONS (vercel.json, GET, Authorization auto-injected from CRON_SECRET): daily-brief 07:00 · monthly-report 08:00 on the 1st · monthly-invoice 09:00 on the 1st (pay-per-booking).",
-      "GITHUB ACTIONS (.github/workflows/*.yml, POST via curl with the CRON_SECRET repo secret — set 2026-07-15): follow-up daily 09:30 UTC (48h lead nudge) · daily-stats 07:15 (GA4 → Telegram) · weekly-seo Monday 08:15 · client-reports 5th 08:00 (AI narrative per subscribed client) · zero-miss daily 07:00 (the 60s response guarantee — silent unless a client is owed a refund) · blog-generator Mon/Wed/Fri 08:00 · linkedin-generator Mon/Wed/Fri 07:00 · uptime every ~2h (independent of Vercel, alerts even if the site is down).",
+      "GITHUB ACTIONS (.github/workflows/*.yml, POST via curl with the CRON_SECRET repo secret — set 2026-07-15): follow-up daily 09:30 UTC (48h lead nudge) · daily-stats 07:15 (GA4 → Telegram) · weekly-seo Monday 08:15 · client-reports 5th 08:00 (AI narrative per subscribed client) · zero-miss daily 07:00 · domain-renewals Mondays 08:00 (the 60s response guarantee — silent unless a client is owed a refund) · blog-generator Mon/Wed/Fri 08:00 · linkedin-generator Mon/Wed/Fri 07:00 · uptime every ~2h (independent of Vercel, alerts even if the site is down).",
       "Why two systems: Actions workflows POST (Vercel crons can only GET), give a manual 'Run workflow' button, survive a Vercel outage (uptime), and don't count against Vercel's cron limits.",
       "monthly-report (1st) and client-reports (5th) are NOT duplicates: the 1st sends the metrics snapshot; the 5th sends the Claude-written narrative + recommendation for active care clients.",
     ],
