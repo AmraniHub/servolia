@@ -124,3 +124,56 @@ select
 -- ============================================================================
 alter table chat_sessions add column if not exists client_status text;
 alter table chat_sessions add column if not exists client_note text;
+
+-- 6 ────────────────────────────────────────────────────────────────────────
+-- IDEAS BOARD (2026-08-01)
+-- The founder's kanban: everything discussed but not built. roadmap.ts stays
+-- the code-side record of what shipped and what's blocked; this table is the
+-- part the founder moves themselves, without a commit. external_key makes the
+-- one-click import from roadmap.ts idempotent — re-importing can never
+-- duplicate a card.
+-- ============================================================================
+create table if not exists ideas (
+  id           uuid primary key default gen_random_uuid(),
+  created_at   timestamptz default now(),
+  updated_at   timestamptz default now(),
+
+  title        text not null,
+  description  text,
+  category     text not null default 'feature',
+  status       text not null default 'idea',
+  priority     text not null default 'medium',
+  source       text not null default 'founder',   -- 'founder' | 'roadmap'
+  needs        text,                              -- account/key/decision it waits on
+  notes        text,
+  sort_order   int default 0,
+
+  -- null for hand-typed cards; set for anything imported from roadmap.ts
+  external_key text unique
+);
+
+alter table ideas drop constraint if exists ideas_status_check;
+alter table ideas add constraint ideas_status_check
+  check (status in ('idea','planned','in_progress','done','dropped'));
+
+alter table ideas drop constraint if exists ideas_priority_check;
+alter table ideas add constraint ideas_priority_check
+  check (priority in ('low','medium','high'));
+
+alter table ideas drop constraint if exists ideas_category_check;
+alter table ideas add constraint ideas_category_check
+  check (category in ('feature','integration','content','ops','growth','legal'));
+
+create index if not exists ideas_status_idx on ideas (status, priority);
+
+create or replace function touch_ideas_updated_at()
+returns trigger language plpgsql as $$
+begin
+  new.updated_at = now();
+  return new;
+end $$;
+
+drop trigger if exists ideas_touch_updated_at on ideas;
+create trigger ideas_touch_updated_at
+  before update on ideas
+  for each row execute function touch_ideas_updated_at();

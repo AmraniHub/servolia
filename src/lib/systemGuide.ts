@@ -276,6 +276,26 @@ export const FEATURES: SystemFeature[] = [
     code: "src/lib/clientSites.ts (planFeatures) · src/components/ClientSite.tsx · /api/chat (gate) · src/lib/siteArchive.ts · /api/admin/archive-site · /api/admin/set-site-status (auto-archive)",
   },
   {
+    name: "Ideas board — how work gets handed to Claude",
+    summary: "A kanban at /admin/ideas of everything discussed but not built. Move a card to In progress, copy the brief, paste it into a message — that is the whole handover.",
+    how: [
+      "Two records, deliberately NOT duplicated. roadmap.ts is CODE: the honest log of what shipped, what is blocked, and why — only Claude edits it, and it drives /admin/settings. The `ideas` table is DATA: the founder moves cards themselves, with no commit and no waiting.",
+      "They are linked by a one-click import. The first time the board is empty it offers 'Import everything from the roadmap' — all 43 items arrive with their detail, priority and blocker, categorised from the title. Every row carries an external_key, so pressing it twice can never duplicate a card.",
+      "Blocked roadmap items land in PLANNED rather than Idea, because 'waiting on a lawyer' is decided work, not a suggestion. Done items are imported too — a Done column that starts empty makes it look like nothing has ever shipped.",
+      "THE BUTTON THAT MATTERS: 'Copy brief for Claude'. Claude works in the repo and cannot read Supabase, so a card moved to In progress is invisible to him. That button renders the column as plain text — title, detail, blocker, ordered by priority — ready to paste. Without it this is a pretty board that changes nothing.",
+      "Cards move by button, not drag: drag targets are painful on a phone, and buttons announce themselves to a screen reader for free. Moves are optimistic so they feel instant, and roll back if the write fails.",
+    ],
+    use: [
+      "Capture anything mid-conversation with New idea — that is what stops good ideas dying in a chat log.",
+      "To get something built: move it to In progress —> Copy brief for Claude —> paste. Claude reports back what he finished; you move those to Done.",
+      "Use Drop, not Delete, for anything you might reconsider. Delete is permanent.",
+      "The table comes from supabase/pending-migration.sql section 6. Until that runs the page explains itself instead of erroring.",
+    ],
+    cost: "Free — one small table.",
+    value: "Closes the loop between 'I want this' and 'it is built' without either side re-reading the whole conversation. The founder decides priority in the UI; Claude receives an unambiguous, ordered brief.",
+    code: "src/lib/ideas.ts · /api/admin/ideas · src/components/admin/IdeasBoard.tsx · src/app/admin/ideas · seeds from src/lib/roadmap.ts",
+  },
+  {
     name: "Unit economics — the money model and offer, scored automatically",
     summary: "Hormozi's money model and value equation computed from your own rows at /admin/economics, so the decision 'may I spend to acquire a client' has a number instead of a feeling.",
     how: [
