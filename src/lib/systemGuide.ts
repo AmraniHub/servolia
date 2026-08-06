@@ -276,6 +276,25 @@ export const FEATURES: SystemFeature[] = [
     code: "src/lib/clientSites.ts (planFeatures) · src/components/ClientSite.tsx · /api/chat (gate) · src/lib/siteArchive.ts · /api/admin/archive-site · /api/admin/set-site-status (auto-archive)",
   },
   {
+    name: "Proof page — \"what we've actually built\"",
+    summary: "/case-studies (and /fr/cas-clients) lead with a grid of live, openable sites in browser frames — modelled on the OpenX24 results page, adapted so real clients appear automatically.",
+    how: [
+      "src/lib/showcase.ts returns ONE list with two kinds of entry, distinguished structurally by a `kind` field rather than by styling: CLIENT (every published client_sites row, excluding prospect demos and the bundled showcases) and DEMO (the fictional showcases from the template registry). A demo can therefore never be rendered as a client by accident — this is the page a sceptical clinic owner opens to decide if Servolia is real, so one overstated card would be the most expensive lie on the site.",
+      "No manual case-study entry to remember: deliver a client, publish their site, and it appears here at the top. Reals sort before demos because only real work persuades.",
+      "Each card is a browser frame around a LIVE iframe, not a screenshot. A screenshot is a claim about a page; an iframe IS the page — it cannot go stale or flatter, and the visitor clicks straight through and uses the thing. Same 400%/scale(0.25) trick as the homepage showcase: exact fit at every breakpoint, no measurement.",
+      "Spec rows (Type / City / Language / We built) come from each site's own config, and 'We built' reads planFeatures() so it never claims an AI receptionist on a site that does not ship one.",
+      "The hero copy changes with reality: with zero clients it says plainly that Servolia is young and invites you to judge the craft; the moment a real client is published it switches to 'every site below is online right now'.",
+    ],
+    use: [
+      "Send a sceptical prospect straight here — it is the fastest answer to 'are you real?'.",
+      "Nothing to maintain. Publishing a client site adds it; there is no separate case-study form to fill in.",
+      "The older illustrative scenarios still sit below the grid as a secondary section — evidence first, argument second.",
+    ],
+    cost: "Free — one indexed query, and the iframes are lazy.",
+    value: "Replaces the weakest credibility pattern (invented scenarios) with the strongest available (a working product you can click), and grows itself as clients ship.",
+    code: "src/lib/showcase.ts · src/components/BuiltGrid.tsx · src/app/case-studies · src/app/fr/cas-clients",
+  },
+  {
     name: "Client domains — we manage, the client owns",
     summary: "Every domain Servolia registers is in the CLIENT's name. Servolia holds the technical keys and runs DNS, and never takes ownership — written into CGV 7 bis and proven back to the client in their portal.",
     how: [

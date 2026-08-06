@@ -7,6 +7,8 @@ import { ArrowRight, Clock, CheckCircle } from "lucide-react";
 import type { Metadata } from "next";
 import ValueStack from "@/components/ValueStack";
 import Guarantee from "@/components/Guarantee";
+import BuiltGrid from "@/components/BuiltGrid";
+import { listBuiltSites } from "@/lib/showcase";
 import { PLANS } from "@/lib/pricing";
 
 export const dynamic = "force-dynamic";
@@ -121,6 +123,8 @@ const cases = [
 export default async function CaseStudiesPage() {
   const realStudies = await getPublishedCaseStudies();
   const hasReal = realStudies.length > 0;
+  const built = await listBuiltSites("en");
+  const clients = built.filter((b) => b.kind === "client").length;
 
   return (
     <>
@@ -128,16 +132,37 @@ export default async function CaseStudiesPage() {
       <main>
         <RealCaseStudies studies={realStudies} />
 
+        {/* WHAT WE'VE BUILT — evidence before argument. Every card opens a
+            real, working site; the demos are labelled as fictional on the
+            card itself so the distinction survives a screenshot. */}
+        <section className="pt-28 pb-16 lg:pt-32 bg-[#FAFAF7]">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-10">
+              <p className="text-sm font-bold text-[#36671E] uppercase tracking-widest mb-3">Evidence, not promises</p>
+              <h1 className="text-4xl sm:text-5xl font-black text-[#18181B] leading-tight mb-5">
+                What we&apos;ve{" "}
+                <span className="bg-gradient-to-r from-[#36671E] to-[#295115] bg-clip-text text-transparent">actually built.</span>
+              </h1>
+              <p className="text-[#52525B] text-lg max-w-2xl mx-auto">
+                {clients > 0
+                  ? "Every site below is online right now. Open one, click around, talk to its AI receptionist — that is the fastest way to judge whether we can build yours."
+                  : "We are a young company and we will not pretend otherwise. What we can show you is the work itself: three complete systems, online right now, that you can open and use. Judge the craft, not the marketing."}
+              </p>
+            </div>
+            <BuiltGrid sites={built} lang="en" />
+          </div>
+        </section>
+
         {/* HERO */}
         <section className="pt-28 pb-16 lg:pt-36 lg:pb-20 bg-[#FAFAF7]">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <p className="text-sm font-bold text-[#36671E] uppercase tracking-widest mb-3">Example Deployments</p>
-            <h1 className="text-4xl sm:text-5xl font-black text-[#18181B] leading-tight mb-5">
+            <h2 className="text-3xl sm:text-4xl font-black text-[#18181B] leading-tight mb-5">
               What a Servolia system{" "}
               <span className="bg-gradient-to-r from-[#36671E] to-[#295115] bg-clip-text text-transparent">
                 is built to do.
               </span>
-            </h1>
+            </h2>
             <p className="text-[#52525B] text-lg max-w-2xl mx-auto mb-4">
               The scenarios below show how each Servolia system is designed to work for a typical service business — the problem, what we build, and the outcomes it&apos;s built to drive.
             </p>
