@@ -15,8 +15,8 @@ function shade(hex: string, amt = -18): string {
 }
 
 const T = {
-  en: { book: "Book now", home: "Home", about: "About", expertise: "Expertise", services: "Services", advice: "Advice", contactShort: "Contact", why: "Why choose us", faq: "Questions", callUs: "Call us", emailUs: "Email us", visit: "Visit us", hours: "Hours", bookCta: "Book your appointment", bookSub: "Fill in the form and the practice will get back to you fast — or reach us directly.", orReach: "Or reach us directly", chat: "Chat with us", team: "Meet the team", teamEyebrow: "The people behind your care", backHome: "Home", processTitle: "How it works", processEyebrow: "Your journey", solutionsTitle: "Treatment options", solutionsEyebrow: "What we treat", valuesTitle: "Our commitments", valuesEyebrow: "Why patients trust us", adviceTitle: "Advice & aftercare", adviceEyebrow: "We're with you", learnMore: "Learn more", ourExpertise: "Our expertise", expertiseEyebrow: "Our know-how", practicalTitle: "Practical information", practicalEyebrow: "Before your visit", emergencyCall: "Call now" },
-  fr: { book: "Réserver", home: "Accueil", about: "Cabinet", expertise: "Expertise", services: "Services", advice: "Conseils", contactShort: "Contact", why: "Pourquoi nous choisir", faq: "Questions", callUs: "Appelez-nous", emailUs: "Écrivez-nous", visit: "Nous trouver", hours: "Horaires", bookCta: "Réservez votre rendez-vous", bookSub: "Remplissez le formulaire et le cabinet vous recontacte rapidement — ou contactez-nous directement.", orReach: "Ou contactez-nous directement", chat: "Discuter", team: "Notre équipe", teamEyebrow: "Les visages de votre prise en charge", backHome: "Accueil", processTitle: "Comment ça se passe", processEyebrow: "Votre parcours", solutionsTitle: "Nos solutions", solutionsEyebrow: "Ce que nous traitons", valuesTitle: "Nos engagements", valuesEyebrow: "Pourquoi nous faire confiance", adviceTitle: "Conseils & suivi", adviceEyebrow: "On vous accompagne", learnMore: "En savoir plus", ourExpertise: "Notre expertise", expertiseEyebrow: "Notre savoir-faire", practicalTitle: "Infos pratiques", practicalEyebrow: "Avant votre visite", emergencyCall: "Appeler maintenant" },
+  en: { book: "Book now", home: "Home", about: "About", expertise: "Expertise", services: "Services", advice: "Advice", contactShort: "Contact", why: "Why choose us", faq: "Questions", callUs: "Call us", emailUs: "Email us", visit: "Visit us", hours: "Hours", bookCta: "Book your appointment", bookSub: "Fill in the form and the practice will get back to you fast — or reach us directly.", orReach: "Or reach us directly", chat: "Chat with us", team: "Meet the team", teamEyebrow: "The people behind your care", backHome: "Home", processTitle: "How it works", processEyebrow: "Your journey", solutionsTitle: "Treatment options", solutionsEyebrow: "What we treat", valuesTitle: "Our commitments", valuesEyebrow: "Why patients trust us", adviceTitle: "Advice & aftercare", adviceEyebrow: "We're with you", learnMore: "Learn more", ourExpertise: "Our expertise", expertiseEyebrow: "Our know-how", practicalTitle: "Practical information", practicalEyebrow: "Before your visit", emergencyCall: "Call now", aiAlways: "Our AI receptionist answers in seconds, 24/7 — nights and weekends included" },
+  fr: { book: "Réserver", home: "Accueil", about: "Cabinet", expertise: "Expertise", services: "Services", advice: "Conseils", contactShort: "Contact", why: "Pourquoi nous choisir", faq: "Questions", callUs: "Appelez-nous", emailUs: "Écrivez-nous", visit: "Nous trouver", hours: "Horaires", bookCta: "Réservez votre rendez-vous", bookSub: "Remplissez le formulaire et le cabinet vous recontacte rapidement — ou contactez-nous directement.", orReach: "Ou contactez-nous directement", chat: "Discuter", team: "Notre équipe", teamEyebrow: "Les visages de votre prise en charge", backHome: "Accueil", processTitle: "Comment ça se passe", processEyebrow: "Votre parcours", solutionsTitle: "Nos solutions", solutionsEyebrow: "Ce que nous traitons", valuesTitle: "Nos engagements", valuesEyebrow: "Pourquoi nous faire confiance", adviceTitle: "Conseils & suivi", adviceEyebrow: "On vous accompagne", learnMore: "En savoir plus", ourExpertise: "Notre expertise", expertiseEyebrow: "Notre savoir-faire", practicalTitle: "Infos pratiques", practicalEyebrow: "Avant votre visite", emergencyCall: "Appeler maintenant", aiAlways: "Notre réceptionniste IA répond en quelques secondes, 24h/24 — nuits et week-ends compris" },
 };
 type Dict = typeof T["en"];
 
@@ -573,6 +573,15 @@ export default function ClientSite({ config, page = "home" }: { config: ClientSi
           <h2 className="text-3xl sm:text-4xl font-black text-white mb-3">{t.bookCta}</h2>
           <p className="text-white/75 mb-8 max-w-xl mx-auto">{t.bookSub}</p>
 
+          {/* The after-hours promise, server-rendered and gated on the chat
+              feature — a site without the AI receptionist must never claim it. */}
+          {(c.features?.chat ?? true) && (
+            <p className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 border border-white/20 text-white/90 text-sm font-semibold mb-8">
+              <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" aria-hidden />
+              {t.aiAlways}
+            </p>
+          )}
+
           {/* Booking form — the primary conversion action. On demo sites it looks
               and feels real but never submits anywhere. */}
           <BookingForm slug={c.slug} services={c.services} accent={accent} accentDark={accentDark} language={c.language === "fr" ? "fr" : "en"} demo={!!c.isDemo} />
@@ -659,16 +668,22 @@ export default function ClientSite({ config, page = "home" }: { config: ClientSi
 
       {/* The client's own AI receptionist — gated by the plan template:
           the €290 Website System ships without chat (see planFeatures()).
-          Absent features (older rows, demos) default to on. */}
+          Absent features (older rows, demos) default to on.
+          The wrapper id/data attrs exist for crawlers and audit tools: the
+          widget itself mounts client-side, so without a server-rendered
+          marker the site's defining capability is invisible to anything
+          that reads raw HTML — including our own audit engine. */}
       {(c.features?.chat ?? true) && (
-        <ChatWidget
-          siteSlug={c.slug}
-          brandName={`${c.businessName}`}
-          botName={c.businessName}
-          accent={accent}
-          greeting={c.aiGreeting}
-          poweredBy={false}
-        />
+        <div id="servolia-chat-widget" data-chat data-ai-receptionist="24-7">
+          <ChatWidget
+            siteSlug={c.slug}
+            brandName={`${c.businessName}`}
+            botName={c.businessName}
+            accent={accent}
+            greeting={c.aiGreeting}
+            poweredBy={false}
+          />
+        </div>
       )}
     </div>
   );

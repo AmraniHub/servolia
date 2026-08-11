@@ -412,6 +412,14 @@ export function configFromIntake(src: IntakeSource): ClientSiteConfig {
     email: str(src.email) ?? undefined,
     bookingUrl: str(d.bookingUrl) ?? str(d.doctolibUrl) ?? str(d.planityUrl),
     logoUrl: str(d.logoUrl),
+    // The client's REAL Google rating — the third trust signal beside hours
+    // and address, and worth 3 audit points on every real site. Taken from
+    // their Business Profile at build time; never invented, never on demos.
+    googleReviewUrl: str(d.googleReviewUrl),
+    googleRating: Number.isFinite(Number(d.googleRating)) && Number(d.googleRating) > 0
+      ? Math.min(5, Number(d.googleRating)) : undefined,
+    reviewCount: Number.isFinite(Number(d.reviewCount)) && Number(d.reviewCount) > 0
+      ? Math.round(Number(d.reviewCount)) : undefined,
     // The client's own GA4 property, if they gave one at intake. Servolia's
     // property never fires on their site, so without this they simply get
     // first-party numbers in the portal instead.

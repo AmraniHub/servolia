@@ -108,6 +108,10 @@ const BOOKING_RE = /doctolib|planity|resalib|calendly|rendez-?vous en ligne|pren
 // widget uses. Deliberately matches markup tokens, not the word "chat" in
 // prose — a page that merely mentions live chat has not installed one.
 const CHAT_RE = /crisp|tawk\.to|intercom|drift|livechat|hubspot-messages|zendesk|smartsupp|chatra|messenger|chat-?widget|chat_widget|data-chat|id=["'][^"']*chat|class=["'][^"']*chat-/i;
+/** An explicit around-the-clock AI answering claim — machine markers or
+ *  human-readable copy, EN or FR. Kept strict: "24/7" alone is not enough,
+ *  it must be tied to an assistant/AI actually answering. */
+const AI_247_RE = /data-ai-receptionist|(?:ai|ia)[ -](?:receptionist|réceptionniste|assistant|chatbot)[^.]{0,80}(?:24\s*\/\s*7|24\s*h\s*\/?\s*24|around the clock)|(?:réceptionniste|assistant|chatbot)[^.]{0,40}(?:ia|ai)[^.]{0,80}(?:24\s*\/\s*7|24\s*h\s*\/?\s*24)|(?:24\s*\/\s*7|24\s*h\s*\/?\s*24)[^.]{0,60}(?:ai|ia)[ -](?:receptionist|réceptionniste|assistant|chatbot)/i;
 const WHATSAPP_RE = /wa\.me|whatsapp/i;
 const FORM_RE = /<form[\s\S]*?>/i;
 const TEL_RE = /href=["']tel:/i;
@@ -154,6 +158,17 @@ function scoreAfterHours(h: string, t: string): Finding {
   const chat = has(h, CHAT_RE);
   const wa = has(h, WHATSAPP_RE);
   const booking = has(h, BOOKING_RE) || has(t, BOOKING_RE);
+  // Top tier: the site declares an AI assistant answering around the clock —
+  // a checkable claim (message it right now), which is exactly what separates
+  // it from a widget staffed 9-to-6. Any site making this claim honestly
+  // earns it, not only ours.
+  if (chat && has(h, AI_247_RE)) {
+    return {
+      dimension: "afterHours", score: 10, severity: "ok",
+      observation: { en: "An AI assistant answers around the clock — the strongest after-hours setup there is. Verify it: message the chat now and time the reply.", fr: "Un assistant IA répond 24h/24 — la meilleure configuration hors horaires qui soit. Vérifiez-le : écrivez dans le chat maintenant et chronométrez la réponse." },
+      fix: { en: "", fr: "" },
+    };
+  }
   if (chat) {
     return {
       dimension: "afterHours", score: 7, severity: "ok",
