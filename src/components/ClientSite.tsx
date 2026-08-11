@@ -1,6 +1,6 @@
 import ChatWidget from "@/components/ChatWidget";
 import BookingForm from "@/components/BookingForm";
-import { MapPin, Phone, Mail, Clock, CheckCircle, ArrowRight, Calendar, Check } from "lucide-react";
+import { MapPin, Phone, Mail, Clock, CheckCircle, ArrowRight, Calendar, Check, Star } from "lucide-react";
 import type { ClientSiteConfig, ClientExpertiseBlock, ClientHighlight } from "@/lib/clientSites";
 
 /** Slightly darken a hex color for gradients/hovers. */
@@ -289,6 +289,35 @@ export default function ClientSite({ config, page = "home" }: { config: ClientSi
           </div>
         </section>
       ))}
+
+      {/* Google rating — the third local-credibility signal beside hours and
+          address, and the one patients weigh most. Renders only when the
+          client's REAL numbers are on file; demo sites deliberately carry
+          none, so nothing here can become invented social proof. */}
+      {typeof c.googleRating === "number" && (
+        <section className="bg-white border-b border-[#ECECEC]">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-center gap-3 flex-wrap text-center">
+            <span className="flex items-center gap-0.5" aria-hidden>
+              {[0, 1, 2, 3, 4].map((n) => (
+                <Star key={n} className={`w-4 h-4 ${n < Math.round(c.googleRating!) ? "text-[#F59E0B] fill-[#F59E0B]" : "text-[#D4D4D8]"}`} />
+              ))}
+            </span>
+            <span className="text-sm font-black text-[#18181B]">
+              {c.language === "fr" ? c.googleRating.toString().replace(".", ",") : c.googleRating}/5
+            </span>
+            <span className="text-sm text-[#71717A]">
+              {c.reviewCount ? `· ${c.reviewCount} ` : "· "}
+              {c.language === "fr" ? "avis Google" : "Google reviews"}
+            </span>
+            {c.googleReviewUrl && (
+              <a href={c.googleReviewUrl} target="_blank" rel="noopener noreferrer"
+                className="text-xs font-bold underline underline-offset-2" style={{ color: accentDark }}>
+                {c.language === "fr" ? "Voir les avis" : "Read reviews"}
+              </a>
+            )}
+          </div>
+        </section>
+      )}
 
       {/* Stats / trust band */}
       {hasStats && on("home", "cabinet") && (

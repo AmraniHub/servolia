@@ -198,6 +198,15 @@ export interface ClientSiteConfig {
   // Business economics & growth loop
   avgTreatmentValue?: number; // avg € per new client — used in the monthly ROI report
   googleReviewUrl?: string; // "leave us a review" link (g.page/r/...)
+  /** The client's REAL Google rating, shown as a trust row on every page.
+   *  Reviews are the third local-credibility signal (with hours and address)
+   *  and the one our own audit engine scores clinics on — without these
+   *  fields a client with 4.9 stars had no way to show it.
+   *  NEVER populate these on a demo: the showcase sites carry a deliberate
+   *  no-invented-review-counts rule. Real numbers, taken from the client's
+   *  Google Business Profile at build time, or nothing at all. */
+  googleRating?: number;   // e.g. 4.9
+  reviewCount?: number;    // e.g. 127
   metaPixelId?: string; // client's own Meta pixel — CAPI Lead events fire on bookings
   metaCapiToken?: string; // client's CAPI access token (paired with metaPixelId)
   /** The client's OWN GA4 Measurement ID (G-XXXXXXXX), collected at intake.
