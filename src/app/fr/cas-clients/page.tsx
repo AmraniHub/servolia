@@ -6,6 +6,7 @@ import type { Metadata } from "next";
 import ValueStack from "@/components/ValueStack";
 import Guarantee from "@/components/Guarantee";
 import BuiltGrid from "@/components/BuiltGrid";
+import FoundingOffer from "@/components/FoundingOffer";
 import { listBuiltSites } from "@/lib/showcase";
 import { PLANS } from "@/lib/pricing";
 
@@ -241,6 +242,13 @@ export default async function FrenchCaseStudiesPage() {
             </section>
           ))}
         </div>
+
+        {/* Cabinets fondateurs — du scénario à l'étude de cas NOMMÉE */}
+        <section className="pt-16 bg-[#FAFAF7]">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6">
+            <FoundingOffer lang="fr" />
+          </div>
+        </section>
 
         {/* CTA */}
         <section className="py-20 bg-[#FAFAF7]">

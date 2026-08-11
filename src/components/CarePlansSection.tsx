@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { CheckCircle, MessageSquare, Star, Mail } from "lucide-react";
 import CheckoutButton from "@/components/CheckoutButton";
+import FoundingOffer from "@/components/FoundingOffer";
 import { PLANS, PLAN_ORDER, POPULAR_PLAN_KEY, ADDONS, SETUP_PLAN } from "@/lib/pricing";
 
 /**
@@ -37,6 +38,7 @@ const T = {
     subscribe: "Get started →", popular: "MOST CHOSEN",
     convo: (n: number) => `${n} AI conversations / month`,
     convoNote: "Go over and we simply move you up a plan — never a surprise bill.",
+    roi: "One recovered patient is usually worth more than a month of Essentiel — a single saved enquiry pays the plan.",
     foot: "Secure payment via Stripe · cancel anytime with 30 days notice · annual plans renew yearly",
     addonsTitle: "Optional extras",
     perMailbox: "/mailbox", perMoShort: "/mo",
@@ -87,6 +89,7 @@ const T = {
     subscribe: "Démarrer →", popular: "LE PLUS CHOISI",
     convo: (n: number) => `${n} conversations IA / mois`,
     convoNote: "Si vous dépassez, on vous fait simplement passer à la formule au-dessus — jamais de facture surprise.",
+    roi: "Un seul patient récupéré vaut généralement plus qu'un mois d'Essentiel — une seule demande sauvée rembourse la formule.",
     foot: "Paiement sécurisé via Stripe · résiliable à tout moment (préavis 30 jours) · les formules annuelles se renouvellent chaque année",
     addonsTitle: "Options",
     perMailbox: "/boîte", perMoShort: "/mois",
@@ -169,6 +172,11 @@ export default function CarePlansSection({ lang = "en" }: { lang?: "en" | "fr" }
           </div>
         </div>
 
+        {/* Founding-ten — the case-study supplier; remove as places fill */}
+        <div className="mb-10">
+          <FoundingOffer lang={lang} />
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {PLAN_ORDER.map((key) => {
             const plan = PLANS[key];
@@ -199,9 +207,11 @@ export default function CarePlansSection({ lang = "en" }: { lang?: "en" | "fr" }
                   {billing === "annual" ? t.setupLineAnnual : t.setupLine}
                 </p>
 
-                {/* The meter — what actually separates the tiers */}
+                {/* The meter — what actually separates the tiers, translated
+                    into the buyer's units underneath */}
                 <div className="rounded-xl bg-[#EEF5EA] px-3 py-2 mb-4">
                   <p className="text-xs font-black text-[#36671E]">{t.convo(plan.conversations)}</p>
+                  <p className="text-[11px] text-[#3F3F46] mt-0.5 leading-snug">{fr ? plan.audienceFr : plan.audience}</p>
                 </div>
 
                 <p className="text-[#71717A] text-sm mb-5">{copy.tag}</p>
@@ -229,7 +239,8 @@ export default function CarePlansSection({ lang = "en" }: { lang?: "en" | "fr" }
           })}
         </div>
 
-        <p className="text-center text-[#52525B] text-xs mt-5">{t.convoNote}</p>
+        <p className="text-center text-[#36671E] text-sm font-bold mt-6">{t.roi}</p>
+        <p className="text-center text-[#52525B] text-xs mt-2">{t.convoNote}</p>
         <p className="text-center text-[#A1A1AA] text-xs mt-2">{t.foot}</p>
 
         {/* Optional extras — mostly upgrades for Essentiel clients */}

@@ -95,23 +95,38 @@ export interface SubscriptionPlan {
   monthlyEur: number;
   annualEur: number;      // yearly price when prepaid — two months free
   conversations: number;  // included AI conversations per month
+  /** Who the tier fits, in the buyer's units — a dentist doesn't think in
+   *  "AI conversations", they think in practice size. Shown under the meter. */
+  audience: string;
+  audienceFr: string;
   /** Legacy keys that map onto this plan (old Stripe metadata / clients rows). */
   legacyKeys?: string[];
 }
 
 const withAnnual = (
-  key: string, name: string, nameFr: string, monthlyEur: number, conversations: number, legacyKeys?: string[],
+  key: string, name: string, nameFr: string, monthlyEur: number, conversations: number,
+  audience: string, audienceFr: string, legacyKeys?: string[],
 ): SubscriptionPlan => ({
   key, name, nameFr, monthlyEur,
   annualEur: monthlyEur * 10, // pay 10, get 12
   conversations,
+  audience, audienceFr,
   legacyKeys,
 });
 
 export const PLANS: Record<string, SubscriptionPlan> = {
-  essentiel:   withAnnual("essentiel",   "Essentiel",   "Essentiel",   149, 100, ["care"]),
-  croissance:  withAnnual("croissance",  "Croissance",  "Croissance",  249, 300, ["care_growth"]),
-  performance: withAnnual("performance", "Performance", "Performance", 449, 800, ["care_scale"]),
+  essentiel: withAnnual("essentiel", "Essentiel", "Essentiel", 149, 100,
+    "Fits a solo practice — every enquiry of one practitioner, covered.",
+    "Pour un cabinet individuel — toutes les demandes d’un praticien, couvertes.",
+    ["care"]),
+  croissance: withAnnual("croissance", "Croissance", "Croissance", 249, 300,
+    "Fits a group practice — 2–3 practitioners, bookings included.",
+    "Pour un cabinet de groupe — 2 à 3 praticiens, rendez-vous inclus.",
+    ["care_growth"]),
+  performance: withAnnual("performance", "Performance", "Performance", 449, 800,
+    "For clinics and multi-site practices running ads.",
+    "Pour les centres et multi-sites qui font de la publicité.",
+    ["care_scale"]),
 };
 
 /** Display order; the middle tier is the anchor. */
