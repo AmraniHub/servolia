@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { isAdminAuthed } from "@/lib/auth";
 import {
-  IDEA_STATUSES, IDEA_PRIORITIES, IDEA_CATEGORIES, seedFromRoadmap, type Idea,
+  IDEA_STATUSES, IDEA_PRIORITIES, IDEA_CATEGORIES, seedFromRoadmap, completedRoadmapKeys, type Idea,
 } from "@/lib/ideas";
 
 export const runtime = "nodejs";
@@ -48,7 +48,18 @@ export async function GET() {
   // the board explains itself rather than showing a broken page.
   if (error) return NextResponse.json({ items: [], tableMissing: true });
 
-  return NextResponse.json({ items: (data as Idea[]) ?? [], tableMissing: false });
+  // Finished work leaves the board. Two ways an item is finished:
+  //   1. the founder moved the card to Done;
+  //   2. its roadmap.ts item was marked done in code (Claude shipped it) —
+  //      the card itself is stale and would otherwise invite doing it twice.
+  // Nothing is deleted: the row stays in the DB and roadmap.ts keeps the full
+  // record of what shipped and why.
+  const shipped = completedRoadmapKeys();
+  const items = ((data as Idea[]) ?? []).filter(
+    (i) => i.status !== "done" && !(i.external_key && shipped.has(i.external_key)),
+  );
+
+  return NextResponse.json({ items, tableMissing: false });
 }
 
 export async function POST(req: NextRequest) {

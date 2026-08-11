@@ -549,7 +549,7 @@ export default function ClientSite({ config, page = "home" }: { config: ClientSi
           <BookingForm slug={c.slug} services={c.services} accent={accent} accentDark={accentDark} language={c.language === "fr" ? "fr" : "en"} demo={!!c.isDemo} />
 
           <p className="text-white/70 text-sm font-semibold mt-10 mb-4">{t.orReach}</p>
-          <div className="grid sm:grid-cols-3 gap-4 text-left">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 text-left">
             {c.phone && (
               <a href={`tel:${c.phone.replace(/\s+/g, "")}`} className="bg-white/10 hover:bg-white/15 transition-colors rounded-2xl p-5 border border-white/15">
                 <Phone className="w-5 h-5 text-white mb-3" />
@@ -564,12 +564,24 @@ export default function ClientSite({ config, page = "home" }: { config: ClientSi
                 <p className="text-white font-semibold text-sm break-all">{c.email}</p>
               </a>
             )}
-            {(c.address || c.hours) && (
+            {/* Address and hours are SEPARATE cards. Merged, the card took the
+                address label and the opening hours rendered as a bare time
+                string — so the words "Hours"/"Horaires" never appeared on the
+                page. A patient scanning for hours (the thing they check most)
+                found nothing, and our own audit engine scored the demo down on
+                exactly that. Each signal now carries its own label. */}
+            {c.address && (
               <div className="bg-white/10 rounded-2xl p-5 border border-white/15">
-                {c.address ? <MapPin className="w-5 h-5 text-white mb-3" /> : <Clock className="w-5 h-5 text-white mb-3" />}
-                <p className="text-white/60 text-xs font-bold uppercase tracking-widest mb-1">{c.address ? t.visit : t.hours}</p>
-                {c.address && <p className="text-white font-semibold text-sm">{c.address}</p>}
-                {c.hours && <p className="text-white/80 text-xs mt-1 flex items-center gap-1"><Clock className="w-3 h-3" /> {c.hours}</p>}
+                <MapPin className="w-5 h-5 text-white mb-3" />
+                <p className="text-white/60 text-xs font-bold uppercase tracking-widest mb-1">{t.visit}</p>
+                <p className="text-white font-semibold text-sm">{c.address}</p>
+              </div>
+            )}
+            {c.hours && (
+              <div className="bg-white/10 rounded-2xl p-5 border border-white/15">
+                <Clock className="w-5 h-5 text-white mb-3" />
+                <p className="text-white/60 text-xs font-bold uppercase tracking-widest mb-1">{t.hours}</p>
+                <p className="text-white font-semibold text-sm whitespace-pre-line">{c.hours}</p>
               </div>
             )}
           </div>

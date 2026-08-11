@@ -43,6 +43,10 @@ export interface Idea {
   needs: string | null;
   notes: string | null;
   sort_order: number;
+  /** Set only on cards imported from roadmap.ts (`roadmap:<slug>`); null for
+   *  hand-typed ones. Links a card back to its roadmap item so the board can
+   *  drop it once that item is marked done in code. */
+  external_key?: string | null;
 }
 
 /** Columns shown on the board, in order. `dropped` is hidden behind a toggle. */
@@ -50,7 +54,9 @@ export const BOARD_COLUMNS: { key: IdeaStatus; label: string; hint: string }[] =
   { key: "idea", label: "Idea", hint: "Raised, not committed to" },
   { key: "planned", label: "Planned", hint: "Decided — waiting for a slot" },
   { key: "in_progress", label: "In progress", hint: "Hand this to Claude" },
-  { key: "done", label: "Done", hint: "Shipped" },
+  // Drop a card here to archive it: the row is kept, but the board stops
+  // showing it, so shipped work can never be picked up a second time.
+  { key: "done", label: "Done", hint: "Shipped — leaves the board" },
 ];
 
 export const STATUS_COLOR: Record<IdeaStatus, string> = {
@@ -120,8 +126,18 @@ export interface SeedRow {
  * reality on first load — a Done column that starts empty makes it look like
  * nothing has ever shipped, which is both wrong and demoralising.
  */
+/** Keys of every roadmap item that has since been marked done in code.
+ *  The board hides these: work that shipped must stop appearing as work, or
+ *  it eventually gets done twice. roadmap.ts is the source of truth for
+ *  completion — a card imported from it dies when its roadmap item dies. */
+export function completedRoadmapKeys(): Set<string> {
+  return new Set(ROADMAP.filter((i) => i.status === "done").map(roadmapKey));
+}
+
 export function seedFromRoadmap(): SeedRow[] {
-  return ROADMAP.map((item) => ({
+  // Only outstanding work is importable — seeding done items would recreate
+  // the very cards the board is meant to clear.
+  return ROADMAP.filter((item) => item.status !== "done").map((item) => ({
     external_key: roadmapKey(item),
     title: item.title,
     description: item.detail ?? null,
