@@ -126,7 +126,7 @@ export default function SettingsPage() {
         {CATEGORY_ORDER.map((cat) => {
           const items = checked.filter((c) => c.category === cat);
           if (!items.length) return null;
-          const setCount = items.filter((i) => i.ok).length;
+          const setCount = items.filter((i) => i.ok || i.activeByDefault).length;
           return (
             <div key={cat} className="bg-white border border-[#E8E6E0] rounded-2xl overflow-hidden">
               <div className="px-5 py-3 bg-[#FAFAF7] border-b border-[#F5F4EF] flex items-center justify-between">
@@ -147,6 +147,10 @@ export default function SettingsPage() {
                   </div>
                   {c.ok ? (
                     <span className="flex items-center gap-1.5 text-[#36671E] text-xs font-bold whitespace-nowrap"><CheckCircle2 className="w-4 h-4" /> SET</span>
+                  ) : c.activeByDefault ? (
+                    // Works from a hardcoded default — showing "not set" here
+                    // would invent a chore that does not exist.
+                    <span className="flex items-center gap-1.5 text-[#36671E] text-xs font-bold whitespace-nowrap"><CheckCircle2 className="w-4 h-4" /> ACTIVE</span>
                   ) : (
                     <span className={`flex items-center gap-1.5 text-xs font-bold whitespace-nowrap ${c.required ? "text-[#B91C1C]" : "text-[#A1A1AA]"}`}><AlertCircle className="w-4 h-4" /> {c.required ? "MISSING" : "not set"}</span>
                   )}
