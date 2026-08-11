@@ -127,6 +127,17 @@ export async function POST(req: NextRequest) {
           sendEmail(customerEmail, tpl.subject, tpl.html).catch(() => {});
         }
 
+        // A subscriber who started as a lead must leave the pipeline's
+        // "waiting" stages the moment they pay — the PPB and legacy-build
+        // branches already do this; this (the main path) didn't, so paying
+        // clients sat in awaiting_response and polluted every funnel number.
+        if (customerEmail) {
+          await db.from("leads")
+            .update({ stage: "deposit_paid" })
+            .eq("email", customerEmail)
+            .in("stage", ["new", "audit_sent", "qualified"]);
+        }
+
         const tgToken = process.env.TELEGRAM_BOT_TOKEN;
         const tgChatId = process.env.TELEGRAM_CHAT_ID;
         if (tgToken && tgChatId) {

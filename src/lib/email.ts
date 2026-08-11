@@ -345,7 +345,8 @@ export const monthlyReportEmail = (input: {
 };
 
 /** Sent to client when their build goes live.
- *  NOTE: not wired to any route yet — see roadmap ("wire the go-live email"). */
+ *  Wired 2026-08-12: fires exactly once on the build's transition to "live"
+ *  (PATCH /api/admin/builds/[id]). */
 export const liveEmail = (firstName: string, url: string, lang: "en" | "fr" = "en") => {
   if (lang === "fr") {
     return {
@@ -361,7 +362,8 @@ export const liveEmail = (firstName: string, url: string, lang: "en" | "fr" = "e
         </p>
         <ul style="margin:0 0 16px;padding-left:20px;font-size:15px;line-height:1.7;color:#3F3F46;">
           <li>Partagez l'adresse sur Instagram, Google Maps et votre signature email</li>
-          <li>Surveillez votre tableau de bord — les premières demandes arrivent en général sous 48 h</li>
+          <li><strong>Votre espace client :</strong> <a href="https://servolia.com/portal" style="color:#36671E;">servolia.com/portal</a> — connectez-vous avec cette adresse email, un lien de connexion vous arrive aussitôt. Toutes vos demandes, vos statistiques et vos rapports y sont.</li>
+          <li>Les premières demandes arrivent en général sous 48 h</li>
           <li>Quelque chose ne va pas ? Répondez simplement à cet email</li>
         </ul>
         ${btn(url, "Voir mon système en ligne →")}
@@ -381,7 +383,8 @@ export const liveEmail = (firstName: string, url: string, lang: "en" | "fr" = "e
       </p>
       <ul style="margin:0 0 16px;padding-left:20px;font-size:15px;line-height:1.7;color:#3F3F46;">
         <li>Share the URL on Instagram, Google Maps, your email signature</li>
-        <li>Watch the dashboard — first leads usually arrive within 48 hours</li>
+        <li><strong>Your client portal:</strong> <a href="https://servolia.com/portal" style="color:#36671E;">servolia.com/portal</a> — log in with this email address and a sign-in link arrives instantly. Every enquiry, your traffic and your reports live there.</li>
+        <li>First leads usually arrive within 48 hours</li>
         <li>If anything looks off, just reply to this email</li>
       </ul>
       ${btn(url, "View your live system →")}
