@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabase";
 import { fetchTraffic, fetchTrafficDay, summarize, countryName } from "@/lib/traffic";
+import CampaignLinkBuilder from "@/components/admin/CampaignLinkBuilder";
 import { Users, Eye, MousePointerClick, Globe, Monitor, Link2, Megaphone, FileText, TrendingUp, TrendingDown, CalendarDays } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -146,6 +147,12 @@ export default async function TrafficPage({
                 <Bars rows={s.campaigns} total={s.views} />
               )}
             </Panel>
+          </div>
+
+          {/* Built here, next to the results it produces — a campaign only
+              appears in the panel above if its link carried the same name. */}
+          <div className="mt-6">
+            <CampaignLinkBuilder existing={s.campaigns.map(([name]) => name)} />
           </div>
         </>
       )}
