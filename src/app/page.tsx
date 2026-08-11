@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
@@ -13,13 +13,12 @@ import LiveShowcase from "@/components/LiveShowcase";
 import ROICalculator from "@/components/ROICalculator";
 import StickyMobileCTA from "@/components/StickyMobileCTA";
 import { FaqSchema } from "@/components/StructuredData";
-import ValueStack from "@/components/ValueStack";
-import { SETUP_PLAN, PLANS, PLAN_ORDER, POPULAR_PLAN_KEY } from "@/lib/pricing";
+import { SETUP_PLAN, PLANS, PLAN_ORDER } from "@/lib/pricing";
 import {
   Bot, Globe, CheckCircle, ArrowRight,
   Shield, Clock, TrendingUp, MessageSquare,
   Users, Sparkles, ChevronDown, Zap, XCircle,
-  BadgeCheck, Lock, Calendar, LayoutDashboard, FileText, Phone,
+  BadgeCheck, Lock, LayoutDashboard, Phone,
 } from "lucide-react";
 
 /* ─── animation helpers ─────────────────────────────────────────────────── */
@@ -37,39 +36,8 @@ function FadeUp({ children, delay = 0, className = "" }: { children: React.React
   );
 }
 
-function useCounter(target: number, duration = 1800, start = false) {
-  const [count, setCount] = useState(0);
-  useEffect(() => {
-    if (!start) return;
-    let t0: number;
-    const raf = (ts: number) => {
-      if (!t0) t0 = ts;
-      const p = Math.min((ts - t0) / duration, 1);
-      setCount(Math.floor((1 - Math.pow(1 - p, 3)) * target));
-      if (p < 1) requestAnimationFrame(raf);
-    };
-    requestAnimationFrame(raf);
-  }, [target, duration, start]);
-  return count;
-}
-
-function useInView(threshold = 0.3) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [inView, setInView] = useState(false);
-  useEffect(() => {
-    const obs = new IntersectionObserver(
-      ([e]) => { if (e.isIntersecting) setInView(true); },
-      { threshold }
-    );
-    if (ref.current) obs.observe(ref.current);
-    return () => obs.disconnect();
-  }, [threshold]);
-  return { ref, inView };
-}
-
 /* ─── page ──────────────────────────────────────────────────────────────── */
 export default function HomePage() {
-  const { ref: statsRef, inView: statsInView } = useInView(0.3);
   const [faqOpen, setFaqOpen] = useState<number | null>(null);
 
   const faqs = [
@@ -112,25 +80,6 @@ export default function HomePage() {
       desc: "Lead pipeline, Google reviews automation, SMS reminders and a monthly report that shows exactly what the system brought in.",
       features: ["Lead pipeline", "Google reviews automation", "SMS reminders", "Monthly ROI report"],
       accent: false,
-    },
-  ];
-
-  // Derived from src/lib/pricing.ts — never hardcode a plan price here.
-  const monthlyPlans = [
-    {
-      plan: PLANS.essentiel,
-      desc: "For a practice that just needs to stop losing after-hours enquiries.",
-      features: [`${PLANS.essentiel.conversations} AI conversations/mo`, "Site + AI receptionist", "Instant lead alerts", "Client portal", "Hosting, domain & email included"],
-    },
-    {
-      plan: PLANS.croissance,
-      desc: "For a practice that wants the enquiries tracked, followed up and measured.",
-      features: [`${PLANS.croissance.conversations} AI conversations/mo`, "Everything in Essentiel", "Lead pipeline + monthly ROI report", "Google reviews automation", "SMS reminders & traffic analytics"],
-    },
-    {
-      plan: PLANS.performance,
-      desc: "For multi-practitioner clinics running paid acquisition.",
-      features: [`${PLANS.performance.conversations} AI conversations/mo`, "Everything in Croissance", "Multi-practitioner routing", "Ads closed-loop tracking", "Custom AI training + quarterly strategy call"],
     },
   ];
 
@@ -318,56 +267,9 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* The showcase slider IS the journey visual — a separate six-step
+          "journey flow" section repeated the same story and was cut. */}
       <ShowcaseSlider lang="en" />
-
-      {/* ══════════════════════════════════════════════════════════════
-          JOURNEY FLOW
-      ══════════════════════════════════════════════════════════════ */}
-      <section className="py-20 lg:py-28 bg-white">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <FadeUp className="text-center mb-14">
-            <p className="text-xs font-black text-[#36671E] uppercase tracking-widest mb-3">How the system works</p>
-            <h2 className="text-3xl sm:text-4xl font-black text-[#18181B] mb-3">
-              Servolia connects your{" "}
-              <span className="bg-gradient-to-r from-[#36671E] to-[#6B8439] bg-clip-text text-transparent">
-                full client journey.
-              </span>
-            </h2>
-            <p className="text-[#71717A] max-w-xl mx-auto text-sm">
-              From first visit to booked appointment and monthly report — all automated.
-            </p>
-          </FadeUp>
-
-          <div className="relative grid grid-cols-2 lg:grid-cols-6 gap-3 lg:gap-0">
-            {/* Connector line */}
-            <div className="hidden lg:block absolute top-9 left-[8.33%] right-[8.33%] h-px"
-              style={{ background: "linear-gradient(to right, transparent, #E8E6E0 10%, #E8E6E0 90%, transparent)" }} />
-
-            {[
-              { icon: <Users className="w-5 h-5" />, label: "Visitor", sub: "Lands on your site", bg: "bg-[#F5F4EF]", fg: "text-[#52525B]" },
-              { icon: <Globe className="w-5 h-5" />, label: "AI Website", sub: "Builds trust instantly", bg: "bg-[#EEF5EA]", fg: "text-[#36671E]" },
-              { icon: <Bot className="w-5 h-5" />, label: "AI Receptionist", sub: "Answers 24/7", bg: "bg-[#36671E]", fg: "text-[#FAFAF7]" },
-              { icon: <Calendar className="w-5 h-5" />, label: "Booking", sub: "Captured automatically", bg: "bg-[#EEF5EA]", fg: "text-[#36671E]" },
-              { icon: <LayoutDashboard className="w-5 h-5" />, label: "CRM", sub: "Lead tracked & managed", bg: "bg-[#EEF5EA]", fg: "text-[#36671E]" },
-              { icon: <FileText className="w-5 h-5" />, label: "Monthly Report", sub: "ROI optimized", bg: "bg-[#6B8439]", fg: "text-[#FAFAF7]" },
-            ].map((step, i) => (
-              <FadeUp key={i} delay={i * 0.07} className="flex flex-col items-center text-center px-2">
-                <div className={`relative z-10 w-[72px] h-[72px] rounded-2xl ${step.bg} ${step.fg} flex items-center justify-center mb-3 shadow-soft`}>
-                  {step.icon}
-                </div>
-                <p className="text-xs font-black text-[#18181B] mb-0.5 leading-tight">{step.label}</p>
-                <p className="text-[10px] text-[#A1A1AA] leading-tight max-w-[80px]">{step.sub}</p>
-              </FadeUp>
-            ))}
-          </div>
-
-          <FadeUp delay={0.4} className="text-center mt-12">
-            <Link href="/contact" className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl bg-[#36671E] text-[#FAFAF7] font-bold text-sm hover:bg-[#295115] transition-colors">
-              Get a system like this for your business <ArrowRight className="w-4 h-4" />
-            </Link>
-          </FadeUp>
-        </div>
-      </section>
 
       {/* ══════════════════════════════════════════════════════════════
           PROBLEM / SOLUTION
@@ -594,118 +496,10 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ══════════════════════════════════════════════════════════════
-          VALUE STACK
-      ══════════════════════════════════════════════════════════════ */}
-      <section className="py-20 lg:py-28 bg-[#FAFAF7]">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-          <FadeUp className="text-center mb-10">
-            <p className="text-xs font-black text-[#36671E] uppercase tracking-widest mb-3">What you get on day one</p>
-            <h2 className="text-3xl sm:text-4xl font-black text-[#18181B] mb-3">
-              Everything included.{" "}
-              <span className="bg-gradient-to-r from-[#36671E] to-[#6B8439] bg-clip-text text-transparent">
-                One fixed price.
-              </span>
-            </h2>
-            <p className="text-[#71717A] max-w-xl mx-auto text-sm">
-              Hiring separately — web agency, AI consultant, tracking specialist — would cost €6,000+ and take 3 months.
-            </p>
-          </FadeUp>
-
-          <FadeUp delay={0.1}>
-            <div className="bg-white rounded-2xl border border-[#E8E6E0] overflow-hidden shadow-card">
-              <div className="px-6 py-4 border-b border-[#E8E6E0] flex items-center justify-between bg-[#FAFAF7]">
-                <span className="text-sm font-black text-[#18181B]">Included in your installation</span>
-                <span className="text-xs text-[#A1A1AA]">Market value</span>
-              </div>
-              {[
-                { item: "10-page conversion website", value: "€2,500" },
-                { item: "AI receptionist chatbot (24/7)", value: "€1,500" },
-                { item: "Appointment booking flow", value: "€800" },
-                { item: "Conversion tracking setup", value: "€600" },
-                { item: "Google Analytics 4 setup", value: "€300" },
-                { item: "Lead CRM (Google Sheets sync)", value: "€400" },
-                { item: "GDPR / Privacy / CGV pages", value: "€350" },
-                { item: "Free business audit PDF", value: "€200" },
-              ].map((v, i) => (
-                <div key={i} className="flex items-center justify-between px-6 py-3.5 border-b border-[#F5F4EF] last:border-0">
-                  <div className="flex items-center gap-3">
-                    <CheckCircle className="w-4 h-4 text-[#36671E] shrink-0" />
-                    <span className="text-sm text-[#18181B]">{v.item}</span>
-                  </div>
-                  <span className="text-sm text-[#A1A1AA] line-through">{v.value}</span>
-                </div>
-              ))}
-              <div className="px-6 py-5 bg-[#EEF5EA] flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-[#71717A] mb-0.5">Market value</p>
-                  <p className="text-xl font-black text-[#18181B] line-through opacity-40">€6,650</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-xs text-[#36671E] font-bold mb-0.5">Your installation</p>
-                  <p className="text-4xl font-black text-[#36671E]">€{SETUP_PLAN.totalEur}</p>
-                  <p className="text-xs text-[#71717A] mt-1">then from €{PLANS.essentiel.monthlyEur}/mo · waived if you pay yearly</p>
-                </div>
-              </div>
-            </div>
-          </FadeUp>
-
-          <FadeUp delay={0.2} className="mt-6 text-center">
-            <Link href="/contact"
-              className="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-[#36671E] text-[#FAFAF7] font-black text-base hover:bg-[#295115] transition-colors shadow-lg shadow-[#36671E]/20">
-              Claim This Package — Free Audit First <ArrowRight className="w-4 h-4" />
-            </Link>
-            <p className="text-[#A1A1AA] text-xs mt-3">No payment until you approve the scope · Stripe secured</p>
-          </FadeUp>
-        </div>
-      </section>
-
-      {/* ══════════════════════════════════════════════════════════════
-          STATS — dark forest section, high contrast
-      ══════════════════════════════════════════════════════════════ */}
-      <section ref={statsRef} className="py-20 lg:py-28 bg-[#0A1F14] relative overflow-hidden">
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-[#36671E] opacity-50 rounded-full blur-[100px]" />
-          <svg className="absolute inset-0 w-full h-full opacity-[0.04]" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-              <pattern id="grid2" width="64" height="64" patternUnits="userSpaceOnUse">
-                <path d="M 64 0 L 0 0 0 64" fill="none" stroke="#FAFAF7" strokeWidth="0.6"/>
-              </pattern>
-            </defs>
-            <rect width="100%" height="100%" fill="url(#grid2)" />
-          </svg>
-        </div>
-        <div className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <FadeUp className="mb-14">
-            <h2 className="text-3xl sm:text-4xl font-black text-[#FAFAF7] mb-3">
-              The promise,{" "}
-              <span className="bg-gradient-to-r from-[#BEF264] to-[#ABDF90] bg-clip-text text-transparent">in numbers</span>
-            </h2>
-            <p className="text-[#ABDF90]/70 text-sm max-w-md mx-auto">Every one of these is written into your contract before you pay.</p>
-          </FadeUp>
-
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 lg:gap-10">
-            {[
-              { value: 7, suffix: " days", label: "From kickoff to live system" },
-              { value: 1, suffix: " payment", label: "Up front — nothing owed on delivery" },
-              { value: 10, suffix: "%", label: "Back for every day we're late" },
-              { value: 30, suffix: " days", label: "Notice to cancel, no penalty" },
-            ].map((s, i) => {
-              const c = useCounter(s.value, 1800, statsInView);
-              return (
-                <FadeUp key={i} delay={i * 0.1}>
-                  <div className="text-center p-6 rounded-2xl border border-[#FAFAF7]/10 bg-[#FAFAF7]/4">
-                    <div className="text-5xl lg:text-6xl font-black text-[#FAFAF7] mb-2 tabular-nums">
-                      {c}{s.suffix}
-                    </div>
-                    <div className="text-sm text-[#BEF264] font-semibold">{s.label}</div>
-                  </div>
-                </FadeUp>
-              );
-            })}
-          </div>
-        </div>
-      </section>
+      {/* The €6k+ market-value anchor now lives as one line inside the
+          pricing section below — the full value-stack table and the dark
+          "promise in numbers" stats both repeated what the pricing section
+          and the guarantee card already say, and were cut. */}
 
       {/* ══════════════════════════════════════════════════════════════
           CASE STUDIES
@@ -754,72 +548,6 @@ export default function HomePage() {
           LIVE SHOWCASE — the real templates, embedded live
       ══════════════════════════════════════════════════════════════ */}
       <LiveShowcase lang="en" />
-
-      {/* ══════════════════════════════════════════════════════════════
-          MONTHLY PLANS — the product. Prices from src/lib/pricing.ts.
-      ══════════════════════════════════════════════════════════════ */}
-      <section className="py-20 lg:py-28 bg-white">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <FadeUp className="text-center mb-12">
-            <p className="text-xs font-black text-[#36671E] uppercase tracking-widest mb-3">Monthly plans</p>
-            <h2 className="text-3xl sm:text-4xl font-black text-[#18181B] mb-4">
-              Keep your system{" "}
-              <span className="bg-gradient-to-r from-[#36671E] to-[#6B8439] bg-clip-text text-transparent">
-                growing every month.
-              </span>
-            </h2>
-            <p className="text-[#71717A] max-w-xl mx-auto text-sm">One fee covers the site, the AI receptionist, hosting, your domain and pro email. Pay yearly and two months are free. Cancel anytime with 30 days notice.</p>
-          </FadeUp>
-
-          <div className="grid md:grid-cols-3 gap-5">
-            {monthlyPlans.map((m, i) => {
-              const p = { ...m, popular: m.plan.key === POPULAR_PLAN_KEY };
-              return (
-              <FadeUp key={i} delay={i * 0.1}>
-                <div className={`relative rounded-2xl p-7 border-2 flex flex-col h-full ${
-                  p.popular
-                    ? "border-[#36671E] bg-[#FAFAF7]"
-                    : "border-[#E8E6E0] bg-white"
-                }`}>
-                  {p.popular && (
-                    <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-[#36671E] text-[#FAFAF7] text-[10px] font-black whitespace-nowrap">
-                      MOST CHOSEN
-                    </div>
-                  )}
-                  <div className="mb-5">
-                    <h3 className="text-lg font-black text-[#18181B] mb-1">{p.plan.name}</h3>
-                    <div className="flex items-baseline gap-0.5 mb-2">
-                      <span className="text-4xl font-black text-[#18181B]">€{p.plan.monthlyEur}</span>
-                      <span className="text-[#71717A] text-sm">/mo</span>
-                    </div>
-                    <p className="text-[#71717A] text-sm">{p.desc}</p>
-                  </div>
-                  <ul className="space-y-2.5 mb-7 flex-1">
-                    {p.features.map((f, j) => (
-                      <li key={j} className="flex items-center gap-2.5 text-sm text-[#18181B]">
-                        <CheckCircle className="w-4 h-4 text-[#36671E] shrink-0" />{f}
-                      </li>
-                    ))}
-                  </ul>
-                  <Link href="/pricing" className={`block text-center py-3 rounded-xl font-bold text-sm transition-all ${
-                    p.popular
-                      ? "bg-[#36671E] text-[#FAFAF7] hover:bg-[#295115]"
-                      : "border border-[#E8E6E0] text-[#18181B] hover:border-[#36671E] hover:text-[#36671E]"
-                  }`}>
-                    Get started →
-                  </Link>
-                </div>
-              </FadeUp>
-              );
-            })}
-          </div>
-          <FadeUp delay={0.3}>
-            <p className="text-center text-[#A1A1AA] text-xs mt-6">
-              Cancel anytime with 30 days notice · Billed via Stripe · Go over your conversations and you simply move up a plan — never a surprise bill
-            </p>
-          </FadeUp>
-        </div>
-      </section>
 
       {/* ══════════════════════════════════════════════════════════════
           GUARANTEE
@@ -888,7 +616,10 @@ export default function HomePage() {
             <h2 className="text-3xl sm:text-4xl font-black text-[#18181B] mb-4">
               Two numbers. That&apos;s the whole price list.
             </h2>
-            <p className="text-[#71717A] max-w-lg mx-auto text-sm">Fixed price, clear scope, delivered fast — and nothing owed on delivery day.</p>
+            <p className="text-[#71717A] max-w-lg mx-auto text-sm">
+              Hiring a web agency, an AI consultant and a tracking specialist separately runs €6,000+ over months.
+              Here it&apos;s a fixed price, a clear scope, delivered in days — and nothing owed on delivery day.
+            </p>
           </FadeUp>
 
           <div className="grid md:grid-cols-2 gap-5">
@@ -1038,7 +769,9 @@ export default function HomePage() {
         </div>
       </section>
 
-      <ValueStack />
+      {/* ValueStack was rendered here — a fourth pricing/value recap AFTER
+          the final CTA. Cut: a visitor past the CTA needs a footer, not a
+          second pitch. It still runs on the pages where it's the only one. */}
       <StickyMobileCTA />
       <Footer />
       <ChatWidget />
