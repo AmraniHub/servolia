@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import HeroProduct from "@/components/HeroProduct";
@@ -11,8 +11,7 @@ import ROICalculator from "@/components/ROICalculator";
 import StickyMobileCTA from "@/components/StickyMobileCTA";
 import FrenchNav from "@/components/FrenchNav";
 import FrenchFooter from "@/components/FrenchFooter";
-import ValueStack from "@/components/ValueStack";
-import { SETUP_PLAN, PLANS, PLAN_ORDER, POPULAR_PLAN_KEY } from "@/lib/pricing";
+import { SETUP_PLAN, PLANS, PLAN_ORDER } from "@/lib/pricing";
 import {
   Bot, Globe, CheckCircle, ArrowRight,
   Shield, Clock, TrendingUp, MessageSquare,
@@ -35,39 +34,8 @@ function FadeUp({ children, delay = 0, className = "" }: { children: React.React
   );
 }
 
-function useCounter(target: number, duration = 1800, start = false) {
-  const [count, setCount] = useState(0);
-  useEffect(() => {
-    if (!start) return;
-    let t0: number;
-    const raf = (ts: number) => {
-      if (!t0) t0 = ts;
-      const p = Math.min((ts - t0) / duration, 1);
-      setCount(Math.floor((1 - Math.pow(1 - p, 3)) * target));
-      if (p < 1) requestAnimationFrame(raf);
-    };
-    requestAnimationFrame(raf);
-  }, [target, duration, start]);
-  return count;
-}
-
-function useInView(threshold = 0.3) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [inView, setInView] = useState(false);
-  useEffect(() => {
-    const obs = new IntersectionObserver(
-      ([e]) => { if (e.isIntersecting) setInView(true); },
-      { threshold }
-    );
-    if (ref.current) obs.observe(ref.current);
-    return () => obs.disconnect();
-  }, [threshold]);
-  return { ref, inView };
-}
-
 /* ─── page ──────────────────────────────────────────────────────────────── */
 export default function FrenchHome() {
-  const { ref: statsRef, inView: statsInView } = useInView(0.3);
   const [faqOpen, setFaqOpen] = useState<number | null>(null);
 
   const faqs = [
@@ -110,25 +78,6 @@ export default function FrenchHome() {
       desc: "Pipeline de leads, automatisation des avis Google, rappels SMS et un rapport mensuel qui montre exactement ce que le système a rapporté.",
       features: ["Pipeline de leads", "Automatisation des avis Google", "Rappels SMS", "Rapport ROI mensuel"],
       accent: false,
-    },
-  ];
-
-  // Dérivé de src/lib/pricing.ts — ne jamais coder un prix en dur ici.
-  const monthlyPlans = [
-    {
-      plan: PLANS.essentiel,
-      desc: "Pour un cabinet qui veut simplement arrêter de perdre les demandes hors horaires.",
-      features: [`${PLANS.essentiel.conversations} conversations IA/mois`, "Site + réceptionniste IA", "Alertes de leads instantanées", "Espace client", "Hébergement, domaine & email inclus"],
-    },
-    {
-      plan: PLANS.croissance,
-      desc: "Pour un cabinet qui veut que les demandes soient suivies, relancées et mesurées.",
-      features: [`${PLANS.croissance.conversations} conversations IA/mois`, "Tout Essentiel", "Pipeline de leads + rapport ROI mensuel", "Automatisation des avis Google", "Rappels SMS & analytique du trafic"],
-    },
-    {
-      plan: PLANS.performance,
-      desc: "Pour les cabinets à plusieurs praticiens qui font de la publicité payante.",
-      features: [`${PLANS.performance.conversations} conversations IA/mois`, "Tout Croissance", "Routage multi-praticiens", "Suivi publicitaire en boucle fermée", "IA sur mesure + point stratégique trimestriel"],
     },
   ];
 
@@ -262,53 +211,7 @@ export default function FrenchHome() {
 
       <ShowcaseSlider lang="fr" />
 
-      {/* ══════════════════════════════════════════════════════════════
-          JOURNEY FLOW
-      ══════════════════════════════════════════════════════════════ */}
-      <section className="py-20 lg:py-28 bg-white">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <FadeUp className="text-center mb-14">
-            <p className="text-xs font-black text-[#36671E] uppercase tracking-widest mb-3">Comment le système fonctionne</p>
-            <h2 className="text-3xl sm:text-4xl font-black text-[#18181B] mb-3">
-              Servolia connecte{" "}
-              <span className="bg-gradient-to-r from-[#36671E] to-[#6B8439] bg-clip-text text-transparent">
-                tout le parcours client.
-              </span>
-            </h2>
-            <p className="text-[#71717A] max-w-xl mx-auto text-sm">
-              De la première visite au rendez-vous réservé et au rapport mensuel — tout est automatisé.
-            </p>
-          </FadeUp>
-
-          <div className="relative grid grid-cols-2 lg:grid-cols-6 gap-3 lg:gap-0">
-            <div className="hidden lg:block absolute top-9 left-[8.33%] right-[8.33%] h-px"
-              style={{ background: "linear-gradient(to right, transparent, #E8E6E0 10%, #E8E6E0 90%, transparent)" }} />
-            {[
-              { icon: <Users className="w-5 h-5" />, label: "Visiteur", sub: "Arrive sur votre site", bg: "bg-[#F5F4EF]", fg: "text-[#52525B]" },
-              { icon: <Globe className="w-5 h-5" />, label: "Site IA", sub: "Inspire confiance immédiatement", bg: "bg-[#EEF5EA]", fg: "text-[#36671E]" },
-              { icon: <Bot className="w-5 h-5" />, label: "Réceptionniste IA", sub: "Répond 24h/24", bg: "bg-[#36671E]", fg: "text-[#FAFAF7]" },
-              { icon: <Calendar className="w-5 h-5" />, label: "Réservation", sub: "Capturée automatiquement", bg: "bg-[#EEF5EA]", fg: "text-[#36671E]" },
-              { icon: <LayoutDashboard className="w-5 h-5" />, label: "CRM", sub: "Lead suivi & géré", bg: "bg-[#EEF5EA]", fg: "text-[#36671E]" },
-              { icon: <FileText className="w-5 h-5" />, label: "Rapport mensuel", sub: "ROI optimisé", bg: "bg-[#6B8439]", fg: "text-[#FAFAF7]" },
-            ].map((step, i) => (
-              <FadeUp key={i} delay={i * 0.07} className="flex flex-col items-center text-center px-2">
-                <div className={`relative z-10 w-[72px] h-[72px] rounded-2xl ${step.bg} ${step.fg} flex items-center justify-center mb-3 shadow-soft`}>
-                  {step.icon}
-                </div>
-                <p className="text-xs font-black text-[#18181B] mb-0.5 leading-tight">{step.label}</p>
-                <p className="text-[10px] text-[#A1A1AA] leading-tight max-w-[80px]">{step.sub}</p>
-              </FadeUp>
-            ))}
-          </div>
-
-          <FadeUp delay={0.4} className="text-center mt-12">
-            <Link href="/fr/contact" className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl bg-[#36671E] text-[#FAFAF7] font-bold text-sm hover:bg-[#295115] transition-colors">
-              Obtenir un système comme ça pour votre activité <ArrowRight className="w-4 h-4" />
-            </Link>
-          </FadeUp>
-        </div>
-      </section>
-
+      {/* Le slider EST le visuel du parcours — la section « journey flow » racontait la même histoire une 2e fois et a été retirée. */}
       {/* ══════════════════════════════════════════════════════════════
           PROBLEM / SOLUTION
       ══════════════════════════════════════════════════════════════ */}
@@ -521,112 +424,7 @@ export default function FrenchHome() {
         </div>
       </section>
 
-      {/* ══════════════════════════════════════════════════════════════
-          VALUE STACK
-      ══════════════════════════════════════════════════════════════ */}
-      <section className="py-20 lg:py-28 bg-[#FAFAF7]">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-          <FadeUp className="text-center mb-10">
-            <p className="text-xs font-black text-[#36671E] uppercase tracking-widest mb-3">Ce que vous recevez dès le premier jour</p>
-            <h2 className="text-3xl sm:text-4xl font-black text-[#18181B] mb-3">
-              Tout est inclus.{" "}
-              <span className="bg-gradient-to-r from-[#36671E] to-[#6B8439] bg-clip-text text-transparent">
-                Un seul prix fixe.
-              </span>
-            </h2>
-            <p className="text-[#71717A] max-w-xl mx-auto text-sm">
-              Embaucher séparément — agence web, consultant IA, spécialiste tracking — coûterait plus de 6 000 € et prendrait 3 mois.
-            </p>
-          </FadeUp>
-
-          <FadeUp delay={0.1}>
-            <div className="bg-white rounded-2xl border border-[#E8E6E0] overflow-hidden shadow-card">
-              <div className="px-6 py-4 border-b border-[#E8E6E0] flex items-center justify-between bg-[#FAFAF7]">
-                <span className="text-sm font-black text-[#18181B]">Inclus dans votre mise en place</span>
-                <span className="text-xs text-[#A1A1AA]">Valeur marché</span>
-              </div>
-              {[
-                { item: "Site de conversion 10 pages", value: "2 500 €" },
-                { item: "Chatbot réceptionniste IA (24h/24)", value: "1 500 €" },
-                { item: "Parcours de prise de rendez-vous", value: "800 €" },
-                { item: "Configuration du suivi de conversions", value: "600 €" },
-                { item: "Configuration Google Analytics 4", value: "300 €" },
-                { item: "CRM de leads (synchro Google Sheets)", value: "400 €" },
-                { item: "Pages RGPD / Confidentialité / CGV", value: "350 €" },
-                { item: "Audit gratuit de votre activité", value: "200 €" },
-              ].map((v, i) => (
-                <div key={i} className="flex items-center justify-between px-6 py-3.5 border-b border-[#F5F4EF] last:border-0">
-                  <div className="flex items-center gap-3">
-                    <CheckCircle className="w-4 h-4 text-[#36671E] shrink-0" />
-                    <span className="text-sm text-[#18181B]">{v.item}</span>
-                  </div>
-                  <span className="text-sm text-[#A1A1AA] line-through">{v.value}</span>
-                </div>
-              ))}
-              <div className="px-6 py-5 bg-[#EEF5EA] flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-[#71717A] mb-0.5">Valeur marché</p>
-                  <p className="text-xl font-black text-[#18181B] line-through opacity-40">6 650 €</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-xs text-[#36671E] font-bold mb-0.5">Votre mise en place</p>
-                  <p className="text-4xl font-black text-[#36671E]">{SETUP_PLAN.totalEur} €</p>
-                  <p className="text-xs text-[#71717A] mt-1">puis dès {PLANS.essentiel.monthlyEur} €/mois · offerte en annuel</p>
-                </div>
-              </div>
-            </div>
-          </FadeUp>
-
-          <FadeUp delay={0.2} className="mt-6 text-center">
-            <Link href="/fr/audit"
-              className="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-[#36671E] text-[#FAFAF7] font-black text-base hover:bg-[#295115] transition-colors shadow-lg shadow-[#36671E]/20">
-              Réclamer cette offre — audit gratuit d&apos;abord <ArrowRight className="w-4 h-4" />
-            </Link>
-            <p className="text-[#A1A1AA] text-xs mt-3">Aucun paiement avant validation du périmètre · Sécurisé par Stripe</p>
-          </FadeUp>
-        </div>
-      </section>
-
-      {/* ══════════════════════════════════════════════════════════════
-          STATS — dark forest section, high contrast
-      ══════════════════════════════════════════════════════════════ */}
-      <section ref={statsRef} className="py-20 lg:py-28 bg-[#0A1F14] relative overflow-hidden">
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-[#36671E] opacity-50 rounded-full blur-[100px]" />
-          <div className="absolute inset-0 grain opacity-30" />
-        </div>
-        <div className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <FadeUp className="mb-14">
-            <h2 className="text-3xl sm:text-4xl font-black text-[#FAFAF7] mb-3">
-              La promesse,{" "}
-              <span className="bg-gradient-to-r from-[#BEF264] to-[#ABDF90] bg-clip-text text-transparent">en chiffres</span>
-            </h2>
-            <p className="text-[#ABDF90]/70 text-sm max-w-md mx-auto">Chacun de ces chiffres est écrit dans votre contrat avant que vous ne payiez.</p>
-          </FadeUp>
-
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 lg:gap-10">
-            {[
-              { value: 7, suffix: " jours", label: "Du démarrage au système en ligne" },
-              { value: 1, suffix: " paiement", label: "Au démarrage — rien à la livraison" },
-              { value: 10, suffix: " %", label: "Remboursés pour chaque jour de retard" },
-              { value: 30, suffix: " jours", label: "De préavis pour résilier, sans pénalité" },
-            ].map((s, i) => {
-              const c = useCounter(s.value, 1800, statsInView);
-              return (
-                <FadeUp key={i} delay={i * 0.1}>
-                  <div className="text-center p-6 rounded-2xl border border-[#FAFAF7]/10 bg-[#FAFAF7]/4">
-                    <div className="text-5xl lg:text-6xl font-black text-[#FAFAF7] mb-2 tabular-nums">
-                      {c}{s.suffix}
-                    </div>
-                    <div className="text-sm text-[#BEF264] font-semibold">{s.label}</div>
-                  </div>
-                </FadeUp>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
+      {/* L'ancrage 6 000 €+ vit désormais en une ligne dans la section Tarifs — le tableau value-stack et les stats sombres répétaient ce que Tarifs et Garantie disent déjà. */}
       {/* ══════════════════════════════════════════════════════════════
           CASE STUDIES
       ══════════════════════════════════════════════════════════════ */}
@@ -674,70 +472,6 @@ export default function FrenchHome() {
           LIVE SHOWCASE — les vrais templates, intégrés en direct
       ══════════════════════════════════════════════════════════════ */}
       <LiveShowcase lang="fr" />
-
-      {/* ══════════════════════════════════════════════════════════════
-          FORMULES MENSUELLES — le produit. Prix : src/lib/pricing.ts.
-      ══════════════════════════════════════════════════════════════ */}
-      <section className="py-20 lg:py-28 bg-white">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <FadeUp className="text-center mb-12">
-            <p className="text-xs font-black text-[#36671E] uppercase tracking-widest mb-3">Formules mensuelles</p>
-            <h2 className="text-3xl sm:text-4xl font-black text-[#18181B] mb-4">
-              Un système qui{" "}
-              <span className="bg-gradient-to-r from-[#36671E] to-[#6B8439] bg-clip-text text-transparent">
-                s&apos;améliore chaque mois.
-              </span>
-            </h2>
-            <p className="text-[#71717A] max-w-xl mx-auto text-sm">Un seul tarif couvre le site, la réceptionniste IA, l&apos;hébergement, votre domaine et votre email pro. Deux mois offerts en annuel. Résiliable avec 30 jours de préavis.</p>
-          </FadeUp>
-
-          <div className="grid md:grid-cols-3 gap-5">
-            {monthlyPlans.map((m, i) => {
-              const p = { ...m, popular: m.plan.key === POPULAR_PLAN_KEY };
-              return (
-              <FadeUp key={i} delay={i * 0.1}>
-                <div className={`relative rounded-2xl p-7 border-2 flex flex-col h-full ${
-                  p.popular ? "border-[#36671E] bg-[#FAFAF7]" : "border-[#E8E6E0] bg-white"
-                }`}>
-                  {p.popular && (
-                    <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-[#36671E] text-[#FAFAF7] text-[10px] font-black whitespace-nowrap">
-                      LE PLUS CHOISI
-                    </div>
-                  )}
-                  <div className="mb-5">
-                    <h3 className="text-lg font-black text-[#18181B] mb-1">{p.plan.nameFr}</h3>
-                    <div className="flex items-baseline gap-0.5 mb-2">
-                      <span className="text-4xl font-black text-[#18181B]">{p.plan.monthlyEur} €</span>
-                      <span className="text-[#71717A] text-sm">/mois</span>
-                    </div>
-                    <p className="text-[#71717A] text-sm">{p.desc}</p>
-                  </div>
-                  <ul className="space-y-2.5 mb-7 flex-1">
-                    {p.features.map((f, j) => (
-                      <li key={j} className="flex items-center gap-2.5 text-sm text-[#18181B]">
-                        <CheckCircle className="w-4 h-4 text-[#36671E] shrink-0" />{f}
-                      </li>
-                    ))}
-                  </ul>
-                  <Link href="/fr/tarifs" className={`block text-center py-3 rounded-xl font-bold text-sm transition-all ${
-                    p.popular
-                      ? "bg-[#36671E] text-[#FAFAF7] hover:bg-[#295115]"
-                      : "border border-[#E8E6E0] text-[#18181B] hover:border-[#36671E] hover:text-[#36671E]"
-                  }`}>
-                    Commencer →
-                  </Link>
-                </div>
-              </FadeUp>
-              );
-            })}
-          </div>
-          <FadeUp delay={0.3}>
-            <p className="text-center text-[#A1A1AA] text-xs mt-6">
-              Résiliable à tout moment avec 30 jours de préavis · Facturation via Stripe · Si vous dépassez vos conversations, vous passez simplement au palier suivant — jamais de facture surprise
-            </p>
-          </FadeUp>
-        </div>
-      </section>
 
       {/* ══════════════════════════════════════════════════════════════
           GUARANTEE
@@ -950,7 +684,7 @@ export default function FrenchHome() {
       </section>
 
       {/* FOOTER (French, shared) */}
-      <ValueStack lang="fr" />
+      {/* ValueStack retiré ici — un 4e récap tarifaire APRÈS le CTA final ; passé le CTA, le visiteur a besoin du footer, pas d'un second pitch. */}
       <StickyMobileCTA label="Réservez votre audit gratuit" sub="Gratuit · Livré en 24h · Sans appel" href="/fr/audit" />
       <FrenchFooter />
     </main>
