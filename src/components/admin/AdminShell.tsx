@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard, Users, Hammer, UserCircle, MessageSquare, Mail,
-  TrendingUp, Settings, LogOut, Menu, X, BarChart3, Kanban, Search, Globe, Sparkles, RefreshCcw, Wand2, CalendarClock, Target, Star, Bot, Sun, Moon, Database, BookOpen, Send, Eye, CalendarDays, LayoutTemplate, Calculator, Lightbulb,
+  TrendingUp, Settings, LogOut, Menu, X, BarChart3, Kanban, Search, Globe, Sparkles, RefreshCcw, Wand2, CalendarClock, Target, Star, Bot, Sun, Moon, Database, BookOpen, Send, Eye, CalendarDays, LayoutTemplate, Calculator, Lightbulb, PanelLeft,
 } from "lucide-react";
 import CommandPalette from "./CommandPalette";
 import AutoRefresh from "@/components/AutoRefresh";
@@ -81,15 +81,33 @@ const nav = [
   ...navGroups.flatMap((g) => g.items),
 ];
 
-/** One sidebar row. Active state gets a left indicator bar + tinted background. */
-function NavLink({ item, pathname, unreadMsgs }: {
+/** One sidebar row. Active state gets a left indicator bar + tinted background.
+ *  `compact` renders the icon-rail version: icon only, label as tooltip,
+ *  unread count reduced to a dot — everything still clickable and scannable. */
+function NavLink({ item, pathname, unreadMsgs, compact = false }: {
   item: { label: string; href: string; icon: typeof Users };
   pathname: string;
   unreadMsgs: number;
+  compact?: boolean;
 }) {
   const active = item.href === "/admin" ? pathname === "/admin" : pathname.startsWith(item.href);
   const Icon = item.icon;
   const badge = item.href === "/admin/messages" && unreadMsgs > 0 ? unreadMsgs : 0;
+  if (compact) {
+    return (
+      <Link
+        href={item.href}
+        aria-current={active ? "page" : undefined}
+        title={item.label}
+        className={`relative flex items-center justify-center w-10 h-10 mx-auto rounded-lg transition-colors ${
+          active ? "bg-[#EEF5EA] text-[#36671E]" : "text-[#52525B] hover:bg-[#F5F4EF] hover:text-[#18181B]"
+        }`}
+      >
+        <Icon className="w-4 h-4" />
+        {badge > 0 && <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-[#36671E]" />}
+      </Link>
+    );
+  }
   return (
     <Link
       href={item.href}
@@ -114,6 +132,69 @@ function NavLink({ item, pathname, unreadMsgs }: {
   );
 }
 
+/** The ops strip — the command-center readout above every page (desktop).
+ *  One glance answers: how much recurring money, how many live clients, what
+ *  came in this week, who is waiting on ME, what's in delivery, and whether
+ *  the two switches that gate money (Stripe live, AI credits) are green.
+ *  Reads the crm_kpis view (created 2026-08-12) + the public health endpoint. */
+function OpsStrip() {
+  const [k, setK] = useState<Record<string, number> | null>(null);
+  const [env, setEnv] = useState<{ stripeLive: boolean; ai: boolean } | null>(null);
+
+  useEffect(() => {
+    let dead = false;
+    const load = async () => {
+      try {
+        const [kr, hr] = await Promise.all([fetch("/api/admin/kpis"), fetch("/api/health")]);
+        if (kr.ok) { const j = await kr.json(); if (!dead && j?.kpis) setK(j.kpis); }
+        if (hr.ok) {
+          const h = await hr.json();
+          if (!dead) setEnv({ stripeLive: h?.env?.stripeLiveMode === true, ai: h?.env?.anthropic === true });
+        }
+      } catch { /* strip is informational — never break the shell over it */ }
+    };
+    load();
+    const id = setInterval(load, 60000);
+    return () => { dead = true; clearInterval(id); };
+  }, []);
+
+  if (!k) return null;
+  const cell = "flex items-baseline gap-1.5 whitespace-nowrap";
+  const num = "text-sm font-black text-[#18181B]";
+  const lbl = "text-[10px] font-bold uppercase tracking-wider text-[#A1A1AA]";
+  return (
+    <div className="hidden lg:flex items-center gap-6 px-6 h-10 bg-white border-b border-[#E8E6E0] overflow-x-auto">
+      <div className={cell}><span className={num}>€{Number(k.mrr ?? 0).toLocaleString()}</span><span className={lbl}>MRR</span></div>
+      <div className={cell}><span className={num}>{k.live_clients ?? 0}</span><span className={lbl}>clients</span></div>
+      <div className={cell}><span className={num}>{k.leads_7d ?? 0}</span><span className={lbl}>leads 7d</span></div>
+      <div className={cell}>
+        <span className={`${num} ${Number(k.awaiting_response ?? 0) > 0 ? "text-[#D97706]" : ""}`}>{k.awaiting_response ?? 0}</span>
+        <span className={lbl}>waiting on you</span>
+      </div>
+      <div className={cell}><span className={num}>{k.active_builds ?? 0}</span><span className={lbl}>in delivery</span></div>
+      <div className="flex-1" />
+      {env && (
+        <div className="flex items-center gap-4">
+          <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider">
+            <span className={`w-2 h-2 rounded-full ${env.stripeLive ? "bg-[#059669]" : "bg-[#DC2626] animate-pulse"}`} />
+            <span className={env.stripeLive ? "text-[#059669]" : "text-[#DC2626]"}>Stripe {env.stripeLive ? "live" : "test"}</span>
+          </span>
+          <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider">
+            <span className={`w-2 h-2 rounded-full ${env.ai ? "bg-[#059669]" : "bg-[#DC2626]"}`} />
+            <span className={env.ai ? "text-[#059669]" : "text-[#DC2626]"}>AI</span>
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Desktop sidebar has three states, cycled by the panel button or Ctrl/⌘+B:
+ *  full (labels) → rail (icons only) → hidden (maximum screen for tables).
+ *  Persisted, so the cockpit opens the way it was left. */
+type NavMode = "full" | "rail" | "hidden";
+const NAV_CYCLE: Record<NavMode, NavMode> = { full: "rail", rail: "hidden", hidden: "full" };
+
 export default function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -121,6 +202,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   const [isMac, setIsMac] = useState(true);
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [unreadMsgs, setUnreadMsgs] = useState(0);
+  const [navMode, setNavMode] = useState<NavMode>("full");
 
   useEffect(() => {
     setIsMac(/Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent));
@@ -128,6 +210,27 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
     const saved = localStorage.getItem("servolia_admin_theme");
     if (saved === "dark" || saved === "light") setTheme(saved);
     else if (window.matchMedia?.("(prefers-color-scheme: dark)").matches) setTheme("dark");
+    const savedNav = localStorage.getItem("servolia_admin_nav");
+    if (savedNav === "full" || savedNav === "rail" || savedNav === "hidden") setNavMode(savedNav);
+  }, []);
+
+  const cycleNav = () => setNavMode((m) => {
+    const next = NAV_CYCLE[m];
+    localStorage.setItem("servolia_admin_nav", next);
+    return next;
+  });
+
+  // Ctrl/⌘+B cycles the sidebar — never while typing in a field.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() !== "b" || !(e.metaKey || e.ctrlKey)) return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+      e.preventDefault();
+      cycleNav();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
   }, []);
 
   // Unread client-messages badge, visible from anywhere in the CRM (not just the Messages page).
@@ -162,67 +265,109 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
       <AutoRefresh />
       <Copilot />
 
-      {/* === SIDEBAR (desktop) === */}
-      <aside className="hidden lg:flex w-60 bg-white border-r border-[#E8E6E0] flex-col fixed inset-y-0 left-0 z-30">
-        <div className="px-5 py-5 border-b border-[#E8E6E0]">
-          <Link href="/admin" className="flex items-center">
-            <span className="text-base font-black tracking-tight text-[#18181B]">
-              Servolia <span className="text-[#36671E]">CRM</span>
-            </span>
-          </Link>
-        </div>
-
-        {/* Search trigger */}
-        <div className="px-3 pt-3">
-          <button onClick={openPalette}
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg border border-[#E8E6E0] bg-[#FAFAF7] text-[#A1A1AA] hover:border-[#36671E]/30 hover:text-[#71717A] transition-colors text-sm">
-            <Search className="w-4 h-4" />
-            <span className="flex-1 text-left">Search…</span>
-            <kbd className="text-[10px] font-bold bg-white border border-[#E8E6E0] rounded px-1.5 py-0.5">{isMac ? "⌘" : "Ctrl"}K</kbd>
-          </button>
-        </div>
-
-        <nav className="flex-1 px-3 py-3 overflow-y-auto">
-          {/* Dashboard sits above the groups — it's the home, not a category */}
-          <NavLink item={nav[0]} pathname={pathname} unreadMsgs={unreadMsgs} />
-
-          {navGroups.map((g) => (
-            <div key={g.group} className="mt-4 first:mt-2">
-              <p className="px-3 pb-1.5 text-[10px] font-black uppercase tracking-widest text-[#A1A1AA]">
-                {g.group}
-              </p>
-              <div className="space-y-0.5">
-                {g.items.map((item) => (
-                  <NavLink key={item.href} item={item} pathname={pathname} unreadMsgs={unreadMsgs} />
-                ))}
-              </div>
-            </div>
-          ))}
-        </nav>
-
-        <div className="p-3 border-t border-[#E8E6E0]">
-          <div className="flex items-center gap-2 px-3 py-2 mb-1">
-            <div className="w-8 h-8 rounded-full bg-[#36671E] flex items-center justify-center text-[#FAFAF7] text-xs font-black">
-              A
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-[#18181B] truncate">Founder</p>
-              <p className="text-xs text-[#71717A] truncate">Servolia</p>
-            </div>
-            <button onClick={toggleTheme} aria-label="Toggle theme"
-              className="w-8 h-8 rounded-lg border border-[#E8E6E0] flex items-center justify-center text-[#71717A] hover:text-[#18181B] hover:bg-[#F5F4EF] transition-colors">
-              {theme === "light" ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+      {/* === SIDEBAR (desktop) — full / rail / hidden === */}
+      {navMode !== "hidden" && (
+        <aside className={`hidden lg:flex ${navMode === "rail" ? "w-16" : "w-60"} bg-white border-r border-[#E8E6E0] flex-col fixed inset-y-0 left-0 z-30 transition-[width] duration-150`}>
+          <div className={`${navMode === "rail" ? "px-0 justify-center" : "px-5 justify-between"} py-5 border-b border-[#E8E6E0] flex items-center`}>
+            {navMode === "full" && (
+              <Link href="/admin" className="flex items-center">
+                <span className="text-base font-black tracking-tight text-[#18181B]">
+                  Servolia <span className="text-[#36671E]">CRM</span>
+                </span>
+              </Link>
+            )}
+            <button onClick={cycleNav} title={`Sidebar: ${navMode} → ${NAV_CYCLE[navMode]} (${isMac ? "⌘" : "Ctrl"}+B)`}
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-[#A1A1AA] hover:text-[#18181B] hover:bg-[#F5F4EF] transition-colors">
+              <PanelLeft className="w-4 h-4" />
             </button>
           </div>
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-[#71717A] hover:bg-[#F5F4EF] hover:text-[#DC2626] transition-colors"
-          >
-            <LogOut className="w-4 h-4" />
-            Sign out
-          </button>
-        </div>
-      </aside>
+
+          {/* Search trigger */}
+          <div className={navMode === "rail" ? "px-2 pt-3" : "px-3 pt-3"}>
+            {navMode === "rail" ? (
+              <button onClick={openPalette} title={`Search (${isMac ? "⌘" : "Ctrl"}K)`}
+                className="w-10 h-10 mx-auto flex items-center justify-center rounded-lg border border-[#E8E6E0] bg-[#FAFAF7] text-[#A1A1AA] hover:border-[#36671E]/30 hover:text-[#71717A] transition-colors">
+                <Search className="w-4 h-4" />
+              </button>
+            ) : (
+              <button onClick={openPalette}
+                className="w-full flex items-center gap-2 px-3 py-2 rounded-lg border border-[#E8E6E0] bg-[#FAFAF7] text-[#A1A1AA] hover:border-[#36671E]/30 hover:text-[#71717A] transition-colors text-sm">
+                <Search className="w-4 h-4" />
+                <span className="flex-1 text-left">Search…</span>
+                <kbd className="text-[10px] font-bold bg-white border border-[#E8E6E0] rounded px-1.5 py-0.5">{isMac ? "⌘" : "Ctrl"}K</kbd>
+              </button>
+            )}
+          </div>
+
+          <nav className={`flex-1 py-3 overflow-y-auto ${navMode === "rail" ? "px-2" : "px-3"}`}>
+            {/* Dashboard sits above the groups — it's the home, not a category */}
+            <NavLink item={nav[0]} pathname={pathname} unreadMsgs={unreadMsgs} compact={navMode === "rail"} />
+
+            {navGroups.map((g) => (
+              <div key={g.group} className="mt-4 first:mt-2">
+                {navMode === "rail" ? (
+                  <div className="mx-2 mb-1.5 border-t border-[#E8E6E0]" />
+                ) : (
+                  <p className="px-3 pb-1.5 text-[10px] font-black uppercase tracking-widest text-[#A1A1AA]">
+                    {g.group}
+                  </p>
+                )}
+                <div className="space-y-0.5">
+                  {g.items.map((item) => (
+                    <NavLink key={item.href} item={item} pathname={pathname} unreadMsgs={unreadMsgs} compact={navMode === "rail"} />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </nav>
+
+          <div className={`border-t border-[#E8E6E0] ${navMode === "rail" ? "p-2" : "p-3"}`}>
+            {navMode === "rail" ? (
+              <div className="flex flex-col items-center gap-1">
+                <button onClick={toggleTheme} title="Toggle theme"
+                  className="w-10 h-10 rounded-lg flex items-center justify-center text-[#71717A] hover:text-[#18181B] hover:bg-[#F5F4EF] transition-colors">
+                  {theme === "light" ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+                </button>
+                <button onClick={handleLogout} title="Sign out"
+                  className="w-10 h-10 rounded-lg flex items-center justify-center text-[#71717A] hover:text-[#DC2626] hover:bg-[#F5F4EF] transition-colors">
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center gap-2 px-3 py-2 mb-1">
+                  <div className="w-8 h-8 rounded-full bg-[#36671E] flex items-center justify-center text-[#FAFAF7] text-xs font-black">
+                    A
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-[#18181B] truncate">Founder</p>
+                    <p className="text-xs text-[#71717A] truncate">Servolia</p>
+                  </div>
+                  <button onClick={toggleTheme} aria-label="Toggle theme"
+                    className="w-8 h-8 rounded-lg border border-[#E8E6E0] flex items-center justify-center text-[#71717A] hover:text-[#18181B] hover:bg-[#F5F4EF] transition-colors">
+                    {theme === "light" ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+                  </button>
+                </div>
+                <button
+                  onClick={handleLogout}
+                  className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-[#71717A] hover:bg-[#F5F4EF] hover:text-[#DC2626] transition-colors"
+                >
+                  <LogOut className="w-4 h-4" />
+                  Sign out
+                </button>
+              </>
+            )}
+          </div>
+        </aside>
+      )}
+
+      {/* Hidden mode: one floating button brings the menu back (or Ctrl/⌘+B) */}
+      {navMode === "hidden" && (
+        <button onClick={cycleNav} title={`Show menu (${isMac ? "⌘" : "Ctrl"}+B)`}
+          className="hidden lg:flex fixed top-3 left-3 z-40 w-9 h-9 rounded-lg bg-white border border-[#E8E6E0] shadow-sm items-center justify-center text-[#52525B] hover:text-[#18181B] hover:border-[#36671E]/40 transition-colors">
+          <PanelLeft className="w-4 h-4" />
+        </button>
+      )}
 
       {/* === MOBILE TOPBAR === */}
       <div className="lg:hidden fixed top-0 inset-x-0 bg-white border-b border-[#E8E6E0] z-30 h-14 flex items-center justify-between px-4">
@@ -273,7 +418,8 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
       )}
 
       {/* === MAIN === */}
-      <main className="flex-1 min-w-0 lg:ml-60 pt-14 lg:pt-0 min-h-screen">
+      <main className={`flex-1 min-w-0 ${navMode === "full" ? "lg:ml-60" : navMode === "rail" ? "lg:ml-16" : "lg:ml-0"} pt-14 lg:pt-0 min-h-screen transition-[margin] duration-150`}>
+        <OpsStrip />
         {children}
       </main>
     </div>
