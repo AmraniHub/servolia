@@ -78,6 +78,16 @@ export default function PortalDashboard({
   const [tab, setTab] = useState<Tab>("overview");
 
   const [messages, setMessages] = useState<Message[]>([]);
+  // One-time confirmation after an add-on checkout redirects back with
+  // ?addon=…&enabled=1 — cleared from the URL so refresh doesn't repeat it.
+  const [addonJustEnabled, setAddonJustEnabled] = useState<string | null>(null);
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search);
+    if (p.get("enabled") === "1" && p.get("addon")) {
+      setAddonJustEnabled(p.get("addon"));
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, []);
   const [loadingMsgs, setLoadingMsgs] = useState(true);
   const [messagesLoaded, setMessagesLoaded] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -449,6 +459,21 @@ export default function PortalDashboard({
           <h1 className="text-xl sm:text-2xl font-black text-[var(--p-text)] break-words">{t.greeting(firstName)}</h1>
           <p className="text-sm text-[var(--p-muted)] break-all">{email}</p>
         </div>
+
+        {/* Add-on checkout lands back here with ?addon=…&enabled=1 — the person
+            just paid; silence at that moment reads as "did it work?". */}
+        {addonJustEnabled && (
+          <div className="mb-6 flex items-start justify-between gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3">
+            <p className="text-sm text-[var(--p-text)]">
+              <span className="font-black">✓ </span>
+              {lang === "fr"
+                ? `Votre option « ${addonJustEnabled} » est activée — elle est déjà en service sur votre système.`
+                : `Your “${addonJustEnabled}” add-on is active — it's already running on your system.`}
+            </p>
+            <button onClick={() => setAddonJustEnabled(null)} aria-label="Dismiss"
+              className="text-[var(--p-muted)] hover:text-[var(--p-text)] text-sm font-bold shrink-0">✕</button>
+          </div>
+        )}
 
         {/* Tabs */}
         <div className="flex gap-1 p-1 rounded-xl bg-[var(--p-raised)] border border-[var(--p-border)] mb-6 w-full sm:w-fit overflow-x-auto">
