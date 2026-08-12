@@ -24,7 +24,8 @@ export default function CGVPage() {
           <div className="space-y-8 text-[#3F3F46] text-sm leading-relaxed">
             <div>
               <h2 className="text-lg font-black text-[#18181B] mb-3">1. Service provider</h2>
-              <p>Servolia is a digital services studio providing web design, AI systems, and business automation services. Services are provided under written agreement confirmed by email. Contact: hello@servolia.com</p>
+              <p>These terms govern services purchased from <strong>Servolia LLC</strong>, a limited liability company registered in the State of Wyoming, USA, which trades as Servolia (&ldquo;Servolia&rdquo;, &ldquo;we&rdquo;, &ldquo;us&rdquo;). Servolia LLC is the contracting party for every order. We are a digital services studio providing web design, AI systems, and business automation. Services are provided under a written scope confirmed by email. Contact: hello@servolia.com</p>
+              <p className="mt-3">Payments are taken by Servolia LLC via Stripe, so <strong>your bank or card statement shows the Servolia name</strong> — please expect it, so a legitimate charge is never mistaken for one you did not authorise.</p>
             </div>
             <div>
               <h2 className="text-lg font-black text-[#18181B] mb-3">2. Orders and acceptance</h2>
@@ -53,8 +54,13 @@ export default function CGVPage() {
               <p>The client is responsible for: providing accurate business information, reviewing and approving deliverables within 5 business days of delivery, and providing any specific content or images they wish to use. Delays caused by the client do not extend Servolia's delivery guarantee.</p>
             </div>
             <div>
-              <h2 className="text-lg font-black text-[#18181B] mb-3">7. Intellectual property</h2>
-              <p>Upon receipt of full payment, the client receives full ownership of all website files, designs, and content created by Servolia. Servolia retains the right to display the project in its portfolio unless otherwise agreed in writing.</p>
+              <h2 className="text-lg font-black text-[#18181B] mb-3">7. Intellectual property and licence</h2>
+              <p className="mb-3"><strong>What you own.</strong> Your content is yours: your business name, logo, branding, photographs, copy you supply, your service and price information, your client and enquiry records, and the text written specifically for your site. Your data is yours at all times and is exported to you on request (see 7 ter). You also own your domain name (see 7 bis).</p>
+              <p className="mb-3"><strong>What Servolia owns.</strong> Servolia retains all intellectual property rights in the platform that runs your site: its software and source code, the AI receptionist and its prompts and training method, the client portal, the templates, page structures, design system, integrations, and any improvement or derivative work — whether created before or during your engagement. Building and configuring that platform for your business does not transfer ownership of it and does not create a work made for hire.</p>
+              <p className="mb-3"><strong>Your licence.</strong> For as long as your monthly plan is active and paid, Servolia grants you a non-exclusive, non-transferable, non-sublicensable licence to use the platform as installed and configured for your business, for your own business purposes. You may not copy, resell, sublicense, distribute or reverse-engineer it, nor use it to build a competing product.</p>
+              <p className="mb-3"><strong>When the plan ends.</strong> The licence ends when your plan ends: access to the platform and to the AI receptionist stops. You keep everything listed under &ldquo;What you own&rdquo;, including your domain, and Servolia exports your enquiry data in a common format (CSV) free of charge on request for 60 days afterwards.</p>
+              <p className="mb-3"><strong>Bespoke work.</strong> Where you pay separately for custom development, you receive the same licence to use it. Ownership or exclusivity on custom work must be agreed in writing and priced before the work begins.</p>
+              <p><strong>Third-party components.</strong> Hosting providers, AI model providers, fonts, images and any third-party services remain subject to their own licences; they are not owned by Servolia and are not transferred to you beyond your right to use them as configured. Servolia retains the right to display the project in its portfolio unless otherwise agreed in writing.</p>
             </div>
             <div>
               <h2 className="text-lg font-black text-[#18181B] mb-3">7 bis. Domain name ownership</h2>
