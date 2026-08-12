@@ -20,12 +20,12 @@ export const runtime = "nodejs";
  * just promised. The installation sat behind a second button that nothing
  * required anyone to press.
  *
- * VERIFY BEFORE LIVE KEYS: with `trial_period_days` set, Stripe must charge the
- * one-time installation line item at checkout rather than deferring it to the
- * end of the trial. Run one test-mode purchase and confirm the payment is €490
- * today; `metadata.installation_cents` records what we intended to collect, so
- * a mismatch is visible in the dashboard. If Stripe defers it, drop the trial
- * and bill installation + first month together on day 0.
+ * VERIFIED 2026-08-12 (live test-mode checkout, rendered by Stripe itself):
+ * "€490.00 due today · Then €149.00 per month" — with `trial_period_days`
+ * set, Stripe charges the one-time installation line at checkout and starts
+ * the subscription after the trial, exactly as intended. The feared deferral
+ * to trial end does not occur. `metadata.installation_cents` still records
+ * intent so any future regression is visible in the dashboard.
  */
 
 /** Days between paying and go-live — matches SETUP_PLAN.delivery. */
