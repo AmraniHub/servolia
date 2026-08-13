@@ -42,6 +42,10 @@ export async function GET() {
       pending: !!s.pendingSecret,
       storageMissing: s.storageMissing,
       storageIssue: s.storageIssue,
+      // ADMIN_TOTP_SECRET is retired and no longer read by the auth path. If
+      // it is still sitting in Vercel the panel nags until it's deleted — a
+      // stale secret in an env var invites someone to "restore" it later.
+      legacyEnvVar: !!process.env.ADMIN_TOTP_SECRET?.trim(),
       // Admin-authed route, so the raw DB error is safe to show here — and it
       // is the difference between guessing and knowing why enrolment is blocked.
       storageError: s.storageError,

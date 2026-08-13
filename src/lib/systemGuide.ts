@@ -460,7 +460,7 @@ export const FEATURES: SystemFeature[] = [
       "Admin 2FA enrolment now lives in the dashboard, not in Vercel: /admin/settings/security → Turn on two-factor. Two phases — 'setup' parks a PENDING secret and enforces nothing, 'confirm' needs a live code before 2FA actually switches on. That ordering is the point: a key typed in wrong is caught while you are still logged in, not at the next login from a phone that can't generate the right code.",
       "Replay defence: every accepted code's 30-second time step is stored as last_step, and the next login must beat it. A code read over your shoulder or caught in a screen-share is dead the moment you use it — not 30 seconds later.",
       "Recovery codes: eight, shown once in plaintext at enrolment, stored only as SHA-256 hashes, each usable once. They work in the same box as the authenticator code on the login screen. This is the way back in after a lost phone — previously that meant editing a Vercel env var and redeploying before you could open your own admin.",
-      "Storage: the admin_2fa table (section 8 of supabase/pending-migration.sql). ADMIN_TOTP_SECRET still works as a fallback if that table is absent, so deploying before running the migration changes nothing. What it never does is fail open — if the table exists and the read fails, login is refused rather than waved through.",
+      "Storage: the admin_2fa table (section 8 of supabase/pending-migration.sql). ADMIN_TOTP_SECRET was a migration bridge only and was REMOVED from the code on 2026-08-13, once DB-backed 2FA was confirmed active — a second permanently-valid secret with no replay guard and no recovery codes is a weakness once the real thing works, not a safety net. It never fails open: if the read fails, login is refused rather than waved through, which does mean a Supabase outage locks the admin out entirely. Deliberate — the dashboard reads from Supabase, so an outage leaves nothing worth logging in to.",
       "Turning it off requires a live code or a recovery code, so a stolen session cookie can't quietly strip the second factor and leave the door open.",
       "Client portal: magic links (15-min tokens) stay the default; optional bcrypt passwords. Magic-link requests are limited 5/15min per IP and 3/15min per target address — silently, so no account enumeration. Password login shares the same DB-backed limiter.",
       "Rate limiter: rate_limits table in Supabase (one row per key) = one global window across all serverless instances; degrades gracefully to per-instance memory until the SQL block is run.",
@@ -470,7 +470,7 @@ export const FEATURES: SystemFeature[] = [
     ],
     use: [
       "Enable 2FA today: /admin/settings/security → Turn on two-factor. Two minutes, a free authenticator app, and save the eight recovery codes somewhere that is not this dashboard.",
-      "Already on via ADMIN_TOTP_SECRET? The panel says so and offers to move it into the database — do that to get recovery codes and replay protection, then delete the env var in Vercel.",
+      "If ADMIN_TOTP_SECRET is still set anywhere, the security panel shows an amber notice until it is deleted. Nothing reads it — the notice exists so a stale key can't be revived later.",
       "Run the security SQL block (end of supabase/schema.sql) with the other pending blocks to upgrade rate limiting from per-instance to global.",
       "If you ever rotate ADMIN_JWT_SECRET, every admin and client session is invalidated at once — that's the emergency logout lever.",
     ],

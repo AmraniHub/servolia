@@ -17,10 +17,12 @@ import { ShieldCheck, ShieldAlert, Copy, Check, Smartphone, KeyRound, Loader2 } 
 
 type Status = {
   enabled: boolean;
-  source: "db" | "env" | "none";
+  source: "db" | "none";
   confirmedAt: string | null;
   recoveryRemaining: number;
   pending: boolean;
+  /** ADMIN_TOTP_SECRET still sitting in the environment, though nothing reads it. */
+  legacyEnvVar: boolean;
   storageMissing: boolean;
   storageIssue: "no-supabase" | "no-table" | null;
   storageError: string | null;
@@ -195,44 +197,17 @@ export default function TwoFactorPanel() {
 
   // ── ON ───────────────────────────────────────────────────────────────────
   if (status.enabled) {
-    const envBased = status.source === "env";
     return (
       <Card tone="good" title="Two-factor is on" icon={<ShieldCheck className="w-5 h-5 text-[#36671E]" />}>
         <p className="text-sm text-[#3F3F46] mb-3">
-          Sign-in asks for your password, then a 6-digit code.
-          {envBased ? (
-            <>
-              {" "}
-              <strong>This secret comes from the ADMIN_TOTP_SECRET env var</strong>{" "}
-              — the old setup. It works, but a code
-              stays usable for its whole 30-second window even after you&apos;ve used it, and there are no recovery codes:
-              lose the phone and the only way back in is editing env vars in Vercel. Enrol here to move it into the
-              database, then delete that env var.
-            </>
-          ) : (
-            <>
-              {" "}
-              A code that has already been used is refused even inside its own 30-second window.{" "}
-              <strong>{status.recoveryRemaining}</strong> recovery code{status.recoveryRemaining === 1 ? "" : "s"} left.
-            </>
-          )}
+          Sign-in asks for your password, then a 6-digit code. A code that has already been used is refused even inside
+          its own 30-second window. <strong>{status.recoveryRemaining}</strong> recovery code
+          {status.recoveryRemaining === 1 ? "" : "s"} left.
         </p>
 
-        {envBased ? (
-          <>
-            {status.storageMissing && <MigrationHint issue={status.storageIssue} error={status.storageError} />}
-            <SmallButton
-              primary
-              disabled={busy || status.storageMissing}
-              onClick={async () => {
-                const data = await call("setup");
-                if (data?.secret) setEnrol({ secret: data.secret, otpauth: data.otpauth });
-              }}
-            >
-              Move to database-backed 2FA
-            </SmallButton>
-          </>
-        ) : mode === "idle" ? (
+        {status.legacyEnvVar && <LegacyEnvVarNag twoFactorOn />}
+
+        {mode === "idle" ? (
           <div className="flex flex-wrap gap-2">
             <SmallButton onClick={() => setMode("regenerate")}>
               <KeyRound className="w-3.5 h-3.5" /> New recovery codes
@@ -285,6 +260,9 @@ export default function TwoFactorPanel() {
         Your password is the only thing between the internet and this dashboard — every lead, every client, every
         message. Turning it on takes two minutes and a free authenticator app.
       </p>
+      {/* Worth flagging hardest HERE: a leftover secret can read as protection
+          that no longer exists. 2FA is genuinely off despite the env var. */}
+      {status.legacyEnvVar && <LegacyEnvVarNag twoFactorOn={false} />}
       {status.storageMissing && <MigrationHint issue={status.storageIssue} error={status.storageError} />}
       <SmallButton
         primary
@@ -298,6 +276,27 @@ export default function TwoFactorPanel() {
       </SmallButton>
       {error && <ErrorLine>{error}</ErrorLine>}
     </Card>
+  );
+}
+
+/**
+ * ADMIN_TOTP_SECRET is retired — no code path reads it any more. But a stale
+ * secret left in Vercel invites someone to "restore" it during a future
+ * outage, quietly reinstating a second key with no replay guard and no
+ * recovery codes. So the panel keeps asking until it is actually gone.
+ */
+function LegacyEnvVarNag({ twoFactorOn }: { twoFactorOn: boolean }) {
+  return (
+    <div className="text-xs text-[#B45309] bg-[#FEF3C7] border border-[#D97706]/30 rounded-lg px-3 py-2.5 mb-3">
+      <p>
+        <strong>ADMIN_TOTP_SECRET is still set in this environment.</strong>{" "}
+        {twoFactorOn
+          ? "Nothing reads it any more — your 2FA runs entirely from the database."
+          : "Nothing reads it any more, so it is NOT protecting this login — two-factor really is off."}{" "}
+        Delete it in Vercel (Settings → Environment Variables) and redeploy, so a stale second key can&apos;t be
+        revived later. This notice disappears once it&apos;s gone.
+      </p>
+    </div>
   );
 }
 

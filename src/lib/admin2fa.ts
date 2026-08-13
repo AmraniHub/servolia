@@ -25,16 +25,18 @@ import {
  *     30-second window
  *   - eight single-use recovery codes, stored only as SHA-256 hashes
  *
- * MIGRATION SAFETY: if the table isn't there yet, everything falls back to
- * ADMIN_TOTP_SECRET exactly as before. Deploying this code without running the
- * migration changes nothing; running the migration later picks it up. What it
- * will NOT do is fail open — if the table exists and the read fails, login is
+ * ADMIN_TOTP_SECRET IS RETIRED (2026-08-13). It existed only as a migration
+ * bridge and was removed once DB-backed 2FA was confirmed active. A second,
+ * permanently-valid secret with no replay guard and no recovery codes is a
+ * weakness once the real thing works, not a safety net.
+ *
+ * This never fails open: if the table exists and the read fails, login is
  * refused rather than waved through.
  */
 
 export const TWOFA_ROW_ID = "admin";
 
-export type TwoFactorSource = "db" | "env" | "none";
+export type TwoFactorSource = "db" | "none";
 
 export type TwoFactorState = {
   enabled: boolean;
@@ -124,8 +126,6 @@ async function readRow(): Promise<ReadResult> {
 }
 
 export async function getTwoFactorState(): Promise<TwoFactorState> {
-  const envSecret = process.env.ADMIN_TOTP_SECRET?.trim() || null;
-
   let row: Row | null = null;
   let storageMissing = false;
   let storageIssue: "no-supabase" | "no-table" | null = null;
@@ -133,13 +133,18 @@ export async function getTwoFactorState(): Promise<TwoFactorState> {
   try {
     ({ row, storageMissing, storageIssue, storageError } = await readRow());
   } catch (err) {
-    // Storage is configured but unreachable. If an env secret exists we can
-    // still enforce 2FA with it; otherwise report enabled-but-unverifiable so
-    // the login route refuses rather than letting a password through alone.
+    // Storage unreachable. Report enabled-but-unverifiable so the login route
+    // REFUSES rather than letting a password through on its own.
+    //
+    // This used to fall back to the ADMIN_TOTP_SECRET env var, which kept you
+    // in during a Supabase outage. That crutch is gone with the env var, and
+    // losing it costs little: the whole dashboard reads from Supabase, so an
+    // outage leaves nothing worth logging in to. Recovery codes remain the way
+    // back in for the case that actually happens — a lost phone.
     return {
       enabled: true,
-      source: envSecret ? "env" : "db",
-      secret: envSecret,
+      source: "db",
+      secret: null,
       pendingSecret: null,
       lastStep: 0,
       recoveryRemaining: 0,
@@ -160,21 +165,6 @@ export async function getTwoFactorState(): Promise<TwoFactorState> {
       lastStep: Number(row!.last_step ?? 0),
       recoveryRemaining: (row!.recovery_hashes ?? []).length,
       confirmedAt: row!.confirmed_at,
-      storageMissing,
-      storageIssue,
-      storageError,
-    };
-  }
-
-  if (envSecret) {
-    return {
-      enabled: true,
-      source: "env",
-      secret: envSecret,
-      pendingSecret: row?.pending_secret ?? null,
-      lastStep: 0,
-      recoveryRemaining: 0,
-      confirmedAt: null,
       storageMissing,
       storageIssue,
       storageError,
@@ -253,15 +243,11 @@ export async function cancelEnrolment(): Promise<void> {
 /**
  * Turn 2FA off. Requires a live code or a recovery code — otherwise anyone who
  * got hold of a session cookie could strip the second factor and keep the door
- * open. The env-var secret is deliberately NOT disableable from here; that one
- * lives in Vercel and is removed there.
+ * open.
  */
 export async function disableTwoFactor(code: string): Promise<{ ok: boolean; error?: string }> {
   const state = await getTwoFactorState();
   if (!state.enabled) return { ok: true };
-  if (state.source === "env") {
-    return { ok: false, error: "This secret comes from ADMIN_TOTP_SECRET. Remove that env var in Vercel and redeploy." };
-  }
   const result = await consumeSecondFactor(code);
   if (!result.ok) return { ok: false, error: result.error };
 
