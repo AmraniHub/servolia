@@ -2,21 +2,21 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import StickyMobileCTA from "@/components/StickyMobileCTA";
 import Guarantee from "@/components/Guarantee";
-import { CheckCircle, ArrowRight, Bot, Calendar, BarChart3, Globe, Clock, Lock, TrendingUp, Sparkles } from "lucide-react";
+import { CheckCircle, ArrowRight, Bot, Calendar, BarChart3, Globe, Clock, Lock, TrendingUp } from "lucide-react";
 import ValueStack from "@/components/ValueStack";
-import { PAY_PER_BOOKING, SETUP_PLAN, PLANS } from "@/lib/pricing";
+import { SETUP_PLAN, PLANS } from "@/lib/pricing";
 
 /**
  * FR aesthetic-clinic funnel — the beachhead-rung-2 page, mirroring the depth
- * of /fr/dentistes. Aesthetic is the ONLY niche where pay-per-booking may be
- * offered (payPerBookingEligible), so this page leads with that offer — the
- * strongest close for a skeptical clinic owner.
+ * of /fr/dentistes. Same model as every niche: installation up front, then a
+ * flat subscription tier. (A pay-per-booking variant used to lead this page —
+ * retired 2026-08-13, one model only.)
  */
 
 export const metadata: Metadata = {
   title: "Site + assistante IA pour cliniques esthétiques — Servolia",
   description:
-    "Vos demandes Instagram et WhatsApp restent sans réponse quand la clinique tourne à plein. Assistante IA, réservation en ligne et suivi — livré en 7 jours. Option paiement au résultat.",
+    "Vos demandes Instagram et WhatsApp restent sans réponse quand la clinique tourne à plein. Assistante IA, réservation en ligne et suivi — livré en 7 jours.",
   alternates: {
     canonical: "https://servolia.com/fr/esthetique",
     languages: {
@@ -157,47 +157,6 @@ export default function FrenchAestheticPage() {
         </div>
       </section>
 
-      {/* Pay-per-booking — the offer only this niche gets */}
-      <section className="py-14 bg-white">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="rounded-2xl border-2 border-[#36671E] bg-[#FAFAF7] p-6 sm:p-8 relative overflow-hidden">
-            <div className="absolute -top-3.5 left-6 px-4 py-1 rounded-full bg-gradient-to-r from-[#36671E] to-[#295115] text-[#FAFAF7] text-xs font-black">
-              PAIEMENT AU RÉSULTAT
-            </div>
-            <div className="flex items-start gap-4 mt-2">
-              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#36671E] to-[#143424] flex items-center justify-center text-[#FAFAF7] shrink-0">
-                <Sparkles className="w-5 h-5" />
-              </div>
-              <div>
-                <h2 className="text-2xl font-black text-[#18181B] mb-2">
-                  {PAY_PER_BOOKING.setupEur} € de mise en place, puis {PAY_PER_BOOKING.perBookingEur} € par consultation honorée. C&apos;est tout.
-                </h2>
-                <p className="text-[#52525B] text-sm leading-relaxed mb-4">
-                  Réservé aux cliniques esthétiques et médi-spas : au lieu d&apos;un abonnement fixe, vous ne payez que
-                  lorsque l&apos;assistante remplit réellement votre agenda. Une consultation honorée = {PAY_PER_BOOKING.perBookingEur} €.
-                  Pas de rendez-vous ce mois-ci ? Facture à zéro. Nos intérêts sont alignés sur votre remplissage — par construction.
-                </p>
-                <ul className="flex flex-col gap-2 mb-5">
-                  {[
-                    "Facturé chaque début de mois, uniquement sur les rendez-vous du mois écoulé",
-                    "Les no-shows sont déduits — vous ne payez que les consultations honorées",
-                    "Sans engagement de durée : vous repassez sur une formule fixe quand vous voulez",
-                  ].map((t, i) => (
-                    <li key={i} className="flex items-start gap-2 text-sm text-[#3F3F46]">
-                      <CheckCircle className="w-4 h-4 text-[#059669] flex-shrink-0 mt-0.5" />{t}
-                    </li>
-                  ))}
-                </ul>
-                <Link href="/fr/audit"
-                  className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-[#36671E] to-[#295115] text-[#FAFAF7] font-bold text-sm hover:opacity-90">
-                  Demander cette formule <ArrowRight className="w-4 h-4" />
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* Pain / Gain */}
       <section className="py-16 lg:py-20 bg-[#FAFAF7]">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -268,7 +227,7 @@ export default function FrenchAestheticPage() {
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-10">
             <p className="text-sm font-bold text-[#36671E] uppercase tracking-widest mb-2">Formules mensuelles</p>
-            <h2 className="text-3xl font-black text-[#18181B] mb-3">Ou choisissez une formule fixe</h2>
+            <h2 className="text-3xl font-black text-[#18181B] mb-3">Choisissez votre formule</h2>
             <p className="text-[#71717A]">Prix HT. Mise en place de {SETUP_PLAN.totalEur} € au démarrage — offerte en annuel, et rien à payer le jour de la livraison.</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

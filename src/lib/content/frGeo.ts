@@ -22,7 +22,7 @@
  * answers are also served as FAQPage JSON-LD, so a stale number here is a
  * stale number inside Google and LLM overviews for months.
  */
-import { SETUP_PLAN, PLANS, PAY_PER_BOOKING } from "@/lib/pricing";
+import { SETUP_PLAN, PLANS } from "@/lib/pricing";
 
 export interface FrCity {
   slug: string;
@@ -114,7 +114,7 @@ export const FR_GEO_NICHES: FrGeoNiche[] = [
       { q: `Récupère-t-elle les demandes Instagram et WhatsApp aussi ?`,
         a: `Le site + l'IA sur le site sont livrés dans la formule de base. La reprise des DM Instagram et WhatsApp est un module supplémentaire (auto-répondeur qualifié) qui se branche en 48 h une fois le site en ligne.` },
       { q: `Facturation à la performance possible pour une clinique esthétique ${c} ?`,
-        a: `Oui — pour les cliniques esthétiques et médi-esthétiques (pas médicales / dentaires) nous proposons un modèle ${PAY_PER_BOOKING.setupEur} € de mise en place + ${PAY_PER_BOOKING.perBookingEur} € par rendez-vous honoré. Aligne notre rémunération sur votre remplissage réel.` },
+        a: `Non — nous avons fait le choix d'un modèle simple et prévisible : ${SETUP_PLAN.totalEur} € de mise en place (offerte en formule annuelle), puis un abonnement fixe dès ${PLANS.essentiel.monthlyEur} €/mois. Vous savez exactement ce que vous payez chaque mois, sans facture surprise liée au volume de rendez-vous.` },
       { q: `Le RGPD est-il géré ?`,
         a: `Chaque conversation est chiffrée, aucune donnée n'est vendue à un tiers, et le consentement RGPD est demandé avant toute collecte de coordonnées — obligatoire pour une clinique esthétique ${c}, et intégré par défaut.` },
       { q: `Combien de temps avant que ça produise ses premiers rendez-vous ?`,

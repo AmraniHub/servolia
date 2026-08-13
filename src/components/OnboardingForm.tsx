@@ -4,15 +4,12 @@ import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { CheckCircle, ArrowRight, ChevronRight, MessageCircle } from "lucide-react";
 import { businessWaLink } from "@/lib/whatsapp";
-import { BUILD_PLANS, SETUP_PLAN, PAY_PER_BOOKING } from "@/lib/pricing";
+import { BUILD_PLANS, SETUP_PLAN } from "@/lib/pricing";
 
 type Lang = "en" | "fr";
 
 /** Plan names are shown to the client, so they follow the page language — the `plan` key sent to the API stays canonical. */
 const planLabel = (plan: string, lang: Lang) => {
-  // Aesthetic clinics arrive here from the pay-per-booking checkout, which is
-  // not a build plan — name it properly instead of falling through to generic.
-  if (plan === PAY_PER_BOOKING.key) return lang === "fr" ? PAY_PER_BOOKING.nameFr : PAY_PER_BOOKING.name;
   const p = BUILD_PLANS[plan];
   if (!p) return lang === "fr" ? "Système Servolia" : "Servolia System";
   return lang === "fr" ? p.nameFr : p.name;

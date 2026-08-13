@@ -272,7 +272,7 @@ export interface IntakeSource {
  * Niche templates (src/lib/niches/) decide the CONTENT; this decides the
  * FEATURES, so delivery always matches what the pricing page promised.
  *   starter (€290 Website System): site + booking/contact form, NO AI chat.
- *   growth/pro/pay_per_booking:   everything incl. the AI receptionist.
+ *   growth/pro:                   everything incl. the AI receptionist.
  * Absent/unknown plans default to all-on (existing rows, demos — demos must
  * always show the full product, it's the pitch).
  */
@@ -678,8 +678,8 @@ const DEMO_SITES: ClientSiteConfig[] = [
     status: "published",
   },
   {
-    // AESTHETIC SHOWCASE — the rung-2 sales asset (and the pay-per-booking
-    // pilot niche). Same rules as demo-metay: a FICTIONAL clinic ("Institut
+    // AESTHETIC SHOWCASE — the rung-2 sales asset. Same rules as
+    // demo-metay: a FICTIONAL clinic ("Institut
     // Luméa"), invented team names on illustrative stock portraits, no real
     // prices, no medical claims, no invented before/after results. Social
     // icons route back to Servolia. A real client's build replaces all of it.

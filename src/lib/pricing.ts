@@ -27,12 +27,12 @@
  *
  * Why meter conversations rather than bookings: charging per patient booked
  * is a fee tied to patient volume, which French "compérage" rules restrict
- * for regulated medical professions (that's why PAY_PER_BOOKING below is
- * aesthetic-only). Metering AI conversations is metering a technical
- * resource — ordinary SaaS — so it works for dental AND aesthetic while
- * still growing with the client's business. This distinction has NOT yet
- * been confirmed by a French lawyer; see roadmap.ts before leaning on it in
- * public copy.
+ * for regulated medical professions (a pay-per-booking variant existed for
+ * aesthetic clinics only and was retired 2026-08-13 — one model for every
+ * niche). Metering AI conversations is metering a technical resource —
+ * ordinary SaaS — so it works for dental AND aesthetic while still growing
+ * with the client's business. This distinction has NOT yet been confirmed
+ * by a French lawyer; see roadmap.ts before leaning on it in public copy.
  * ───────────────────────────────────────────────────────────────────────── */
 
 export interface BuildPlan {
@@ -198,52 +198,15 @@ export function addonsFor(planKey?: string | null): AddOn[] {
 }
 
 /**
- * PAY-PER-BOOKING — charge only for attended AI-booked consultations, on top
- * of a smaller setup fee. Kept as the RISK-REVERSAL CLOSE for a skeptical
- * aesthetic clinic ("prove it first"), not as the main model — the metered
- * subscription above is the main model because it's legal in the dental
- * beachhead too.
- *
- * LEGAL GATE — do not remove without re-checking: French deontological rules
- * (Ordre des Chirurgiens-Dentistes / Médecins) restrict "compérage"-style fee
- * arrangements tied to patient volume for regulated medical professions. This
- * is cleared to pilot with non-physician-run aesthetic/med-spa businesses
- * ONLY. Dental/medical stays on the subscription until a French lawyer signs
- * off (see roadmap.ts). `payPerBookingEligible()` is the single gate to check
- * before ever offering or quoting this — never bypass it inline.
+ * PAY-PER-BOOKING — RETIRED 2026-08-13 by operator decision: one model only —
+ * the client pays the installation, Servolia delivers, the subscription runs.
+ * No results-contingent billing, no per-niche pricing variants. The plan
+ * object, the eligibility gate, /api/checkout-ppb, the webhook branch and the
+ * monthly invoicing cron were all removed. Historical rows sold as
+ * "pay_per_booking" (there are none in production) would render via
+ * resolvePlan()'s fallback. The compérage note above stays because it
+ * justifies the conversation meter itself.
  */
-export interface PayPerBookingPlan {
-  key: string;
-  name: string;
-  nameFr: string;
-  setupEur: number;       // one-time setup fee
-  perBookingEur: number;  // charged per attended AI-booked consultation
-}
-
-export const PAY_PER_BOOKING: PayPerBookingPlan = {
-  key: "pay_per_booking",
-  name: "Pay-per-booking",
-  nameFr: "Paiement à la réservation",
-  setupEur: 990,
-  perBookingEur: 60,
-};
-
-/** Niches legally cleared to pilot pay-per-booking (non-physician-run only). */
-const PAY_PER_BOOKING_ELIGIBLE = /aesthetic|med-?spa|beaut/i;
-
-/** Niches where this must NEVER be offered without a French lawyer's sign-off. */
-const PAY_PER_BOOKING_REGULATED = /dental|dentist|dentaire|implant|medical|m[ée]dec|chirurg|physician|docteur/i;
-
-/**
- * The single gate to check before ever quoting or offering pay-per-booking.
- * Defaults to false for anything not explicitly cleared — an unrecognised or
- * ambiguous niche should never fall through to "eligible".
- */
-export function payPerBookingEligible(niche?: string | null): boolean {
-  const n = niche ?? "";
-  if (PAY_PER_BOOKING_REGULATED.test(n)) return false;
-  return PAY_PER_BOOKING_ELIGIBLE.test(n);
-}
 
 /**
  * 50% deposit in Stripe cents — RETIRED BUILD PLANS ONLY.

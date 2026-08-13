@@ -128,8 +128,8 @@ export async function POST(req: NextRequest) {
         }
 
         // A subscriber who started as a lead must leave the pipeline's
-        // "waiting" stages the moment they pay — the PPB and legacy-build
-        // branches already do this; this (the main path) didn't, so paying
+        // "waiting" stages the moment they pay — the legacy-build branch
+        // already does this; this (the main path) didn't, so paying
         // clients sat in awaiting_response and polluted every funnel number.
         if (customerEmail) {
           await db.from("leads")
@@ -190,67 +190,9 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ received: true });
       }
 
-      // ── PAY-PER-BOOKING branch: setup fee paid in full → active per-booking
-      // client. The monthly-invoice cron bills attended bookings from here on.
-      if (session.metadata?.kind === "ppb_setup") {
-        const customerEmail = session.customer_details?.email ?? session.customer_email ?? null;
-        const amount = (session.amount_total ?? 0) / 100;
-        const rate = Number(session.metadata?.per_booking_rate) || 60;
-
-        const { data: ppbBuild } = await db.from("builds")
-          .select("id, lead_id").eq("checkout_session_id", session.id).maybeSingle();
-        if (ppbBuild) {
-          await db.from("builds").update({
-            deposit_paid: amount,
-            balance_due: 0,
-            email: customerEmail,
-            customer_id: (session.customer as string) ?? null,
-          }).eq("id", ppbBuild.id);
-          if (ppbBuild.lead_id) {
-            await db.from("leads").update({ stage: "deposit_paid", email: customerEmail ?? undefined }).eq("id", ppbBuild.lead_id);
-            await db.from("lead_activities").insert({
-              lead_id: ppbBuild.lead_id, type: "payment",
-              description: `Pay-per-booking setup paid — €${amount.toLocaleString()} (then €${rate}/attended booking)`,
-            });
-          }
-        }
-
-        await db.from("clients").insert({
-          build_id: ppbBuild?.id ?? null,
-          business: customerEmail ?? "Unknown",
-          email: customerEmail,
-          plan: "pay_per_booking",
-          monthly_amount: 0,
-          billing_mode: "per_booking",
-          per_booking_rate_eur: rate,
-          status: "active",
-          customer_id: (session.customer as string) ?? null,
-        });
-
-        const tgToken = process.env.TELEGRAM_BOT_TOKEN;
-        const tgChatId = process.env.TELEGRAM_CHAT_ID;
-        if (tgToken && tgChatId) {
-          const msg = `🎯 *Pay-per-booking setup paid — €${amount}*\n${customerEmail ?? "no email"}\nRate: €${rate}/attended booking` +
-                      (ppbBuild ? `\n\n[Open build](https://servolia.com/admin/builds/${ppbBuild.id})` : "");
-          fetch(`https://api.telegram.org/bot${tgToken}/sendMessage`, {
-            method: "POST", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ chat_id: tgChatId, text: msg, parse_mode: "Markdown" }),
-          }).catch(() => {});
-        }
-
-        sendMetaCapiEvent({
-          eventName: "Purchase", email: customerEmail, value: amount, currency: "EUR",
-          eventSourceUrl: "https://servolia.com/pricing",
-        });
-
-        if (customerEmail) {
-          const firstName = customerEmail.split("@")[0];
-          const emailLang = session.metadata?.lang === "fr" ? "fr" : "en";
-          const tpl = installationPaidEmail(firstName, "Pay-per-booking", amount, emailLang);
-          sendEmail(customerEmail, tpl.subject, tpl.html).catch(() => {});
-        }
-        return NextResponse.json({ received: true });
-      }
+      // (Pay-per-booking retired 2026-08-13 by operator decision — one model
+      // only: installation paid up front, then the subscription. The old
+      // ppb_setup branch, /api/checkout-ppb and the invoicing cron are gone.)
 
       const sessionId = session.id;
       const customerEmail = session.customer_details?.email ?? session.customer_email ?? null;
@@ -416,14 +358,6 @@ export async function POST(req: NextRequest) {
           open_invoice_url: null,
         }).or(filter);
       }
-
-      // Settle the pay-per-booking ledger row this Stripe invoice belongs to,
-      // if any (table may not exist until the founder runs the schema block).
-      try {
-        await db.from("pay_per_booking_invoices")
-          .update({ status: "paid" })
-          .eq("stripe_invoice_id", invoice.id);
-      } catch { /* ledger table not created yet — never drop the webhook */ }
     }
 
     // ── Subscription cancelled (in Stripe or by the client) ───────────────
