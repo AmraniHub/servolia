@@ -6,7 +6,7 @@ import { supabaseAdmin } from "@/lib/supabase";
  * can be inspected, reused as a starting template, or restored after a bad
  * edit or data loss. GitHub's commit history gives version history for free.
  *
- * Needs two env vars (see /admin/settings → Core):
+ * Needs two env vars (see /admin/settings/integrations → Core):
  *   GITHUB_ARCHIVE_TOKEN — fine-grained PAT with Contents read/write on the repo
  *   GITHUB_ARCHIVE_REPO  — "owner/repo", e.g. "AmraniHub/servolia-client-archive"
  *                          (create it PRIVATE — client configs contain contact data)

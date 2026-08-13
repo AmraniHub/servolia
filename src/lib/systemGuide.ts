@@ -154,7 +154,7 @@ export const FEATURES: SystemFeature[] = [
       "Add-ons: self-serve recurring subscription from the portal → triggers provisioning.",
       "Custom work: one-off payment link created from the build page → marks the request paid.",
     ],
-    use: ["Everything is metadata-tagged (kind: care_plan / addon / custom_request) so the webhook routes it correctly.", "Check /admin/settings for whether Stripe is in LIVE or TEST mode."],
+    use: ["Everything is metadata-tagged (kind: care_plan / addon / custom_request) so the webhook routes it correctly.", "Check /admin/settings/integrations for whether Stripe is in LIVE or TEST mode."],
     cost: "Stripe's standard per-transaction fee — see your Stripe dashboard for the exact rate on your account.",
     value: "Deposits fund the build; annual prepay brings a year of cash up front; add-ons and custom work add margin with no new client acquisition.",
     code: "src/lib/pricing.ts · /api/checkout · /api/checkout-subscription · /api/checkout-addon · /api/webhooks/stripe",
@@ -248,7 +248,7 @@ export const FEATURES: SystemFeature[] = [
       "The fixed-overhead total only adds up active flat-fee services, and anything guessed at a typical plan tier (Vercel Pro, Supabase Pro) carries an ESTIMATE flag — confirm against the real dashboard before trusting it as accounting.",
     ],
     use: [
-      "Live numbers, always current: /admin/settings → 'Costs & subscriptions'.",
+      "Live numbers, always current: /admin/settings/costs.",
       "Adding a new paid service: add one entry to costs.ts (same file the founder rule in roadmap.ts describes for integrations) — it appears automatically, correctly bucketed.",
     ],
     cost: "N/A — this feature describes cost, it doesn't add any.",
@@ -318,7 +318,7 @@ export const FEATURES: SystemFeature[] = [
     name: "Ideas board — how work gets handed to Claude",
     summary: "A kanban at /admin/ideas of everything discussed but not built. Move a card to In progress, copy the brief, paste it into a message — that is the whole handover.",
     how: [
-      "Two records, deliberately NOT duplicated. roadmap.ts is CODE: the honest log of what shipped, what is blocked, and why — only Claude edits it, and it drives /admin/settings. The `ideas` table is DATA: the founder moves cards themselves, with no commit and no waiting.",
+      "Two records, deliberately NOT duplicated. roadmap.ts is CODE: the honest log of what shipped, what is blocked, and why — only Claude edits it, and it drives /admin/settings/roadmap. The `ideas` table is DATA: the founder moves cards themselves, with no commit and no waiting.",
       "They are linked by a one-click import. The first time the board is empty it offers 'Import everything from the roadmap' — all 43 items arrive with their detail, priority and blocker, categorised from the title. Every row carries an external_key, so pressing it twice can never duplicate a card.",
       "Blocked roadmap items land in PLANNED rather than Idea, because 'waiting on a lawyer' is decided work, not a suggestion. Done items are imported too — a Done column that starts empty makes it look like nothing has ever shipped.",
       "THE BUTTON THAT MATTERS: 'Copy brief for Claude'. Claude works in the repo and cannot read Supabase, so a card moved to In progress is invisible to him. That button renders the column as plain text — title, detail, blocker, ordered by priority — ready to paste. Without it this is a pretty board that changes nothing.",
@@ -457,7 +457,7 @@ export const FEATURES: SystemFeature[] = [
     how: [
       "Sessions: both admin and portal sessions are signed JWTs in httpOnly/secure/sameSite cookies. Since 2026-07-27 the signing secret FAILS CLOSED — production throws if ADMIN_JWT_SECRET is unset instead of silently using a fallback string that lives in the public repo.",
       "Admin login (rebuilt 2026-08-13, two steps): password first — constant-time compare, 8 attempts / 15 min per IP via the shared rate limiter. If 2FA is on, the reply is not a session but a signed ticket that dies in 5 minutes and grants nothing on its own; the code screen appears only then. The old form asked for a code on every login labelled \"(if enabled)\". Wrong password still returns the same generic error.",
-      "Admin 2FA enrolment now lives in the dashboard, not in Vercel: /admin/settings → Account security → Turn on two-factor. Two phases — 'setup' parks a PENDING secret and enforces nothing, 'confirm' needs a live code before 2FA actually switches on. That ordering is the point: a key typed in wrong is caught while you are still logged in, not at the next login from a phone that can't generate the right code.",
+      "Admin 2FA enrolment now lives in the dashboard, not in Vercel: /admin/settings/security → Turn on two-factor. Two phases — 'setup' parks a PENDING secret and enforces nothing, 'confirm' needs a live code before 2FA actually switches on. That ordering is the point: a key typed in wrong is caught while you are still logged in, not at the next login from a phone that can't generate the right code.",
       "Replay defence: every accepted code's 30-second time step is stored as last_step, and the next login must beat it. A code read over your shoulder or caught in a screen-share is dead the moment you use it — not 30 seconds later.",
       "Recovery codes: eight, shown once in plaintext at enrolment, stored only as SHA-256 hashes, each usable once. They work in the same box as the authenticator code on the login screen. This is the way back in after a lost phone — previously that meant editing a Vercel env var and redeploying before you could open your own admin.",
       "Storage: the admin_2fa table (section 8 of supabase/pending-migration.sql). ADMIN_TOTP_SECRET still works as a fallback if that table is absent, so deploying before running the migration changes nothing. What it never does is fail open — if the table exists and the read fails, login is refused rather than waved through.",
@@ -469,7 +469,7 @@ export const FEATURES: SystemFeature[] = [
       "/api/contact spam gate (2026-07-29, after a flood of fake 'Dental Clinic' leads with gibberish LLC names + nonsense domains): a hidden honeypot field named \"url\" (rendered on /contact + /fr/contact, invisible to real visitors) silently no-ops the request if filled; server-side now also requires a real email format and, for type=contact, a non-empty name + problem (the bot was posting straight to the API and skipping fields the Telegram alert doesn't echo back); plus the same 8/15min per-IP limiter used on admin login. Don't click the website links on suspicious leads in the CRM — treat gibberish-domain leads as spam bait, not prospects.",
     ],
     use: [
-      "Enable 2FA today: /admin/settings → Account security → Turn on two-factor. Two minutes, a free authenticator app, and save the eight recovery codes somewhere that is not this dashboard.",
+      "Enable 2FA today: /admin/settings/security → Turn on two-factor. Two minutes, a free authenticator app, and save the eight recovery codes somewhere that is not this dashboard.",
       "Already on via ADMIN_TOTP_SECRET? The panel says so and offers to move it into the database — do that to get recovery codes and replay protection, then delete the env var in Vercel.",
       "Run the security SQL block (end of supabase/schema.sql) with the other pending blocks to upgrade rate limiting from per-instance to global.",
       "If you ever rotate ADMIN_JWT_SECRET, every admin and client session is invalidated at once — that's the emergency logout lever.",
@@ -484,7 +484,7 @@ export const FEATURES: SystemFeature[] = [
     how: [
       "LOUD (default): a captured lead, a payment, a scope accepted, a failed charge, a new subscriber, a client portal message, and the morning brief WHEN it has hot leads or 48h-silent leads. These are the ones worth interrupting you.",
       "SILENT (`sendTelegramMessage(text, buttons, { silent: true })` → Telegram's disable_notification): daily traffic stats, weekly SEO, 48h follow-up summaries, monthly client-report summaries. They land in the chat for when you look, without a buzz.",
-      "NOT SENT AT ALL: config nags. daily-stats and weekly-seo used to Telegram 'GA4 not connected yet' every single day/week forever — an unset secret is a /admin/settings concern, not a push notification.",
+      "NOT SENT AT ALL: config nags. daily-stats and weekly-seo used to Telegram 'GA4 not connected yet' every single day/week forever — an unset secret is a /admin/settings/integrations concern, not a push notification.",
       "ZERO-ACTIVITY SUPPRESSION: the morning brief skips entirely when there are no leads, no builds and nothing actionable; daily stats skip when yesterday had 0 visitors and the week had 0 leads. A '0 / 0 / 0' report teaches you to ignore the bot.",
       "Content approvals (blog + LinkedIn drafts with Publish/Skip buttons) stay loud — they're a decision waiting on you, and tapping a button IS the workflow.",
     ],
@@ -579,7 +579,7 @@ export const FEATURES: SystemFeature[] = [
       "The moment invoice.paid or invoice.payment_succeeded arrives, everything resets to 'ok' — banner disappears, site is live again, no cron needed.",
     ],
     use: [
-      "Enable invoice.payment_failed and invoice.paid on the Stripe webhook (see /admin/settings — the roadmap will nag until it's done).",
+      "Enable invoice.payment_failed and invoice.paid on the Stripe webhook (see /admin/settings/roadmap — it will nag until it's done).",
       "Watch the past-due badge in /admin/clients to know which relationships are wobbling.",
       "Tune GRACE_DAYS at the top of /api/webhooks/stripe/route.ts if 14 days is wrong for you.",
     ],
@@ -708,13 +708,23 @@ export const FEATURES: SystemFeature[] = [
     code: "/api/cron/generate-blog · /api/cron/generate-linkedin · /api/telegram/webhook",
   },
   {
-    name: "Settings — what's left",
-    summary: "Live status of every secret/integration plus the prioritised roadmap of everything not done yet.",
-    how: ["Checks process.env for each integration (never exposes values) and detects whether Stripe is LIVE or TEST."],
-    use: ["Admin → Settings. Anything left to do is listed there with what it's waiting on."],
+    name: "Settings — five sections, not one scroll",
+    summary: "Setup status, secrets, costs, security and the prioritised roadmap — split into real routes you can bookmark.",
+    how: [
+      "Split 2026-08-13. It used to be one 218-line page: alerts, 2FA, costs, secrets and the roadmap stacked end to end, with the roadmap — the part actually read daily — at the very bottom. Now: /admin/settings (overview), /security, /integrations, /costs, /roadmap.",
+      "Real routes, not client-side tabs. Each section is a link that survives a refresh, can be bookmarked, and can be pointed at from docs and error messages — which is why every 'see /admin/settings' pointer in the codebase now names its section.",
+      "Tab badges come from src/app/admin/settings/_data.ts, the single place the counts are computed. A badge saying '3 missing' therefore cannot disagree with the page it points at.",
+      "Overview shows only what needs a decision: Stripe not in live mode, any missing REQUIRED secret, whether Supabase is connected — then cards into each section carrying the one number that says whether it's worth opening.",
+      "The roadmap page groups by status (blocked → in progress → queued) instead of one flat list, so blocked work can't hide behind queued work.",
+      "Checks process.env for each integration and reports only whether a secret is SET — never its value. Detects whether Stripe is LIVE or TEST.",
+    ],
+    use: [
+      "Admin → Settings. Anything left to do is under 'What's left', with what it's waiting on.",
+      "Deep-link straight to a section: /admin/settings/security, /integrations, /costs, /roadmap.",
+    ],
     cost: "None.",
-    value: "You always know what's missing without digging through code.",
-    code: "src/lib/roadmap.ts · src/app/admin/settings",
+    value: "You always know what's missing without digging through code — and the daily-read part is one click away instead of at the bottom of a long scroll.",
+    code: "src/lib/roadmap.ts · src/app/admin/settings/{page,layout,_data}.tsx · .../security · .../integrations · .../costs · .../roadmap · src/components/admin/SettingsTabs.tsx",
   },
 ];
 

@@ -30,7 +30,7 @@ export function telegramConfigured(): boolean {
  *                     `disable_notification`, so it's there when you look but
  *                     never interrupts you.
  *
- * Config nags ("X not connected yet") should not be sent at all — /admin/settings
+ * Config nags ("X not connected yet") should not be sent at all — /admin/settings/integrations
  * already tracks every unset secret and never stops being visible.
  */
 export interface SendOptions {

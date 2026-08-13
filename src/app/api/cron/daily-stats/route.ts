@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
 
   if (!ga4Configured()) {
     // Silent by design: this used to Telegram the same config nag every single
-    // day, forever. /admin/settings already lists every unset secret.
+    // day, forever. /admin/settings/integrations already lists every unset secret.
     return NextResponse.json({ ok: true, reason: "GA4 not configured" });
   }
 

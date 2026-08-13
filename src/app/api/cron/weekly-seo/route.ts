@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
   }
 
   if (!ga4Configured()) {
-    // Silent by design — same reasoning as daily-stats. Surfaced in /admin/settings.
+    // Silent by design — same reasoning as daily-stats. Surfaced in /admin/settings/integrations.
     return NextResponse.json({ ok: true, reason: "GA4 not configured" });
   }
 

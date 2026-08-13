@@ -3,7 +3,7 @@ import type { IntegrationCategory } from "@/lib/roadmap";
 /**
  * COSTS — every third-party service the app depends on, what it actually
  * bills, and whether it's live right now. Feeds the "Costs & subscriptions"
- * panel on /admin/settings.
+ * panel on /admin/settings/costs.
  *
  * WORKING RULE: same as roadmap.ts — whenever a new paid service is wired
  * in, add it here. Never invent a precise number for something usage-based;

@@ -179,7 +179,7 @@ export default async function EconomicsPage() {
       <p className="text-xs text-[#A1A1AA] leading-relaxed">
         Reference: first-year value of one anchor-tier client is €{firstYear.toLocaleString()} (€{SETUP_PLAN.totalEur} installation
         + 12 × €{PLANS.croissance.monthlyEur}). Usage-based costs (AI inference, Stripe fees) are never included in margin —
-        they would be a guess. See /admin/settings for the running cost breakdown.
+        they would be a guess. See /admin/settings/costs for the running cost breakdown.
       </p>
     </div>
   );

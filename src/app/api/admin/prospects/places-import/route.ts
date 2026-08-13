@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
   const apiKey = process.env.GOOGLE_PLACES_API_KEY;
   if (!apiKey) {
     return NextResponse.json(
-      { error: "GOOGLE_PLACES_API_KEY not set — see /admin/settings → Growth & ads" },
+      { error: "GOOGLE_PLACES_API_KEY not set — see /admin/settings/integrations → Growth & ads" },
       { status: 503 },
     );
   }
