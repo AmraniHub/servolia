@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import Stripe from "stripe";
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin, estimateLeadValue } from "@/lib/supabase";
 import { sendEmail, installationPaidEmail } from "@/lib/email";
 import { sendMetaCapiEvent } from "@/lib/metaCapi";
 import { generateScopeDocument } from "@/lib/scopeDocument";
@@ -41,6 +41,19 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     console.error("Webhook signature verification failed:", err);
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
+  }
+
+  // TEST-MODE EVENTS NEVER TOUCH THE CRM.
+  //
+  // Stripe stamps every event with livemode, which is authoritative — unlike
+  // sniffing the API key. Test purchases must still be possible (that is how
+  // the checkout gets verified before going live) but they must not leave
+  // leads, builds or clients behind: a dashboard showing invented pipeline is
+  // worse than an empty one, because you start trusting it. Acknowledged with
+  // 200 so Stripe does not retry.
+  if (!event.livemode) {
+    console.info(`[stripe] test-mode ${event.type} acknowledged — no CRM rows written`);
+    return NextResponse.json({ received: true, testMode: true, skipped: "crm-writes" });
   }
 
   const db = supabaseAdmin();
@@ -205,18 +218,35 @@ export async function POST(req: NextRequest) {
         .eq("checkout_session_id", sessionId)
         .maybeSingle();
 
-      // Resilience: if the pre-checkout build creation failed for some reason,
-      // create the build now so the payment is never lost from the CRM.
-      // Status stays "intake" here — paying doesn't mean intake is done. The
-      // /onboarding submission (see src/app/api/contact/route.ts, type "intake")
-      // is what flips this to "building", once we actually have their answers.
+      // This is now the NORMAL path, not a fallback: /api/checkout deliberately
+      // writes nothing, so the lead and the build are both created here — when
+      // money actually moved. Status stays "intake" because paying doesn't mean
+      // intake is done; the /onboarding submission flips it to "building".
       if (!build) {
         const planMeta = session.metadata?.plan ?? "unknown";
+        const planLabel = BUILD_PLANS[planMeta]?.name ?? planMeta;
+
+        // Link the lead this purchase came from, or create one — a paying
+        // customer must exist in the CRM even if they never filled a form.
+        let leadId = session.metadata?.lead_id || null;
+        if (!leadId) {
+          const { data: newLead } = await db.from("leads").insert({
+            business: customerEmail ?? `Direct purchase · ${planLabel}`,
+            email: customerEmail,
+            source: "direct-purchase",
+            stage: "deposit_paid",       // they have paid — this is not a guess
+            plan_interest: planMeta,
+            value_estimate: estimateLeadValue(null, planMeta),
+          }).select("id").single();
+          leadId = (newLead as { id: string } | null)?.id ?? null;
+        }
+
         const { data: newBuild } = await db.from("builds").insert({
-          business: customerEmail ?? "Unknown",
+          lead_id: leadId,
+          business: customerEmail ?? "Pending intake",
           email: customerEmail,
           plan: planMeta,
-          plan_name: planMeta,
+          plan_name: planLabel,
           // One-time payments are charged IN FULL (see /api/checkout), so what
           // they paid IS the project price and nothing is outstanding.
           total_price: amountPaid,

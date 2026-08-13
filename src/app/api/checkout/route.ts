@@ -1,8 +1,7 @@
 import Stripe from "stripe";
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase";
 import { sendMetaCapiEvent } from "@/lib/metaCapi";
-import { SELLABLE_BUILD_PLANS, PLANS as SUB_PLANS, SETUP_PLAN } from "@/lib/pricing";
+import { SELLABLE_BUILD_PLANS } from "@/lib/pricing";
 
 // One-time amounts in cents (EUR) — prices come from src/lib/pricing.ts.
 // Charged IN FULL: under the current model the installation is the only
@@ -15,10 +14,6 @@ const PLANS: Record<string, { name: string; nameFr: string; delivery: string; am
       { name: p.name, nameFr: p.nameFr, delivery: p.delivery, amount: p.totalEur * 100 },
     ])
   );
-
-/** First-year value of a lead who just started checkout — installation plus a
- *  year of the anchor tier. Matches estimateLeadValue() in src/lib/supabase.ts. */
-const FIRST_YEAR_ESTIMATE = SETUP_PLAN.totalEur + SUB_PLANS.croissance.monthlyEur * 12;
 
 export async function POST(req: NextRequest) {
   const key = process.env.STRIPE_SECRET_KEY;
@@ -72,46 +67,17 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // ── Create / link a Lead + Build pre-payment so we track it ──────────
-    const db = supabaseAdmin();
-    if (db) {
-      let finalLeadId = leadId ?? null;
-
-      // If no leadId came from the form/chatbot, this is a direct purchase —
-      // create a "qualified" lead now so it shows up in the CRM immediately.
-      if (!finalLeadId) {
-        const { data: newLead } = await db.from("leads").insert({
-          business: `Direct purchase · ${p.name}`,
-          source: "direct-purchase",
-          stage: "qualified",
-          plan_interest: plan,
-          value_estimate: FIRST_YEAR_ESTIMATE,
-        }).select("id").single();
-        if (newLead) finalLeadId = newLead.id;
-      }
-
-      await db.from("builds").insert({
-        lead_id: finalLeadId,
-        business: "Pending intake",
-        plan,
-        plan_name: p.name,
-        total_price: p.amount / 100,
-        balance_due: 0, // nothing is owed on delivery under the current model
-
-        status: "intake",
-        checkout_session_id: session.id,
-      });
-
-      // Mark the lead as awaiting payment (the webhook flips it once paid).
-      if (finalLeadId) {
-        await db.from("leads").update({ stage: "qualified" }).eq("id", finalLeadId);
-        await db.from("lead_activities").insert({
-          lead_id: finalLeadId,
-          type: "payment",
-          description: `Started checkout for ${p.name} — €${(p.amount / 100).toLocaleString()}`,
-        });
-      }
-    }
+    // NOTHING is written to the CRM here, on purpose.
+    //
+    // This route runs when someone CLICKS the pay button — not when they pay.
+    // It used to create a "qualified" lead and an in-delivery build at that
+    // moment, which meant every abandoned checkout and every test click left a
+    // phantom qualified lead at full first-year value and a phantom build
+    // sitting in delivery. The dashboard counted work that did not exist.
+    //
+    // The CRM row is now written by the Stripe webhook on
+    // checkout.session.completed — i.e. when money actually moved. The leadId
+    // travels in metadata so a lead that already exists still gets linked.
 
     // Meta Conversions API — checkout started (fire and forget)
     sendMetaCapiEvent({
