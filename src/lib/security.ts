@@ -1,4 +1,4 @@
-import { createHmac, randomBytes, timingSafeEqual } from "crypto";
+import { createHash, createHmac, randomBytes, timingSafeEqual } from "crypto";
 import { supabaseAdmin } from "@/lib/supabase";
 
 /**
@@ -85,6 +85,7 @@ function base32Encode(buf: Buffer): string {
   return out;
 }
 
+/** Tolerant on purpose: people paste secrets with spaces, dashes, lowercase. */
 function base32Decode(s: string): Buffer {
   const clean = s.toUpperCase().replace(/[^A-Z2-7]/g, "");
   let bits = 0, value = 0;
@@ -109,17 +110,67 @@ function hotp(secret: Buffer, counter: number): string {
   return String(code % 1_000_000).padStart(6, "0");
 }
 
-/** Verify a 6-digit TOTP code with ±1 time-step tolerance (30s steps). */
-export function verifyTotp(base32Secret: string, code: string): boolean {
-  const clean = (code ?? "").replace(/\s+/g, "");
-  if (!/^\d{6}$/.test(clean)) return false;
+/**
+ * Verify a TOTP code and return the TIME STEP it matched, or null.
+ *
+ * The step is the whole point: persist it and pass `minStep = lastStep + 1`
+ * next time, and a code that has already been used verifies nowhere — even
+ * inside its own 30-second life. Without that, a code read over your shoulder
+ * or captured in a screen-share stays valid until the window rolls, which is
+ * the one realistic attack against an authenticator app.
+ *
+ * ±1 step tolerance absorbs the clock drift real phones have.
+ */
+export function verifyTotpStep(
+  base32Secret: string,
+  code: string,
+  opts: { minStep?: number; window?: number } = {},
+): number | null {
+  const clean = (code ?? "").replace(/\D/g, "");
+  if (!/^\d{6}$/.test(clean)) return null;
   const secret = base32Decode(base32Secret);
-  if (secret.length < 10) return false;
-  const step = Math.floor(Date.now() / 1000 / 30);
-  for (const t of [step - 1, step, step + 1]) {
-    if (timingSafeEqualStr(hotp(secret, t), clean)) return true;
+  if (secret.length < 10) return null;
+
+  const { minStep = 0, window = 1 } = opts;
+  const centre = Math.floor(Date.now() / 1000 / 30);
+  for (let offset = -window; offset <= window; offset++) {
+    const step = centre + offset;
+    if (step < minStep) continue;
+    if (timingSafeEqualStr(hotp(secret, step), clean)) return step;
   }
-  return false;
+  return null;
+}
+
+/** Boolean form, for callers that don't track replay. Prefer verifyTotpStep. */
+export function verifyTotp(base32Secret: string, code: string): boolean {
+  return verifyTotpStep(base32Secret, code) !== null;
+}
+
+/**
+ * Recovery codes — the way back in when the phone is lost or wiped.
+ *
+ * Without these, losing the authenticator means editing an env var in Vercel
+ * and redeploying to get into your own admin. Ten base32 characters, grouped
+ * as XXXXX-XXXXX so they can be written on paper without transcription errors.
+ * Only ever stored as SHA-256 hashes.
+ */
+export function newRecoveryCodes(count = 8): string[] {
+  const out: string[] = [];
+  for (let i = 0; i < count; i++) {
+    const raw = base32Encode(randomBytes(7)).slice(0, 10);
+    out.push(`${raw.slice(0, 5)}-${raw.slice(5)}`);
+  }
+  return out;
+}
+
+/** One canonical form, so "abcde-fghij" and "ABCDE FGHIJ" hash identically. */
+export function normalizeRecoveryCode(code: string): string {
+  return String(code ?? "").toUpperCase().replace(/[^A-Z2-7]/g, "");
+}
+
+/** Hash a recovery code for storage/comparison. */
+export function hashRecoveryCode(code: string): string {
+  return createHash("sha256").update(normalizeRecoveryCode(code)).digest("hex");
 }
 
 /** Fresh 160-bit TOTP secret, base32 — paste into an authenticator app. */

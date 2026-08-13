@@ -1,7 +1,8 @@
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { INTEGRATIONS, ROADMAP, STATUS_META, type IntegrationCategory, type RoadmapStatus } from "@/lib/roadmap";
 import { SERVICE_COSTS, isActive, totalFixedMonthlyEur } from "@/lib/costs";
-import { CheckCircle2, AlertCircle, CreditCard, ListChecks, Wallet, TrendingUp, Gift } from "lucide-react";
+import { CheckCircle2, AlertCircle, CreditCard, ListChecks, Wallet, TrendingUp, Gift, ShieldCheck } from "lucide-react";
+import TwoFactorPanel from "@/components/admin/TwoFactorPanel";
 
 export const dynamic = "force-dynamic";
 
@@ -48,6 +49,15 @@ export default function SettingsPage() {
             <p className="text-sm text-[#92400E]"><strong>{requiredMissing.length} required integration{requiredMissing.length > 1 ? "s" : ""} missing:</strong> {requiredMissing.map((c) => c.label).join(", ")}.</p>
           </div>
         )}
+      </div>
+
+      {/* Account security — enrolment lives here, not in Vercel */}
+      <div className="flex items-center gap-2 mb-3">
+        <ShieldCheck className="w-4 h-4 text-[#36671E]" />
+        <h2 className="text-sm font-black text-[#18181B] uppercase tracking-widest">Account security</h2>
+      </div>
+      <div className="mb-8">
+        <TwoFactorPanel />
       </div>
 
       {/* Costs & subscriptions */}

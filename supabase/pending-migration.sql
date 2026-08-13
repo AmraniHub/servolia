@@ -218,3 +218,33 @@ alter table client_domains add constraint client_domains_status_check
 
 create index if not exists client_domains_expiry_idx on client_domains (expires_at);
 create index if not exists client_domains_email_idx  on client_domains (email);
+
+
+-- ============================================================================
+-- 8. ADMIN 2FA — secret, replay guard, and recovery codes live in the DB
+-- ============================================================================
+-- Was: ADMIN_TOTP_SECRET in Vercel. That meant enabling 2FA required a
+-- redeploy, disabling it required a redeploy, and losing the phone meant
+-- editing env vars from a laptop to get back into your own admin.
+--
+-- Now: one row. Enrolment is two-phase (pending → confirmed, so a mis-scanned
+-- QR can never lock you out), last_step blocks replay of an already-used code,
+-- and eight single-use recovery codes are stored as SHA-256 hashes.
+--
+-- The env var still works as a fallback if this table is absent, so nothing
+-- breaks between deploying the code and running this migration.
+
+create table if not exists admin_2fa (
+  id             text primary key default 'admin',   -- single-admin product
+  secret         text,          -- base32, active only once confirmed_at is set
+  pending_secret text,          -- during enrolment, before the first valid code
+  confirmed_at   timestamptz,   -- null = not enabled
+  -- Highest TOTP step already spent. Next login must beat it, so a code
+  -- shoulder-surfed or caught in a screen-share is dead on arrival.
+  last_step      bigint default 0,
+  recovery_hashes text[] default '{}',   -- sha256 hex, spliced out when used
+  updated_at     timestamptz default now()
+);
+
+-- Service-role only. No policies = no anon access with RLS on.
+alter table admin_2fa enable row level security;
