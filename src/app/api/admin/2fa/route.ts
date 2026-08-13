@@ -41,6 +41,10 @@ export async function GET() {
       recoveryRemaining: s.recoveryRemaining,
       pending: !!s.pendingSecret,
       storageMissing: s.storageMissing,
+      storageIssue: s.storageIssue,
+      // Admin-authed route, so the raw DB error is safe to show here — and it
+      // is the difference between guessing and knowing why enrolment is blocked.
+      storageError: s.storageError,
     });
   } catch (err) {
     return NextResponse.json({ error: err instanceof Error ? err.message : "Failed" }, { status: 500 });

@@ -22,6 +22,8 @@ type Status = {
   recoveryRemaining: number;
   pending: boolean;
   storageMissing: boolean;
+  storageIssue: "no-supabase" | "no-table" | null;
+  storageError: string | null;
 };
 
 export default function TwoFactorPanel() {
@@ -218,7 +220,7 @@ export default function TwoFactorPanel() {
 
         {envBased ? (
           <>
-            {status.storageMissing && <MigrationHint />}
+            {status.storageMissing && <MigrationHint issue={status.storageIssue} error={status.storageError} />}
             <SmallButton
               primary
               disabled={busy || status.storageMissing}
@@ -283,7 +285,7 @@ export default function TwoFactorPanel() {
         Your password is the only thing between the internet and this dashboard — every lead, every client, every
         message. Turning it on takes two minutes and a free authenticator app.
       </p>
-      {status.storageMissing && <MigrationHint />}
+      {status.storageMissing && <MigrationHint issue={status.storageIssue} error={status.storageError} />}
       <SmallButton
         primary
         disabled={busy || status.storageMissing}
@@ -299,14 +301,30 @@ export default function TwoFactorPanel() {
   );
 }
 
-/** Shown wherever enrolment is blocked because the table isn't there yet. */
-function MigrationHint() {
+/**
+ * Shown wherever enrolment is blocked. The two causes need opposite advice:
+ * running SQL fixes nothing when there are no Supabase credentials at all, and
+ * adding credentials fixes nothing when the table is genuinely absent.
+ */
+function MigrationHint({ issue, error }: { issue: Status["storageIssue"]; error: string | null }) {
   return (
-    <p className="text-xs text-[#B45309] mb-3">
-      Run section 8 of <code className="font-mono">supabase/pending-migration.sql</code>{" "}
-      first — the table this is stored
-      in doesn&apos;t exist yet.
-    </p>
+    <div className="text-xs text-[#B45309] mb-3">
+      {issue === "no-supabase" ? (
+        <p>
+          Supabase isn&apos;t connected in this environment, so there&apos;s nowhere to store the secret. On localhost
+          that&apos;s expected — enrol on the deployed site instead. In production, set{" "}
+          <code className="font-mono">NEXT_PUBLIC_SUPABASE_URL</code> and{" "}
+          <code className="font-mono">SUPABASE_SERVICE_ROLE_KEY</code> in Vercel.
+        </p>
+      ) : (
+        <p>
+          Supabase is connected, but the <code className="font-mono">admin_2fa</code> table isn&apos;t there. Run section
+          8 of <code className="font-mono">supabase/pending-migration.sql</code>, then{" "}
+          <code className="font-mono">notify pgrst, &apos;reload schema&apos;;</code> if it still doesn&apos;t appear.
+        </p>
+      )}
+      {error && <p className="mt-1 font-mono text-[10px] text-[#A1A1AA] break-all">{error}</p>}
+    </div>
   );
 }
 

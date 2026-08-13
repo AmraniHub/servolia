@@ -44,8 +44,16 @@ export type TwoFactorState = {
   lastStep: number;
   recoveryRemaining: number;
   confirmedAt: string | null;
-  /** True when the DB table is missing — the UI explains the migration is pending. */
+  /** True when DB-backed 2FA can't be used yet, for whatever reason below. */
   storageMissing: boolean;
+  /**
+   * WHY storage is unavailable — the two causes need opposite advice.
+   * "no-supabase": no credentials at all (local dev). Running SQL fixes nothing.
+   * "no-table":    Supabase is connected but admin_2fa isn't there. Run the SQL.
+   */
+  storageIssue: "no-supabase" | "no-table" | null;
+  /** Raw PostgREST/Postgres error, admin-eyes only, for when the cause isn't obvious. */
+  storageError: string | null;
 };
 
 type Row = {
@@ -56,19 +64,43 @@ type Row = {
   recovery_hashes: string[] | null;
 };
 
-/** Postgres/PostgREST codes that mean "the table simply isn't there yet". */
+/**
+ * Postgres/PostgREST codes that mean "the table simply isn't there yet".
+ *
+ * 42P01  = undefined_table (Postgres)
+ * PGRST205 = table not found in PostgREST's schema cache
+ *
+ * PGRST204 is deliberately NOT here: it means a missing COLUMN, which after a
+ * partial migration would otherwise report "run the SQL" at someone who just did.
+ */
 function isMissingTable(err: { code?: string; message?: string } | null): boolean {
   if (!err) return false;
   const code = err.code ?? "";
-  if (code === "42P01" || code === "PGRST205" || code === "PGRST204") return true;
+  if (code === "42P01" || code === "PGRST205") return true;
   return /relation .* does not exist|could not find the table/i.test(err.message ?? "");
 }
 
-async function readRow(): Promise<{ row: Row | null; storageMissing: boolean }> {
+type ReadResult = {
+  row: Row | null;
+  storageMissing: boolean;
+  storageIssue: "no-supabase" | "no-table" | null;
+  storageError: string | null;
+};
+
+async function readRow(): Promise<ReadResult> {
   const supabase = supabaseAdmin();
   // No Supabase configured at all — same posture as "table not there yet":
-  // the env-var secret still governs, nothing silently loses a factor.
-  if (!supabase) return { row: null, storageMissing: true };
+  // the env-var secret still governs, nothing silently loses a factor. But the
+  // ADVICE differs, so the reason travels with it.
+  if (!supabase) {
+    return {
+      row: null,
+      storageMissing: true,
+      storageIssue: "no-supabase",
+      storageError: "NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY are not set in this environment.",
+    };
+  }
+
   const { data, error } = await supabase
     .from("admin_2fa")
     .select("secret, pending_secret, confirmed_at, last_step, recovery_hashes")
@@ -76,12 +108,19 @@ async function readRow(): Promise<{ row: Row | null; storageMissing: boolean }> 
     .maybeSingle();
 
   if (error) {
-    if (isMissingTable(error)) return { row: null, storageMissing: true };
+    if (isMissingTable(error)) {
+      return {
+        row: null,
+        storageMissing: true,
+        storageIssue: "no-table",
+        storageError: `${error.code ?? "?"}: ${error.message}`,
+      };
+    }
     // Any OTHER error (network, permissions, timeout) must not silently
     // downgrade to password-only. Let it throw; callers fail closed.
-    throw new Error(`admin_2fa read failed: ${error.message}`);
+    throw new Error(`admin_2fa read failed: ${error.code ?? "?"}: ${error.message}`);
   }
-  return { row: (data as Row | null) ?? null, storageMissing: false };
+  return { row: (data as Row | null) ?? null, storageMissing: false, storageIssue: null, storageError: null };
 }
 
 export async function getTwoFactorState(): Promise<TwoFactorState> {
@@ -89,9 +128,11 @@ export async function getTwoFactorState(): Promise<TwoFactorState> {
 
   let row: Row | null = null;
   let storageMissing = false;
+  let storageIssue: "no-supabase" | "no-table" | null = null;
+  let storageError: string | null = null;
   try {
-    ({ row, storageMissing } = await readRow());
-  } catch {
+    ({ row, storageMissing, storageIssue, storageError } = await readRow());
+  } catch (err) {
     // Storage is configured but unreachable. If an env secret exists we can
     // still enforce 2FA with it; otherwise report enabled-but-unverifiable so
     // the login route refuses rather than letting a password through alone.
@@ -104,6 +145,8 @@ export async function getTwoFactorState(): Promise<TwoFactorState> {
       recoveryRemaining: 0,
       confirmedAt: null,
       storageMissing: false,
+      storageIssue: null,
+      storageError: err instanceof Error ? err.message : "Unknown storage error",
     };
   }
 
@@ -118,6 +161,8 @@ export async function getTwoFactorState(): Promise<TwoFactorState> {
       recoveryRemaining: (row!.recovery_hashes ?? []).length,
       confirmedAt: row!.confirmed_at,
       storageMissing,
+      storageIssue,
+      storageError,
     };
   }
 
@@ -131,6 +176,8 @@ export async function getTwoFactorState(): Promise<TwoFactorState> {
       recoveryRemaining: 0,
       confirmedAt: null,
       storageMissing,
+      storageIssue,
+      storageError,
     };
   }
 
@@ -143,6 +190,8 @@ export async function getTwoFactorState(): Promise<TwoFactorState> {
     recoveryRemaining: 0,
     confirmedAt: null,
     storageMissing,
+    storageIssue,
+    storageError,
   };
 }
 
