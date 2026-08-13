@@ -23,7 +23,32 @@ export interface ChatWidgetProps {
   quickReplies?: string[];
   /** Small "Powered by Servolia AI" footer. Off for white-labelled client sites. */
   poweredBy?: boolean;
+  /** UI language for the built-in copy. Client sites pass their own strings. */
+  lang?: "en" | "fr";
 }
+
+/** Copy for Servolia's OWN widget — the one on servolia.com and /fr.
+ *  It is deliberately not a generic "how can I help": a visitor talking to it
+ *  is testing the exact product we sell, and the opening line says so. The
+ *  chips are the three objections that actually block a booking, not a
+ *  business-type menu — answering "what does it cost" beats classifying
+ *  yourself before you have asked anything. */
+const OWN_COPY = {
+  en: {
+    greeting:
+      "Hi — I'm the same AI receptionist Servolia installs for its clients. This site is running it live, so you're testing the real thing. Ask me what we build, what it costs, or how quickly you'd be live.",
+    quickReplies: ["What does it cost?", "How fast would I be live?", "I already have a website"],
+    placeholder: "Ask about pricing, timing, anything…",
+    subtitle: "Replies instantly · a human reads every conversation",
+  },
+  fr: {
+    greeting:
+      "Bonjour — je suis la même réceptionniste IA que Servolia installe chez ses clients. Ce site la fait tourner en direct : vous testez donc le produit réel. Demandez-moi ce que nous construisons, combien ça coûte, ou en combien de temps vous seriez en ligne.",
+    quickReplies: ["Combien ça coûte ?", "En combien de temps je suis en ligne ?", "J'ai déjà un site"],
+    placeholder: "Tarifs, délais, questions…",
+    subtitle: "Réponse immédiate · un humain lit chaque conversation",
+  },
+} as const;
 
 function getSessionId(scope: string): string {
   if (typeof window === "undefined") return "";
@@ -44,7 +69,9 @@ export default function ChatWidget({
   greeting,
   quickReplies: quickRepliesProp,
   poweredBy = true,
+  lang = "en",
 }: ChatWidgetProps = {}) {
+  const own = OWN_COPY[lang === "fr" ? "fr" : "en"];
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -64,11 +91,11 @@ export default function ChatWidget({
     greeting ??
     (siteSlug
       ? "Hi 👋 How can I help you today?"
-      : "Hi! 👋 I'm Solia, Servolia's AI assistant. What kind of business do you run?");
+      : own.greeting);
 
   const defaultQuickReplies = siteSlug
     ? ["Book an appointment", "Opening hours", "Prices"]
-    : ["Dental clinic", "Aesthetic clinic", "Real estate", "Home services", "Med spa"];
+    : own.quickReplies;
   const quickReplyOptions = quickRepliesProp ?? defaultQuickReplies;
 
   useEffect(() => {
@@ -211,7 +238,7 @@ export default function ChatWidget({
                 <p className="text-[#FAFAF7] text-sm font-bold">{brandName}</p>
                 <div className="flex items-center gap-1.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#BEF264] animate-pulse" />
-                  <span className="text-[#FAFAF7]/80 text-xs">Online · replies instantly</span>
+                  <span className="text-[#FAFAF7]/80 text-xs">{siteSlug ? "Online · replies instantly" : own.subtitle}</span>
                 </div>
               </div>
             </div>
@@ -323,7 +350,7 @@ export default function ChatWidget({
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Type a message…"
+              placeholder={siteSlug ? "Type a message…" : own.placeholder}
               className="flex-1 bg-[#FAFAF7] text-[#18181B] placeholder-[#A1A1AA] text-sm rounded-xl px-3 py-2 border border-[#E8E6E0] focus:outline-none transition-colors"
             />
             <button

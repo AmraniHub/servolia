@@ -9,6 +9,7 @@ import ShowcaseSlider from "@/components/ShowcaseSlider";
 import LiveShowcase from "@/components/LiveShowcase";
 import ROICalculator from "@/components/ROICalculator";
 import StickyMobileCTA from "@/components/StickyMobileCTA";
+import ChatWidget from "@/components/ChatWidget";
 import FrenchNav from "@/components/FrenchNav";
 import FrenchFooter from "@/components/FrenchFooter";
 import { SETUP_PLAN, PLANS, PLAN_ORDER } from "@/lib/pricing";
@@ -686,6 +687,8 @@ export default function FrenchHome() {
       {/* FOOTER (French, shared) */}
       {/* ValueStack retiré ici — un 4e récap tarifaire APRÈS le CTA final ; passé le CTA, le visiteur a besoin du footer, pas d'un second pitch. */}
       <StickyMobileCTA label="Réservez votre audit gratuit" sub="Gratuit · Livré en 24h · Sans appel" href="/fr/audit" />
+      {/* The product demo itself — French visitors could not test it before. */}
+      <ChatWidget lang="fr" />
       <FrenchFooter />
     </main>
   );
