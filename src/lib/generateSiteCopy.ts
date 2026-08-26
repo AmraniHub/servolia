@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { reportAiFallback } from "@/lib/aiHealth";
 import type {
   ClientSiteConfig, ClientService, ClientFaq, ClientHighlight,
   ClientStat, ClientSolution, ClientExpertiseBlock,
@@ -269,7 +270,11 @@ Rules — these are hard constraints:
       aiGreeting: copy.aiGreeting ?? draft.aiGreeting,
     };
     return { config, ai: true };
-  } catch {
+  } catch (err) {
+    // The client still gets a site, but built from the mechanical template
+    // rather than written for them — the difference they paid for. Alert,
+    // because nothing downstream distinguishes the two.
+    await reportAiFallback("site-copy", err);
     return { config: draft, ai: false };
   }
 }

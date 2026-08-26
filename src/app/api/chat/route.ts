@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { reportAiFallback } from "@/lib/aiHealth";
 import { supabaseAdmin, estimateLeadValue } from "@/lib/supabase";
 import { getClientSite } from "@/lib/clientSites";
 import { notifyClientOfLead } from "@/lib/clientNotify";
@@ -88,7 +89,10 @@ async function runAssistant(messages: ChatMessage[], systemContent: string): Pro
     try {
       return await callClaude(messages, systemContent);
     } catch (err) {
-      console.error("Claude call failed, falling back to Cloudflare AI:", err);
+      // Loud, throttled alert: the reply still goes out, but on the weaker
+      // model. A console line here meant weeks of degraded service could
+      // pass unnoticed by everyone except the patient on the other end.
+      await reportAiFallback("receptionist", err);
     }
   }
   return callCloudflareAI(messages, systemContent);

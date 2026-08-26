@@ -14,6 +14,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
 
   const tabs: SettingsTab[] = [
     { label: "Overview", href: "/admin/settings", badge: overviewAlerts, alert: overviewAlerts > 0 },
+    { label: "Launch", href: "/admin/settings/launch" },
     { label: "Security", href: "/admin/settings/security" },
     { label: "Integrations", href: "/admin/settings/integrations", badge: requiredMissing.length, alert: requiredMissing.length > 0 },
     { label: "Costs", href: "/admin/settings/costs" },

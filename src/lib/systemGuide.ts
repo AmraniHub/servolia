@@ -708,6 +708,41 @@ export const FEATURES: SystemFeature[] = [
     code: "/api/cron/generate-blog · /api/cron/generate-linkedin · /api/telegram/webhook",
   },
   {
+    name: "Pre-flight — can I spend money on ads today?",
+    summary: "Live provider calls that answer whether traffic bought today can convert, and whether a client who pays receives what was sold.",
+    how: [
+      "/admin/settings/launch runs LIVE calls, not env-var presence checks. That distinction is the whole point: the two failures that cost the most money both read green on a presence check.",
+      "Anthropic: a real 1-token completion. A key can be set and out of credit — which silently drops the receptionist to Cloudflare Llama 3.1 8B and leaves new client site copy as the mechanical template. Full price, degraded product, no error anywhere.",
+      "Stripe: the account own charges_enabled / payouts_enabled flags via accounts.retrieveCurrent(), i.e. the real KYC verdict rather than an sk_live_ key prefix. Also surfaces requirements.currently_due, so you see exactly what Stripe is still waiting for.",
+      "Stripe webhooks: reads enabled_events off every enabled endpoint. Missing checkout.session.completed means payments never reach the CRM (blocking). Missing invoice.payment_failed means a failed renewal is invisible and you keep serving a client who stopped paying (warning).",
+      "Resend: lists domains and requires a VERIFIED one — an unverified domain bounces or lands in spam, so a new client first impression is silence.",
+      "Every row carries blocksAds. The banner turns green only when all blockers are clear.",
+    ],
+    use: [
+      "Run it before turning ads on, and again after changing any key in Vercel.",
+      "Re-running costs one Anthropic token. Nothing else is billable.",
+    ],
+    cost: "One Anthropic token per run.",
+    value: "Ad spend against a checkout that cannot charge, and a client onboarded onto the degraded AI, are both silent and expensive. This makes both loud before the first euro of traffic.",
+    code: "src/app/api/admin/preflight/route.ts · src/components/admin/PreflightPanel.tsx · src/app/admin/settings/launch",
+  },
+  {
+    name: "AI degradation alerts — a silent quality drop made loud",
+    summary: "When Claude is unreachable or out of credit the receptionist and site-copy generator fall back. They now say so instead of logging quietly.",
+    how: [
+      "Two paths fall back: /api/chat drops to Cloudflare Llama 3.1 8B, and aiEnrichConfig keeps the mechanical template draft. Both used to do it on a bare console.error.",
+      "Nothing broke, so nothing complained — a paying client could receive the degraded product for weeks while every dashboard read green. That is the failure mode worth watching for.",
+      "reportAiFallback() sends a LOUD Telegram message. Under the notification policy a config nag is not sent at all, but this is not a nag: money already changed hands and the delivered thing is not the sold thing.",
+      "Throttled to one message per hour per surface via the shared rate limiter, so a dead key during a busy afternoon costs one buzz rather than a hundred. The console line is still written every time.",
+      "Detects credit exhaustion specifically (credit balance / insufficient / quota / billing) and names the fix inside the message.",
+      "Alerting never throws: a broken alert must not also break the request that was still served.",
+    ],
+    use: ["Nothing to do — it fires on its own. Live status is at /admin/settings/launch."],
+    cost: "None.",
+    value: "The gap between what was sold and what was delivered used to be invisible. Now it reaches your phone within a minute of the first degraded reply.",
+    code: "src/lib/aiHealth.ts · src/app/api/chat/route.ts · src/lib/generateSiteCopy.ts",
+  },
+  {
     name: "Settings — five sections, not one scroll",
     summary: "Setup status, secrets, costs, security and the prioritised roadmap — split into real routes you can bookmark.",
     how: [
