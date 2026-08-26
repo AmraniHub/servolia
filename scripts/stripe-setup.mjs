@@ -29,14 +29,19 @@
  * it runs with a bare `node` and no build step.
  */
 
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, existsSync, unlinkSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import readline from "node:readline";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const APPLY = process.argv.includes("--apply");
 const ALLOW_TEST = process.argv.includes("--allow-test");
+// Last resort for a terminal that will not paste into a prompt: put the key in
+// a file, point at it, and the file is deleted as soon as it is read.
+const KEY_FILE_ARG = process.argv.indexOf("--key-file");
+const KEY_FILE = KEY_FILE_ARG > -1 ? process.argv[KEY_FILE_ARG + 1] : null;
 
 const SITE = process.env.SITE_URL || "https://servolia.com";
 const WEBHOOK_URL = `${SITE}/api/webhooks/stripe`;
@@ -78,60 +83,46 @@ let KEY = (ENV.STRIPE_SECRET_KEY ?? "").trim();
  * machine whose D:\APPS-Backup sync would then copy it to the backup drive.
  * Typed here it lives in memory for one process and is gone.
  *
- * Falls back to a plain line read when stdin is not a terminal (piped input,
- * CI), where character-level echo control is not available anyway.
+ * Input is masked with asterisks rather than hidden completely, so a paste
+ * that worked looks different from one that did not.
  */
 function promptSecret(label) {
-  return new Promise((resolve, reject) => {
-    const stdin = process.stdin;
-    process.stdout.write(label);
+  return new Promise((resolve) => {
+    // readline, NOT stdin raw mode. Two reasons, both learned the hard way on
+    // Windows:
+    //
+    //   1. `npm run` spawns through a shim, so process.stdin.isTTY is often
+    //      false even in a real interactive terminal. A raw-mode branch guarded
+    //      on isTTY then falls through to "read until the stream ends" — and an
+    //      interactive stdin never ends, so the prompt hangs forever and looks
+    //      exactly like paste doing nothing.
+    //   2. readline lets the terminal handle paste itself, which is what
+    //      right-click paste in cmd.exe relies on.
+    //
+    // Either way it resolves on the first newline, TTY or not.
+    const rl = readline.createInterface({ input: process.stdin, output: process.stdout, terminal: true });
 
-    if (!stdin.isTTY) {
-      let piped = "";
-      stdin.setEncoding("utf8");
-      stdin.on("data", (d) => (piped += d));
-      stdin.on("end", () => {
-        process.stdout.write("\n");
-        resolve(piped.split(/\r?\n/)[0].trim());
-      });
-      stdin.on("error", reject);
-      return;
-    }
+    // Echo a bullet instead of the character. Silence was the original design
+    // and it was wrong: "nothing appeared" is indistinguishable from "the paste
+    // failed", so there was no way to tell a working prompt from a broken one.
+    let muted = false;
+    rl._writeToOutput = (str) => {
+      if (!muted) return rl.output.write(str);
+      if (str.includes("\n") || str.includes("\r")) return rl.output.write("\n");
+      rl.output.write("*");
+    };
 
-    const ESC_CTRL_C = String.fromCharCode(3);
-    const ESC_EOT = String.fromCharCode(4);
-    const ESC_BACKSPACE = String.fromCharCode(127);
-    const ESC_BS = String.fromCharCode(8);
-
-    let buf = "";
-    stdin.setRawMode(true);
-    stdin.resume();
-    stdin.setEncoding("utf8");
-
-    const done = (value) => {
-      stdin.setRawMode(false);
-      stdin.pause();
-      stdin.removeListener("data", onData);
+    rl.on("SIGINT", () => {
+      rl.close();
       process.stdout.write("\n");
-      resolve(value);
-    };
+      process.exit(130);
+    });
 
-    const onData = (chunk) => {
-      // Raw mode delivers keystrokes one at a time, but a PASTE arrives as one
-      // chunk — so walk the characters rather than assuming a single key.
-      for (const ch of chunk) {
-        if (ch === "\n" || ch === "\r" || ch === ESC_EOT) return done(buf.trim());
-        if (ch === ESC_CTRL_C) {
-          stdin.setRawMode(false);
-          process.stdout.write("\n");
-          process.exit(130);
-        }
-        if (ch === ESC_BACKSPACE || ch === ESC_BS) buf = buf.slice(0, -1);
-        else buf += ch;
-      }
-    };
-
-    stdin.on("data", onData);
+    rl.question(label, (answer) => {
+      rl.close();
+      resolve((answer ?? "").trim());
+    });
+    muted = true;
   });
 }
 
@@ -202,9 +193,25 @@ console.log("");
 console.log(c(1, "  STRIPE GO-LIVE") + c(90, `  ${APPLY ? "apply" : "report only — pass --apply to make changes"}`));
 console.log(c(90, "  " + "-".repeat(74)));
 
+if (!KEY && KEY_FILE) {
+  try {
+    KEY = readFileSync(resolve(KEY_FILE), "utf8").trim();
+    try {
+      unlinkSync(resolve(KEY_FILE));
+      note(`Read the key from ${KEY_FILE} and deleted the file.`);
+    } catch {
+      warn(`Read the key from ${KEY_FILE} — DELETE IT YOURSELF, it holds a live secret.`);
+    }
+  } catch (err) {
+    bad(`Could not read --key-file ${KEY_FILE}: ${err.message}`);
+    process.exit(1);
+  }
+}
+
 if (!KEY) {
   note("No STRIPE_SECRET_KEY in the environment — paste it here instead.");
-  note("It is not echoed, not saved, and not added to your shell history.");
+  note("Shown as asterisks, not saved, not added to your shell history.");
+  note("If your terminal will not paste here: node scripts/stripe-setup.mjs --key-file key.txt");
   console.log("");
   KEY = await promptSecret("  Stripe secret key: ");
   console.log("");
