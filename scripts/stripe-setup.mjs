@@ -14,12 +14,14 @@
  * It also reads the account's real KYC verdict rather than guessing from the
  * key prefix.
  *
- *   npm run stripe:setup              # report only, changes nothing
- *   npm run stripe:setup -- --apply   # create whatever is missing
+ *   npm run stripe:setup              # prompts for the key, reports only
+ *   npm run stripe:setup -- --apply   # prompts, then creates what is missing
  *
  * Idempotent: re-running finds what already exists and leaves it alone.
  *
- * SECRETS: the key is read from the environment and never printed. The webhook
+ * SECRETS: if STRIPE_SECRET_KEY is not in the environment the script PROMPTS for
+ * it without echoing, so a live key never enters shell history or a file on
+ * disk. Only a masked form is ever printed. The webhook
  * signing secret IS printed once, because it only exists at creation time and
  * you need it — copy it straight into Vercel and close the terminal.
  *
@@ -66,7 +68,75 @@ function loadEnv() {
   return { ...env, ...process.env };
 }
 const ENV = loadEnv();
-const KEY = (ENV.STRIPE_SECRET_KEY ?? "").trim();
+let KEY = (ENV.STRIPE_SECRET_KEY ?? "").trim();
+
+/**
+ * Ask for the key without echoing it.
+ *
+ * The alternatives are all worse for a LIVE key. An inline `KEY=... npm run`
+ * leaves it in shell history; putting it in .env.local writes it to disk on a
+ * machine whose D:\APPS-Backup sync would then copy it to the backup drive.
+ * Typed here it lives in memory for one process and is gone.
+ *
+ * Falls back to a plain line read when stdin is not a terminal (piped input,
+ * CI), where character-level echo control is not available anyway.
+ */
+function promptSecret(label) {
+  return new Promise((resolve, reject) => {
+    const stdin = process.stdin;
+    process.stdout.write(label);
+
+    if (!stdin.isTTY) {
+      let piped = "";
+      stdin.setEncoding("utf8");
+      stdin.on("data", (d) => (piped += d));
+      stdin.on("end", () => {
+        process.stdout.write("\n");
+        resolve(piped.split(/\r?\n/)[0].trim());
+      });
+      stdin.on("error", reject);
+      return;
+    }
+
+    const ESC_CTRL_C = String.fromCharCode(3);
+    const ESC_EOT = String.fromCharCode(4);
+    const ESC_BACKSPACE = String.fromCharCode(127);
+    const ESC_BS = String.fromCharCode(8);
+
+    let buf = "";
+    stdin.setRawMode(true);
+    stdin.resume();
+    stdin.setEncoding("utf8");
+
+    const done = (value) => {
+      stdin.setRawMode(false);
+      stdin.pause();
+      stdin.removeListener("data", onData);
+      process.stdout.write("\n");
+      resolve(value);
+    };
+
+    const onData = (chunk) => {
+      // Raw mode delivers keystrokes one at a time, but a PASTE arrives as one
+      // chunk — so walk the characters rather than assuming a single key.
+      for (const ch of chunk) {
+        if (ch === "\n" || ch === "\r" || ch === ESC_EOT) return done(buf.trim());
+        if (ch === ESC_CTRL_C) {
+          stdin.setRawMode(false);
+          process.stdout.write("\n");
+          process.exit(130);
+        }
+        if (ch === ESC_BACKSPACE || ch === ESC_BS) buf = buf.slice(0, -1);
+        else buf += ch;
+      }
+    };
+
+    stdin.on("data", onData);
+  });
+}
+
+/** Never print a key. Enough to confirm which one, useless to anyone else. */
+const maskKey = (k) => (k.length < 16 ? "(too short)" : `${k.slice(0, 8)}…${k.slice(-4)}`);
 
 // ── output ──────────────────────────────────────────────────────────────────
 const COLOR = process.stdout.isTTY && !process.env.NO_COLOR;
@@ -133,8 +203,20 @@ console.log(c(1, "  STRIPE GO-LIVE") + c(90, `  ${APPLY ? "apply" : "report only
 console.log(c(90, "  " + "-".repeat(74)));
 
 if (!KEY) {
-  bad("STRIPE_SECRET_KEY is not set.");
-  note("Run as:  STRIPE_SECRET_KEY=sk_live_... npm run stripe:setup -- --apply");
+  note("No STRIPE_SECRET_KEY in the environment — paste it here instead.");
+  note("It is not echoed, not saved, and not added to your shell history.");
+  console.log("");
+  KEY = await promptSecret("  Stripe secret key: ");
+  console.log("");
+}
+
+if (!KEY) {
+  bad("No key given.");
+  process.exit(1);
+}
+if (!/^(sk|rk)_(live|test)_/.test(KEY)) {
+  bad("That does not look like a Stripe secret key (expected sk_live_, sk_test_, rk_live_ or rk_test_).");
+  note("A publishable key starts with pk_ and will not work — this needs the SECRET key.");
   process.exit(1);
 }
 // Restricted keys are rk_live_, not sk_live_. Treating one as a test key
@@ -145,6 +227,7 @@ if (!LIVE && !ALLOW_TEST) {
   bad("This is a TEST key. Re-run with the live key, or pass --allow-test to rehearse.");
   process.exit(1);
 }
+console.log(`  Key:  ${maskKey(KEY)}`);
 console.log(`  Mode: ${LIVE ? c(32, "LIVE") : c(33, "TEST")}${RESTRICTED ? c(33, " (restricted key)") : ""}   Webhook target: ${WEBHOOK_URL}`);
 if (RESTRICTED) {
   note("Restricted key: needs WRITE on Webhook Endpoints and Billing Portal for --apply to work,");
