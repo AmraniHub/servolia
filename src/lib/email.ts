@@ -1,5 +1,7 @@
 import { Resend } from "resend";
 import { businessWaLink } from "./whatsapp";
+import { sendTelegramMessage } from "@/lib/telegram";
+import { rateLimited } from "@/lib/security";
 
 /**
  * Email service — uses Resend (resend.com). Free up to 3,000 emails/month.
@@ -21,7 +23,71 @@ function client(): Resend | null {
   return _resend;
 }
 
-const FROM = process.env.EMAIL_FROM ?? "Servolia <hello@servolia.com>";
+const SAFE_FROM = "Servolia <hello@servolia.com>";
+
+/** The only domain Servolia mail may leave from — plus its subdomains. */
+const OWN_DOMAIN = "servolia.com";
+
+/** Pull the address out of `Name <addr@host>`, or take it bare. */
+export function fromAddress(value: string): string {
+  const angled = value.match(/<([^>]+)>/);
+  return (angled ? angled[1] : value).trim().toLowerCase();
+}
+
+export function fromDomainIsOurs(value: string): boolean {
+  const domain = fromAddress(value).split("@")[1] ?? "";
+  return domain === OWN_DOMAIN || domain.endsWith(`.${OWN_DOMAIN}`);
+}
+
+/**
+ * SENDER GUARD — the one email mistake that cannot be walked back.
+ *
+ * The Resend account has more than one verified domain on it (servolia.com and
+ * openx24.com). Verified means Resend will happily send from either, so a
+ * single wrong character in EMAIL_FROM would deliver Servolia's client mail
+ * from the Shopify agency's domain. A French dental clinic receiving their
+ * go-live notice from a UK e-commerce brand reads as a phishing attempt, and
+ * the spam complaint lands on the wrong domain's reputation.
+ *
+ * EMAIL_FROM is also marked Sensitive in Vercel, so its value cannot be read
+ * back from the dashboard or the CLI — meaning a mistake there is invisible
+ * from outside the running process. This check is the only place that can see
+ * it, so it both corrects and reports.
+ *
+ * Correcting rather than refusing is deliberate: a hard failure would stop
+ * every receipt and magic link. Mail keeps flowing from the safe address, and
+ * the alert makes sure the misconfiguration does not stay quiet.
+ */
+function resolveFrom(): { from: string; corrected: string | null } {
+  const configured = process.env.EMAIL_FROM?.trim();
+  if (!configured) return { from: SAFE_FROM, corrected: null };
+  if (fromDomainIsOurs(configured)) return { from: configured, corrected: null };
+  return { from: SAFE_FROM, corrected: configured };
+}
+
+const { from: FROM, corrected: FROM_OVERRIDDEN } = resolveFrom();
+
+/** Loud, throttled: a wrong sender is a brand incident, not a config nag. */
+async function warnWrongSender(configured: string): Promise<void> {
+  try {
+    console.error(
+      `[email] EMAIL_FROM is "${configured}" — not a ${OWN_DOMAIN} address. Sending as ${SAFE_FROM} instead.`,
+    );
+    if (await rateLimited("email-wrong-sender", 1, 3600)) return;
+    await sendTelegramMessage(
+      [
+        "🚨 *EMAIL_FROM points at the wrong domain*",
+        "",
+        `Configured: ${configured}`,
+        `Sending as ${SAFE_FROM} instead, so nothing leaves under another brand.`,
+        "",
+        `Fix: Vercel → Environment Variables → EMAIL_FROM (must be @${OWN_DOMAIN}).`,
+      ].join("\n"),
+    );
+  } catch {
+    /* an alert must never break the send it is watching */
+  }
+}
 
 /**
  * Where replies actually land.
@@ -36,6 +102,7 @@ const REPLY_TO = process.env.EMAIL_REPLY_TO?.trim() || null;
 
 export async function sendEmail(to: string, subject: string, html: string, text?: string): Promise<boolean> {
   const r = client();
+  if (FROM_OVERRIDDEN) await warnWrongSender(FROM_OVERRIDDEN);
   if (!r) {
     console.warn("Resend not configured — skipping email to", to);
     return false;
