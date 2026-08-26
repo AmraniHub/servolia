@@ -233,6 +233,21 @@ async function checkStripe() {
       `${unverified(err)}webhook endpoints: ${err.message}`, null, false));
   }
 
+  // Portal configuration is per-mode and does not carry over from test.
+  try {
+    const res = await fetchWithTimeout("https://api.stripe.com/v1/billing_portal/configurations?limit=20", { headers: auth });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json?.error?.message ?? `HTTP ${res.status}`);
+    const usable = (json.data ?? []).some((c) => c.is_default && c.active);
+    out.push(check("stripe-portal", "Stripe - customer billing portal", usable ? "ready" : "warn",
+      usable ? "A default portal configuration exists, so clients can manage their own billing."
+        : "No default portal configuration in this mode. Clients clicking manage billing get an error - configurations do not carry over from test mode.",
+      usable ? null : "Stripe -> Settings -> Billing -> Customer portal -> Save (once, in LIVE mode)", false));
+  } catch (err) {
+    out.push(check("stripe-portal", "Stripe - customer billing portal", "warn",
+      `${unverified(err)}portal configurations: ${err.message}`, null, false));
+  }
+
   if (!get("STRIPE_WEBHOOK_SECRET")) {
     out.push(check("stripe-webhook-secret", "Stripe - webhook signing secret", "blocked",
       "STRIPE_WEBHOOK_SECRET is not set, so incoming webhooks fail signature verification and are rejected.",

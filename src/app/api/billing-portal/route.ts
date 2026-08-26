@@ -41,6 +41,22 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ url: session.url });
   } catch (err) {
     console.error("Billing portal error:", err);
+
+    // The portal CONFIGURATION is per-mode, and switching to live keys does not
+    // carry the test one over. Until the portal settings are saved once in the
+    // live dashboard, this call fails for every client - and the generic
+    // message that used to be returned gave nobody a way to work that out.
+    const msg = err instanceof Error ? err.message : "";
+    if (/default configuration has not been created|No configuration provided/i.test(msg)) {
+      console.error(
+        "[billing-portal] SETUP REQUIRED: save the Customer Portal settings once in the LIVE Stripe dashboard " +
+          "(Settings -> Billing -> Customer portal). Configurations do not carry over from test mode.",
+      );
+      return NextResponse.json(
+        { error: "Billing self-service is not switched on yet - email hello@servolia.com and we will sort it in minutes." },
+        { status: 503 },
+      );
+    }
     return NextResponse.json({ error: "Could not open billing portal" }, { status: 500 });
   }
 }

@@ -246,6 +246,33 @@ async function checkStripe(): Promise<Check[]> {
     });
   }
 
+  // ── Customer portal: a per-mode configuration that does NOT carry over ───
+  // Switching to live keys leaves the live portal unconfigured, and the first
+  // client who clicks "manage billing" gets an error. Day-30 problem, so a
+  // warning rather than a blocker - but an invisible one until it bites.
+  try {
+    const cfgs = await retryCall(() => stripe.billingPortal.configurations.list({ limit: 20 }));
+    const usable = cfgs.data.some((c) => c.is_default && c.active);
+    out.push({
+      id: "stripe-portal",
+      label: "Stripe — customer billing portal",
+      status: usable ? "ready" : "warn",
+      detail: usable
+        ? "A default portal configuration exists, so clients can manage their own billing."
+        : "No default portal configuration in this mode. Clients clicking \"manage billing\" in their portal get an error — configurations do not carry over from test mode.",
+      fix: usable ? undefined : "dashboard.stripe.com → Settings → Billing → Customer portal → Save (once, in LIVE mode).",
+      blocksAds: false,
+    });
+  } catch (err) {
+    out.push({
+      id: "stripe-portal",
+      label: "Stripe — customer billing portal",
+      status: "warn",
+      detail: `Could not read portal configurations: ${err instanceof Error ? err.message : "unknown"}`,
+      blocksAds: false,
+    });
+  }
+
   if (!process.env.STRIPE_WEBHOOK_SECRET?.trim()) {
     out.push({
       id: "stripe-webhook-secret",
