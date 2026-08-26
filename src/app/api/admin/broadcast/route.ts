@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { isAdminAuthed } from "@/lib/auth";
-import { sendEmail } from "@/lib/email";
+import { sendEmail, brandWrapper } from "@/lib/email";
 import { unsubscribeFooterHtml } from "@/lib/unsubscribe";
 
 export const runtime = "nodejs";
@@ -57,12 +57,26 @@ export async function POST(req: NextRequest) {
   }
   const origin = req.headers.get("origin") ?? "https://servolia.com";
 
+  /**
+   * Broadcasts go to people who subscribed, so they should look like they came
+   * from a company: logo, footer, operating entity, unsubscribe. The composer
+   * supplies only the message body.
+   *
+   * Cold outreach is deliberately NOT wrapped like this - a heavy branded
+   * template to someone who never asked reads as bulk mail and hurts both
+   * deliverability and reply rate. See prospects/cold-email/route.ts.
+   */
+  const dress = (to: string) =>
+    brandWrapper(bodyHtml!, {
+      preheader: (subject ?? "").slice(0, 120),
+      unsubscribeHtml: unsubscribeFooterHtml(to, origin),
+    });
+
   // ── Test send: only ever to the single address you type. ───────────────
   if (test) {
     const to = (testTo ?? "").trim();
     if (!to) return NextResponse.json({ error: "Enter an address to send the test to" }, { status: 400 });
-    const html = bodyHtml + unsubscribeFooterHtml(to, origin);
-    const ok = await sendEmail(to, `[TEST] ${subject}`, html);
+    const ok = await sendEmail(to, `[TEST] ${subject}`, dress(to));
     return NextResponse.json({ ok, test: true, sent: ok ? 1 : 0 });
   }
 
@@ -109,7 +123,7 @@ export async function POST(req: NextRequest) {
   for (let i = 0; i < batch.length; i += CONCURRENCY) {
     const slice = batch.slice(i, i + CONCURRENCY);
     const results = await Promise.all(
-      slice.map((to) => sendEmail(to, subject, bodyHtml + unsubscribeFooterHtml(to, origin)).catch(() => false))
+      slice.map((to) => sendEmail(to, subject, dress(to)).catch(() => false))
     );
     results.forEach((ok) => (ok ? sent++ : failed++));
   }

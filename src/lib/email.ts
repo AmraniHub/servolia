@@ -23,6 +23,17 @@ function client(): Resend | null {
 
 const FROM = process.env.EMAIL_FROM ?? "Servolia <hello@servolia.com>";
 
+/**
+ * Where replies actually land.
+ *
+ * Resend SENDS mail; it does not host a mailbox. So unless hello@servolia.com
+ * is a real inbox somewhere (Workspace, Zoho, a forward), every reply to a
+ * Servolia email is lost — and several templates say "just reply to this
+ * email" in as many words. Set EMAIL_REPLY_TO to an address you actually read
+ * and the promise becomes true without changing the visible From name.
+ */
+const REPLY_TO = process.env.EMAIL_REPLY_TO?.trim() || null;
+
 export async function sendEmail(to: string, subject: string, html: string, text?: string): Promise<boolean> {
   const r = client();
   if (!r) {
@@ -30,7 +41,14 @@ export async function sendEmail(to: string, subject: string, html: string, text?
     return false;
   }
   try {
-    const { error } = await r.emails.send({ from: FROM, to, subject, html, text: text ?? stripHtml(html) });
+    const { error } = await r.emails.send({
+      from: FROM,
+      to,
+      subject,
+      html,
+      text: text ?? stripHtml(html),
+      ...(REPLY_TO ? { replyTo: REPLY_TO } : {}),
+    });
     if (error) {
       console.error("Resend error:", error);
       return false;
@@ -42,38 +60,231 @@ export async function sendEmail(to: string, subject: string, html: string, text?
   }
 }
 
+/**
+ * HTML to a readable plain-text alternative.
+ *
+ * Every email is sent multipart; this builds the text half. The old version
+ * was one regex that removed TAGS but kept their CONTENT, which was harmless
+ * until the template grew a <style> block — then the plain-text part opened
+ * with a wall of CSS. That is ugly to anyone reading text, and worse than
+ * ugly to a spam filter, which compares the two parts and treats a mismatch
+ * as cloaking.
+ *
+ * It also keeps link targets. A text alternative whose call to action is a
+ * bare word with no URL gives the reader nothing to act on.
+ */
 function stripHtml(html: string): string {
-  return html.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
+  return (
+    html
+      // Machinery, content and all.
+      .replace(/<(script|style|head|title)\b[^>]*>[\s\S]*?<\/\1>/gi, "")
+      // The hidden preheader would otherwise appear twice.
+      .replace(/<div[^>]*display:none[\s\S]*?<\/div>/gi, "")
+      // Keep where a link goes, not just its label.
+      .replace(/<a\b[^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/gi, (_m, href, label) => {
+        const text = label.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
+        // An image-only link (the logo) carries no words, so in text it would
+        // print as a bare URL that says nothing. Drop it.
+        if (!text) return "";
+        // A label that IS its own href should not print twice; compare
+        // without scheme or trailing slash so servolia.com/portal matches
+        // https://servolia.com/portal.
+        const bare = (u: string) => u.replace(/^https?:\/\//, "").replace(/\/$/, "");
+        if (href.startsWith("mailto:") || bare(text) === bare(href)) return text;
+        return `${text}: ${href}`;
+      })
+      // Block boundaries become line breaks so the result has shape.
+      .replace(/<(br|\/p|\/h[1-6]|\/li|\/tr|\/div|\/table)\b[^>]*>/gi, "\n")
+      .replace(/<li\b[^>]*>/gi, "- ")
+      .replace(/<[^>]*>/g, "")
+      // Entities the templates actually use.
+      .replace(/&nbsp;/gi, " ")
+      .replace(/&middot;/gi, "\u00b7")
+      .replace(/&zwnj;|&#847;/gi, "")
+      .replace(/&amp;/gi, "&")
+      .replace(/&lt;/gi, "<")
+      .replace(/&gt;/gi, ">")
+      .replace(/&quot;/gi, '"')
+      .replace(/&#39;|&apos;/gi, "'")
+      // Tidy: trim each line, collapse runs of blank lines.
+      .split("\n")
+      .map((l) => l.replace(/[ \t]+/g, " ").trim())
+      .join("\n")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim()
+  );
 }
 
 // ============================================================================
 // EMAIL TEMPLATES
 // ============================================================================
 
-const wrapper = (body: string) => `
-<!DOCTYPE html>
-<html><head><meta charset="utf-8" /></head>
-<body style="margin:0;padding:0;background:#FAFAF7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#18181B;">
-  <div style="max-width:560px;margin:0 auto;padding:32px 24px;">
-    <div style="margin-bottom:32px;">
-      <span style="display:inline-block;width:32px;height:32px;background:#36671E;border-radius:8px;text-align:center;line-height:32px;color:#FAFAF7;font-weight:900;font-size:18px;">S</span>
-      <span style="margin-left:8px;font-size:20px;font-weight:900;color:#18181B;">Servolia</span>
-    </div>
-    <div style="background:#FFFFFF;border:1px solid #E8E6E0;border-radius:16px;padding:32px 28px;">
-      ${body}
-    </div>
-    <p style="margin-top:24px;font-size:12px;color:#A1A1AA;text-align:center;">
-      Servolia · AI Lead Systems for Service Businesses<br/>
-      <a href="https://servolia.com" style="color:#36671E;text-decoration:none;">servolia.com</a> · hello@servolia.com
-    </p>
-  </div>
+/**
+ * BRAND CHROME — the frame every Servolia email is rendered in.
+ *
+ * Rebuilt 2026-08-16. The old wrapper was a <div> with max-width and a CSS
+ * <span> pretending to be a logo. Both look fine in a browser and neither
+ * survives Outlook, which renders mail with Word's engine: max-width is
+ * ignored (the layout goes full-bleed) and border-radius is dropped (the
+ * "logo" became a hard green square with a letter floating off-centre).
+ *
+ * What this fixes, in the order it matters:
+ *
+ *   1. REAL LOGO, HOSTED. public/email-logo.png, referenced by absolute URL.
+ *      NOT the data URI from logoAsset.ts — Gmail strips base64 images, so
+ *      the mark would vanish for most recipients. The wordmark also stays
+ *      live HTML text beside it, because images are blocked by default in
+ *      many clients and a brand that disappears is worse than no image.
+ *   2. TABLE LAYOUT with role="presentation" — the only layout Outlook and
+ *      Gmail both honour.
+ *   3. PREHEADER — the grey line the inbox shows after the subject. Left
+ *      unset, clients scrape the first body words, which reads like a glitch.
+ *   4. BULLETPROOF BUTTON — colour on the <td>, padding on the <a>, so the
+ *      button is a button even where <a> padding is dropped.
+ *   5. DARK MODE — declared, with explicit colours everywhere, so clients
+ *      that auto-invert do not turn the card into unreadable mud.
+ *   6. LEGAL FOOTER — the operating entity, because real companies say who
+ *      they are and it helps deliverability.
+ *
+ * Note on logo.png: it is a different brand from logo-icon.png (glossy
+ * blue-green gradient, baked-in background) and clashes with the site's
+ * green. The icon mark is the one used here on purpose.
+ */
+
+const SITE = "https://servolia.com";
+const LOGO = `${SITE}/email-logo.png`;
+
+const GREEN = "#36671E";
+const CREAM = "#FAFAF7";
+const INK = "#18181B";
+const BODY = "#3F3F46";
+const MUTED = "#71717A";
+const FAINT = "#A1A1AA";
+const LINE = "#E8E6E0";
+
+const FONT = `-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif`;
+
+interface WrapOptions {
+  /** The grey line the inbox shows next to the subject. Always set one. */
+  preheader?: string;
+  lang?: "en" | "fr";
+  /** Present only on marketing mail — transactional mail must not offer it. */
+  unsubscribeHtml?: string;
+}
+
+export const brandWrapper = (body: string, opts: WrapOptions = {}) => wrapper(body, opts);
+
+const wrapper = (body: string, opts: WrapOptions = {}) => {
+  const { preheader = "", lang = "en", unsubscribeHtml = "" } = opts;
+  const tagline =
+    lang === "fr"
+      ? "Sites et standards IA pour cabinets et artisans"
+      : "AI websites and receptionists for service businesses";
+
+  return `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="${lang}">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="x-apple-disable-message-reformatting" />
+<meta name="color-scheme" content="light dark" />
+<meta name="supported-color-schemes" content="light dark" />
+<title>Servolia</title>
+<!--[if mso]>
+<noscript><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml></noscript>
+<![endif]-->
+<style>
+  /* Phones: let the card breathe edge to edge. */
+  @media only screen and (max-width:600px){
+    .sv-pad{padding-left:16px !important;padding-right:16px !important;}
+    .sv-card{padding:24px 20px !important;}
+    .sv-h1{font-size:20px !important;}
+  }
+  /* Clients that auto-invert: keep our own contrast rather than theirs. */
+  @media (prefers-color-scheme:dark){
+    .sv-bg{background:#0F1410 !important;}
+    .sv-card{background:#171C18 !important;border-color:#2A322C !important;}
+    .sv-ink,.sv-h1{color:#F4F4F2 !important;}
+    .sv-body{color:#C9CCC7 !important;}
+    .sv-muted,.sv-faint{color:#9BA097 !important;}
+  }
+  a{color:${GREEN};}
+</style>
+</head>
+<body class="sv-bg" style="margin:0;padding:0;background:${CREAM};-webkit-font-smoothing:antialiased;">
+
+<div style="display:none;font-size:1px;color:${CREAM};line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">${preheader}&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;</div>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="sv-bg" style="background:${CREAM};">
+<tr><td align="center" class="sv-pad" style="padding:32px 24px;">
+
+  <table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0" style="width:560px;max-width:560px;">
+
+    <!-- Header: mark + wordmark. The wordmark is text, so the brand survives blocked images. -->
+    <tr><td style="padding:0 0 24px;">
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+        <td style="vertical-align:middle;">
+          <a href="${SITE}" style="text-decoration:none;">
+            <img src="${LOGO}" width="44" height="44" alt="Servolia" style="display:block;width:44px;height:44px;border:0;outline:none;text-decoration:none;" />
+          </a>
+        </td>
+        <td style="vertical-align:middle;padding-left:12px;">
+          <a href="${SITE}" class="sv-ink" style="font-family:${FONT};font-size:21px;font-weight:800;color:${INK};text-decoration:none;letter-spacing:-0.3px;">Servolia</a>
+        </td>
+      </tr></table>
+    </td></tr>
+
+    <!-- Card -->
+    <tr><td>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="sv-card" style="background:#FFFFFF;border:1px solid ${LINE};border-radius:16px;">
+        <!-- Brand accent: a td with a background renders everywhere. -->
+        <tr><td style="background:${GREEN};height:4px;line-height:4px;font-size:0;border-radius:16px 16px 0 0;">&nbsp;</td></tr>
+        <tr><td class="sv-card" style="padding:32px 28px;font-family:${FONT};">
+          ${body}
+        </td></tr>
+      </table>
+    </td></tr>
+
+    <!-- Footer -->
+    <tr><td style="padding:24px 8px 0;font-family:${FONT};text-align:center;">
+      <p class="sv-muted" style="margin:0 0 6px;font-size:12px;line-height:1.6;color:${MUTED};">
+        <strong style="color:${MUTED};">Servolia</strong> &middot; ${tagline}
+      </p>
+      <p style="margin:0 0 6px;font-size:12px;line-height:1.6;">
+        <a href="${SITE}" style="color:${GREEN};text-decoration:none;">servolia.com</a>
+        <span class="sv-faint" style="color:${FAINT};">&middot;</span>
+        <a href="mailto:hello@servolia.com" style="color:${GREEN};text-decoration:none;">hello@servolia.com</a>
+      </p>
+      <p class="sv-faint" style="margin:0;font-size:11px;line-height:1.6;color:${FAINT};">
+        Servolia LLC &middot; Wyoming, USA
+      </p>
+      ${unsubscribeHtml}
+    </td></tr>
+
+  </table>
+
+</td></tr>
+</table>
 </body></html>`;
+};
 
-const btn = (href: string, label: string) =>
-  `<a href="${href}" style="display:inline-block;background:#36671E;color:#FAFAF7;text-decoration:none;padding:12px 24px;border-radius:10px;font-weight:600;font-size:14px;margin-top:16px;">${label}</a>`;
+/**
+ * Bulletproof CTA. The colour lives on the <td> and the padding on the <a>,
+ * so it still reads as a button in clients that drop padding from links.
+ */
+const btn = (href: string, label: string) => `
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:24px 0 4px;">
+  <tr><td align="center" bgcolor="${GREEN}" style="background:${GREEN};border-radius:10px;">
+    <a href="${href}" style="display:inline-block;padding:14px 28px;font-family:${FONT};font-size:15px;font-weight:700;color:${CREAM};text-decoration:none;border-radius:10px;">${label}</a>
+  </td></tr>
+</table>`;
 
-const waBtn = (href: string, label: string) =>
-  `<a href="${href}" style="display:inline-block;background:#25D366;color:#FFFFFF;text-decoration:none;padding:12px 24px;border-radius:10px;font-weight:600;font-size:14px;margin-top:12px;margin-left:8px;">${label}</a>`;
+const waBtn = (href: string, label: string) => `
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 4px;">
+  <tr><td align="center" bgcolor="#25D366" style="background:#25D366;border-radius:10px;">
+    <a href="${href}" style="display:inline-block;padding:14px 28px;font-family:${FONT};font-size:15px;font-weight:700;color:#FFFFFF;text-decoration:none;border-radius:10px;">${label}</a>
+  </td></tr>
+</table>`;
 
 /** Sent immediately when someone submits the free-audit form. */
 export const auditConfirmationEmail = (firstName: string, lang: "en" | "fr" = "en") => {
@@ -98,7 +309,7 @@ export const auditConfirmationEmail = (firstName: string, lang: "en" | "fr" = "e
           Une question entre-temps ? Répondez simplement à cet email.
         </p>
         ${btn("https://servolia.com/fr/cas-clients", "Voir les cas clients →")}
-      `),
+      `, { preheader: "Votre audit vidéo de 5 minutes arrive sous 24 heures. Aucun appel requis.", lang: "fr" }),
     };
   }
   return {
@@ -121,7 +332,7 @@ export const auditConfirmationEmail = (firstName: string, lang: "en" | "fr" = "e
         If you have questions in the meantime, just reply to this email.
       </p>
       ${btn("https://servolia.com/case-studies", "See case studies →")}
-    `),
+      `, { preheader: "Your 5-minute video audit lands within 24 hours. No call needed.", lang: "en" }),
   };
 };
 
@@ -141,7 +352,7 @@ export const auditInProgressEmail = (firstName: string) => ({
     <p style="margin:0;font-size:14px;line-height:1.6;color:#71717A;">
       Loom dropping in your inbox in the next 12–24 hours.
     </p>
-  `),
+      `, { preheader: "One quick detail and I can finish the recording today.", lang: "en" }),
 });
 
 /**
@@ -182,7 +393,7 @@ export const installationPaidEmail = (firstName: string, planName: string, amoun
         <p style="margin:24px 0 0;font-size:14px;line-height:1.6;color:#71717A;">
           Des questions ? Répondez directement à cet email${wa ? " ou écrivez-nous sur WhatsApp" : ""} — je lis chaque message.
         </p>
-      `),
+      `, { preheader: "Votre installation est confirmee. Voici ce qui se passe maintenant.", lang: "fr" }),
     };
   }
 
@@ -208,7 +419,7 @@ export const installationPaidEmail = (firstName: string, planName: string, amoun
       <p style="margin:24px 0 0;font-size:14px;line-height:1.6;color:#71717A;">
         Questions? Reply directly${wa ? " or message us on WhatsApp" : ""} — I read every message.
       </p>
-    `),
+      `, { preheader: "Your installation is confirmed. Here is what happens next.", lang: "en" }),
   };
 };
 
@@ -226,7 +437,7 @@ export const portalLoginEmail = (loginUrl: string, lang: "en" | "fr" = "en") => 
         <p style="margin:24px 0 0;font-size:13px;line-height:1.6;color:#71717A;">
           Vous n'êtes pas à l'origine de cette demande ? Ignorez simplement cet email.
         </p>
-      `),
+      `, { preheader: "Votre lien expire dans 15 minutes, pour votre securite.", lang: "fr" }),
     };
   }
   return {
@@ -240,7 +451,7 @@ export const portalLoginEmail = (loginUrl: string, lang: "en" | "fr" = "en") => 
       <p style="margin:24px 0 0;font-size:13px;line-height:1.6;color:#71717A;">
         Didn't request this? You can safely ignore this email.
       </p>
-    `),
+      `, { preheader: "Your link expires in 15 minutes, for your security.", lang: "en" }),
   };
 };
 
@@ -256,7 +467,7 @@ export const newPortalMessageEmail = (firstName: string, preview: string, lang: 
           ${preview}
         </p>
         ${btn("https://servolia.com/portal", "Voir et répondre →")}
-      `),
+      `, { preheader: "Ouvrez votre espace client pour lire et repondre.", lang: "fr" }),
     };
   }
   return {
@@ -268,7 +479,7 @@ export const newPortalMessageEmail = (firstName: string, preview: string, lang: 
         ${preview}
       </p>
       ${btn("https://servolia.com/portal", "View & reply →")}
-    `),
+      `, { preheader: "Open your client portal to read it and reply.", lang: "en" }),
   };
 };
 
@@ -288,7 +499,7 @@ export const scopeAcceptedEmail = (businessName: string, acceptedName: string, a
       </p>
       <pre style="margin:16px 0;padding:16px;background:#FAFAF7;border:1px solid #E8E6E0;border-radius:10px;font-family:inherit;font-size:13px;line-height:1.6;color:#18181B;white-space:pre-wrap;word-wrap:break-word;">${escapeHtml(scopeText)}</pre>
       <p style="margin:16px 0 0;font-size:13px;line-height:1.6;color:#71717A;">Keep this email as your copy of the agreed scope.</p>
-    `),
+      `, { preheader: "Signed and timestamped. Delivery starts now.", lang: "en" }),
   };
 };
 
@@ -340,7 +551,7 @@ export const monthlyReportEmail = (input: {
           ? "Une question sur ces chiffres ? Répondez simplement à cet email."
           : "Questions about these numbers? Just reply to this email."}
       </p>
-    `),
+      `, { preheader: "Your numbers for the month, in one page.", lang: "en" }),
   };
 };
 
@@ -367,7 +578,7 @@ export const liveEmail = (firstName: string, url: string, lang: "en" | "fr" = "e
           <li>Quelque chose ne va pas ? Répondez simplement à cet email</li>
         </ul>
         ${btn(url, "Voir mon système en ligne →")}
-      `),
+      `, { preheader: "Votre site est en ligne. Voici le lien et la suite.", lang: "fr" }),
     };
   }
   return {
@@ -388,6 +599,6 @@ export const liveEmail = (firstName: string, url: string, lang: "en" | "fr" = "e
         <li>If anything looks off, just reply to this email</li>
       </ul>
       ${btn(url, "View your live system →")}
-    `),
+      `, { preheader: "Your site is live. Here is the link and what comes next.", lang: "en" }),
   };
 };

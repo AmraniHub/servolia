@@ -708,6 +708,28 @@ export const FEATURES: SystemFeature[] = [
     code: "/api/cron/generate-blog · /api/cron/generate-linkedin · /api/telegram/webhook",
   },
   {
+    name: "Email design system — what a Servolia email looks like",
+    summary: "Every transactional email shares one branded, Outlook-safe frame: real logo, preheader, bulletproof button, dark mode, legal footer.",
+    how: [
+      "Rebuilt 2026-08-16. The old frame was a <div> with max-width and a CSS <span> pretending to be a logo. Both look fine in a browser and neither survives Outlook, which renders mail with Word engine: max-width is ignored so the layout goes full-bleed, and border-radius is dropped so the fake logo became a hard green square with a letter floating off-centre.",
+      "The logo is now public/email-logo.png (the node-mark, rounded into real alpha since Outlook ignores border-radius), referenced by ABSOLUTE URL. Not the data URI from logoAsset.ts — Gmail strips base64 images, so the mark would vanish for most recipients. The wordmark stays live HTML text beside it, because images are blocked by default in many clients.",
+      "Note: public/logo.png is a DIFFERENT brand from logo-icon.png (glossy blue-green gradient, baked-in background) and clashes with the site green. The icon mark is used on purpose.",
+      "Table layout with role=presentation throughout — the only layout Outlook and Gmail both honour. One <div> survives, the hidden preheader.",
+      "Preheader: the grey line the inbox shows beside the subject. All 13 templates set one, and it CONTINUES the subject rather than repeating it — they appear side by side, so echoing wastes the only free line you get.",
+      "Buttons put the colour on the <td> and the padding on the <a>, so they stay buttons where <a> padding is dropped.",
+      "stripHtml builds the plain-text half. It strips <style>/<script>/<head> content (a naive tag-strip opened the text part with a wall of CSS, which spam filters read as cloaking), keeps link targets, and drops image-only links and labels identical to their own href.",
+      "EMAIL_REPLY_TO routes replies to an inbox you actually read. Resend SENDS mail but hosts no mailbox, so unless the From address is a real inbox somewhere, every reply is lost — and several templates say \"just reply to this email\".",
+      "Broadcasts are wrapped in the same chrome plus an unsubscribe. Cold outreach is deliberately NOT — a heavy branded template to someone who never asked reads as bulk mail and costs deliverability and replies.",
+    ],
+    use: [
+      "Preview any template with sample data at /api/admin/email-preview (add ?t=live&lang=fr, or &raw=1 for source). The logo resolves from the deployed site, so it only appears in production.",
+      "Set EMAIL_REPLY_TO in Vercel to wherever you want client replies to land.",
+    ],
+    cost: "None. Resend free tier covers 3,000/month.",
+    value: "These emails are the first thing a paying client sees after handing over money. A broken layout in Outlook or a reply that vanishes both cost more than they look like they do.",
+    code: "src/lib/email.ts · public/email-logo.png · /api/admin/email-preview · /api/admin/broadcast",
+  },
+  {
     name: "Pre-flight — can I spend money on ads today?",
     summary: "Live provider calls that answer whether traffic bought today can convert, and whether a client who pays receives what was sold.",
     how: [
