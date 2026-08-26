@@ -49,6 +49,43 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
   ]);
 }
 
+/**
+ * Retry NETWORK failures, never HTTP errors.
+ *
+ * A 401 is an answer and must be reported. A dropped connection is not — and
+ * reporting "BLOCKED" for a transient blip on the one screen whose job is to
+ * say truthfully whether you can launch would teach you to ignore it.
+ */
+async function retryFetch(url: string, init: RequestInit, ms = 12_000, attempts = 3): Promise<Response> {
+  let lastErr: unknown;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await withTimeout(fetch(url, init), ms);
+    } catch (err) {
+      lastErr = err;
+      if (i < attempts - 1) await new Promise((r) => setTimeout(r, 300 * (i + 1)));
+    }
+  }
+  throw new Error(`unreachable after ${attempts} attempts: ${lastErr instanceof Error ? lastErr.message : "unknown"}`);
+}
+
+/** Same idea for SDK calls, which do their own HTTP. */
+async function retryCall<T>(fn: () => Promise<T>, ms = 12_000, attempts = 3): Promise<T> {
+  let lastErr: unknown;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await withTimeout(fn(), ms);
+    } catch (err) {
+      lastErr = err;
+      // Stripe rejecting a key is an answer, not a blip — do not retry it.
+      const msg = err instanceof Error ? err.message : "";
+      if (/Invalid API Key|No such|authentication/i.test(msg)) throw err;
+      if (i < attempts - 1) await new Promise((r) => setTimeout(r, 300 * (i + 1)));
+    }
+  }
+  throw lastErr instanceof Error ? lastErr : new Error("unknown error");
+}
+
 async function checkAnthropic(): Promise<Check> {
   const label = "Anthropic — AI receptionist & site copy";
   const key = process.env.ANTHROPIC_API_KEY?.trim();
@@ -64,8 +101,7 @@ async function checkAnthropic(): Promise<Check> {
   }
 
   try {
-    const res = await withTimeout(
-      fetch("https://api.anthropic.com/v1/messages", {
+    const res = await retryFetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: {
           "content-type": "application/json",
@@ -77,9 +113,7 @@ async function checkAnthropic(): Promise<Check> {
           max_tokens: 1,
           messages: [{ role: "user", content: "ping" }],
         }),
-      }),
-      12_000,
-    );
+      });
 
     if (res.ok) {
       return {
@@ -136,7 +170,7 @@ async function checkStripe(): Promise<Check[]> {
 
   // ── KYC: the flags Stripe itself uses, not the key prefix ────────────────
   try {
-    const acct = await withTimeout(stripe.accounts.retrieveCurrent(), 12_000);
+    const acct = await retryCall(() => stripe.accounts.retrieveCurrent());
     const charges = acct.charges_enabled === true;
     const payouts = acct.payouts_enabled === true;
     const due = acct.requirements?.currently_due ?? [];
@@ -172,7 +206,7 @@ async function checkStripe(): Promise<Check[]> {
 
   // ── Webhook events: a missing invoice.* stays invisible until a renewal fails
   try {
-    const eps = await withTimeout(stripe.webhookEndpoints.list({ limit: 20 }), 12_000);
+    const eps = await retryCall(() => stripe.webhookEndpoints.list({ limit: 20 }));
     const enabled = new Set<string>();
     for (const ep of eps.data) {
       if (ep.status !== "enabled") continue;
@@ -241,10 +275,8 @@ async function checkResend(): Promise<Check> {
   }
 
   try {
-    const res = await withTimeout(
-      fetch("https://api.resend.com/domains", { headers: { Authorization: `Bearer ${key}` } }),
-      12_000,
-    );
+    const res = await retryFetch(
+      "https://api.resend.com/domains", { headers: { Authorization: `Bearer ${key}` } });
     if (!res.ok) {
       return {
         id: "resend",
@@ -258,17 +290,28 @@ async function checkResend(): Promise<Check> {
     const json = (await res.json()) as { data?: { name: string; status: string }[] };
     const domains = json.data ?? [];
     const verified = domains.filter((d) => d.status === "verified");
+    // A previously-verified domain whose DNS record has gone missing. Mail
+    // still sends today; Resend rechecks for 72h and then fails it outright.
+    // Worth its own message because "not verified" reads like a setup task
+    // when it is actually a clock running down on live email.
+    const decaying = domains.filter((d) => d.status === "temporary_failure");
 
     return {
       id: "resend",
       label,
-      status: verified.length ? "ready" : "blocked",
-      detail: verified.length
+      status: decaying.length ? "warn" : verified.length ? "ready" : "blocked",
+      detail: decaying.length
+        ? `${decaying.map((d) => d.name).join(", ")} is in temporary_failure — the DNS record has gone missing. Mail still sends, but Resend fails the domain outright after 72h.`
+        : verified.length
         ? `Verified sending domain(s): ${verified.map((d) => d.name).join(", ")}.`
         : domains.length
           ? `No VERIFIED domain. Found: ${domains.map((d) => `${d.name} (${d.status})`).join(", ")}. Mail will bounce or land in spam.`
           : "No sending domain configured — a new client's first impression would be silence.",
-      fix: verified.length ? undefined : "resend.com → Domains → add servolia.com and complete the DNS records.",
+      fix: decaying.length
+        ? "Re-add the missing DNS record at your registrar before the 72h window closes."
+        : verified.length
+          ? undefined
+          : "resend.com → Domains → add servolia.com and complete the DNS records.",
       blocksAds: !verified.length,
     };
   } catch (err) {
