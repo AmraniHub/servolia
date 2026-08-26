@@ -3,6 +3,7 @@ import Stripe from "stripe";
 import { isAdminAuthed } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { telegramConfigured } from "@/lib/telegram";
+import { isLiveKey, isRestrictedKey } from "@/lib/stripeMode";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -150,7 +151,7 @@ async function checkAnthropic(): Promise<Check> {
 
 async function checkStripe(): Promise<Check[]> {
   const key = process.env.STRIPE_SECRET_KEY?.trim();
-  const live = (key ?? "").startsWith("sk_live_");
+  const live = isLiveKey(key);
 
   if (!key) {
     return [
@@ -167,6 +168,21 @@ async function checkStripe(): Promise<Check[]> {
 
   const out: Check[] = [];
   const stripe = new Stripe(key);
+
+  // A restricted key works, but only with the right permissions granted. It
+  // fails per-endpoint rather than at auth, so the symptom is one broken
+  // feature (portal, webhooks) rather than an obvious "bad key".
+  if (isRestrictedKey(key)) {
+    out.push({
+      id: "stripe-restricted",
+      label: "Stripe — restricted key in use",
+      status: "warn",
+      detail:
+        "This is a restricted key (rk_). It needs WRITE on Checkout Sessions, Customers, Subscriptions, Webhook Endpoints and Billing Portal, plus READ on Account and Invoices. Missing a permission fails only the endpoint that needs it, so the damage shows up as one broken feature rather than a rejected key.",
+      fix: "Simplest is a Standard secret key (sk_live_). Otherwise check the policy at dashboard.stripe.com → Developers → API keys.",
+      blocksAds: false,
+    });
+  }
 
   // ── KYC: the flags Stripe itself uses, not the key prefix ────────────────
   try {

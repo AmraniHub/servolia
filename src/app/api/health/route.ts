@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
+import { isLiveKey } from "@/lib/stripeMode";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,7 +14,7 @@ export async function GET() {
     anthropic: !!process.env.ANTHROPIC_API_KEY,
     supabase: !!process.env.NEXT_PUBLIC_SUPABASE_URL && !!process.env.SUPABASE_SERVICE_ROLE_KEY,
     stripe: !!process.env.STRIPE_SECRET_KEY,
-    stripeLiveMode: (process.env.STRIPE_SECRET_KEY || "").startsWith("sk_live_"),
+    stripeLiveMode: isLiveKey(process.env.STRIPE_SECRET_KEY),
     cronSecret: !!process.env.CRON_SECRET,
     telegram: !!process.env.TELEGRAM_BOT_TOKEN && !!process.env.TELEGRAM_CHAT_ID,
     ga4DataApi: !!process.env.GOOGLE_SERVICE_ACCOUNT_KEY && !!process.env.GA4_PROPERTY_ID,

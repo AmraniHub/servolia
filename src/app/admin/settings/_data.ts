@@ -1,5 +1,6 @@
 import { INTEGRATIONS, ROADMAP, type RoadmapStatus } from "@/lib/roadmap";
 import { SERVICE_COSTS, isActive, totalFixedMonthlyEur } from "@/lib/costs";
+import { stripeModeOf, type StripeMode } from "@/lib/stripeMode";
 
 /**
  * Derivations shared by the settings layout and its sub-pages.
@@ -21,11 +22,8 @@ export function integrationStatus() {
   };
 }
 
-export function stripeMode(): "live" | "test" | "unknown" | "missing" {
-  const key = process.env.STRIPE_SECRET_KEY ?? "";
-  if (key.startsWith("sk_live_")) return "live";
-  if (key.startsWith("sk_test_")) return "test";
-  return key ? "unknown" : "missing";
+export function stripeMode(): StripeMode {
+  return stripeModeOf(process.env.STRIPE_SECRET_KEY);
 }
 
 export function openRoadmap() {

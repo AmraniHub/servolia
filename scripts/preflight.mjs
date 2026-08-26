@@ -167,7 +167,9 @@ async function checkAnthropic() {
 // ── 2 & 3. Stripe ───────────────────────────────────────────────────────────
 async function checkStripe() {
   const key = get("STRIPE_SECRET_KEY");
-  const live = (key ?? "").startsWith("sk_live_");
+  // Restricted keys are rk_live_, not sk_live_ - treating one as test mode
+  // would report "safely in test" while charging real customers.
+  const live = /^(sk|rk)_live_/.test(key ?? "");
   const out = [];
 
   if (!key) {
