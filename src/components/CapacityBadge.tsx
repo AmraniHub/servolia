@@ -44,12 +44,16 @@ export default function CapacityBadge({
   const t = COPY[lang === "fr" ? "fr" : "en"];
   const { capacity, slotsLeft, full } = state;
 
-  const headline = full
-    ? t.full(capacity)
-    : slotsLeft != null
-      ? t.left(slotsLeft, capacity)
-      : t.cap(capacity);
-  const sub = full ? t.fullSub : slotsLeft != null ? t.leftSub : t.capSub;
+  // "3 of 3 slots left" is the honest number when nothing has sold this week —
+  // and it reads to a visitor as "nobody is buying this". Same fact, wrong
+  // signal. At full availability, state the capacity instead: it says exactly
+  // as much, without advertising an empty week. The depletion count appears
+  // the moment it means something, i.e. once a slot has actually gone.
+  const untouched = slotsLeft != null && slotsLeft >= capacity;
+  const showCount = slotsLeft != null && !untouched;
+
+  const headline = full ? t.full(capacity) : showCount ? t.left(slotsLeft, capacity) : t.cap(capacity);
+  const sub = full ? t.fullSub : showCount ? t.leftSub : t.capSub;
 
   return (
     <div

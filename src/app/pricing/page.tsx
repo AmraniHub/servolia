@@ -197,9 +197,10 @@ export default async function PricingPage() {
           </div>
           <div className="flex flex-col gap-4">
             {[
-              { q: "How does payment work?", a: "A €490 installation fee via Stripe to start — waived if you pay your first year up front. After that it's just your monthly plan, cancellable any time with 30 days notice." },
+              { q: "How does payment work?", a: "A €490 installation fee via Stripe to start — waived if you pay your first year up front. After that it's just your monthly plan, cancellable with 30 days notice, no penalty." },
               { q: "Are there any hidden fees?", a: "Never. The price quoted is the price you pay. Third-party tools (hosting, domain, Stripe fees) are extra and disclosed upfront. Our service fee has no surprises." },
-              { q: "Do you offer refunds?", a: "If we miss the agreed delivery deadline, we refund 10% per day of delay. If we fail to deliver at all, full refund. See our full refund policy in the CGV." },
+              { q: "Do you offer refunds?", a: "If we miss the agreed delivery deadline, we refund 10% per day of delay, up to 50% of the installation. If we fail to deliver at all, the installation is refunded in full. See our full refund policy in the CGV." },
+              { q: "Does the AI receptionist give medical advice?", a: "Never. It answers on your hours, services, pricing and how to reach you, takes the message and alerts you. Anything clinical is handed straight back to you, and a stated emergency is flagged immediately with an instruction to call. You review and approve what it is allowed to say before it goes live." },
               { q: "Can I change plan later?", a: "Any time, up or down. If you go over your included conversations we simply move you to the next plan — you never get a surprise overage bill." },
             ].map((f, i) => (
               <div key={i} className="bg-white rounded-xl border border-[#E8E6E0] p-5 shadow-sm">

@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { CheckCircle, MessageSquare, Star, Mail } from "lucide-react";
 import CheckoutButton from "@/components/CheckoutButton";
-import FoundingOffer from "@/components/FoundingOffer";
+import Link from "next/link";
+import FoundingOffer, { FOUNDING_PLACES, FOUNDING_PLACES_OPEN } from "@/components/FoundingOffer";
 import { PLANS, PLAN_ORDER, POPULAR_PLAN_KEY, ADDONS, SETUP_PLAN } from "@/lib/pricing";
 
 /**
@@ -37,9 +38,9 @@ const T = {
     setupLineAnnual: "Installation waived — you're paying yearly",
     subscribe: "Get started →", popular: "MOST CHOSEN",
     convo: (n: number) => `${n} AI conversations / month`,
-    convoNote: "Go over and we simply move you up a plan — never a surprise bill.",
-    roi: "One recovered patient is usually worth more than a month of Essentiel — a single saved enquiry pays the plan.",
-    foot: "Secure payment via Stripe · cancel anytime with 30 days notice · annual plans renew yearly",
+    convoNote: "One conversation = one patient's whole exchange, not one message. Go over and we simply move you up a plan — never a surprise bill.",
+    roi: "Take your own average case value and compare it to €149/month. If one recovered enquiry a month clears it, the rest is upside — your numbers, not ours.",
+    foot: "Secure payment via Stripe · cancel with 30 days notice, no penalty · annual plans renew yearly",
     addonsTitle: "Optional extras",
     perMailbox: "/mailbox", perMoShort: "/mo",
     includedFrom: (p: string) => `Included from ${p}`,
@@ -88,9 +89,9 @@ const T = {
     setupLineAnnual: "Mise en place offerte — vous payez à l'année",
     subscribe: "Démarrer →", popular: "LE PLUS CHOISI",
     convo: (n: number) => `${n} conversations IA / mois`,
-    convoNote: "Si vous dépassez, on vous fait simplement passer à la formule au-dessus — jamais de facture surprise.",
-    roi: "Un seul patient récupéré vaut généralement plus qu'un mois d'Essentiel — une seule demande sauvée rembourse la formule.",
-    foot: "Paiement sécurisé via Stripe · résiliable à tout moment (préavis 30 jours) · les formules annuelles se renouvellent chaque année",
+    convoNote: "Une conversation = tout l'échange d'un patient, pas un message. Si vous dépassez, on vous fait simplement passer à la formule au-dessus — jamais de facture surprise.",
+    roi: "Prenez votre panier moyen et comparez-le à 149 €/mois. Si une seule demande récupérée par mois le couvre, le reste est du gain — vos chiffres, pas les nôtres.",
+    foot: "Paiement sécurisé via Stripe · résiliable avec 30 jours de préavis, sans pénalité · les formules annuelles se renouvellent chaque année",
     addonsTitle: "Options",
     perMailbox: "/boîte", perMoShort: "/mois",
     includedFrom: (p: string) => `Inclus à partir de ${p}`,
@@ -206,6 +207,31 @@ export default function CarePlansSection({ lang = "en" }: { lang?: "en" | "fr" }
                 <p className="text-[11px] text-[#A1A1AA] mb-3">
                   {billing === "annual" ? t.setupLineAnnual : t.setupLine}
                 </p>
+
+                {/* While founding places remain, this card would otherwise
+                    charge a fee the banner above it says is waived — and with
+                    no clients yet, every buyer qualifies. Say so on the card
+                    itself, with the route to claim it, instead of leaving the
+                    reader to spot the contradiction and distrust both. */}
+                {billing !== "annual" && FOUNDING_PLACES_OPEN && (
+                  <p className="text-[11px] font-semibold text-[#36671E] -mt-2 mb-3">
+                    {fr ? (
+                      <>
+                        Fondateur : cette mise en place est offerte pour les {FOUNDING_PLACES} premiers cabinets —{" "}
+                        <Link href="/fr/audit" className="underline underline-offset-2">
+                          réservez votre place
+                        </Link>
+                      </>
+                    ) : (
+                      <>
+                        Founding offer: this installation is waived for the first {FOUNDING_PLACES} practices —{" "}
+                        <Link href="/free-audit" className="underline underline-offset-2">
+                          claim your place
+                        </Link>
+                      </>
+                    )}
+                  </p>
+                )}
 
                 {/* The meter — what actually separates the tiers, translated
                     into the buyer's units underneath */}
