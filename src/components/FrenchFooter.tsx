@@ -17,6 +17,7 @@ const entreprise = [
   { label: "Cabinets dentaires", href: "/fr/dentistes" },
   { label: "Cliniques esthétiques", href: "/fr/esthetique" },
   { label: "Espace client", href: "/portal" },
+  { label: "Application mobile", href: "/fr/application" },
 ];
 
 const legal = [

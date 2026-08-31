@@ -26,6 +26,7 @@ const company = [
   { label: "Pricing", href: "/pricing" },
   { label: "Free Audit", href: "/free-audit" },
   { label: "Client Portal", href: "/portal" },
+  { label: "Mobile app", href: "/install" },
   { label: "Client Billing", href: "/billing" },
 ];
 

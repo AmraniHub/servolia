@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import InstallSuggestion from "@/components/InstallSuggestion";
 import Link from "next/link";
 import type { Build, Client } from "@/lib/supabase";
 import { toCsv } from "@/lib/csv";
@@ -459,6 +460,12 @@ export default function PortalDashboard({
           <h1 className="text-xl sm:text-2xl font-black text-[var(--p-text)] break-words">{t.greeting(firstName)}</h1>
           <p className="text-sm text-[var(--p-muted)] break-all">{email}</p>
         </div>
+
+        {/* Offered AFTER the greeting, never above it: a client opening the
+            portal came for their enquiries, not to install something. The
+            component waits until the second visit and remembers a dismissal
+            permanently, so it can be declined once and never seen again. */}
+        <InstallSuggestion lang={lang} />
 
         {/* Add-on checkout lands back here with ?addon=…&enabled=1 — the person
             just paid; silence at that moment reads as "did it work?". */}
