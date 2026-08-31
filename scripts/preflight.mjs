@@ -330,6 +330,20 @@ function checkAlerts() {
     ok ? null : "Set TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID", false);
 }
 
+function checkPush() {
+  const pub = !!get("NEXT_PUBLIC_VAPID_PUBLIC_KEY");
+  const priv = !!get("VAPID_PRIVATE_KEY");
+  const subj = !!get("VAPID_SUBJECT");
+  const all = pub && priv && subj;
+  const some = pub || priv || subj;
+  return check("web-push", "Web Push - client notifications", all ? "ready" : "warn",
+    all ? "Configured. A client who opts in is notified the moment a patient enquires."
+      : some ? "Partly configured - push needs ALL THREE VAPID vars. With one missing it silently does nothing."
+      : "Not set up. Clients can install the app but will not receive notifications.",
+    all ? null : "npm run vapid, put the three values in Vercel, run section 9 of pending-migration.sql",
+    false);
+}
+
 function checkAds() {
   const ok = !!get("META_CAPI_ACCESS_TOKEN");
   return check("meta-capi", "Meta Conversions API - ad optimization", ok ? "ready" : "warn",
@@ -345,7 +359,7 @@ const c = (code, s) => (COLOR ? `[${code}m${s}[0m` : s);
 const TAG = { ready: () => c(32, "[ OK    ]"), warn: () => c(33, "[ WARN  ]"), blocked: () => c(31, "[ BLOCK ]") };
 
 const results = (await Promise.all([checkSupabase(), checkStripe(), checkAnthropic(), checkResend()])).flat();
-const checks = [...results, checkAlerts(), checkAds()];
+const checks = [...results, checkAlerts(), checkPush(), checkAds()];
 const blockers = checks.filter((x) => x.blocksAds);
 
 if (JSON_OUT) {

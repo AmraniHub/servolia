@@ -406,6 +406,31 @@ function checkAlerts(): Check {
   };
 }
 
+function checkPush(): Check {
+  const pub = !!process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY?.trim();
+  const priv = !!process.env.VAPID_PRIVATE_KEY?.trim();
+  const subj = !!process.env.VAPID_SUBJECT?.trim();
+  const all = pub && priv && subj;
+  const some = pub || priv || subj;
+
+  return {
+    id: "web-push",
+    label: "Web Push — client notifications",
+    status: all ? "ready" : some ? "warn" : "warn",
+    detail: all
+      ? "Configured. A client who opts in gets a notification the moment a patient enquires."
+      : some
+        ? "Partly configured — push needs ALL THREE of NEXT_PUBLIC_VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY and VAPID_SUBJECT. With one missing it silently does nothing."
+        : "Not set up. Clients can install the app but will not receive notifications.",
+    fix: all
+      ? undefined
+      : "Run npm run vapid, put the three values in Vercel, and run section 9 of pending-migration.sql.",
+    // Never blocks a launch: no client exists to notify yet, and the lead
+    // email carries the promise on its own.
+    blocksAds: false,
+  };
+}
+
 function checkAds(): Check {
   const capi = !!process.env.META_CAPI_ACCESS_TOKEN?.trim();
   return {
@@ -430,7 +455,7 @@ export async function GET() {
     checkSupabase(),
   ]);
 
-  const checks: Check[] = [supabase, ...stripe, anthropic, resend, checkAlerts(), checkAds()];
+  const checks: Check[] = [supabase, ...stripe, anthropic, resend, checkAlerts(), checkPush(), checkAds()];
   const blockers = checks.filter((c) => c.blocksAds);
 
   return NextResponse.json({

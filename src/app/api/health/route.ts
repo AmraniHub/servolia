@@ -22,6 +22,13 @@ export async function GET() {
     // Without Resend, ALL outbound email silently no-ops: audit confirmations,
     // Stripe receipts, portal magic-link login, 48h follow-ups, client reports.
     resend: !!process.env.RESEND_API_KEY,
+    // All three or nothing: with any one missing, push silently does nothing
+    // and the portal never offers it, which is exactly the kind of quiet
+    // half-configured state worth being able to see from outside.
+    webPush:
+      !!process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY &&
+      !!process.env.VAPID_PRIVATE_KEY &&
+      !!process.env.VAPID_SUBJECT,
   };
 
   // Table existence checks — a select that fails means "not migrated yet".
