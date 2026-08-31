@@ -1,5 +1,6 @@
 import { supabaseAdmin } from "@/lib/supabase";
 import { sendEmail } from "@/lib/email";
+import { sendPushToClient } from "@/lib/push";
 import type { ClientSiteConfig } from "@/lib/clientSites";
 
 /**
@@ -122,6 +123,24 @@ export async function notifyClientOfLead(config: ClientSiteConfig, lead: LeadAle
 </body></html>`;
 
     sendEmail(to, subject, html).catch(() => {});
+
+    // Push to the client's own phone, beside the email rather than instead of
+    // it. Email is the durable record; the push is what reaches someone whose
+    // inbox they will not open for two hours. Fire-and-forget on purpose: a
+    // dead push service must never stop the lead being written or the email
+    // going out, which is the whole promise of this function.
+    sendPushToClient(to, {
+      title: afterHours
+        ? fr ? "🌙 Demande captée hors horaires" : "🌙 Enquiry caught out of hours"
+        : fr ? "Nouvelle demande" : "New enquiry",
+      // Name only — never the message body. A lock screen is readable by
+      // whoever is holding the phone, and this is a patient's enquiry.
+      body: lead.name
+        ? fr ? `${lead.name} attend votre rappel.` : `${lead.name} is waiting for your call.`
+        : fr ? "Ouvrez votre espace client pour la voir." : "Open your portal to see it.",
+      url: "/portal",
+      tag: "servolia-lead",
+    }).catch(() => {});
 
     // Google Sheets CRM sync (per-client, optional) — same Apps Script webhook
     // pattern as Servolia's own sheet.

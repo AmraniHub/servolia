@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import InstallSuggestion from "@/components/InstallSuggestion";
+import PushOptIn from "@/components/PushOptIn";
 import Link from "next/link";
 import type { Build, Client } from "@/lib/supabase";
 import { toCsv } from "@/lib/csv";
@@ -466,6 +467,11 @@ export default function PortalDashboard({
             component waits until the second visit and remembers a dismissal
             permanently, so it can be declined once and never seen again. */}
         <InstallSuggestion lang={lang} />
+
+        {/* Only offered once a site is actually live: asking a client to enable
+            alerts for enquiries that cannot arrive yet spends a one-shot
+            browser permission on nothing. */}
+        <PushOptIn lang={lang} hasActivity={!!primarySlug} />
 
         {/* Add-on checkout lands back here with ?addon=…&enabled=1 — the person
             just paid; silence at that moment reads as "did it work?". */}

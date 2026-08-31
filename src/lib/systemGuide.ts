@@ -730,6 +730,30 @@ export const FEATURES: SystemFeature[] = [
     code: "src/lib/email.ts · public/email-logo.png · /api/admin/email-preview · /api/admin/broadcast",
   },
   {
+    name: "Installable app + client push notifications",
+    summary: "The client portal installs to a phone home screen and can buzz that device the moment a patient enquires.",
+    how: [
+      "Manifest at /manifest.webmanifest with start_url /portal — not the marketing home page. Someone who installs this is a client checking for an enquiry, not a visitor re-reading pricing they already bought from.",
+      "Chrome fires beforeinstallprompt only with ALL of: HTTPS, name, short_name, start_url, display standalone, background_color, theme_color, a 512px icon AND a registered service worker with a fetch handler. Miss one and the event never fires, with nothing to explain why.",
+      "THE SERVICE WORKER CACHES NO PAGES, deliberately. Cache-first would be actively harmful on a site that quotes prices, terms and a guarantee — and service-worker staleness is near-invisible to whoever deployed it. Only offline.html and two icons are cached, used only when the network has actually failed. The API is never intercepted: a replayed POST to checkout would be its own disaster.",
+      "Install UI tells the truth per platform: Chrome and Android get a real button wired to the captured event, iOS gets INSTRUCTIONS because Safari has no install API at all, and an already-installed device gets nothing.",
+      "Icons are generated at 192 and 512 in plain AND maskable. Android crops to a circle keeping the middle ~80 percent, so the maskable pair is inset; without them the mark loses its corners on most launchers.",
+      "Push goes to the client's own devices beside the lead email, never instead of it. Email is the durable record; the push reaches someone who will not open an inbox for two hours.",
+      "The notification body carries the caller's NAME only, never the message. A lock screen is readable by whoever is holding the phone, and that is a patient's enquiry.",
+      "One row per DEVICE, keyed on email plus endpoint, so a phone and a tablet both buzz. Dead endpoints are pruned by row id, never by endpoint — two accounts can legitimately share an endpoint, and deleting by it would unsubscribe someone who never asked.",
+      "The browser permission prompt is ONE-SHOT: a client who taps Block can never be re-asked by any code. So it fires only from an explicit click on our own button, and only once their site is live — asking on page load is how you burn the permission forever on a visit where they were busy.",
+      "iOS grants push only inside an INSTALLED PWA, 16.4 and later, which is why the install shipped first.",
+    ],
+    use: [
+      "Clients: /install or /fr/application, also linked from both footers, and nudged inside the portal from the second visit.",
+      "To switch push on: npm run vapid in your own terminal — the private key never passes through Claude — then paste the three vars into Vercel, run section 9 of pending-migration.sql, and redeploy.",
+      "Everything degrades quietly: with no VAPID keys the send path returns 0 instead of throwing, and the portal never offers notifications.",
+    ],
+    cost: "None. Web Push is free — no store fees, no review.",
+    value: "The product promise is that you never miss an enquiry. Email and WhatsApp already carry it, but both land in a pile. A push reaches the phone already in the room — and the home-screen icon makes checking a glance rather than a task.",
+    code: "src/app/manifest.ts · public/sw.js · public/offline.html · src/lib/push.ts · /api/portal/push · src/components/InstallApp.tsx · src/components/InstallSuggestion.tsx · src/components/PushOptIn.tsx · scripts/vapid-keys.mjs · supabase/pending-migration.sql section 9",
+  },
+  {
     name: "Pre-flight — can I spend money on ads today?",
     summary: "Live provider calls that answer whether traffic bought today can convert, and whether a client who pays receives what was sold.",
     how: [

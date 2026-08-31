@@ -248,3 +248,37 @@ create table if not exists admin_2fa (
 
 -- Service-role only. No policies = no anon access with RLS on.
 alter table admin_2fa enable row level security;
+
+
+-- ============================================================================
+-- 9. PUSH SUBSCRIPTIONS — "a patient just enquired" on the client's phone
+-- ============================================================================
+-- One row per DEVICE, not per client: a dentist with a phone and a tablet
+-- expects both to buzz, so the key is (email, endpoint) rather than email.
+--
+-- Scoping the uniqueness to the pair also matters for safety. A global unique
+-- on endpoint alone would let one account's re-subscribe silently steal the
+-- row belonging to another, and the cleanup of a dead endpoint would then
+-- unsubscribe someone who never asked to be.
+--
+-- p256dh and auth are the browser's own encryption keys for that endpoint.
+-- They are useless without the VAPID private key, but they are still per-user
+-- data: service-role only, no anon access.
+
+create table if not exists push_subscriptions (
+  id          uuid primary key default gen_random_uuid(),
+  email       text not null,              -- the portal account, lowercased
+  endpoint    text not null,              -- push service URL for this device
+  p256dh      text not null,
+  auth        text not null,
+  user_agent  text,                       -- so a client can tell devices apart
+  created_at  timestamptz default now(),
+  last_sent_at timestamptz
+);
+
+create unique index if not exists push_subscriptions_email_endpoint_idx
+  on push_subscriptions (email, endpoint);
+create index if not exists push_subscriptions_email_idx
+  on push_subscriptions (email);
+
+alter table push_subscriptions enable row level security;

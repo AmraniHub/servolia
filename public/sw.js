@@ -20,7 +20,7 @@
  * Bumping CACHE forces old caches to be dropped on the next activate.
  */
 
-const CACHE = "servolia-v1";
+const CACHE = "servolia-v2";
 const OFFLINE_URL = "/offline.html";
 
 const PRECACHE = [OFFLINE_URL, "/icon-192.png", "/icon-512.png"];
@@ -70,4 +70,57 @@ self.addEventListener("fetch", (event) => {
   // happens to exist (icons). Nothing new is ever written to the cache here,
   // so no page can go stale.
   event.respondWith(fetch(request).catch(() => caches.match(request).then((c) => c ?? Response.error())));
+});
+
+
+/**
+ * Push — "a patient just enquired", on the lock screen.
+ *
+ * The payload is JSON from src/lib/push.ts. A push event with no usable body
+ * still shows something generic rather than nothing: some push services can
+ * deliver an empty wake-up, and a silent no-op would look like a lost message.
+ */
+self.addEventListener("push", (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    data = {};
+  }
+
+  const title = data.title || "Servolia";
+  const options = {
+    body: data.body || "Nouvelle activité sur votre espace client.",
+    icon: "/icon-192.png",
+    badge: "/icon-192.png",
+    // Same tag replaces rather than stacks, so ten enquiries in an hour do not
+    // bury the phone in ten separate banners.
+    tag: data.tag || "servolia",
+    renotify: true,
+    data: { url: data.url || "/portal" },
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+/**
+ * Tapping the notification should land on the enquiry, and should REUSE an
+ * open portal window rather than opening a second one - a client who already
+ * has the app open does not want two copies of it.
+ */
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const target = (event.notification.data && event.notification.data.url) || "/portal";
+
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((wins) => {
+      for (const win of wins) {
+        if (win.url.includes("/portal") && "focus" in win) {
+          win.navigate(target).catch(() => {});
+          return win.focus();
+        }
+      }
+      return self.clients.openWindow(target);
+    }),
+  );
 });
