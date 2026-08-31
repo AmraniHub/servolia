@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Lock, ArrowRight, ShieldCheck, KeyRound } from "lucide-react";
+import AdminInstallButton from "@/components/admin/AdminInstallButton";
 
 /**
  * Two-screen sign-in: password, then — only if 2FA is on — the code.
@@ -191,7 +192,15 @@ export default function AdminLogin() {
           )}
         </div>
 
-        <p className="text-center text-xs text-[#A1A1AA] mt-6">
+        {/* Install lives on the LOGIN page because it is the only admin page a
+            fresh device can reach. It also registers the service worker, which
+            Chrome requires before it will offer the install at all. Installing
+            gets you the app shell; you still sign in with password + 2FA. */}
+        <div className="mt-6 flex justify-center">
+          <AdminInstallButton />
+        </div>
+
+        <p className="text-center text-xs text-[#A1A1AA] mt-4">
           Forgot password? Reset it via your Vercel environment variables (ADMIN_PASSWORD).
         </p>
       </div>

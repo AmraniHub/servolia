@@ -1,0 +1,24 @@
+{
+  "name": "Servolia Admin",
+  "short_name": "Servolia Admin",
+  "description": "Leads, builds, clients and revenue — the Servolia control panel.",
+  "id": "/admin",
+  "start_url": "/admin",
+  "scope": "/admin",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FAFAF7",
+  "theme_color": "#36671E",
+  "categories": ["business", "productivity"],
+  "lang": "en",
+  "icons": [
+    { "src": "/admin-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/admin-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/admin-icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/admin-icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Leads", "short_name": "Leads", "url": "/admin/leads" },
+    { "name": "Launch checks", "short_name": "Launch", "url": "/admin/settings/launch" }
+  ]
+}
