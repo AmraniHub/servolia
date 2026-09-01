@@ -8,6 +8,7 @@ import {
   TrendingUp, Settings, LogOut, Menu, X, BarChart3, Kanban, Search, Globe, Sparkles, RefreshCcw, Wand2, CalendarClock, Target, Star, Bot, Sun, Moon, Database, BookOpen, Send, Eye, CalendarDays, LayoutTemplate, Calculator, Lightbulb, PanelLeft,
 } from "lucide-react";
 import CommandPalette from "./CommandPalette";
+import AdminInstallMenuItem from "./AdminInstallMenuItem";
 import AutoRefresh from "@/components/AutoRefresh";
 import Copilot from "./Copilot";
 
@@ -328,6 +329,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
                   className="w-10 h-10 rounded-lg flex items-center justify-center text-[#71717A] hover:text-[#18181B] hover:bg-[#F5F4EF] transition-colors">
                   {theme === "light" ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
                 </button>
+                <AdminInstallMenuItem compact />
                 <button onClick={handleLogout} title="Sign out"
                   className="w-10 h-10 rounded-lg flex items-center justify-center text-[#71717A] hover:text-[#DC2626] hover:bg-[#F5F4EF] transition-colors">
                   <LogOut className="w-4 h-4" />
@@ -348,6 +350,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
                     {theme === "light" ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
                   </button>
                 </div>
+                <AdminInstallMenuItem />
                 <button
                   onClick={handleLogout}
                   className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-[#71717A] hover:bg-[#F5F4EF] hover:text-[#DC2626] transition-colors"
@@ -408,6 +411,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
                   </Link>
                 );
               })}
+              <AdminInstallMenuItem onNavigate={() => setMobileOpen(false)} />
               <button onClick={handleLogout}
                 className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-[#DC2626]">
                 <LogOut className="w-4 h-4" /> Sign out

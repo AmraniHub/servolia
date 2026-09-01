@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import InstallSuggestion from "@/components/InstallSuggestion";
+import PortalInstallButton from "@/components/PortalInstallButton";
 import PushOptIn from "@/components/PushOptIn";
 import Link from "next/link";
 import type { Build, Client } from "@/lib/supabase";
@@ -413,6 +414,7 @@ export default function PortalDashboard({
               className="h-9 px-2.5 rounded-lg border border-[var(--p-border)] flex items-center gap-1.5 text-[var(--p-muted)] text-xs font-black hover:text-[var(--p-text)] hover:bg-[var(--p-raised)] transition-colors">
               <Languages className="w-4 h-4" /> {lang === "en" ? "FR" : "EN"}
             </button>
+            <PortalInstallButton lang={lang} />
             <button onClick={toggleTheme} aria-label={t.toggleTheme}
               className="w-9 h-9 rounded-lg border border-[var(--p-border)] flex items-center justify-center text-[var(--p-muted)] hover:text-[var(--p-text)] hover:bg-[var(--p-raised)] transition-colors">
               {theme === "light" ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
