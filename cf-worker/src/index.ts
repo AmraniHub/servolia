@@ -13,7 +13,12 @@ const CORS_HEADERS = {
 };
 
 // Llama model — fast 8B for chat, swap to llama-3.3-70b for higher quality
-const LLAMA_MODEL = "@cf/meta/llama-3.1-8b-instruct";
+// 2026-09-05: "@cf/meta/llama-3.1-8b-instruct" routed to
+// @cf/meta/infire-llama-3.1-8b-instruct, DEPRECATED 2026-05-30 - every /chat
+// request had been returning AiError 5028 and the generic "Something went
+// wrong" to visitors since then, silently. The -fp8 variant is the same
+// model, still served. Check `wrangler ai models` before trusting a model id.
+const LLAMA_MODEL = "@cf/meta/llama-3.1-8b-instruct-fp8";
 
 /**
  * ⚠️ PRICES ARE HARDCODED AND MUST BE KEPT IN SYNC BY HAND.
