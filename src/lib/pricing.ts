@@ -53,7 +53,12 @@ export interface BuildPlan {
 
 export const BUILD_PLANS: Record<string, BuildPlan> = {
   // The only thing sold up front: installation of the system.
-  setup:   { key: "setup",   name: "Installation", nameFr: "Mise en place",        totalEur: 490, delivery: "7 days", deliveryFr: "7 jours" },
+  // 490 -> 690 on 2026-09-05: at the founder's measured cost floor ($35.10/h)
+  // 490 broke even at ~12 build hours, i.e. under water on a real 7-day
+  // install, and Essentiel-monthly failed the 30-day cash test (695 in vs
+  // 715 cost). Dental AI setup fees run $500-3,500 (market check 2026-09-05),
+  // so 690 is still low-market. Existing clients are NOT back-charged.
+  setup:   { key: "setup",   name: "Installation", nameFr: "Mise en place",        totalEur: 690, delivery: "7 days", deliveryFr: "7 jours" },
 
   // ── Retired 2026-07-28 — the three-way build choice was replaced by one
   // setup fee plus a subscription tier. Kept so historical builds render. ──

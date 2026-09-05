@@ -282,7 +282,7 @@ export async function POST(req: NextRequest) {
       // one. Direct /pricing purchases skip the audit funnel entirely, so
       // without this they'd pay having never seen or accepted a written
       // scope -- directly contradicting the pricing page's own promised
-      // process ("02. Approve scope" before "03. €490 installation"). This
+      // process ("02. Approve scope" before "03. €690 installation"). This
       // doesn't gate payment (keeps the self-serve path fast); it just makes
       // sure the scope exists and is reachable from the portal right after.
       if (build?.lead_id) {

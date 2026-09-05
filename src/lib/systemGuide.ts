@@ -15,7 +15,7 @@ export const MAIN_FLOW: FlowStep[] = [
   { step: "1. Attention", detail: "SEO (niche + country landing pages) and outbound bring a clinic owner to the site." },
   { step: "2. Capture", detail: "They land on /free-audit (or /fr/audit) or talk to Solia, the site chatbot. Either way a lead row is created and you get a Telegram ping." },
   { step: "3. Qualify", detail: "You work the lead in the Pipeline. A written scope document is generated and sent for e-signature." },
-  { step: "4. Payment", detail: "They pay the €490 installation IN FULL through Stripe Checkout — nothing is owed on delivery. Buyers from a /fr/ page get a French-language Stripe page and lang:\"fr\" in the session metadata. The webhook creates/updates the build and moves the lead to the deposit_paid stage (column name predates the model change)." },
+  { step: "4. Payment", detail: "They pay the €690 installation IN FULL through Stripe Checkout — nothing is owed on delivery. Buyers from a /fr/ page get a French-language Stripe page and lang:\"fr\" in the session metadata. The webhook creates/updates the build and moves the lead to the deposit_paid stage (column name predates the model change)." },
   { step: "5. Intake", detail: "They complete the intake — /onboarding in English, /fr/demarrage in French (Stripe sends them to the right one). Their answers land on the build as intake_data — this is what the generator reads, so French answers in means a French site out." },
   { step: "6. Generate", detail: "You click Generate on the build. configFromIntake() builds the mechanical draft, then Claude writes the copy. Result: a DRAFT client site." },
   { step: "7. Approve", detail: "The draft is private — only you can see it. You review, then hit Publish. Only then is it public." },
@@ -221,9 +221,9 @@ export const FEATURES: SystemFeature[] = [
   },
   {
     name: "The pricing model — installation + a metered subscription",
-    summary: "One €490 installation, then the subscription IS the product: Essentiel €149 / Croissance €249 / Performance €449 per month, tiered by included AI conversations. Annual is pay 10, get 12.",
+    summary: "One €690 installation, then the subscription IS the product: Essentiel €149 / Croissance €249 / Performance €449 per month, tiered by included AI conversations. Annual is pay 10, get 12.",
     how: [
-      "src/lib/pricing.ts is the single source of truth. PLANS holds the three tiers with their included conversation volume (100 / 300 / 800 per month); SETUP_PLAN is the one-time €490 installation, waived when the client starts on annual.",
+      "src/lib/pricing.ts is the single source of truth. PLANS holds the three tiers with their included conversation volume (100 / 300 / 800 per month); SETUP_PLAN is the one-time €690 installation, waived when the client starts on annual.",
       "The tiers differ by VOLUME, not by whether the AI receptionist exists — every plan includes it. Going over the included conversations auto-upgrades to the next tier rather than billing surprise overage: predictable for them, automatic expansion revenue for you.",
       "resolvePlan() maps the retired care / care_growth / care_scale keys onto the new plans, so old Stripe metadata and any existing clients row keep working. Old build plans (€290/€590/€990) are marked retired rather than deleted so historical builds still render their real names.",
       "Why the meter is conversations and not bookings: a fee per patient booked is tied to patient volume, which French compérage rules restrict for regulated professions. Metering AI conversations is metering a technical resource, so the same grow-with-them property is available in the dental beachhead. UNCONFIRMED legally — see the roadmap item before using it in public copy.",
@@ -338,7 +338,7 @@ export const FEATURES: SystemFeature[] = [
     name: "Unit economics — the money model and offer, scored automatically",
     summary: "Hormozi's money model and value equation computed from your own rows at /admin/economics, so the decision 'may I spend to acquire a client' has a number instead of a feeling.",
     how: [
-      "THE GATE: 30-day CAC payback. If a new client hasn't repaid what it cost to win them inside a month, growth eats cash however good the ROAS looks. The page shows the maximum CAC that still clears it — and Servolia's unusual edge is that €490 of that lands on DAY 0 as the installation, before a single subscription payment.",
+      "THE GATE: 30-day CAC payback. If a new client hasn't repaid what it cost to win them inside a month, growth eats cash however good the ROAS looks. The page shows the maximum CAC that still clears it — and Servolia's unusual edge is that €690 of that lands on DAY 0 as the installation, before a single subscription payment.",
       "MONEY MODEL: MRR, ARPU, fixed costs (from costs.ts, active flat-fee services only), gross margin, clients-to-break-even and LTV — all from clients/builds rows.",
       "VALUE EQUATION: two of the four levers are measurable and are measured — Time Delay from the median days across delivered builds, Perceived Likelihood from real delivered clients + published case studies. The other two are stated as what the offer claims and labelled as such.",
       "OFFER STRENGTH: the 7-point validation checklist. Checks data can settle are settled; 'Proof' is the one that currently FAILS, and it fails honestly — no delivered client, no published case study, so the live demos and the guarantees carry the whole lever.",

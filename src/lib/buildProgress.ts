@@ -110,7 +110,7 @@ export function buildProgress(b: BuildLike, facts: ProgressFacts): BuildProgress
   const steps: DeliveryStep[] = [
     {
       // Key stays "deposit" — it's the builds.deposit_paid column and things
-      // downstream match on it. Under the current model this is the €490
+      // downstream match on it. Under the current model this is the €690
       // installation, charged in full; only the label moved.
       key: "deposit", label: "Installation paid", owner: "client",
       done: Number(b.deposit_paid) > 0,

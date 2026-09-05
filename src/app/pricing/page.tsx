@@ -14,7 +14,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Pricing — Servolia",
-  description: "One €490 installation, then €149–€449/month all-in: site, 24/7 AI receptionist, hosting, domain and pro email. Pay yearly and get two months free.",
+  description: "One €690 installation, then €149–€449/month all-in: site, 24/7 AI receptionist, hosting, domain and pro email. Pay yearly and get two months free.",
   alternates: {
     canonical: "https://servolia.com/pricing",
     languages: {
@@ -29,7 +29,7 @@ export const metadata: Metadata = {
 const process = [
   { num: "01", title: "Free audit", desc: "Fill a 5-question form. We send a PDF audit within 24h." },
   { num: "02", title: "Approve scope", desc: "We write the full scope in writing. You review and sign off." },
-  { num: "03", title: "€490 installation", desc: "Pay the installation via Stripe to start — waived if you pay the first year up front." },
+  { num: "03", title: "€690 installation", desc: "Pay the installation via Stripe to start — waived if you pay the first year up front." },
   { num: "04", title: "We build", desc: "7-day build. You get Loom walkthroughs at every step." },
   { num: "05", title: "Review + launch", desc: "You review, approve, and your monthly plan starts. We go live and hand over everything." },
 ];
@@ -62,7 +62,7 @@ export default async function PricingPage() {
               <div className="w-4 h-4 rounded bg-[#635bff] flex items-center justify-center">
                 <span className="text-white text-[7px] font-black">S</span>
               </div>
-              €490 installation via Stripe
+              €690 installation via Stripe
             </div>
             <div className="flex items-center gap-1.5"><Zap className="w-4 h-4 text-[#36671E]" /> No hidden fees</div>
           </div>
@@ -197,7 +197,7 @@ export default async function PricingPage() {
           </div>
           <div className="flex flex-col gap-4">
             {[
-              { q: "How does payment work?", a: "A €490 installation fee via Stripe to start — waived if you pay your first year up front. After that it's just your monthly plan, cancellable with 30 days notice, no penalty." },
+              { q: "How does payment work?", a: "A €690 installation fee via Stripe to start — waived if you pay your first year up front. After that it's just your monthly plan, cancellable with 30 days notice, no penalty." },
               { q: "Are there any hidden fees?", a: "Never. The price quoted is the price you pay. Third-party tools (hosting, domain, Stripe fees) are extra and disclosed upfront. Our service fee has no surprises." },
               { q: "Do you offer refunds?", a: "If we miss the agreed delivery deadline, we refund 10% per day of delay, up to 50% of the installation. If we fail to deliver at all, the installation is refunded in full. See our full refund policy in the CGV." },
               { q: "Does the AI receptionist give medical advice?", a: "Never. It answers on your hours, services, pricing and how to reach you, takes the message and alerts you. Anything clinical is handed straight back to you, and a stated emergency is flagged immediately with an instruction to call. You review and approve what it is allowed to say before it goes live." },

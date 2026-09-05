@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { SETUP_PLAN } from "@/lib/pricing";
 import { isAdminAuthed } from "@/lib/auth";
 import {
   auditConfirmationEmail,
@@ -36,7 +37,7 @@ function build(id: string, lang: "en" | "fr"): Built | null {
     case "audit-in-progress":
       return auditInProgressEmail("Amine");
     case "installation-paid":
-      return installationPaidEmail("Amine", "Croissance", 490, lang);
+      return installationPaidEmail("Amine", "Croissance", SETUP_PLAN.totalEur, lang);
     case "portal-login":
       return portalLoginEmail("https://servolia.com/portal/login?token=sample", lang);
     case "portal-message":

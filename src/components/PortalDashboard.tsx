@@ -380,7 +380,7 @@ export default function PortalDashboard({
   }
 
   // Plan-aware upgrade card. Driven by the SUBSCRIPTION tier, not the build
-  // plan — under the current model every build is the same €490 installation,
+  // plan — under the current model every build is the same €690 installation,
   // so the build plan carries no signal. resolvePlan() also maps the retired
   // care/care_growth/care_scale keys, so long-standing clients rank correctly.
   const currentTier = resolvePlan(subscription?.plan);

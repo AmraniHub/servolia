@@ -7,7 +7,7 @@ export const runtime = "nodejs";
 /**
  * THE ONLY WAY TO BUY. One checkout collects everything a new client owes:
  *
- *   MONTHLY  → €490 installation charged now (one-time line item)
+ *   MONTHLY  → €690 installation charged now (one-time line item)
  *              + the monthly plan, first charge after a 7-day trial so the
  *              recurring clock starts when the site goes live, exactly as
  *              /how-it-works promises ("your monthly plan starts the day you
@@ -16,7 +16,7 @@ export const runtime = "nodejs";
  *              which is what both pricing pages say.
  *
  * Before 2026-07-30 this route charged ONLY the recurring amount, so every
- * monthly self-serve signup silently skipped the €490 the pricing page had
+ * monthly self-serve signup silently skipped the €690 the pricing page had
  * just promised. The installation sat behind a second button that nothing
  * required anyone to press.
  *

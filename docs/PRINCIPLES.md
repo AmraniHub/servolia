@@ -111,7 +111,7 @@ Map every roadmap item to at least one of Thiel's four monopoly features:
 
 ## P6 — Distribution is half the product
 
-- Our price point (€490 setup, €149–449/mo) sits below Thiel's distribution dead zone by design —
+- Our price point (€690 setup, €149–449/mo) sits below Thiel's distribution dead zone by design —
   low enough for a productized close, raised later from a monopoly position (P1 test). The sales
   motion is **founder-led with proof**: mystery-shop the prospect, record the missed lead, Loom the owner.
 - First 3 clients in any new rung: discounted setup traded for a numbered case study. The case study
@@ -142,7 +142,7 @@ Map every roadmap item to at least one of Thiel's four monopoly features:
 ---
 
 *Last updated: 2026-07-28 — P6 price point refreshed for the installation + metered-subscription
-model (€490 setup, €149–449/mo); the dead-zone argument is unchanged. See `docs/BUSINESS-MODEL.md`.
+model (€690 setup, €149–449/mo); the dead-zone argument is unchanged. See `docs/BUSINESS-MODEL.md`.
 Previous update 2026-07-19 — added Luxembourg to rung 3 (Belgium & Switzerland), added Monaco as an
 SEO-only side-lane. Both are francophone-adjacency extensions of the existing ladder, not new
 verticals — no change to P1/P3. Previous update 2026-07-15 sharpened P2/P3/P6 after reviewing an

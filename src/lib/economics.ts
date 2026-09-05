@@ -11,7 +11,7 @@ import { SETUP_PLAN, PLANS } from "@/lib/pricing";
  *     the next one, fast enough to keep scaling? The gate is 30-DAY CAC
  *     PAYBACK: if a new client hasn't repaid their acquisition cost inside a
  *     month, growth eats cash and stalls. Servolia has an unusual advantage
- *     here — the €490 installation lands on day 0, so any CAC below €490 is
+ *     here — the €690 installation lands on day 0, so any CAC below €690 is
  *     repaid immediately, before a single subscription payment.
  *
  *  2. THE VALUE EQUATION (offer-designer / $100M Offers):

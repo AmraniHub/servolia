@@ -13,7 +13,7 @@ import { CheckCircle, ArrowRight, Shield, Clock, Globe, Bot, Lock } from "lucide
 export const metadata: Metadata = {
   title: "Tarifs — Servolia",
   description:
-    "Une mise en place à 490 €, puis 149 à 449 €/mois tout compris : site, assistante IA 24 h/24, hébergement, domaine et email pro. Deux mois offerts en annuel.",
+    "Une mise en place à 690 €, puis 149 à 449 €/mois tout compris : site, assistante IA 24 h/24, hébergement, domaine et email pro. Deux mois offerts en annuel.",
   alternates: {
     canonical: "https://servolia.com/fr/tarifs",
     languages: {
@@ -28,13 +28,13 @@ export const metadata: Metadata = {
 const processus = [
   { num: "01", title: "Audit gratuit", desc: "Remplissez un formulaire de 5 questions. Vous recevez un audit PDF sous 24 h." },
   { num: "02", title: "Validation du périmètre", desc: "Nous rédigeons le périmètre complet par écrit. Vous relisez et validez." },
-  { num: "03", title: "Mise en place 490 €", desc: "Réglez la mise en place via Stripe pour lancer la production — offerte si vous payez la première année." },
+  { num: "03", title: "Mise en place 690 €", desc: "Réglez la mise en place via Stripe pour lancer la production — offerte si vous payez la première année." },
   { num: "04", title: "Nous construisons", desc: "7 jours de production. Vous recevez une vidéo Loom à chaque étape." },
   { num: "05", title: "Validation + mise en ligne", desc: "Vous validez et votre formule mensuelle démarre. Nous mettons en ligne et vous remettons tout." },
 ];
 
 const faqs = [
-  { q: "Comment se passe le paiement ?", a: "Une mise en place de 490 € via Stripe pour lancer le projet — offerte si vous réglez votre première année. Ensuite, uniquement votre formule mensuelle, résiliable avec 30 jours de préavis, sans pénalité." },
+  { q: "Comment se passe le paiement ?", a: "Une mise en place de 690 € via Stripe pour lancer le projet — offerte si vous réglez votre première année. Ensuite, uniquement votre formule mensuelle, résiliable avec 30 jours de préavis, sans pénalité." },
   { q: "Y a-t-il des frais cachés ?", a: "Jamais. Le prix annoncé est le prix payé. Les outils tiers (hébergement, domaine, frais Stripe) sont en supplément et annoncés dès le départ. Nos honoraires ne réservent aucune surprise." },
   { q: "Proposez-vous des remboursements ?", a: "Si nous manquons la date de livraison convenue, nous remboursons 10 % par jour de retard, jusqu'à 50 % de la mise en place. Si nous ne livrons pas du tout, remboursement intégral de la mise en place. Voir la politique complète dans les CGV." },
   { q: "L'assistante IA donne-t-elle des conseils médicaux ?", a: "Jamais. Elle répond sur vos horaires, vos prestations, vos tarifs et l'accès au cabinet, prend le message et vous alerte. Toute question clinique est renvoyée vers vous, et une urgence déclarée est signalée immédiatement avec la consigne d'appeler. Vous relisez et validez ce qu'elle sait dire avant la mise en ligne." },

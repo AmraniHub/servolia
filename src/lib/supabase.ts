@@ -151,9 +151,9 @@ export function estimateLeadValue(niche?: string | null, plan?: string | null): 
   // Order matters — the first key found inside the plan string wins, so the
   // subscription tier (the real signal) is checked before the setup fee.
   const planValues: Record<string, number> = {
-    performance: firstYear(PLANS.performance.monthlyEur),  // 490 + 12 × 449
-    croissance: firstYear(PLANS.croissance.monthlyEur),    // 490 + 12 × 249
-    essentiel: firstYear(PLANS.essentiel.monthlyEur),      // 490 + 12 × 149
+    performance: firstYear(PLANS.performance.monthlyEur),  // 690 + 12 × 449
+    croissance: firstYear(PLANS.croissance.monthlyEur),    // 690 + 12 × 249
+    essentiel: firstYear(PLANS.essentiel.monthlyEur),      // 690 + 12 × 149
     // Only "they want the installation" — assume the anchor tier.
     setup: firstYear(PLANS.croissance.monthlyEur),
     installation: firstYear(PLANS.croissance.monthlyEur),

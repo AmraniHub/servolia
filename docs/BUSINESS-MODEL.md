@@ -27,7 +27,7 @@ Two things make this a moat, not just markup:
 
 ## The offer
 
-**Installation — €490 once, live in 7 days.** Site built, AI receptionist
+**Installation — €690 once, live in 7 days.** Site built, AI receptionist
 trained on the clinic's own services, everything switched on. **Waived when the
 client starts on an annual plan.** There is no deposit and no balance: nothing
 is owed on delivery day, the monthly plan simply starts.
@@ -63,7 +63,7 @@ the highest-leverage lever in the whole model for a solo founder:
   clinics churn on the first quiet month; annual clients stay long enough for
   the AI to accumulate their conversation data and for the ROI report to prove
   itself, which is exactly when they stop being cancellable.
-- **The installation waiver pays for itself** — giving away €490 to convert a
+- **The installation waiver pays for itself** — giving away €690 to convert a
   monthly signup into an annual one is a rounding error against a €2,490 prepay
   and a locked year.
 
@@ -100,7 +100,7 @@ quote it without checking, and never bypass it inline.
 |---|---|---|---|
 | Subscription tiers (all-in bundle) | AI inference + ~€0 infra | €149 / €249 / €449 per mo | **live** (`PLANS`) |
 | Annual prepay | — | 10× monthly (two months free) | **live** (annual checkout) |
-| Installation | founder time, 7 days | €490 once — waived on annual | **live** (`SETUP_PLAN`) |
+| Installation | founder time, 7 days | €690 once — waived on annual | **live** (`SETUP_PLAN`) |
 | AI receptionist | pennies/convo | metered inside the tier (100 / 300 / 800) | live |
 | Hosting + SSL | ~€0 (shared Vercel/Supabase) | inside every tier | live |
 | Domain + DNS mgmt | ~€8–10/yr (Cloudflare/OpenSRS reseller) | inside every tier | included; fulfilment = founder task ("Ask us") until Cloudflare connected |
@@ -124,10 +124,10 @@ sold is really a nudge to move up a tier.
 - **Annual prepay float** — a year of subscription billed up front (two months
   free) funds growth. Implemented in the subscription checkout; this is the main
   play, not a side one.
-- **Installation paid in full, before the work** — €490 arrives at signup, not
+- **Installation paid in full, before the work** — €690 arrives at signup, not
   on delivery day. Small, but it means no build is ever financed out of pocket.
 - **B2B financing partner** (future) — "€0 upfront, €X/mo". Much less relevant
-  now that the up-front number is €490 rather than a four-figure build; kept
+  now that the up-front number is €690 rather than a four-figure build; kept
   only for the rare prospect who wants literally zero up-front.
 
 ⚠️ Hard line: float is *our own* revenue timing. Client escrow (ad budgets,
@@ -207,5 +207,9 @@ patient deposits) is never spent on anything else — that's fraud, not OPM.
 ---
 
 *Last updated: 2026-07-28 — rewritten for the installation + metered-subscription
-model (€490 setup, €149/249/449 per month, pay 10 get 12). Replaces the €290–990
+model (€690 setup, €149/249/449 per month, pay 10 get 12). Replaces the €290–990
 build ladder and the €49/99/199 Care plans, which are retired.*
+
+---
+
+*2026-09-05 - Installation raised from 490 to 690 EUR. At the founder's measured cost floor (35.10 USD/h) the 490 install broke even at ~12 build hours and Essentiel-monthly failed the 30-day cash test; dental AI setup fees run 500-3,500 USD, so 690 is still low-market. Existing clients are not back-charged. Full working in Rothshield INTELLIGENCE.md Entry 039.*

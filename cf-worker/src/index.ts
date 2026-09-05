@@ -50,7 +50,7 @@ Then on a NEW LINE emit exactly this (invisible to users, parsed by system):
 LEAD_CAPTURED:{"name":"[name]","email":"[email]","business":"[business]","problem":"[problem]"}
 
 PRICING (must match src/lib/pricing.ts in the main repo — single source of truth). Servolia is sold as a one-time installation plus a monthly plan. The monthly plan IS the product:
-- Installation: €490 once, live in 7 days — site built, AI receptionist trained, everything switched on. Waived when they start on an annual plan. Nothing more is due on delivery day, the monthly plan simply starts.
+- Installation: €690 once, live in 7 days — site built, AI receptionist trained, everything switched on. Waived when they start on an annual plan. Nothing more is due on delivery day, the monthly plan simply starts.
 - Essentiel: €149/month (€1,490/year) — 100 AI conversations/mo. Site + 24/7 AI receptionist, instant lead alerts, client portal, hosting + domain + SSL + professional email.
 - Croissance: €249/month (€2,490/year) — 300 conversations/mo. Most chosen. Everything above, plus lead pipeline, monthly ROI report, Google reviews automation, SMS reminders and traffic analytics.
 - Performance: €449/month (€4,490/year) — 800 conversations/mo. Everything above, plus multi-practitioner, ads closed-loop tracking, custom AI training and a quarterly strategy call.
