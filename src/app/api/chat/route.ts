@@ -24,7 +24,12 @@ export const maxDuration = 30;
  *        CLOUDFLARE_AI_TOKEN   = your API token
  */
 
-const MODEL = "@cf/meta/llama-3.1-8b-instruct";
+// 2026-09-05: this id routes to @cf/meta/infire-llama-3.1-8b-instruct,
+// DEPRECATED 2026-05-30 - so the Claude fallback was a trapdoor, not a
+// safety net: when Claude failed this threw AiError 5028 and took the whole
+// request with it. Same bug killed the cf-worker chatbot for three months.
+// Verify with `wrangler ai models` before changing this.
+const MODEL = "@cf/meta/llama-3.1-8b-instruct-fp8";
 
 // Client-facing receptionists use Claude when ANTHROPIC_API_KEY is set —
 // dramatically better French and safer guardrails than the 8B Llama, at
