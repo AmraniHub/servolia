@@ -6,6 +6,7 @@ import { sendEmail, installationPaidEmail } from "@/lib/email";
 import { sendMetaCapiEvent } from "@/lib/metaCapi";
 import { generateScopeDocument } from "@/lib/scopeDocument";
 import { BUILD_PLANS, SETUP_PLAN, resolvePlan } from "@/lib/pricing";
+import { HOSTING_METADATA_KIND } from "@/lib/hosting";
 import { provisionAddon } from "@/lib/provisioning";
 
 export const runtime = "nodejs";
@@ -84,6 +85,43 @@ export async function POST(req: NextRequest) {
           amountEur: amount,
         });
         return NextResponse.json({ received: true });
+      }
+
+      // ── HOSTING branch: a hosting subscription → its own table ──────────
+      // Must stay ABOVE the generic subscription branch below. Falling through
+      // would write a hosting client into `clients` — putting USD hosting money
+      // into Servolia's EUR MRR — and open a build for a site that already
+      // exists and was never scoped here.
+      if (session.mode === "subscription" && session.metadata?.kind === HOSTING_METADATA_KIND) {
+        const customerEmail = session.customer_details?.email ?? session.customer_email ?? null;
+        const amount = (session.amount_total ?? 0) / 100;
+        const period = session.metadata?.period === "annual" ? "annual" : "monthly";
+        // An annual charge is a year of the monthly rate; store the monthly
+        // figure either way so the column means one thing.
+        const monthlyUsd = period === "annual" ? amount / 12 : amount;
+
+        const { error: hostErr } = await db.from("hosting_clients").insert({
+          business: session.metadata?.business || customerEmail || "Unknown",
+          contact_name: session.metadata?.contact_name || null,
+          email: customerEmail,
+          site_url: session.metadata?.site_url || null,
+          repo: session.metadata?.repo || null,
+          branch: session.metadata?.branch || "main",
+          site_root: session.metadata?.site_root || null,
+          vercel_project: session.metadata?.vercel_project || null,
+          plan: session.metadata?.plan || "hosting",
+          monthly_usd: monthlyUsd,
+          billing_period: period,
+          status: "active",
+          customer_id: (session.customer as string) ?? null,
+          subscription_id: (session.subscription as string) ?? null,
+        });
+        // A duplicate is the unique index doing its job on a Stripe retry, not
+        // a failure — Stripe replays any non-2xx, so never 500 on it.
+        if (hostErr && !/duplicate|unique/i.test(hostErr.message)) {
+          console.error("[stripe] hosting_clients insert failed:", hostErr.message);
+        }
+        return NextResponse.json({ received: true, line: "hosting" });
       }
 
       // ── MONTHLY PLAN branch: recurring subscription, not the installation ──
