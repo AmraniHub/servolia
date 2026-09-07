@@ -1,5 +1,6 @@
 import { supabaseAdmin } from "@/lib/supabase";
 import { Server, ExternalLink, AlertTriangle } from "lucide-react";
+import HostingCheckout from "@/components/admin/HostingCheckout";
 
 export const dynamic = "force-dynamic";
 
@@ -52,6 +53,7 @@ export default async function HostingPage() {
             {clients.length} site{clients.length === 1 ? "" : "s"} · {usd(mrr)}/mo recurring
           </p>
         </div>
+        <HostingCheckout />
       </div>
 
       {tableMissing ? (
