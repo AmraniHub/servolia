@@ -20,6 +20,15 @@ export interface ClientProduct {
   name: string;
   /** Shown as the card heading on the payment page. */
   heading: string;
+  /**
+   * The name written mid-sentence, e.g. "your AI assistant is back on".
+   *
+   * Held explicitly because the obvious shortcut — lowercasing `heading` —
+   * produces "your ai assistant", and doing nothing produces "your Website
+   * hosting". An acronym and a sentence-case phrase cannot both be handled by
+   * a case transform, so each product says what it is called in prose.
+   */
+  sentenceName: string;
   /** One sentence under the heading. */
   blurb: string;
   /** USD per month. */
@@ -53,6 +62,7 @@ export const CLIENT_PRODUCTS: Record<string, ClientProduct> = {
     key: "hosting",
     name: "Hosting",
     heading: "Website hosting",
+    sentenceName: "hosting",
     blurb:
       "Your site stays online, fast and secure — and the forms that bring you enquiries keep working.",
     monthlyUsd: 8,
@@ -72,6 +82,7 @@ export const CLIENT_PRODUCTS: Record<string, ClientProduct> = {
     key: "chatbot",
     name: "AI Assistant",
     heading: "AI assistant",
+    sentenceName: "AI assistant",
     blurb:
       "Answers your customers day and night, in their language, so an enquiry at 2am is still an enquiry you win.",
     monthlyUsd: 12,
@@ -113,3 +124,33 @@ export function hostingAmountCents(
  * would land in Servolia's EUR MRR.
  */
 export const HOSTING_METADATA_KIND = "hosting";
+
+/**
+ * When Stripe will charge this subscription again.
+ *
+ * Worked out here rather than read from Stripe because the
+ * checkout.session.completed payload does not carry a period end, and fetching
+ * the subscription would put a second network call inside the webhook — where a
+ * slow response risks a timeout, a Stripe retry, and the client being emailed
+ * twice.
+ *
+ * CLAMPED TO THE END OF THE MONTH, which is the part that is easy to get wrong.
+ * JavaScript rolls an overflowing date forward: setUTCMonth on 31 January
+ * gives 3 March. Stripe does the opposite and bills on 28 February. Left
+ * unclamped, every client who paid on the 29th, 30th or 31st would be told a
+ * renewal date two or three days after the money actually leaves their account.
+ *
+ * The annual path needs the same clamp, which is less obvious: 29 February
+ * plus a year overflows to 1 March in three years out of four. Both periods
+ * therefore go through one code path rather than the year taking a shortcut.
+ */
+export function nextChargeDate(from: Date, period: "monthly" | "annual"): Date {
+  const day = from.getUTCDate();
+  const d = new Date(from.getTime());
+  d.setUTCDate(1);                          // park on a day every month has
+  if (period === "annual") d.setUTCFullYear(d.getUTCFullYear() + 1);
+  else d.setUTCMonth(d.getUTCMonth() + 1);
+  const lastDay = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate();
+  d.setUTCDate(Math.min(day, lastDay));
+  return d;
+}

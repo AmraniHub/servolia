@@ -10,7 +10,10 @@ import {
   scopeAcceptedEmail,
   monthlyReportEmail,
   liveEmail,
+  clientServicePaidEmail,
+  balanceSettledEmail,
 } from "@/lib/email";
+import { CLIENT_PRODUCTS, nextChargeDate } from "@/lib/hosting";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -57,6 +60,38 @@ function build(id: string, lang: "en" | "fr"): Built | null {
       });
     case "live":
       return liveEmail("Amine", "https://servolia.com/sites/cabinet-metay", lang);
+    /* The client-services line (USD). Three variants because the wording
+       genuinely differs: an annual buyer is shown a saving, and a client whose
+       suspended add-on has just come back is told so. */
+    case "hosting-paid":
+      return clientServicePaidEmail({
+        productName: CLIENT_PRODUCTS.hosting.heading,
+        productNoun: CLIENT_PRODUCTS.hosting.sentenceName,
+        siteLabel: "goodscochina.com",
+        amountUsd: CLIENT_PRODUCTS.hosting.annualUsd,
+        period: "annual",
+        nextChargeIso: nextChargeDate(new Date(), "annual").toISOString(),
+        monthlyUsd: CLIENT_PRODUCTS.hosting.monthlyUsd,
+        includes: CLIENT_PRODUCTS.hosting.includes,
+      });
+    case "chatbot-restored":
+      return clientServicePaidEmail({
+        productName: CLIENT_PRODUCTS.chatbot.heading,
+        productNoun: CLIENT_PRODUCTS.chatbot.sentenceName,
+        siteLabel: "temghid.ma",
+        amountUsd: CLIENT_PRODUCTS.chatbot.monthlyUsd,
+        period: "monthly",
+        nextChargeIso: nextChargeDate(new Date(), "monthly").toISOString(),
+        monthlyUsd: CLIENT_PRODUCTS.chatbot.monthlyUsd,
+        restored: true,
+        includes: CLIENT_PRODUCTS.chatbot.includes,
+      });
+    case "balance-settled":
+      return balanceSettledEmail({
+        siteLabel: "excellenceagency.ma",
+        amountUsd: 15,
+        label: "Unpaid hosting — July and August",
+      });
     default:
       return null;
   }
@@ -71,6 +106,9 @@ const TEMPLATES: { id: string; label: string; bilingual: boolean }[] = [
   { id: "scope-accepted", label: "Scope accepted", bilingual: false },
   { id: "monthly-report", label: "Monthly client report", bilingual: true },
   { id: "live", label: "Site is live", bilingual: true },
+  { id: "hosting-paid", label: "Hosting paid — yearly", bilingual: false },
+  { id: "chatbot-restored", label: "Assistant paid — switched back on", bilingual: false },
+  { id: "balance-settled", label: "Old balance settled", bilingual: false },
 ];
 
 export async function GET(req: NextRequest) {

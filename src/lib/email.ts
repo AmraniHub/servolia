@@ -669,3 +669,152 @@ export const liveEmail = (firstName: string, url: string, lang: "en" | "fr" = "e
       `, { preheader: "Your site is live. Here is the link and what comes next.", lang: "en" }),
   };
 };
+
+// ============================================================================
+// CLIENT SERVICES (hosting, AI assistant) — the USD line, not the Servolia
+// subscription. Kept apart from installationPaidEmail: that one is EUR, opens
+// a build, and sends the buyer to an intake form. These clients already have a
+// finished site and are buying it kept running, so an intake link would be
+// nonsense and the currency would be wrong.
+// ============================================================================
+
+/**
+ * Sent by the Stripe webhook the moment a hosting or assistant payment clears.
+ *
+ * WHY THIS EXISTS AT ALL. Stripe's own receipt only goes out if "Successful
+ * payments" is switched on in the dashboard — a toggle that lives outside this
+ * repository, cannot be read back through the API, and can be turned off by
+ * anyone with dashboard access. /hosting/thanks tells the buyer a receipt is
+ * coming, so leaving that promise resting on a setting we cannot see meant it
+ * could quietly stop being true. This email is ours, so it is not a promise we
+ * have to hope someone else keeps.
+ *
+ * It does not replace the Stripe receipt, which is the tax document. Leave that
+ * setting on.
+ */
+export const clientServicePaidEmail = (input: {
+  /** "Website hosting" / "AI assistant" — the headline form. */
+  productName: string;
+  /** The same thing written mid-sentence: "hosting", "AI assistant". Never
+   *  derived by lowercasing productName — that yields "ai assistant". */
+  productNoun: string;
+  /** e.g. "goodscochina.com". Empty when the ref was unknown. */
+  siteLabel: string;
+  amountUsd: number;
+  period: "monthly" | "annual";
+  /** Next charge, ISO. Omitted rather than guessed if it could not be worked out. */
+  nextChargeIso?: string | null;
+  /** The monthly rate, so an annual buyer can see what the year bought. */
+  monthlyUsd?: number;
+  /** True when this payment switched a suspended add-on back on. */
+  restored?: boolean;
+  /** A few lines of what the money covers. */
+  includes?: string[];
+}) => {
+  const {
+    productName, productNoun, siteLabel, amountUsd, period,
+    nextChargeIso = null, monthlyUsd, restored = false, includes = [],
+  } = input;
+
+  const forSite = siteLabel ? ` for ${siteLabel}` : "";
+  const term = period === "annual" ? "year" : "month";
+  const nextCharge = nextChargeIso
+    ? new Date(nextChargeIso).toLocaleDateString("en-GB", {
+        day: "numeric", month: "long", year: "numeric", timeZone: "UTC",
+      })
+    : null;
+
+  /* An annual buyer is told what they saved, but only when there is a saving.
+     Claiming one that does not exist is the kind of small lie that costs more
+     than the discount is worth. */
+  const saving = period === "annual" && monthlyUsd
+    ? Math.round(monthlyUsd * 12 - amountUsd)
+    : 0;
+
+  const headline = restored
+    ? `Your ${productNoun} is back on`
+    : "Payment received";
+
+  const opening = restored
+    ? `Thank you — your payment cleared and your ${productNoun} has been switched back on${forSite}. It is live again now; you do not need to do anything.`
+    : `Thank you — your payment cleared and your ${productNoun}${forSite} is active. Nothing else to do.`;
+
+  return {
+    subject: `Payment received — ${productName}${siteLabel ? ` for ${siteLabel}` : ""}`,
+    html: wrapper(`
+      <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">${headline}</h1>
+      <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:${BODY};">${opening}</p>
+
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
+             style="margin:0 0 20px;border:1px solid ${LINE};border-radius:12px;background:${CREAM};">
+        <tr><td style="padding:18px 20px;font-family:${FONT};">
+          <p style="margin:0 0 6px;font-size:11px;font-weight:900;letter-spacing:1px;text-transform:uppercase;color:${MUTED};">What you paid for</p>
+          <p style="margin:0 0 2px;font-size:17px;font-weight:800;color:${INK};">${productName}${siteLabel ? ` &middot; ${siteLabel}` : ""}</p>
+          <p style="margin:0;font-size:15px;color:${BODY};">
+            <strong>$${amountUsd}</strong> per ${term}${saving > 0 ? ` &middot; you saved $${saving} against paying monthly` : ""}
+          </p>
+          ${nextCharge ? `<p style="margin:10px 0 0;font-size:14px;color:${MUTED};">Renews automatically on <strong style="color:${BODY};">${nextCharge}</strong> at the same price. You can cancel any time before then.</p>` : `<p style="margin:10px 0 0;font-size:14px;color:${MUTED};">Renews automatically each ${term} at the same price. You can cancel any time.</p>`}
+        </td></tr>
+      </table>
+
+      ${includes.length ? `
+      <p style="margin:0 0 10px;font-size:15px;line-height:1.6;color:${BODY};"><strong>What this covers:</strong></p>
+      <ul style="margin:0 0 20px;padding-left:20px;font-size:15px;line-height:1.7;color:${BODY};">
+        ${includes.map((line) => `<li>${line}</li>`).join("")}
+      </ul>` : ""}
+
+      <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:${BODY};">
+        Stripe has emailed you a separate receipt for your records. If you need an invoice with your company details on it, reply to this email and I will send one.
+      </p>
+      <p style="margin:0;font-size:14px;line-height:1.6;color:${MUTED};">
+        Any question about your ${productNoun} — just reply here. A person reads every message.
+      </p>
+      `, {
+        preheader: restored
+          ? `Your ${productNoun} is live again. Here is what you paid and when it renews.`
+          : `Confirmed. Here is what you paid and when it renews.`,
+        lang: "en",
+      }),
+  };
+};
+
+/**
+ * Sent when a client settles an old unpaid balance — a one-off charge, not a
+ * subscription. Deliberately says nothing about renewals: this is the last
+ * time they will be charged for it, and implying otherwise on a debt someone
+ * has just cleared is the wrong note to end on.
+ */
+export const balanceSettledEmail = (input: {
+  siteLabel: string;
+  amountUsd: number;
+  label: string;
+}) => {
+  const { siteLabel, amountUsd, label } = input;
+  /* The label is operator-written and already carries its own capitals and
+     punctuation ("Unpaid hosting — July and August"). It is therefore printed
+     verbatim and kept out of the subject line: dropped in there it produced
+     "Payment received — Unpaid hosting — July and August for x.ma", two dashes
+     deep and unreadable in an inbox list. */
+  return {
+    subject: `Payment received — balance cleared${siteLabel ? ` for ${siteLabel}` : ""}`,
+    html: wrapper(`
+      <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">That's settled</h1>
+      <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:${BODY};">
+        Thank you — your payment of <strong>$${amountUsd}</strong> has cleared${siteLabel ? ` for ${siteLabel}` : ""}. Your account is now up to date and there is nothing outstanding.
+      </p>
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
+             style="margin:0 0 20px;border:1px solid ${LINE};border-radius:12px;background:${CREAM};">
+        <tr><td style="padding:16px 20px;font-family:${FONT};">
+          <p style="margin:0 0 4px;font-size:11px;font-weight:900;letter-spacing:1px;text-transform:uppercase;color:${MUTED};">What this was for</p>
+          <p style="margin:0;font-size:15px;color:${INK};">${label}</p>
+        </td></tr>
+      </table>
+      <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:${BODY};">
+        This was a one-off charge. It will not repeat.
+      </p>
+      <p style="margin:0;font-size:14px;line-height:1.6;color:${MUTED};">
+        Stripe has emailed you a receipt. Need an invoice with your company details? Just reply here.
+      </p>
+      `, { preheader: "Your balance is clear. Nothing outstanding.", lang: "en" }),
+  };
+};

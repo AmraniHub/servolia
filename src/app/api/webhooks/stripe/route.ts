@@ -2,11 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import Stripe from "stripe";
 import { supabaseAdmin, estimateLeadValue } from "@/lib/supabase";
-import { sendEmail, installationPaidEmail } from "@/lib/email";
+import {
+  sendEmail,
+  installationPaidEmail,
+  clientServicePaidEmail,
+  balanceSettledEmail,
+} from "@/lib/email";
 import { sendMetaCapiEvent } from "@/lib/metaCapi";
 import { generateScopeDocument } from "@/lib/scopeDocument";
 import { BUILD_PLANS, SETUP_PLAN, resolvePlan } from "@/lib/pricing";
-import { HOSTING_METADATA_KIND } from "@/lib/hosting";
+import { HOSTING_METADATA_KIND, resolveHostingPlan, nextChargeDate } from "@/lib/hosting";
 import { setShopifyGate } from "@/lib/hostingGate";
 import { provisionAddon } from "@/lib/provisioning";
 
@@ -119,7 +124,8 @@ export async function POST(req: NextRequest) {
         });
         // A duplicate is the unique index doing its job on a Stripe retry, not
         // a failure — Stripe replays any non-2xx, so never 500 on it.
-        if (hostErr && !/duplicate|unique/i.test(hostErr.message)) {
+        const alreadySeen = Boolean(hostErr && /duplicate|unique/i.test(hostErr.message));
+        if (hostErr && !alreadySeen) {
           console.error("[stripe] hosting_clients insert failed:", hostErr.message);
         }
         /* Auto-restore the paid add-on. The suspended notice promises the
@@ -127,10 +133,16 @@ export async function POST(req: NextRequest) {
          * so it has to actually happen -- a promise kept by a human doing it
          * later is a promise the client experiences as broken.
          *
-         * Fire-and-forget: a GitHub outage must never fail the webhook, or
-         * Stripe retries and the client is charged again. */
+         * Awaited, but it can never fail the webhook: the catch swallows a
+         * GitHub outage and reports it as "not restored". Left fire-and-forget
+         * this would still work, but nothing downstream could know whether the
+         * flip actually happened — and the confirmation email says "your
+         * assistant is back on", which must not be a guess. setShopifyGate
+         * returns false when the file already said what we wanted, so a client
+         * who was never suspended is not told they were just reinstated. */
+        let restored = false;
         if (session.metadata?.gate_widget && session.metadata?.repo) {
-          setShopifyGate(
+          restored = await setShopifyGate(
             {
               repo: session.metadata.repo,
               branch: session.metadata.branch || "main",
@@ -138,10 +150,97 @@ export async function POST(req: NextRequest) {
             },
             session.metadata.gate_widget,
             false,
-          ).catch((e) => console.error("[stripe] chatbot restore failed:", e?.message));
+          ).catch((e) => {
+            console.error("[stripe] chatbot restore failed:", e?.message);
+            return false;
+          });
+        }
+
+        /* CONFIRM IT TO THE CLIENT, IN OUR OWN NAME.
+         *
+         * /hosting/thanks tells the buyer a receipt is on its way. Until this
+         * existed, the only thing that could keep that promise was Stripe's
+         * "Successful payments" toggle — off by default in some accounts,
+         * invisible to the API, and changeable by anyone with dashboard
+         * access. A small client paying a stranger's Stripe page and then
+         * receiving nothing is exactly the moment a payment feels like a scam.
+         *
+         * Guarded on `alreadySeen` so a replayed webhook cannot email them a
+         * second time: the unique index on subscription_id is the idempotency
+         * key, reused rather than reinvented. A non-duplicate insert error
+         * still sends — they paid, so they get their confirmation even if our
+         * bookkeeping had a bad moment. */
+        const product = resolveHostingPlan(session.metadata?.plan);
+        if (customerEmail && !alreadySeen) {
+          const tpl = clientServicePaidEmail({
+            productName: product?.heading ?? "Website hosting",
+            productNoun: product?.sentenceName ?? "hosting",
+            siteLabel: session.metadata?.business || session.metadata?.ref || "",
+            amountUsd: amount,
+            period,
+            nextChargeIso: nextChargeDate(new Date(event.created * 1000), period).toISOString(),
+            monthlyUsd: product?.monthlyUsd,
+            restored,
+            includes: product?.includes ?? [],
+          });
+          sendEmail(customerEmail, tpl.subject, tpl.html).catch(() => {});
+        }
+
+        /* And tell the operator. Every other branch here notifies Telegram;
+         * this one did not, so a hosting client could pay and nobody would
+         * know until the Stripe balance was next opened. */
+        const hostTgToken = process.env.TELEGRAM_BOT_TOKEN;
+        const hostTgChatId = process.env.TELEGRAM_CHAT_ID;
+        if (hostTgToken && hostTgChatId && !alreadySeen) {
+          const msg = `🌐 *${product?.name ?? "Hosting"} paid — $${amount} ${period}*\n` +
+                      `${session.metadata?.business || session.metadata?.ref || "unnamed site"}\n` +
+                      `${customerEmail ?? "no email"}\n` +
+                      (restored ? `♻️ ${session.metadata?.gate_widget} switched back on\n` : "") +
+                      `\n[Open](https://servolia.com/admin/hosting)`;
+          fetch(`https://api.telegram.org/bot${hostTgToken}/sendMessage`, {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ chat_id: hostTgChatId, text: msg, parse_mode: "Markdown" }),
+          }).catch(() => {});
         }
 
         return NextResponse.json({ received: true, line: "hosting" });
+      }
+
+      /* ── ARREARS branch: a one-off charge clearing an old balance ─────────
+       *
+       * THIS MUST NOT FALL THROUGH. Arrears are sold in `payment` mode, so the
+       * subscription guard above does not catch them, and the next branch that
+       * would is the build-payment path at the bottom — which has no mode check
+       * at all. Without this, settling a $15 debt would open a BUILD, invent a
+       * LEAD, and email the payer that their "installation" had cleared and
+       * their site was being made, in euros. A client clearing an old invoice
+       * would be told they had just commissioned a new project.
+       *
+       * Dormant today: no client in CLIENT_REFS carries arrearsUsd, so
+       * /api/hosting-checkout refuses every arrears request with "Nothing
+       * outstanding". It stops being dormant the moment one is added. */
+      if (session.mode === "payment" && session.metadata?.kind === HOSTING_METADATA_KIND) {
+        const customerEmail = session.customer_details?.email ?? session.customer_email ?? null;
+        const amount = (session.amount_total ?? 0) / 100;
+        const label = session.metadata?.label || "Outstanding balance";
+        const siteLabel = session.metadata?.ref || "";
+
+        if (customerEmail) {
+          const tpl = balanceSettledEmail({ siteLabel, amountUsd: amount, label });
+          sendEmail(customerEmail, tpl.subject, tpl.html).catch(() => {});
+        }
+
+        const tgToken = process.env.TELEGRAM_BOT_TOKEN;
+        const tgChatId = process.env.TELEGRAM_CHAT_ID;
+        if (tgToken && tgChatId) {
+          const msg = `💵 *Arrears settled — $${amount}*\n${siteLabel || "unnamed site"}\n${customerEmail ?? "no email"}`;
+          fetch(`https://api.telegram.org/bot${tgToken}/sendMessage`, {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ chat_id: tgChatId, text: msg, parse_mode: "Markdown" }),
+          }).catch(() => {});
+        }
+
+        return NextResponse.json({ received: true, line: "arrears" });
       }
 
       // ── MONTHLY PLAN branch: recurring subscription, not the installation ──

@@ -76,8 +76,16 @@ export async function POST(req: NextRequest) {
           quantity: 1,
         },
       ],
-      metadata: { kind: HOSTING_METADATA_KIND, plan: "arrears", ref },
-      success_url: `${origin}/hosting/thanks`,
+      // `label` is carried so the confirmation email can name the charge the
+      // same way the checkout page did. "Outstanding balance" on a receipt
+      // with no other explanation is what causes the support email.
+      metadata: {
+        kind: HOSTING_METADATA_KIND,
+        plan: "arrears",
+        ref,
+        label: client?.arrearsLabel || "Outstanding balance",
+      },
+      success_url: `${origin}/hosting/thanks?product=arrears`,
       cancel_url: `${origin}/hosting`,
     });
     return NextResponse.json({ url: once.url });
@@ -119,8 +127,16 @@ export async function POST(req: NextRequest) {
         ...(client?.gateWidget ? { gate_widget: client.gateWidget } : {}),
       },
       allow_promotion_codes: true,
-      success_url: `${origin}/hosting/thanks`,
-      cancel_url: `${origin}/hosting`,
+      /* The thank-you page is shared by every client product, so it is told
+       * which one this was. Display only — it decides wording, never money.
+       *
+       * `restored` here means "this client has a suspension gate", not "the
+       * gate was actually flipped": the flip happens in the webhook, after the
+       * redirect, so the page cannot know the outcome. The confirmation EMAIL
+       * uses the real result. Worst case a client who was never suspended
+       * reads "back online" on one page. */
+      success_url: `${origin}/hosting/thanks?product=${hostingPlan.key}${client?.gateWidget ? "&restored=1" : ""}`,
+      cancel_url: `${origin}/${hostingPlan.key === "chatbot" ? "chatbot" : "hosting"}${ref ? `?ref=${encodeURIComponent(ref)}` : ""}`,
     });
 
     return NextResponse.json({ url: session.url });
