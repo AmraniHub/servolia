@@ -37,8 +37,11 @@ export interface ClientProduct {
  *
  * ANNUAL PRICING IS NOT CONSISTENT BETWEEN THE TWO, on purpose:
  *
- *  - hosting  $96 = 12 x monthly. Set explicitly by the operator, so a yearly
- *    payer gets no discount — it buys cash up front and no churn, not a saving.
+ *  - hosting  $88 = 11 x monthly — one month free, 8.3% off. Chosen over a
+ *    literal 7% ($89.28) because "one month free" is an offer a client can
+ *    repeat back, and over the 10x house rule ($80) because at $8/month the
+ *    margin is already thin: infra plus even ten minutes of support a month
+ *    costs close to $10, so a deeper cut would sell the year at a loss.
  *  - chatbot  $120 = 10 x monthly, the house rule elsewhere in this codebase
  *    (pay 10, get 12). The old dashboard used 12 x fee less 19% = $116.64,
  *    which is the same idea with an uglier number.
@@ -53,7 +56,7 @@ export const CLIENT_PRODUCTS: Record<string, ClientProduct> = {
     blurb:
       "Your site stays online, fast and secure — and the forms that bring you enquiries keep working.",
     monthlyUsd: 8,
-    annualUsd: 96,
+    annualUsd: 88,
     includes: [
       "Hosting on a global CDN, with SSL",
       "Domain renewal and DNS managed",
