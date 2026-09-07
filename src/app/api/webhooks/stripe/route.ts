@@ -410,6 +410,53 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // ── Same for a hosting client ────────────────────────────────────────
+    // Runs alongside the clients branch above rather than instead of it: a
+    // subscription belongs to exactly one of the two tables, so whichever
+    // lookup misses simply updates nothing.
+    if (event.type === "invoice.payment_failed") {
+      const invoice = event.data.object as Stripe.Invoice & { subscription?: string | null };
+      const subscriptionId = typeof invoice.subscription === "string" ? invoice.subscription : null;
+      const customerId = typeof invoice.customer === "string" ? invoice.customer : null;
+      const filter = [
+        subscriptionId ? `subscription_id.eq.${subscriptionId}` : null,
+        customerId ? `customer_id.eq.${customerId}` : null,
+      ].filter(Boolean).join(",");
+
+      if (filter) {
+        const { data: host } = await db.from("hosting_clients")
+          .select("id, past_due_since, business, repo, branch, site_root")
+          .or(filter).maybeSingle();
+
+        if (host) {
+          const now = new Date();
+          const pastDueSince = host.past_due_since ?? now.toISOString();
+          const suspendAt = new Date(new Date(pastDueSince).getTime() + GRACE_DAYS * 86400000).toISOString();
+          await db.from("hosting_clients").update({
+            status: "past_due",
+            payment_status: "past_due",
+            past_due_since: pastDueSince,
+            suspend_at: suspendAt,
+            open_invoice_url: invoice.hosted_invoice_url ?? null,
+          }).eq("id", host.id);
+
+          // The site is NOT gated here. Stripe retries a failed card over
+          // several days, and cutting a paid-up-until-yesterday client off the
+          // moment one retry fails reads as sabotage. The grace deadline is
+          // recorded; gating is a separate, later decision.
+          const tgToken = process.env.TELEGRAM_BOT_TOKEN;
+          const tgChatId = process.env.TELEGRAM_CHAT_ID;
+          if (tgToken && tgChatId) {
+            const msg = `🔴 *Hosting payment failed*\n${host.business}\nGrace ends: ${new Date(suspendAt).toLocaleDateString()}\n\n[Open](https://servolia.com/admin/hosting)`;
+            fetch(`https://api.telegram.org/bot${tgToken}/sendMessage`, {
+              method: "POST", headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ chat_id: tgChatId, text: msg, parse_mode: "Markdown" }),
+            }).catch(() => {});
+          }
+        }
+      }
+    }
+
     // ── Invoice paid: clear past_due back to ok, unsuspend if needed ──────
     if (event.type === "invoice.paid" || event.type === "invoice.payment_succeeded") {
       const invoice = event.data.object as Stripe.Invoice & { subscription?: string | null };
@@ -425,6 +472,16 @@ export async function POST(req: NextRequest) {
           last_payment_failure_reason: null,
           open_invoice_url: null,
         }).or(filter);
+
+        // Hosting equivalent. Restores status to active so a client who was
+        // suspended for non-payment comes back on the next successful charge.
+        await db.from("hosting_clients").update({
+          status: "active",
+          payment_status: "ok",
+          past_due_since: null,
+          suspend_at: null,
+          open_invoice_url: null,
+        }).or(filter);
       }
     }
 
@@ -432,6 +489,14 @@ export async function POST(req: NextRequest) {
     if (event.type === "customer.subscription.deleted") {
       const sub = event.data.object as Stripe.Subscription;
       await db.from("clients").update({
+        status: "churned",
+        churned_at: new Date().toISOString(),
+      }).eq("subscription_id", sub.id);
+
+      // Hosting equivalent. A cancelled hosting subscription is the one case
+      // where the site should actually stop being served -- but that is a
+      // deliberate action, not an automatic one, so it is only recorded here.
+      await db.from("hosting_clients").update({
         status: "churned",
         churned_at: new Date().toISOString(),
       }).eq("subscription_id", sub.id);
