@@ -23,6 +23,13 @@ export default function ProductCheckout({
   defaultBilling?: "annual" | "monthly";
 }) {
   const [billing, setBilling] = useState<"annual" | "monthly">(defaultBilling);
+  // When the link carries no recognised client, the buyer identifies
+  // themselves before paying -- otherwise an anonymous payment arrives with
+  // nothing to attach it to, and they have paid for something unnamed.
+  const [site, setSite] = useState("");
+  const [email, setEmail] = useState("");
+  const known = Boolean(siteLabel);
+  const identified = known || (site.trim().length > 3 && /.+@.+\..+/.test(email));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,7 +42,13 @@ export default function ProductCheckout({
         headers: { "Content-Type": "application/json" },
         // Only a plan key and a period. No amount: a price posted from the
         // browser is a price the buyer can edit in devtools.
-        body: JSON.stringify({ plan: planKey, billing, ref: refCode, business: siteLabel }),
+        body: JSON.stringify({
+          plan: planKey,
+          billing,
+          ref: refCode,
+          business: siteLabel || site.trim(),
+          email: email.trim(),
+        }),
       });
       const data = await res.json();
       if (data.url) {
@@ -57,12 +70,34 @@ export default function ProductCheckout({
   return (
     <div className="max-w-md mx-auto">
       <div className="rounded-2xl border border-[#E8E6E0] bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden">
-        {siteLabel ? (
+        {known ? (
           <div className="px-7 pt-6 pb-5 border-b border-[#F0EFEA] bg-[#FAFAF7]">
             <p className="text-[10px] font-black text-[#8A8A80] uppercase tracking-widest mb-1">For</p>
             <p className="text-[15px] font-bold text-[#18181B]">{siteLabel}</p>
           </div>
-        ) : null}
+        ) : (
+          <div className="px-7 pt-6 pb-5 border-b border-[#F0EFEA] bg-[#FAFAF7]">
+            <p className="text-[10px] font-black text-[#8A8A80] uppercase tracking-widest mb-2">
+              Which website is this for?
+            </p>
+            <input
+              value={site}
+              onChange={(e) => setSite(e.target.value)}
+              placeholder="yourdomain.com"
+              className="w-full h-10 px-3 mb-2 text-sm border border-[#E8E6E0] rounded-lg bg-white focus:outline-none focus:border-[#36671E]"
+            />
+            <input
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              type="email"
+              placeholder="your@email.com"
+              className="w-full h-10 px-3 text-sm border border-[#E8E6E0] rounded-lg bg-white focus:outline-none focus:border-[#36671E]"
+            />
+            <p className="mt-2 text-[11px] text-[#8A8A80]">
+              So we can match the payment to your site.
+            </p>
+          </div>
+        )}
 
         <div className="px-7 pt-6">
           <div className="flex items-center gap-1 p-1 rounded-xl bg-[#F4F4F0] mb-6">
@@ -103,10 +138,14 @@ export default function ProductCheckout({
         <div className="px-7 pb-7">
           <button
             onClick={pay}
-            disabled={loading}
+            disabled={loading || !identified}
             className="w-full h-12 rounded-xl bg-[#18181B] text-white font-bold hover:bg-[#27272A] disabled:opacity-60 transition"
           >
-            {loading ? "Redirecting to Stripe…" : `Pay $${amount} — get started`}
+            {loading
+              ? "Redirecting to Stripe…"
+              : identified
+                ? `Pay $${amount} — get started`
+                : "Enter your website to continue"}
           </button>
 
           {error ? <p className="mt-3 text-sm text-[#B91C1C] text-center">{error}</p> : null}
