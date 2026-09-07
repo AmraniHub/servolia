@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
+import { clientRefFor } from "@/lib/clientRefs";
 import {
   resolveHostingPlan,
   hostingAmountCents,
@@ -29,7 +30,7 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json().catch(() => ({}));
-  const { plan = "hosting", billing = "annual", email = "", business = "", ref = "" } =
+  const { plan = "hosting", billing = "annual", email = "", business = "", ref = "", mode = "" } =
     body as Record<string, string>;
 
   const hostingPlan = resolveHostingPlan(plan);
@@ -39,6 +40,48 @@ export async function POST(req: NextRequest) {
 
   const period: "monthly" | "annual" = billing === "monthly" ? "monthly" : "annual";
   const origin = req.nextUrl.origin;
+
+  /* ARREARS
+   * Settled as a SEPARATE one-time payment, not folded into the subscription.
+   * Stripe refuses a one-time price beside a recurring one in subscription
+   * mode, and the supported alternative (add_invoice_items) needs a real
+   * Product id rather than inline product data -- more moving parts, and a
+   * failure that would only show up when a client with a balance tried to pay.
+   * Two clear payments are also easier for the client to read on a statement
+   * than one combined figure they have to decompose.
+   *
+   * The amount is read from the server-side client map, never the request: an
+   * amount posted from a browser is an amount the payer can edit.
+   */
+  const client = clientRefFor(ref);
+  if (mode === "arrears") {
+    const owed = client?.arrearsUsd ?? 0;
+    if (owed <= 0) {
+      return NextResponse.json({ error: "Nothing outstanding" }, { status: 400 });
+    }
+    const stripeOnce = new Stripe(key);
+    const once = await stripeOnce.checkout.sessions.create({
+      mode: "payment",
+      ...(email ? { customer_email: email } : {}),
+      line_items: [
+        {
+          price_data: {
+            currency: "usd",
+            product_data: {
+              name: client?.arrearsLabel || "Outstanding balance",
+              description: "Unpaid amount from previous months. Charged once.",
+            },
+            unit_amount: Math.round(owed * 100),
+          },
+          quantity: 1,
+        },
+      ],
+      metadata: { kind: HOSTING_METADATA_KIND, plan: "arrears", ref },
+      success_url: `${origin}/hosting/thanks`,
+      cancel_url: `${origin}/hosting`,
+    });
+    return NextResponse.json({ url: once.url });
+  }
 
   try {
     const stripe = new Stripe(key);
