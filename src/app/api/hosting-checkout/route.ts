@@ -109,10 +109,14 @@ export async function POST(req: NextRequest) {
         plan: hostingPlan.key,
         period,
         business: business || ref || "",
-        // Site details are attached by the operator afterwards: the client
-        // does not know their repo, and the gate that needs them is not
-        // wired up to fire automatically anyway.
         ref,
+        // Carried so the webhook can restore the service on payment. Sourced
+        // from the server-side client map, never the request: these name a
+        // repository that gets written to.
+        ...(client?.repo ? { repo: client.repo } : {}),
+        ...(client?.branch ? { branch: client.branch } : {}),
+        ...(client?.siteRoot ? { site_root: client.siteRoot } : {}),
+        ...(client?.gateWidget ? { gate_widget: client.gateWidget } : {}),
       },
       allow_promotion_codes: true,
       success_url: `${origin}/hosting/thanks`,

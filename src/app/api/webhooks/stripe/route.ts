@@ -7,6 +7,7 @@ import { sendMetaCapiEvent } from "@/lib/metaCapi";
 import { generateScopeDocument } from "@/lib/scopeDocument";
 import { BUILD_PLANS, SETUP_PLAN, resolvePlan } from "@/lib/pricing";
 import { HOSTING_METADATA_KIND } from "@/lib/hosting";
+import { setShopifyGate } from "@/lib/hostingGate";
 import { provisionAddon } from "@/lib/provisioning";
 
 export const runtime = "nodejs";
@@ -121,6 +122,25 @@ export async function POST(req: NextRequest) {
         if (hostErr && !/duplicate|unique/i.test(hostErr.message)) {
           console.error("[stripe] hosting_clients insert failed:", hostErr.message);
         }
+        /* Auto-restore the paid add-on. The suspended notice promises the
+         * assistant comes back "automatiquement dès reception du paiement",
+         * so it has to actually happen -- a promise kept by a human doing it
+         * later is a promise the client experiences as broken.
+         *
+         * Fire-and-forget: a GitHub outage must never fail the webhook, or
+         * Stripe retries and the client is charged again. */
+        if (session.metadata?.gate_widget && session.metadata?.repo) {
+          setShopifyGate(
+            {
+              repo: session.metadata.repo,
+              branch: session.metadata.branch || "main",
+              siteRoot: session.metadata.site_root || null,
+            },
+            session.metadata.gate_widget,
+            false,
+          ).catch((e) => console.error("[stripe] chatbot restore failed:", e?.message));
+        }
+
         return NextResponse.json({ received: true, line: "hosting" });
       }
 

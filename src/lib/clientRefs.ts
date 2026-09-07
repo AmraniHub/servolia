@@ -26,12 +26,28 @@ export interface ClientRef {
   /** What the client sees this charge called. Be specific: "outstanding
    *  balance" on a receipt with no explanation causes a support email. */
   arrearsLabel?: string;
+
+  /* Where the gate lives, so a payment can restore the service by itself.
+   * Held server-side rather than passed through the browser: these decide
+   * which repository gets written to. */
+  /** e.g. "AmraniHub/temghid-theme" */
+  repo?: string;
+  branch?: string;
+  /** Subfolder the site deploys from; omit when it is the repo root. */
+  siteRoot?: string;
+  /** Shopify snippet pair to flip, e.g. "chatbot" <-> "chatbot-suspended". */
+  gateWidget?: string;
 }
 
 export const CLIENT_REFS: Record<string, ClientRef> = {
   goodscochina: { label: "goodscochina.com" },
   excellenceagency: { label: "excellenceagency.ma" },
-  temghid: { label: "temghid.ma" },
+  temghid: {
+    label: "temghid.ma",
+    repo: "AmraniHub/temghid-theme",
+    branch: "main",
+    gateWidget: "chatbot",
+  },
 };
 
 export function clientRefFor(ref: string | undefined): ClientRef | undefined {

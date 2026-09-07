@@ -74,6 +74,63 @@ async function gh(path: string, init: RequestInit = {}) {
   return res.json();
 }
 
+/* ── Shopify ────────────────────────────────────────────────────────────────
+ * A Shopify theme has no site-status.js. The gate is a generated snippet that
+ * renders either the live widget or its suspended twin, and flipping it is a
+ * text swap on that one line.
+ *
+ * NOTE the storefront is never gated -- only the paid add-on. A shop turning
+ * over real money loses more in a day than the invoice is worth, and blocking
+ * checkout over $12 reads as sabotage rather than a reminder.
+ */
+const GATE_PATH = "snippets/subscription-gate.liquid";
+
+/** Swap `render 'x-suspended'` for `render 'x'` and back. */
+function flipGate(source: string, widget: string, suspend: boolean): string {
+  if (suspend) {
+    // `render 'chatbot'` -> `render 'chatbot-suspended'`, leaving params alone
+    return source.replace(
+      new RegExp(`render '${widget}'`, "g"),
+      `render '${widget}-suspended'`,
+    );
+  }
+  // `render 'chatbot-suspended', monthly: '…', balance: '…'` -> `render 'chatbot'`
+  return source.replace(
+    new RegExp(`render '${widget}-suspended'(?:,[^-]*?)?(?= -%\\})`, "g"),
+    `render '${widget}'`,
+  );
+}
+
+export async function setShopifyGate(
+  target: GateTarget,
+  widget: string,
+  suspend: boolean,
+): Promise<boolean> {
+  const branch = target.branch || "main";
+  const path = sitePath(target.siteRoot, GATE_PATH);
+
+  const current = (await gh(
+    `/repos/${target.repo}/contents/${encodeURIComponent(path)}?ref=${encodeURIComponent(branch)}`,
+  )) as { sha: string; content: string };
+
+  const decoded = Buffer.from(current.content, "base64").toString("utf8");
+  const next = flipGate(decoded, widget, suspend);
+  if (next === decoded) return false;
+
+  await gh(`/repos/${target.repo}/contents/${encodeURIComponent(path)}`, {
+    method: "PUT",
+    body: JSON.stringify({
+      message: suspend
+        ? `Pause ${widget}: payment overdue`
+        : `Restore ${widget}: payment received`,
+      content: Buffer.from(next, "utf8").toString("base64"),
+      sha: current.sha,
+      branch,
+    }),
+  });
+  return true;
+}
+
 /**
  * Set the gate. Returns false when the file already says what we want, so a
  * repeated webhook does not push an empty commit and trigger a pointless
