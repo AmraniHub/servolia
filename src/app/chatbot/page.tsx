@@ -12,14 +12,15 @@ export const metadata: Metadata = {
 export default async function ChatbotPage({
   searchParams,
 }: {
-  searchParams: Promise<{ ref?: string }>;
+  searchParams: Promise<{ ref?: string; billing?: string }>;
 }) {
-  const { ref = "" } = await searchParams;
+  const { ref = "", billing = "" } = await searchParams;
   return (
     <ClientProductPage
       product={CLIENT_PRODUCTS.chatbot}
       refCode={ref}
       siteLabel={siteLabelFor(ref)}
+      defaultBilling={billing === "monthly" ? "monthly" : "annual"}
     />
   );
 }

@@ -15,15 +15,16 @@ export const metadata: Metadata = {
 export default async function HostingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ ref?: string }>;
+  searchParams: Promise<{ ref?: string; billing?: string }>;
 }) {
   // Next 16: searchParams is a promise and must be awaited.
-  const { ref = "" } = await searchParams;
+  const { ref = "", billing = "" } = await searchParams;
   return (
     <ClientProductPage
       product={CLIENT_PRODUCTS.hosting}
       refCode={ref}
       siteLabel={siteLabelFor(ref)}
+      defaultBilling={billing === "monthly" ? "monthly" : "annual"}
     />
   );
 }

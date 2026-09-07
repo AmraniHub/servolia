@@ -12,10 +12,12 @@ export default function ClientProductPage({
   product,
   refCode,
   siteLabel,
+  defaultBilling,
 }: {
   product: ClientProduct;
   refCode: string;
   siteLabel: string;
+  defaultBilling?: "annual" | "monthly";
 }) {
   return (
     <main className="min-h-screen bg-[#FAFAF7] flex flex-col">
@@ -46,6 +48,7 @@ export default function ClientProductPage({
           includes={product.includes}
           refCode={refCode}
           siteLabel={siteLabel}
+          defaultBilling={defaultBilling}
         />
       </div>
 

@@ -10,6 +10,7 @@ export default function ProductCheckout({
   includes,
   refCode,
   siteLabel,
+  defaultBilling = "annual",
 }: {
   planKey: string;
   monthlyUsd: number;
@@ -17,8 +18,11 @@ export default function ProductCheckout({
   includes: string[];
   refCode: string;
   siteLabel: string;
+  /** Which term the link opens on, so a client agreed on monthly is not
+   *  shown the annual price first. */
+  defaultBilling?: "annual" | "monthly";
 }) {
-  const [billing, setBilling] = useState<"annual" | "monthly">("annual");
+  const [billing, setBilling] = useState<"annual" | "monthly">(defaultBilling);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
