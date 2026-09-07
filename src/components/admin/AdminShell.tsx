@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard, Users, Hammer, UserCircle, MessageSquare, Mail,
-  TrendingUp, Settings, LogOut, Menu, X, BarChart3, Kanban, Search, Globe, Sparkles, RefreshCcw, Wand2, CalendarClock, Target, Star, Bot, Sun, Moon, Database, BookOpen, Send, Eye, CalendarDays, LayoutTemplate, Calculator, Lightbulb, PanelLeft,
+  TrendingUp, Settings, LogOut, Menu, X, BarChart3, Kanban, Search, Globe, Sparkles, RefreshCcw, Wand2, CalendarClock, Target, Star, Bot, Sun, Moon, Database, BookOpen, Send, Eye, CalendarDays, LayoutTemplate, Calculator, Lightbulb, PanelLeft, Server,
 } from "lucide-react";
 import CommandPalette from "./CommandPalette";
 import AdminInstallMenuItem from "./AdminInstallMenuItem";
@@ -49,6 +49,7 @@ const navGroups: { group: string; items: { label: string; href: string; icon: ty
     group: "Clients",
     items: [
       { label: "Clients",    href: "/admin/clients",  icon: UserCircle },
+      { label: "Hosting",    href: "/admin/hosting",  icon: Server },
       { label: "Messages",   href: "/admin/messages", icon: MessageSquare },
       { label: "Chat inbox", href: "/admin/chat",     icon: Bot },
       { label: "Assistant",  href: "/admin/assistant", icon: Sparkles },
