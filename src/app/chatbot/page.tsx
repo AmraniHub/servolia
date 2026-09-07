@@ -4,24 +4,20 @@ import { CLIENT_PRODUCTS } from "@/lib/hosting";
 import { siteLabelFor } from "@/lib/clientRefs";
 
 export const metadata: Metadata = {
-  // The root layout appends " | Servolia".
-  title: "Website hosting",
-  description: "Hosting, SSL, domain and DNS managed, with your site's forms and tracking kept working.",
-  // Operator-sold, sent by link. Indexing it would put an $8 page in search
-  // against Servolia's own pricing.
+  title: "AI assistant",
+  description: "An AI assistant on your site that answers customers around the clock and passes real enquiries to you.",
   robots: { index: false, follow: false },
 };
 
-export default async function HostingPage({
+export default async function ChatbotPage({
   searchParams,
 }: {
   searchParams: Promise<{ ref?: string }>;
 }) {
-  // Next 16: searchParams is a promise and must be awaited.
   const { ref = "" } = await searchParams;
   return (
     <ClientProductPage
-      product={CLIENT_PRODUCTS.hosting}
+      product={CLIENT_PRODUCTS.chatbot}
       refCode={ref}
       siteLabel={siteLabelFor(ref)}
     />
