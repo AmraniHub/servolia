@@ -13,7 +13,7 @@ import {
   clientServicePaidEmail,
   balanceSettledEmail,
 } from "@/lib/email";
-import { CLIENT_PRODUCTS, nextChargeDate } from "@/lib/hosting";
+import { CLIENT_PRODUCTS, nextChargeDate, productCopy } from "@/lib/hosting";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -63,34 +63,41 @@ function build(id: string, lang: "en" | "fr"): Built | null {
     /* The client-services line (USD). Three variants because the wording
        genuinely differs: an annual buyer is shown a saving, and a client whose
        suspended add-on has just come back is told so. */
-    case "hosting-paid":
+    case "hosting-paid": {
+      const c = productCopy(CLIENT_PRODUCTS.hosting, lang);
       return clientServicePaidEmail({
-        productName: CLIENT_PRODUCTS.hosting.heading,
-        productNoun: CLIENT_PRODUCTS.hosting.sentenceName,
+        lang,
+        productName: c.heading,
+        productNoun: c.sentenceName,
         siteLabel: "goodscochina.com",
         amountUsd: CLIENT_PRODUCTS.hosting.annualUsd,
         period: "annual",
         nextChargeIso: nextChargeDate(new Date(), "annual").toISOString(),
         monthlyUsd: CLIENT_PRODUCTS.hosting.monthlyUsd,
-        includes: CLIENT_PRODUCTS.hosting.includes,
+        includes: c.includes,
       });
-    case "chatbot-restored":
+    }
+    case "chatbot-restored": {
+      const c = productCopy(CLIENT_PRODUCTS.chatbot, lang);
       return clientServicePaidEmail({
-        productName: CLIENT_PRODUCTS.chatbot.heading,
-        productNoun: CLIENT_PRODUCTS.chatbot.sentenceName,
+        lang,
+        productName: c.heading,
+        productNoun: c.sentenceName,
         siteLabel: "temghid.ma",
         amountUsd: CLIENT_PRODUCTS.chatbot.monthlyUsd,
         period: "monthly",
         nextChargeIso: nextChargeDate(new Date(), "monthly").toISOString(),
         monthlyUsd: CLIENT_PRODUCTS.chatbot.monthlyUsd,
         restored: true,
-        includes: CLIENT_PRODUCTS.chatbot.includes,
+        includes: c.includes,
       });
+    }
     case "balance-settled":
       return balanceSettledEmail({
+        lang,
         siteLabel: "excellenceagency.ma",
         amountUsd: 15,
-        label: "Unpaid hosting — July and August",
+        label: lang === "fr" ? "Hébergement impayé — juillet et août" : "Unpaid hosting — July and August",
       });
     default:
       return null;
@@ -106,9 +113,9 @@ const TEMPLATES: { id: string; label: string; bilingual: boolean }[] = [
   { id: "scope-accepted", label: "Scope accepted", bilingual: false },
   { id: "monthly-report", label: "Monthly client report", bilingual: true },
   { id: "live", label: "Site is live", bilingual: true },
-  { id: "hosting-paid", label: "Hosting paid — yearly", bilingual: false },
-  { id: "chatbot-restored", label: "Assistant paid — switched back on", bilingual: false },
-  { id: "balance-settled", label: "Old balance settled", bilingual: false },
+  { id: "hosting-paid", label: "Hosting paid — yearly", bilingual: true },
+  { id: "chatbot-restored", label: "Assistant paid — switched back on", bilingual: true },
+  { id: "balance-settled", label: "Old balance settled", bilingual: true },
 ];
 
 export async function GET(req: NextRequest) {

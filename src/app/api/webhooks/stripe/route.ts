@@ -11,7 +11,12 @@ import {
 import { sendMetaCapiEvent } from "@/lib/metaCapi";
 import { generateScopeDocument } from "@/lib/scopeDocument";
 import { BUILD_PLANS, SETUP_PLAN, resolvePlan } from "@/lib/pricing";
-import { HOSTING_METADATA_KIND, resolveHostingPlan, nextChargeDate } from "@/lib/hosting";
+import {
+  HOSTING_METADATA_KIND,
+  resolveHostingPlan,
+  nextChargeDate,
+  productCopy,
+} from "@/lib/hosting";
 import { setShopifyGate } from "@/lib/hostingGate";
 import { provisionAddon } from "@/lib/provisioning";
 
@@ -171,17 +176,22 @@ export async function POST(req: NextRequest) {
          * still sends — they paid, so they get their confirmation even if our
          * bookkeeping had a bad moment. */
         const product = resolveHostingPlan(session.metadata?.plan);
+        // Set at checkout from the client record, so the confirmation matches
+        // the language they bought in rather than the language we default to.
+        const emailLang = session.metadata?.lang === "fr" ? "fr" : "en";
         if (customerEmail && !alreadySeen) {
+          const copy = product ? productCopy(product, emailLang) : null;
           const tpl = clientServicePaidEmail({
-            productName: product?.heading ?? "Website hosting",
-            productNoun: product?.sentenceName ?? "hosting",
+            productName: copy?.heading ?? "Website hosting",
+            productNoun: copy?.sentenceName ?? "hosting",
             siteLabel: session.metadata?.business || session.metadata?.ref || "",
             amountUsd: amount,
             period,
             nextChargeIso: nextChargeDate(new Date(event.created * 1000), period).toISOString(),
             monthlyUsd: product?.monthlyUsd,
             restored,
-            includes: product?.includes ?? [],
+            includes: copy?.includes ?? [],
+            lang: emailLang,
           });
           sendEmail(customerEmail, tpl.subject, tpl.html).catch(() => {});
         }
@@ -226,7 +236,12 @@ export async function POST(req: NextRequest) {
         const siteLabel = session.metadata?.ref || "";
 
         if (customerEmail) {
-          const tpl = balanceSettledEmail({ siteLabel, amountUsd: amount, label });
+          const tpl = balanceSettledEmail({
+            siteLabel,
+            amountUsd: amount,
+            label,
+            lang: session.metadata?.lang === "fr" ? "fr" : "en",
+          });
           sendEmail(customerEmail, tpl.subject, tpl.html).catch(() => {});
         }
 

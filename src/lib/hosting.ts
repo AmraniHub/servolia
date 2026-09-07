@@ -15,30 +15,44 @@
  * site.
  */
 
-export interface ClientProduct {
-  key: string;
-  name: string;
+/**
+ * Everything about a product that changes with language.
+ *
+ * Split out so a translation is a complete object rather than a scattering of
+ * optional fields — a half-translated product then fails to compile instead of
+ * shipping a French page with three English bullets in the middle of it.
+ */
+export interface ClientProductCopy {
   /** Shown as the card heading on the payment page. */
   heading: string;
-  /**
-   * The name written mid-sentence, e.g. "your AI assistant is back on".
-   *
-   * Held explicitly because the obvious shortcut — lowercasing `heading` —
-   * produces "your ai assistant", and doing nothing produces "your Website
-   * hosting". An acronym and a sentence-case phrase cannot both be handled by
-   * a case transform, so each product says what it is called in prose.
-   */
+  /** The name written mid-sentence: "hosting", "assistant IA". */
   sentenceName: string;
   /** One sentence under the heading. */
   blurb: string;
-  /** USD per month. */
-  monthlyUsd: number;
-  /** USD per year when prepaid. */
-  annualUsd: number;
   /** Line items on the card. */
   includes: string[];
   /** Sent to Stripe as the product description. */
   description: string;
+}
+
+/**
+ * A product, in English, with its French copy alongside.
+ *
+ * `sentenceName` is held explicitly on both because the obvious shortcut —
+ * lowercasing `heading` — produces "your ai assistant", and doing nothing
+ * produces "your Website hosting". An acronym and a sentence-case phrase
+ * cannot both be handled by a case transform, so each product says what it is
+ * called in prose, in each language.
+ */
+export interface ClientProduct extends ClientProductCopy {
+  key: string;
+  name: string;
+  /** French copy. English lives on the product itself. */
+  fr: ClientProductCopy;
+  /** USD per month. Prices do not change with language. */
+  monthlyUsd: number;
+  /** USD per year when prepaid. */
+  annualUsd: number;
 }
 
 /**
@@ -77,6 +91,23 @@ export const CLIENT_PRODUCTS: Record<string, ClientProduct> = {
     description:
       "Hosting, SSL, domain renewal, DNS, and keeping the site's forms and " +
       "tracking connected. Content changes and new pages are quoted separately.",
+    fr: {
+      heading: "Hébergement du site",
+      sentenceName: "hébergement",
+      blurb:
+        "Votre site reste en ligne, rapide et sécurisé — et les formulaires qui vous apportent des demandes continuent de fonctionner.",
+      includes: [
+        "Hébergement sur un réseau mondial, avec SSL",
+        "Renouvellement du domaine et DNS gérés",
+        "Formulaires de contact et de devis maintenus",
+        "Suivi et statistiques maintenus",
+        "Disponibilité surveillée — vous l'apprenez par nous en premier",
+      ],
+      description:
+        "Hébergement, SSL, renouvellement du domaine, DNS, et maintien des " +
+        "formulaires et du suivi du site. Les modifications de contenu et les " +
+        "nouvelles pages sont devisées séparément.",
+    },
   },
   chatbot: {
     key: "chatbot",
@@ -97,6 +128,22 @@ export const CLIENT_PRODUCTS: Record<string, ClientProduct> = {
     description:
       "An AI assistant on your site that answers customer questions around the " +
       "clock and passes real enquiries to you.",
+    fr: {
+      heading: "Assistant IA",
+      sentenceName: "assistant IA",
+      blurb:
+        "Répond à vos clients jour et nuit, dans leur langue — une question à 2h du matin reste une vente que vous gagnez.",
+      includes: [
+        "Répond instantanément, 24h/24",
+        "Répond en arabe, en français et en anglais",
+        "Formé sur vos produits et vos conditions",
+        "Vous passe le relais quand un humain est nécessaire",
+        "Mis à jour au fil de votre catalogue",
+      ],
+      description:
+        "Un assistant IA sur votre site qui répond aux questions de vos clients " +
+        "24h/24 et vous transmet les vraies demandes.",
+    },
   },
 };
 
@@ -106,6 +153,16 @@ export const HOSTING_PLANS = CLIENT_PRODUCTS;
 export function resolveHostingPlan(key?: string | null): ClientProduct | undefined {
   if (!key) return undefined;
   return CLIENT_PRODUCTS[key.toLowerCase()];
+}
+
+/**
+ * The product's copy in one language.
+ *
+ * Returns the whole block rather than a field at a time, so a call site cannot
+ * accidentally mix a French heading with an English bullet list.
+ */
+export function productCopy(plan: ClientProduct, lang: "en" | "fr"): ClientProductCopy {
+  return lang === "fr" ? plan.fr : plan;
 }
 
 /** Amount in cents for Stripe, for the chosen billing period. */

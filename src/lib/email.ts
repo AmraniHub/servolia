@@ -710,19 +710,26 @@ export const clientServicePaidEmail = (input: {
   restored?: boolean;
   /** A few lines of what the money covers. */
   includes?: string[];
+  lang?: "en" | "fr";
 }) => {
   const {
     productName, productNoun, siteLabel, amountUsd, period,
-    nextChargeIso = null, monthlyUsd, restored = false, includes = [],
+    nextChargeIso = null, monthlyUsd, restored = false, includes = [], lang = "en",
   } = input;
 
-  const forSite = siteLabel ? ` for ${siteLabel}` : "";
-  const term = period === "annual" ? "year" : "month";
+  const fr = lang === "fr";
+  const forSite = siteLabel ? (fr ? ` pour ${siteLabel}` : ` for ${siteLabel}`) : "";
+  const term = fr
+    ? (period === "annual" ? "an" : "mois")
+    : (period === "annual" ? "year" : "month");
   const nextCharge = nextChargeIso
-    ? new Date(nextChargeIso).toLocaleDateString("en-GB", {
+    ? new Date(nextChargeIso).toLocaleDateString(fr ? "fr-FR" : "en-GB", {
         day: "numeric", month: "long", year: "numeric", timeZone: "UTC",
       })
     : null;
+  /* USD written the French way: "12 $", space before the sign. Getting this
+     wrong is a small thing that makes a payment page read as machine output. */
+  const money = (n: number) => (fr ? `${n}&nbsp;$` : `$${n}`);
 
   /* An annual buyer is told what they saved, but only when there is a saving.
      Claiming one that does not exist is the kind of small lie that costs more
@@ -731,16 +738,54 @@ export const clientServicePaidEmail = (input: {
     ? Math.round(monthlyUsd * 12 - amountUsd)
     : 0;
 
-  const headline = restored
-    ? `Your ${productNoun} is back on`
-    : "Payment received";
+  const headline = fr
+    ? (restored ? `Votre ${productNoun} est de nouveau actif` : "Paiement reçu")
+    : (restored ? `Your ${productNoun} is back on` : "Payment received");
 
-  const opening = restored
-    ? `Thank you — your payment cleared and your ${productNoun} has been switched back on${forSite}. It is live again now; you do not need to do anything.`
-    : `Thank you — your payment cleared and your ${productNoun}${forSite} is active. Nothing else to do.`;
+  const opening = fr
+    ? (restored
+        ? `Merci — votre paiement a été validé et votre ${productNoun} a été réactivé${forSite}. Il fonctionne de nouveau ; vous n'avez rien à faire.`
+        : `Merci — votre paiement a été validé et votre ${productNoun}${forSite} est actif. Rien d'autre à faire.`)
+    : (restored
+        ? `Thank you — your payment cleared and your ${productNoun} has been switched back on${forSite}. It is live again now; you do not need to do anything.`
+        : `Thank you — your payment cleared and your ${productNoun}${forSite} is active. Nothing else to do.`);
+
+  const L = fr
+    ? {
+        subject: `Paiement reçu — ${productName}${siteLabel ? ` pour ${siteLabel}` : ""}`,
+        paidFor: "Ce que vous avez payé",
+        per: `par ${term}`,
+        saved: `vous économisez ${saving}&nbsp;$ par rapport au mensuel`,
+        renewsOn: (d: string) =>
+          `Renouvellement automatique le <strong style="color:${BODY};">${d}</strong> au même prix. Vous pouvez résilier à tout moment avant cette date.`,
+        renewsEach: `Renouvellement automatique chaque ${term} au même prix. Vous pouvez résilier à tout moment.`,
+        covers: "Ce que cela comprend :",
+        receipt:
+          "Stripe vous a envoyé un reçu séparé pour vos archives. Si vous avez besoin d'une facture à en-tête de votre société, répondez à cet email et je vous l'envoie.",
+        questions: `Une question sur votre ${productNoun} ? Répondez simplement ici — une personne lit chaque message.`,
+        preheader: restored
+          ? `Votre ${productNoun} fonctionne de nouveau. Voici ce que vous avez payé et la date de renouvellement.`
+          : "C'est confirmé. Voici ce que vous avez payé et la date de renouvellement.",
+      }
+    : {
+        subject: `Payment received — ${productName}${siteLabel ? ` for ${siteLabel}` : ""}`,
+        paidFor: "What you paid for",
+        per: `per ${term}`,
+        saved: `you saved $${saving} against paying monthly`,
+        renewsOn: (d: string) =>
+          `Renews automatically on <strong style="color:${BODY};">${d}</strong> at the same price. You can cancel any time before then.`,
+        renewsEach: `Renews automatically each ${term} at the same price. You can cancel any time.`,
+        covers: "What this covers:",
+        receipt:
+          "Stripe has emailed you a separate receipt for your records. If you need an invoice with your company details on it, reply to this email and I will send one.",
+        questions: `Any question about your ${productNoun} — just reply here. A person reads every message.`,
+        preheader: restored
+          ? `Your ${productNoun} is live again. Here is what you paid and when it renews.`
+          : "Confirmed. Here is what you paid and when it renews.",
+      };
 
   return {
-    subject: `Payment received — ${productName}${siteLabel ? ` for ${siteLabel}` : ""}`,
+    subject: L.subject,
     html: wrapper(`
       <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">${headline}</h1>
       <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:${BODY};">${opening}</p>
@@ -748,33 +793,24 @@ export const clientServicePaidEmail = (input: {
       <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
              style="margin:0 0 20px;border:1px solid ${LINE};border-radius:12px;background:${CREAM};">
         <tr><td style="padding:18px 20px;font-family:${FONT};">
-          <p style="margin:0 0 6px;font-size:11px;font-weight:900;letter-spacing:1px;text-transform:uppercase;color:${MUTED};">What you paid for</p>
+          <p style="margin:0 0 6px;font-size:11px;font-weight:900;letter-spacing:1px;text-transform:uppercase;color:${MUTED};">${L.paidFor}</p>
           <p style="margin:0 0 2px;font-size:17px;font-weight:800;color:${INK};">${productName}${siteLabel ? ` &middot; ${siteLabel}` : ""}</p>
           <p style="margin:0;font-size:15px;color:${BODY};">
-            <strong>$${amountUsd}</strong> per ${term}${saving > 0 ? ` &middot; you saved $${saving} against paying monthly` : ""}
+            <strong>${money(amountUsd)}</strong> ${L.per}${saving > 0 ? ` &middot; ${L.saved}` : ""}
           </p>
-          ${nextCharge ? `<p style="margin:10px 0 0;font-size:14px;color:${MUTED};">Renews automatically on <strong style="color:${BODY};">${nextCharge}</strong> at the same price. You can cancel any time before then.</p>` : `<p style="margin:10px 0 0;font-size:14px;color:${MUTED};">Renews automatically each ${term} at the same price. You can cancel any time.</p>`}
+          <p style="margin:10px 0 0;font-size:14px;color:${MUTED};">${nextCharge ? L.renewsOn(nextCharge) : L.renewsEach}</p>
         </td></tr>
       </table>
 
       ${includes.length ? `
-      <p style="margin:0 0 10px;font-size:15px;line-height:1.6;color:${BODY};"><strong>What this covers:</strong></p>
+      <p style="margin:0 0 10px;font-size:15px;line-height:1.6;color:${BODY};"><strong>${L.covers}</strong></p>
       <ul style="margin:0 0 20px;padding-left:20px;font-size:15px;line-height:1.7;color:${BODY};">
         ${includes.map((line) => `<li>${line}</li>`).join("")}
       </ul>` : ""}
 
-      <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:${BODY};">
-        Stripe has emailed you a separate receipt for your records. If you need an invoice with your company details on it, reply to this email and I will send one.
-      </p>
-      <p style="margin:0;font-size:14px;line-height:1.6;color:${MUTED};">
-        Any question about your ${productNoun} — just reply here. A person reads every message.
-      </p>
-      `, {
-        preheader: restored
-          ? `Your ${productNoun} is live again. Here is what you paid and when it renews.`
-          : `Confirmed. Here is what you paid and when it renews.`,
-        lang: "en",
-      }),
+      <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:${BODY};">${L.receipt}</p>
+      <p style="margin:0;font-size:14px;line-height:1.6;color:${MUTED};">${L.questions}</p>
+      `, { preheader: L.preheader, lang }),
   };
 };
 
@@ -788,33 +824,51 @@ export const balanceSettledEmail = (input: {
   siteLabel: string;
   amountUsd: number;
   label: string;
+  lang?: "en" | "fr";
 }) => {
-  const { siteLabel, amountUsd, label } = input;
+  const { siteLabel, amountUsd, label, lang = "en" } = input;
+  const fr = lang === "fr";
+  const money = fr ? `${amountUsd}&nbsp;$` : `$${amountUsd}`;
+  const L = fr
+    ? {
+        subject: `Paiement reçu — solde réglé${siteLabel ? ` pour ${siteLabel}` : ""}`,
+        headline: "C'est réglé",
+        body: `Merci — votre paiement de <strong>${money}</strong> a été validé${siteLabel ? ` pour ${siteLabel}` : ""}. Votre compte est à jour et il ne reste rien à payer.`,
+        forWhat: "Objet du paiement",
+        once: "Il s'agissait d'un paiement unique. Il ne se répétera pas.",
+        receipt:
+          "Stripe vous a envoyé un reçu. Besoin d'une facture à en-tête de votre société ? Répondez simplement ici.",
+        preheader: "Votre solde est réglé. Rien ne reste dû.",
+      }
+    : {
+        subject: `Payment received — balance cleared${siteLabel ? ` for ${siteLabel}` : ""}`,
+        headline: "That's settled",
+        body: `Thank you — your payment of <strong>${money}</strong> has cleared${siteLabel ? ` for ${siteLabel}` : ""}. Your account is now up to date and there is nothing outstanding.`,
+        forWhat: "What this was for",
+        once: "This was a one-off charge. It will not repeat.",
+        receipt:
+          "Stripe has emailed you a receipt. Need an invoice with your company details? Just reply here.",
+        preheader: "Your balance is clear. Nothing outstanding.",
+      };
   /* The label is operator-written and already carries its own capitals and
      punctuation ("Unpaid hosting — July and August"). It is therefore printed
      verbatim and kept out of the subject line: dropped in there it produced
      "Payment received — Unpaid hosting — July and August for x.ma", two dashes
      deep and unreadable in an inbox list. */
   return {
-    subject: `Payment received — balance cleared${siteLabel ? ` for ${siteLabel}` : ""}`,
+    subject: L.subject,
     html: wrapper(`
-      <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">That's settled</h1>
-      <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:${BODY};">
-        Thank you — your payment of <strong>$${amountUsd}</strong> has cleared${siteLabel ? ` for ${siteLabel}` : ""}. Your account is now up to date and there is nothing outstanding.
-      </p>
+      <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">${L.headline}</h1>
+      <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:${BODY};">${L.body}</p>
       <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
              style="margin:0 0 20px;border:1px solid ${LINE};border-radius:12px;background:${CREAM};">
         <tr><td style="padding:16px 20px;font-family:${FONT};">
-          <p style="margin:0 0 4px;font-size:11px;font-weight:900;letter-spacing:1px;text-transform:uppercase;color:${MUTED};">What this was for</p>
+          <p style="margin:0 0 4px;font-size:11px;font-weight:900;letter-spacing:1px;text-transform:uppercase;color:${MUTED};">${L.forWhat}</p>
           <p style="margin:0;font-size:15px;color:${INK};">${label}</p>
         </td></tr>
       </table>
-      <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:${BODY};">
-        This was a one-off charge. It will not repeat.
-      </p>
-      <p style="margin:0;font-size:14px;line-height:1.6;color:${MUTED};">
-        Stripe has emailed you a receipt. Need an invoice with your company details? Just reply here.
-      </p>
-      `, { preheader: "Your balance is clear. Nothing outstanding.", lang: "en" }),
+      <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:${BODY};">${L.once}</p>
+      <p style="margin:0;font-size:14px;line-height:1.6;color:${MUTED};">${L.receipt}</p>
+      `, { preheader: L.preheader, lang }),
   };
 };

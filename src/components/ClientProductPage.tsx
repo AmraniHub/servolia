@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ClientProduct } from "@/lib/hosting";
+import { productCopy } from "@/lib/hosting";
 import ProductCheckout from "./ProductCheckout";
 
 /**
@@ -7,18 +8,27 @@ import ProductCheckout from "./ProductCheckout";
  *
  * One layout, so hosting and the AI assistant cannot drift apart visually --
  * a client who is sent two links from the same company should recognise both.
+ *
+ * The language comes from the client record, not from the visitor's browser:
+ * these pages are always about one specific business, and that business has one
+ * language. See langFor() in src/lib/clientRefs.ts.
  */
 export default function ClientProductPage({
   product,
   refCode,
   siteLabel,
   defaultBilling,
+  lang = "en",
 }: {
   product: ClientProduct;
   refCode: string;
   siteLabel: string;
   defaultBilling?: "annual" | "monthly";
+  lang?: "en" | "fr";
 }) {
+  const copy = productCopy(product, lang);
+  const fr = lang === "fr";
+
   return (
     <main className="min-h-screen bg-[#FAFAF7] flex flex-col">
       {/* Brand. The buyer needs to see who is being paid before entering a
@@ -36,30 +46,37 @@ export default function ClientProductPage({
       <div className="flex-1 px-5 py-12 sm:py-16">
         <div className="max-w-md mx-auto text-center mb-9">
           <h1 className="text-3xl sm:text-[34px] font-black text-[#18181B] tracking-tight mb-3">
-            {product.heading}
+            {copy.heading}
           </h1>
-          <p className="text-[#52525B] leading-relaxed">{product.blurb}</p>
+          <p className="text-[#52525B] leading-relaxed">{copy.blurb}</p>
         </div>
 
         <ProductCheckout
           planKey={product.key}
           monthlyUsd={product.monthlyUsd}
           annualUsd={product.annualUsd}
-          includes={product.includes}
+          includes={copy.includes}
           refCode={refCode}
           siteLabel={siteLabel}
           defaultBilling={defaultBilling}
+          lang={lang}
         />
       </div>
 
       <footer className="px-5 py-8 border-t border-[#E8E6E0] bg-white">
         <div className="max-w-md mx-auto text-center">
           <p className="text-xs text-[#8A8A80] mb-2">
-            Billed by <span className="font-bold text-[#52525B]">Servolia</span> · Payments processed by Stripe
+            {fr ? "Facturé par " : "Billed by "}
+            <span className="font-bold text-[#52525B]">Servolia</span>
+            {fr ? " · Paiement traité par Stripe" : " · Payments processed by Stripe"}
           </p>
           <div className="flex items-center justify-center gap-4 text-xs text-[#A8A8A0]">
-            <Link href="/legal" className="hover:text-[#52525B]">Terms</Link>
-            <Link href="/contact" className="hover:text-[#52525B]">Contact</Link>
+            <Link href="/legal" className="hover:text-[#52525B]">
+              {fr ? "Conditions" : "Terms"}
+            </Link>
+            <Link href="/contact" className="hover:text-[#52525B]">
+              {fr ? "Contact" : "Contact"}
+            </Link>
             <a href="https://servolia.com" className="hover:text-[#52525B]">servolia.com</a>
           </div>
         </div>

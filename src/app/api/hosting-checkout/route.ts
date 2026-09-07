@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
-import { clientRefFor } from "@/lib/clientRefs";
+import { clientRefFor, langFor } from "@/lib/clientRefs";
 import {
   resolveHostingPlan,
   hostingAmountCents,
+  productCopy,
   HOSTING_METADATA_KIND,
 } from "@/lib/hosting";
 
@@ -30,8 +31,10 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json().catch(() => ({}));
-  const { plan = "hosting", billing = "annual", email = "", business = "", ref = "", mode = "" } =
-    body as Record<string, string>;
+  const {
+    plan = "hosting", billing = "annual", email = "", business = "",
+    ref = "", mode = "", lang: bodyLang = "",
+  } = body as Record<string, string>;
 
   const hostingPlan = resolveHostingPlan(plan);
   if (!hostingPlan) {
@@ -40,6 +43,13 @@ export async function POST(req: NextRequest) {
 
   const period: "monthly" | "annual" = billing === "monthly" ? "monthly" : "annual";
   const origin = req.nextUrl.origin;
+
+  /* Language is resolved HERE, from the client record, not taken from the
+   * request. The page sends what it rendered in, but only as a fallback for an
+   * unknown ref — a known client is spoken to in their own language whatever
+   * the browser posts. This decides the wording on Stripe's page and in the
+   * confirmation email, so it belongs on the server. */
+  const lang = langFor(ref, bodyLang);
 
   /* ARREARS
    * Settled as a SEPARATE one-time payment, not folded into the subscription.
@@ -62,14 +72,17 @@ export async function POST(req: NextRequest) {
     const stripeOnce = new Stripe(key);
     const once = await stripeOnce.checkout.sessions.create({
       mode: "payment",
+      locale: lang,
       ...(email ? { customer_email: email } : {}),
       line_items: [
         {
           price_data: {
             currency: "usd",
             product_data: {
-              name: client?.arrearsLabel || "Outstanding balance",
-              description: "Unpaid amount from previous months. Charged once.",
+              name: client?.arrearsLabel || (lang === "fr" ? "Solde impayé" : "Outstanding balance"),
+              description: lang === "fr"
+                ? "Montant impayé des mois précédents. Facturé une seule fois."
+                : "Unpaid amount from previous months. Charged once.",
             },
             unit_amount: Math.round(owed * 100),
           },
@@ -83,18 +96,26 @@ export async function POST(req: NextRequest) {
         kind: HOSTING_METADATA_KIND,
         plan: "arrears",
         ref,
-        label: client?.arrearsLabel || "Outstanding balance",
+        lang,
+        label: client?.arrearsLabel || (lang === "fr" ? "Solde impayé" : "Outstanding balance"),
       },
-      success_url: `${origin}/hosting/thanks?product=arrears`,
-      cancel_url: `${origin}/hosting`,
+      success_url: `${origin}/hosting/thanks?product=arrears&lang=${lang}`,
+      cancel_url: `${origin}/hosting${ref ? `?ref=${encodeURIComponent(ref)}` : ""}`,
     });
     return NextResponse.json({ url: once.url });
   }
 
   try {
     const stripe = new Stripe(key);
+    /* The copy Stripe's own page will show. It used to be the literal string
+     * "Website hosting" for every product, so an AI assistant purchase was
+     * headed "Website hosting — temghid.ma" on the one screen where the buyer
+     * is deciding whether to trust the charge. */
+    const copy = productCopy(hostingPlan, lang);
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
+      // Renders Stripe's whole checkout page in the client's language.
+      locale: lang,
       // Stripe collects the email on its own page when we do not have one, so
       // the page can ask for as little as possible.
       ...(email ? { customer_email: email } : {}),
@@ -103,8 +124,8 @@ export async function POST(req: NextRequest) {
           price_data: {
             currency: "usd",
             product_data: {
-              name: `Website hosting${business ? ` — ${business}` : ""}`,
-              description: hostingPlan.description,
+              name: `${copy.heading}${business ? ` — ${business}` : ""}`,
+              description: copy.description,
             },
             unit_amount: hostingAmountCents(hostingPlan, period),
             recurring: { interval: period === "annual" ? "year" : "month" },
@@ -118,6 +139,7 @@ export async function POST(req: NextRequest) {
         period,
         business: business || ref || "",
         ref,
+        lang,
         // Carried so the webhook can restore the service on payment. Sourced
         // from the server-side client map, never the request: these name a
         // repository that gets written to.
@@ -135,7 +157,7 @@ export async function POST(req: NextRequest) {
        * redirect, so the page cannot know the outcome. The confirmation EMAIL
        * uses the real result. Worst case a client who was never suspended
        * reads "back online" on one page. */
-      success_url: `${origin}/hosting/thanks?product=${hostingPlan.key}${client?.gateWidget ? "&restored=1" : ""}`,
+      success_url: `${origin}/hosting/thanks?product=${hostingPlan.key}&lang=${lang}${client?.gateWidget ? "&restored=1" : ""}`,
       cancel_url: `${origin}/${hostingPlan.key === "chatbot" ? "chatbot" : "hosting"}${ref ? `?ref=${encodeURIComponent(ref)}` : ""}`,
     });
 

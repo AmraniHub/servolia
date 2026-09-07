@@ -37,6 +37,19 @@ export interface ClientRef {
   siteRoot?: string;
   /** Shopify snippet pair to flip, e.g. "chatbot" <-> "chatbot-suspended". */
   gateWidget?: string;
+
+  /**
+   * The language this client is spoken to in. Defaults to English.
+   *
+   * A PROPERTY OF THE CLIENT, NOT OF THE LINK. Temghid's suspended notice is
+   * written in French and sends the owner to /chatbot?ref=temghid; before this
+   * existed he crossed from a French storefront to an English payment page, an
+   * English Stripe form and an English receipt, to reactivate a service whose
+   * own notice had just addressed him in French. Deciding it here means every
+   * link to that client is in the right language without anyone remembering to
+   * append a parameter.
+   */
+  lang?: "en" | "fr";
 }
 
 export const CLIENT_REFS: Record<string, ClientRef> = {
@@ -47,6 +60,7 @@ export const CLIENT_REFS: Record<string, ClientRef> = {
     repo: "AmraniHub/temghid-theme",
     branch: "main",
     gateWidget: "chatbot",
+    lang: "fr",
   },
 };
 
@@ -57,4 +71,21 @@ export function clientRefFor(ref: string | undefined): ClientRef | undefined {
 
 export function siteLabelFor(ref: string | undefined): string {
   return clientRefFor(ref)?.label ?? "";
+}
+
+/**
+ * Which language to speak to this client in.
+ *
+ * `fallback` carries an explicit ?lang= from the URL, used only when the ref is
+ * unknown. A known client's own setting always wins: a link someone forwards
+ * with the wrong parameter must not switch the language of a page that is
+ * about a specific business.
+ */
+export function langFor(
+  ref: string | undefined,
+  fallback?: string | null,
+): "en" | "fr" {
+  const known = clientRefFor(ref)?.lang;
+  if (known) return known;
+  return fallback === "fr" ? "fr" : "en";
 }
