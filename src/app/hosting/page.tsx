@@ -3,7 +3,9 @@ import Link from "next/link";
 import HostingPlans from "./HostingPlans";
 
 export const metadata: Metadata = {
-  title: "Website hosting — Servolia",
+  // The root layout appends " | Servolia"; saying it here too would
+  // render "Website hosting — Servolia | Servolia".
+  title: "Website hosting",
   description:
     "Hosting, SSL, domain and DNS managed, with your site's forms and tracking kept working.",
   // Operator-sold, sent by link. Indexing it would put an $8 page in search

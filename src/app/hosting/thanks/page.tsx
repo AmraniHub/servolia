@@ -3,7 +3,7 @@ import Link from "next/link";
 import { CheckCircle2 } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Thank you — Servolia",
+  title: "Thank you",
   robots: { index: false, follow: false },
 };
 
