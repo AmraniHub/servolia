@@ -711,10 +711,22 @@ export const clientServicePaidEmail = (input: {
   /** A few lines of what the money covers. */
   includes?: string[];
   lang?: "en" | "fr";
+  /**
+   * Signed link to switch this subscription to yearly. Shown only to monthly
+   * payers, and only when there is a real saving.
+   *
+   * It lives HERE, in the receipt, rather than in a separate campaign: this is
+   * the one message about their hosting they are guaranteed to open, and a
+   * client who is happy enough to have just paid is the client most likely to
+   * pay for the year. No second email has to be sent, and nothing has to be
+   * remembered.
+   */
+  upgradeUrl?: string | null;
 }) => {
   const {
     productName, productNoun, siteLabel, amountUsd, period,
     nextChargeIso = null, monthlyUsd, restored = false, includes = [], lang = "en",
+    upgradeUrl = null,
   } = input;
 
   const fr = lang === "fr";
@@ -784,6 +796,30 @@ export const clientServicePaidEmail = (input: {
           : "Confirmed. Here is what you paid and when it renews.",
       };
 
+  /* Offered only to a monthly payer, and only when the caller minted a link.
+     Whether the year is actually cheaper is the CALLER's decision, not a sum
+     done here: this template is given what was paid, never the annual price,
+     so any comparison it tried to make would be invented. An annual buyer has
+     nothing to upgrade to, and inviting them to "save" would be nonsense. */
+  const upsell = upgradeUrl && period === "monthly"
+    ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
+              style="margin:0 0 22px;border:1px dashed ${LINE};border-radius:12px;">
+         <tr><td style="padding:16px 20px;font-family:${FONT};">
+           <p style="margin:0 0 6px;font-size:15px;font-weight:700;color:${INK};">
+             ${fr ? "Vous préférez payer une fois par an ?" : "Rather pay once a year?"}
+           </p>
+           <p style="margin:0 0 10px;font-size:14px;line-height:1.6;color:${BODY};">
+             ${fr
+               ? "Le tarif annuel revient moins cher que douze mensualités, et il n'y a plus qu'un seul prélèvement. Les jours déjà payés ce mois-ci sont crédités."
+               : "The yearly price works out cheaper than twelve monthly payments, and there is only one charge to think about. The days you have already paid for this month are credited."}
+           </p>
+           <a href="${upgradeUrl}" style="font-size:14px;font-weight:700;color:${GREEN};text-decoration:none;">
+             ${fr ? "Voir le montant exact &rarr;" : "See the exact amount &rarr;"}
+           </a>
+         </td></tr>
+       </table>`
+    : "";
+
   return {
     subject: L.subject,
     html: wrapper(`
@@ -808,6 +844,7 @@ export const clientServicePaidEmail = (input: {
         ${includes.map((line) => `<li>${line}</li>`).join("")}
       </ul>` : ""}
 
+      ${upsell}
       <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:${BODY};">${L.receipt}</p>
       <p style="margin:0;font-size:14px;line-height:1.6;color:${MUTED};">${L.questions}</p>
       `, { preheader: L.preheader, lang }),
@@ -870,5 +907,117 @@ export const balanceSettledEmail = (input: {
       <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:${BODY};">${L.once}</p>
       <p style="margin:0;font-size:14px;line-height:1.6;color:${MUTED};">${L.receipt}</p>
       `, { preheader: L.preheader, lang }),
+  };
+};
+
+/**
+ * "Switch to yearly" — sent when a client asks for the link again.
+ *
+ * The offer also rides in every monthly payment confirmation, so this exists
+ * for the client who has deleted that email and wants to upgrade in month
+ * five. Deliberately plain: the saving is the argument, and dressing it up
+ * reads as a sales email rather than a service one.
+ */
+export const upgradeLinkEmail = (input: {
+  url: string;
+  productName: string;
+  siteLabel: string;
+  monthlyUsd: number;
+  annualUsd: number;
+  savingUsd: number;
+  lang?: "en" | "fr";
+}) => {
+  const { url, productName, siteLabel, monthlyUsd, annualUsd, savingUsd, lang = "en" } = input;
+  const fr = lang === "fr";
+  const money = (n: number) => (fr ? `${n}&nbsp;$` : `$${n}`);
+  const forSite = siteLabel ? (fr ? ` pour ${siteLabel}` : ` for ${siteLabel}`) : "";
+
+  if (fr) {
+    return {
+      subject: `Passer à l'année — ${productName}${siteLabel ? ` pour ${siteLabel}` : ""}`,
+      html: wrapper(`
+        <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">Payer à l'année et économiser ${money(savingUsd)}</h1>
+        <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:${BODY};">
+          Votre ${productName}${forSite} est actuellement facturé <strong>${money(monthlyUsd)} par mois</strong>, soit ${money(monthlyUsd * 12)} sur l'année. En annuel, c'est <strong>${money(annualUsd)}</strong> — un seul paiement, ${money(savingUsd)} de moins.
+        </p>
+        <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:${BODY};">
+          Rien d'autre ne change : même service, résiliable à tout moment. Les jours déjà payés ce mois-ci vous sont crédités, vous ne payez donc pas deux fois.
+        </p>
+        ${btn(url, "Voir le montant exact →")}
+        <p style="margin:20px 0 0;font-size:14px;line-height:1.6;color:${MUTED};">
+          Le lien vous montre d'abord le montant exact à payer aujourd'hui. Rien n'est débité tant que vous n'avez pas confirmé.
+        </p>
+      `, { preheader: `Économisez ${savingUsd} $ en passant à l'année.`, lang: "fr" }),
+    };
+  }
+
+  return {
+    subject: `Switch to yearly — ${productName}${siteLabel ? ` for ${siteLabel}` : ""}`,
+    html: wrapper(`
+      <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">Pay yearly and save ${money(savingUsd)}</h1>
+      <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:${BODY};">
+        Your ${productName}${forSite} is billed <strong>${money(monthlyUsd)} a month</strong> — ${money(monthlyUsd * 12)} over a year. Yearly is <strong>${money(annualUsd)}</strong>: one payment, ${money(savingUsd)} less.
+      </p>
+      <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:${BODY};">
+        Nothing else changes — same service, cancel any time. The days you have already paid for this month are credited, so you are not charged twice.
+      </p>
+      ${btn(url, "See the exact amount →")}
+      <p style="margin:20px 0 0;font-size:14px;line-height:1.6;color:${MUTED};">
+        The link shows you exactly what you would pay today first. Nothing is charged until you confirm.
+      </p>
+    `, { preheader: `Save $${savingUsd} by paying for the year.`, lang: "en" }),
+  };
+};
+
+/** Sent once the switch has actually gone through. */
+export const upgradeDoneEmail = (input: {
+  productName: string;
+  productNoun: string;
+  siteLabel: string;
+  annualUsd: number;
+  savingUsd: number;
+  lang?: "en" | "fr";
+}) => {
+  const { productName, productNoun, siteLabel, annualUsd, savingUsd, lang = "en" } = input;
+  const fr = lang === "fr";
+  const money = (n: number) => (fr ? `${n}&nbsp;$` : `$${n}`);
+  const nextYear = new Date();
+  nextYear.setUTCFullYear(nextYear.getUTCFullYear() + 1);
+  const when = nextYear.toLocaleDateString(fr ? "fr-FR" : "en-GB", {
+    day: "numeric", month: "long", year: "numeric", timeZone: "UTC",
+  });
+
+  if (fr) {
+    return {
+      subject: `Vous êtes passé à l'année — ${productName}${siteLabel ? ` pour ${siteLabel}` : ""}`,
+      html: wrapper(`
+        <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">C'est fait — vous êtes en annuel</h1>
+        <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:${BODY};">
+          Votre ${productNoun}${siteLabel ? ` pour ${siteLabel}` : ""} est désormais facturé <strong>${money(annualUsd)} par an</strong> au lieu du mensuel. Vous économisez ${money(savingUsd)} sur l'année, et il n'y a plus de prélèvement mensuel.
+        </p>
+        <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:${BODY};">
+          Prochain paiement : <strong>${when}</strong>. Les jours déjà réglés ce mois-ci ont été déduits du montant d'aujourd'hui.
+        </p>
+        <p style="margin:0;font-size:14px;line-height:1.6;color:${MUTED};">
+          Le service n'a pas été interrompu une seconde. Une question ? Répondez simplement ici.
+        </p>
+      `, { preheader: `Facturation annuelle active. Prochain paiement le ${when}.`, lang: "fr" }),
+    };
+  }
+
+  return {
+    subject: `You're on the yearly plan — ${productName}${siteLabel ? ` for ${siteLabel}` : ""}`,
+    html: wrapper(`
+      <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">Done — you're on yearly</h1>
+      <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:${BODY};">
+        Your ${productNoun}${siteLabel ? ` for ${siteLabel}` : ""} is now billed <strong>${money(annualUsd)} a year</strong> instead of monthly. That saves you ${money(savingUsd)} over the year, and the monthly charge has stopped.
+      </p>
+      <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:${BODY};">
+        Next payment: <strong>${when}</strong>. The days you had already paid for this month were taken off today's amount.
+      </p>
+      <p style="margin:0;font-size:14px;line-height:1.6;color:${MUTED};">
+        The service did not stop for a second. Any questions, just reply here.
+      </p>
+    `, { preheader: `Yearly billing is active. Next payment ${when}.`, lang: "en" }),
   };
 };

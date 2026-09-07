@@ -148,6 +148,21 @@ export async function POST(req: NextRequest) {
         ...(client?.siteRoot ? { site_root: client.siteRoot } : {}),
         ...(client?.gateWidget ? { gate_widget: client.gateWidget } : {}),
       },
+      /* The SAME metadata on the subscription, not only on the session.
+       * Stripe does not copy one to the other, and the session is a record of
+       * one moment: everything afterwards — the upgrade to yearly, a support
+       * question about which product a charge is for — starts from the
+       * subscription, which without this knows nothing about the client. */
+      subscription_data: {
+        metadata: {
+          kind: HOSTING_METADATA_KIND,
+          plan: hostingPlan.key,
+          period,
+          business: business || ref || "",
+          ref,
+          lang,
+        },
+      },
       allow_promotion_codes: true,
       /* The thank-you page is shared by every client product, so it is told
        * which one this was. Display only — it decides wording, never money.

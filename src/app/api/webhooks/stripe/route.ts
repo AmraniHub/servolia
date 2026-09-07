@@ -18,6 +18,7 @@ import {
   productCopy,
 } from "@/lib/hosting";
 import { setShopifyGate } from "@/lib/hostingGate";
+import { upgradeLinkFor } from "@/lib/upgrade";
 import { provisionAddon } from "@/lib/provisioning";
 
 export const runtime = "nodejs";
@@ -181,6 +182,15 @@ export async function POST(req: NextRequest) {
         const emailLang = session.metadata?.lang === "fr" ? "fr" : "en";
         if (customerEmail && !alreadySeen) {
           const copy = product ? productCopy(product, emailLang) : null;
+          /* The switch-to-yearly offer, minted only when the year is actually
+             cheaper than twelve months. Never for an annual buyer, who has
+             nothing to upgrade to. Failing to mint must not cost them their
+             receipt, so it degrades to no offer rather than no email. */
+          let upgradeUrl: string | null = null;
+          const subId = typeof session.subscription === "string" ? session.subscription : null;
+          if (period === "monthly" && subId && product && product.annualUsd < product.monthlyUsd * 12) {
+            upgradeUrl = await upgradeLinkFor(subId, "https://servolia.com").catch(() => null);
+          }
           const tpl = clientServicePaidEmail({
             productName: copy?.heading ?? "Website hosting",
             productNoun: copy?.sentenceName ?? "hosting",
@@ -192,6 +202,7 @@ export async function POST(req: NextRequest) {
             restored,
             includes: copy?.includes ?? [],
             lang: emailLang,
+            upgradeUrl,
           });
           sendEmail(customerEmail, tpl.subject, tpl.html).catch(() => {});
         }

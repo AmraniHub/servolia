@@ -12,6 +12,8 @@ import {
   liveEmail,
   clientServicePaidEmail,
   balanceSettledEmail,
+  upgradeLinkEmail,
+  upgradeDoneEmail,
 } from "@/lib/email";
 import { CLIENT_PRODUCTS, nextChargeDate, productCopy } from "@/lib/hosting";
 
@@ -99,6 +101,29 @@ function build(id: string, lang: "en" | "fr"): Built | null {
         amountUsd: 15,
         label: lang === "fr" ? "Hébergement impayé — juillet et août" : "Unpaid hosting — July and August",
       });
+    case "upgrade-offer": {
+      const c = productCopy(CLIENT_PRODUCTS.chatbot, lang);
+      return upgradeLinkEmail({
+        lang,
+        url: "https://servolia.com/hosting/upgrade?t=sample",
+        productName: c.heading,
+        siteLabel: "temghid.ma",
+        monthlyUsd: CLIENT_PRODUCTS.chatbot.monthlyUsd,
+        annualUsd: CLIENT_PRODUCTS.chatbot.annualUsd,
+        savingUsd: CLIENT_PRODUCTS.chatbot.monthlyUsd * 12 - CLIENT_PRODUCTS.chatbot.annualUsd,
+      });
+    }
+    case "upgrade-done": {
+      const c = productCopy(CLIENT_PRODUCTS.chatbot, lang);
+      return upgradeDoneEmail({
+        lang,
+        productName: c.heading,
+        productNoun: c.sentenceName,
+        siteLabel: "temghid.ma",
+        annualUsd: CLIENT_PRODUCTS.chatbot.annualUsd,
+        savingUsd: CLIENT_PRODUCTS.chatbot.monthlyUsd * 12 - CLIENT_PRODUCTS.chatbot.annualUsd,
+      });
+    }
     default:
       return null;
   }
@@ -116,6 +141,8 @@ const TEMPLATES: { id: string; label: string; bilingual: boolean }[] = [
   { id: "hosting-paid", label: "Hosting paid — yearly", bilingual: true },
   { id: "chatbot-restored", label: "Assistant paid — switched back on", bilingual: true },
   { id: "balance-settled", label: "Old balance settled", bilingual: true },
+  { id: "upgrade-offer", label: "Switch to yearly — the offer", bilingual: true },
+  { id: "upgrade-done", label: "Switch to yearly — confirmed", bilingual: true },
 ];
 
 export async function GET(req: NextRequest) {
