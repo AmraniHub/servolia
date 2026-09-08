@@ -23,6 +23,24 @@ import Stripe from "stripe";
 type PortalLocale = "en" | "fr";
 
 /**
+ * Stripe's no-code portal login page — the way back in when a signed link has
+ * expired.
+ *
+ * The client types the address they pay with and Stripe emails them a way in.
+ * Stripe answers identically whether or not the address is a customer, so it
+ * reveals nothing, and it needs nothing from us at request time.
+ *
+ * The live value is the default rather than only an env var, so the button
+ * works without anything being configured in Vercel first — an env var nobody
+ * remembers to set is a button that silently never appears. Set
+ * STRIPE_PORTAL_LOGIN_URL to override it without a deploy if the link is ever
+ * regenerated in the Stripe dashboard.
+ */
+export const PORTAL_LOGIN_URL =
+  process.env.STRIPE_PORTAL_LOGIN_URL?.trim() ||
+  "https://billing.stripe.com/p/login/9B614macp4MGfcJcDTabK00";
+
+/**
  * A one-time URL into this client's billing portal.
  *
  * Returns null rather than throwing so a caller composing an email can drop

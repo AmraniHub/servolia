@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import Link from "next/link";
 import { CheckCircle2, AlertCircle } from "lucide-react";
+import { PORTAL_LOGIN_URL } from "@/lib/clientPortal";
 
 export const metadata: Metadata = {
   title: "Billing",
@@ -12,11 +13,12 @@ export const metadata: Metadata = {
  * Where the billing portal sends people — on the way back out, and when the
  * link could not be used.
  *
- * Deliberately has no form and no way in. The route into billing is always a
- * signed link in an email to the address on the subscription; offering a box
- * here that took an email address would be a way to test whether a given
- * business is a client, and would put a cancel button behind nothing more than
- * knowing an address.
+ * It takes no email address of its own. A box here would be a way to test
+ * whether a given business is a client, and would put a cancel button behind
+ * nothing more than knowing an address. When a link has expired it hands the
+ * client to STRIPE'S login page instead: Stripe collects the address, answers
+ * identically whether or not it belongs to a customer, and emails a way in
+ * only if it does. Same guarantee, and none of it is ours to get wrong.
  */
 const T = {
   en: {
@@ -26,12 +28,14 @@ const T = {
     },
     "invalid-link": {
       title: "This link has expired",
-      body: "Billing links are tied to your subscription and do not last forever. Reply to any email from us and we will send a fresh one — it takes a second.",
+      body: "Billing links do not last forever. Sign in with the email address you pay with and you will be straight back in.",
     },
     unavailable: {
       title: "Billing is briefly unavailable",
-      body: "Nothing is wrong with your account and nothing has changed. Try the link again in a few minutes, or reply to any email from us.",
+      body: "Nothing is wrong with your account and nothing has changed. Try again in a few minutes, or sign in with the email address you pay with.",
     },
+    signIn: "Sign in with your billing email",
+    signInNote: "We will email you a secure link. No password.",
     back: "Back to Servolia",
   },
   fr: {
@@ -41,12 +45,14 @@ const T = {
     },
     "invalid-link": {
       title: "Ce lien a expiré",
-      body: "Les liens de facturation sont liés à votre abonnement et ne durent pas indéfiniment. Répondez à n'importe lequel de nos emails et nous vous en envoyons un nouveau — c'est immédiat.",
+      body: "Les liens de facturation ne durent pas indéfiniment. Connectez-vous avec l'adresse email avec laquelle vous payez et vous y serez de nouveau.",
     },
     unavailable: {
       title: "Facturation momentanément indisponible",
-      body: "Rien d'anormal sur votre compte et rien n'a changé. Réessayez le lien dans quelques minutes, ou répondez à l'un de nos emails.",
+      body: "Rien d'anormal sur votre compte et rien n'a changé. Réessayez dans quelques minutes, ou connectez-vous avec l'adresse email avec laquelle vous payez.",
     },
+    signIn: "Se connecter avec mon email de facturation",
+    signInNote: "Nous vous envoyons un lien sécurisé par email. Sans mot de passe.",
     back: "Retour sur Servolia",
   },
 };
@@ -111,12 +117,30 @@ export default async function BillingPage({
           )}
           <h1 className="text-2xl font-black text-[#18181B] mb-3">{copy.title}</h1>
           <p className="text-[#52525B] leading-relaxed mb-8">{copy.body}</p>
-          <Link
-            href="/"
-            className="inline-flex items-center justify-center h-11 px-6 rounded-xl bg-[#18181B] text-white font-bold hover:bg-[#27272A]"
-          >
-            {t.back}
-          </Link>
+          {/* On a failure this is the way back in, so it leads. On success the
+              client has just come from the portal and does not need sending
+              there again. */}
+          {ok ? (
+            <Link
+              href="/"
+              className="inline-flex items-center justify-center h-11 px-6 rounded-xl bg-[#18181B] text-white font-bold hover:bg-[#27272A]"
+            >
+              {t.back}
+            </Link>
+          ) : (
+            <div className="flex flex-col items-center gap-3">
+              <a
+                href={PORTAL_LOGIN_URL}
+                className="inline-flex items-center justify-center h-11 px-6 rounded-xl bg-[#18181B] text-white font-bold hover:bg-[#27272A]"
+              >
+                {t.signIn}
+              </a>
+              <p className="text-xs text-[#8A8A80]">{t.signInNote}</p>
+              <Link href="/" className="text-sm text-[#71717A] hover:text-[#18181B] underline underline-offset-4">
+                {t.back}
+              </Link>
+            </div>
+          )}
         </div>
       </div>
 
