@@ -14,6 +14,8 @@ import {
   balanceSettledEmail,
   upgradeLinkEmail,
   upgradeDoneEmail,
+  sendEmail,
+  currentFrom,
 } from "@/lib/email";
 import { CLIENT_PRODUCTS, nextChargeDate, productCopy } from "@/lib/hosting";
 
@@ -28,9 +30,20 @@ export const dynamic = "force-dynamic";
  * opinion matters most. Previously the only way to see a template was to
  * trigger the real event.
  *
- *   /api/admin/email-preview                 → index of every template
- *   /api/admin/email-preview?t=live&lang=fr  → that template, rendered
- *   /api/admin/email-preview?t=live&raw=1    → the HTML source
+ *   /api/admin/email-preview                        → index of every template
+ *   /api/admin/email-preview?t=live&lang=fr         → that template, rendered
+ *   /api/admin/email-preview?t=live&raw=1           → the HTML source
+ *   /api/admin/email-preview?t=X&send=you@mail.com  → actually SEND it
+ *
+ * The send mode exists because rendering proves the markup and nothing else.
+ * What a client sees first is the FROM line, and that is exactly the part no
+ * preview can show: EMAIL_FROM is marked Sensitive in Vercel, so its value
+ * cannot be read back from the dashboard or the CLI. A real send through the
+ * real transport is the only way to see what leaves.
+ *
+ * It cannot be used to test the payment path any other way, either: the Stripe
+ * webhook drops every test-mode event before it reaches an email, so a test
+ * card produces silence by design.
  */
 
 type Built = { subject: string; html: string };
@@ -173,6 +186,31 @@ export async function GET(req: NextRequest) {
 
   const built = build(id, lang);
   if (!built) return NextResponse.json({ error: `Unknown template: ${id}` }, { status: 404 });
+
+  /* SEND IT FOR REAL. Requires an explicit address — never a default, so a
+     stray click on a bookmarked URL cannot mail a client. */
+  const send = url.searchParams.get("send");
+  if (send) {
+    const sender = currentFrom();
+    if (!/.+@.+\..+/.test(send)) {
+      return NextResponse.json({ error: "send must be an email address" }, { status: 400 });
+    }
+    const ok = await sendEmail(send, built.subject, built.html);
+    return NextResponse.json({
+      sent: ok,
+      to: send,
+      template: id,
+      lang,
+      subject: built.subject,
+      // What the recipient will see in their client, and where a reply goes.
+      from: sender.from,
+      replyTo: sender.replyTo ?? `${sender.from} (no EMAIL_REPLY_TO set, so replies go to the From address)`,
+      senderGuardOverrode: sender.overriddenFrom,
+      note: ok
+        ? "Check the inbox, then check the From line and hit reply to prove the address receives."
+        : "Resend refused or is not configured — check RESEND_API_KEY and the Vercel function log.",
+    });
+  }
 
   if (url.searchParams.get("raw")) {
     return new NextResponse(built.html, { headers: { "content-type": "text/plain; charset=utf-8" } });

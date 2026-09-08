@@ -4,6 +4,8 @@ import { isAdminAuthed } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { telegramConfigured } from "@/lib/telegram";
 import { isLiveKey, isRestrictedKey } from "@/lib/stripeMode";
+import { CLIENT_REFS } from "@/lib/clientRefs";
+import { sitePath } from "@/lib/hostingGate";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -445,17 +447,87 @@ function checkAds(): Check {
   };
 }
 
+/**
+ * THE HOSTING GATE — can we actually reach every client repo we might have to
+ * pause or restore?
+ *
+ * This exists because GH_TOKEN was missing in production and nothing said so.
+ * Every other surface looked healthy: payments worked, emails sent, the cron
+ * ran. The only symptom would have been a client paying to reactivate a
+ * service that then stayed off, discovered by the client rather than by us.
+ *
+ * A presence check on the variable is not enough — a fine-grained token is
+ * scoped to named repositories, so it can be perfectly valid and still be
+ * unable to write to the one client who needs suspending. Each gated client is
+ * therefore probed individually.
+ *
+ * Not a blocker for ads: a broken gate costs collections, not conversions.
+ */
+async function checkHostingGate(): Promise<Check> {
+  const token = process.env.GH_TOKEN;
+  const gated = Object.entries(CLIENT_REFS).filter(([, c]) => c.repo);
+
+  if (!gated.length) {
+    return {
+      id: "hosting-gate", label: "Hosting gate — client repos", status: "ready",
+      detail: "No client is set up to be gated, so there is nothing to reach.",
+      blocksAds: false,
+    };
+  }
+  if (!token) {
+    return {
+      id: "hosting-gate", label: "Hosting gate — client repos", status: "blocked",
+      detail: `GH_TOKEN is not set, so ${gated.length} client site(s) can be neither paused for non-payment nor restored when they pay.`,
+      fix: "Add GH_TOKEN in Vercel (fine-grained token, Contents: read and write on each client repo), then redeploy.",
+      blocksAds: false,
+    };
+  }
+
+  const bad: string[] = [];
+  for (const [key, c] of gated) {
+    const branch = c.branch || "main";
+    // The same file applyGate insists on, at the same path, so this proves the
+    // real thing rather than merely that the repo is visible.
+    const file = c.gateWidget ? "snippets/subscription-gate.liquid" : "site-status.js";
+    const path = sitePath(c.siteRoot, file);
+    try {
+      const r = await retryFetch(
+        `https://api.github.com/repos/${c.repo}/contents/${encodeURIComponent(path)}?ref=${branch}`,
+        { headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json" } },
+      );
+      if (!r.ok) bad.push(`${key} (${r.status === 404 ? "token cannot see it, or gate not installed" : `HTTP ${r.status}`})`);
+    } catch (err) {
+      bad.push(`${key} (${err instanceof Error ? err.message : "unreachable"})`);
+    }
+  }
+
+  if (bad.length) {
+    return {
+      id: "hosting-gate", label: "Hosting gate — client repos", status: "blocked",
+      detail: `Cannot reach the gate for: ${bad.join(", ")}. Those clients cannot be paused, and — worse — cannot be restored after they pay.`,
+      fix: "Add each repo to the fine-grained token's Repository access with Contents: read and write.",
+      blocksAds: false,
+    };
+  }
+  return {
+    id: "hosting-gate", label: "Hosting gate — client repos", status: "ready",
+    detail: `Reachable for all ${gated.length} gated client(s): ${gated.map(([k]) => k).join(", ")}.`,
+    blocksAds: false,
+  };
+}
+
 export async function GET() {
   if (!(await isAdminAuthed())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const [anthropic, stripe, resend, supabase] = await Promise.all([
+  const [anthropic, stripe, resend, supabase, gate] = await Promise.all([
     checkAnthropic(),
     checkStripe(),
     checkResend(),
     checkSupabase(),
+    checkHostingGate(),
   ]);
 
-  const checks: Check[] = [supabase, ...stripe, anthropic, resend, checkAlerts(), checkPush(), checkAds()];
+  const checks: Check[] = [supabase, ...stripe, anthropic, resend, gate, checkAlerts(), checkPush(), checkAds()];
   const blockers = checks.filter((c) => c.blocksAds);
 
   return NextResponse.json({

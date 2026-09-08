@@ -67,6 +67,20 @@ function resolveFrom(): { from: string; corrected: string | null } {
 
 const { from: FROM, corrected: FROM_OVERRIDDEN } = resolveFrom();
 
+/**
+ * What mail will actually leave as, and where replies will land.
+ *
+ * EMAIL_FROM is marked Sensitive in Vercel, so its value cannot be read back
+ * from the dashboard or the CLI — meaning the one thing a client sees first is
+ * the one thing nobody can check from outside the running process. This
+ * reports it to an authenticated admin, and reports the SAFE address when the
+ * sender guard has overridden a misconfigured one, so a test send shows the
+ * truth rather than the intention.
+ */
+export function currentFrom(): { from: string; overriddenFrom: string | null; replyTo: string | null } {
+  return { from: FROM, overriddenFrom: FROM_OVERRIDDEN, replyTo: REPLY_TO };
+}
+
 /** Loud, throttled: a wrong sender is a brand incident, not a config nag. */
 async function warnWrongSender(configured: string): Promise<void> {
   try {
