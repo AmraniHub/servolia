@@ -560,7 +560,23 @@ async function checkHostingGate(): Promise<Check> {
         `https://api.github.com/repos/${c.repo}/contents/${encodeURIComponent(path)}?ref=${branch}`,
         { headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json" } },
       );
-      if (!r.ok) bad.push(`${key} (${r.status === 404 ? "token cannot see it, or gate not installed" : `HTTP ${r.status}`})`);
+      if (!r.ok) {
+        /* GitHub's own words. 403 and 404 mean completely different repairs
+           and are trivial to confuse: 404 is "this token cannot see the
+           repository", 403 is "it can, and is refused the permission" — the
+           second usually meaning Contents was never granted, or the token is a
+           classic one without `repo`. Guessing between them costs an hour. */
+        const body = (await r.json().catch(() => ({}))) as { message?: string };
+        const why =
+          r.status === 404
+            ? "not in the token's repository list, or the gate is not installed"
+            : r.status === 403
+              ? `permission refused — ${body.message ?? "grant Contents: read and write"}`
+              : r.status === 401
+                ? "token rejected — expired or revoked"
+                : body.message ?? "unexpected response";
+        bad.push(`${key} (HTTP ${r.status}: ${why})`);
+      }
     } catch (err) {
       bad.push(`${key} (${err instanceof Error ? err.message : "unreachable"})`);
     }
@@ -570,7 +586,9 @@ async function checkHostingGate(): Promise<Check> {
     return {
       id: "hosting-gate", label: "Hosting gate — client repos", status: "blocked",
       detail: `Cannot reach the gate for: ${bad.join(", ")}. Those clients cannot be paused, and — worse — cannot be restored after they pay.`,
-      fix: "Add each repo to the fine-grained token's Repository access with Contents: read and write.",
+      fix:
+        "404 → add the repo under the token's Repository access. " +
+        "403 → the repo is listed but the permission is missing: set Permissions → Repository → Contents to \"Read and write\" (Metadata alone is not enough), or if it is a classic token give it the full `repo` scope.",
       blocksAds: false,
     };
   }
