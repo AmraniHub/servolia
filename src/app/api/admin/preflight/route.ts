@@ -394,18 +394,83 @@ async function checkSupabase(): Promise<Check> {
   };
 }
 
-function checkAlerts(): Check {
-  const ok = telegramConfigured();
-  return {
-    id: "telegram",
-    label: "Telegram — how you find out",
-    status: ok ? "ready" : "warn",
-    detail: ok
-      ? "Connected. New leads, payments and AI-degradation alerts reach your phone."
-      : "Not configured. A lead could arrive and sit unread — and you would never be told the AI dropped to the fallback.",
-    fix: ok ? undefined : "Set TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID in Vercel.",
-    blocksAds: false,
-  };
+/**
+ * NAMES THE CHAT, rather than confirming two variables exist.
+ *
+ * "Connected" answered the wrong question. Both values are marked Sensitive in
+ * Vercel, so neither can be read back from the dashboard or the CLI — which
+ * means the operator could not find out WHICH conversation their payment and
+ * suspension alerts land in, and a chat id pointing at a dead group reads
+ * exactly like a working one. Telegram is asked directly instead: which bot,
+ * which conversation, by name.
+ */
+async function checkAlerts(): Promise<Check> {
+  const token = process.env.TELEGRAM_BOT_TOKEN?.trim();
+  const chatId = process.env.TELEGRAM_CHAT_ID?.trim();
+
+  if (!token || !chatId || !telegramConfigured()) {
+    return {
+      id: "telegram",
+      label: "Telegram — how you find out",
+      status: "warn",
+      detail:
+        "Not configured. A payment could land, or a client could be paused, and nothing would tell you.",
+      fix: "Set TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID in Vercel.",
+      blocksAds: false,
+    };
+  }
+
+  try {
+    const [meRes, chatRes] = await Promise.all([
+      retryFetch(`https://api.telegram.org/bot${token}/getMe`, {}),
+      retryFetch(`https://api.telegram.org/bot${token}/getChat?chat_id=${encodeURIComponent(chatId)}`, {}),
+    ]);
+    const me = await meRes.json();
+    const chat = await chatRes.json();
+
+    if (!me?.ok) {
+      return {
+        id: "telegram", label: "Telegram — how you find out", status: "warn",
+        detail: "The bot token is not accepted by Telegram, so no alert can ever be delivered.",
+        fix: "Regenerate the token with @BotFather and update TELEGRAM_BOT_TOKEN.",
+        blocksAds: false,
+      };
+    }
+    const bot = me.result?.username ? `@${me.result.username}` : "the bot";
+
+    if (!chat?.ok) {
+      return {
+        id: "telegram", label: "Telegram — how you find out", status: "warn",
+        detail: `${bot} works, but it cannot reach chat ${chatId} (${chat?.description ?? "unknown error"}). Alerts are being sent into nothing.`,
+        fix: "Open Telegram, send the bot a message, then set TELEGRAM_CHAT_ID to that chat.",
+        blocksAds: false,
+      };
+    }
+
+    const c = chat.result ?? {};
+    /* A private chat has a name, a group has a title. Say which, because
+       "alerts go to a group you left" and "alerts go to your phone" look
+       identical in a boolean. */
+    const who =
+      c.title ??
+      [c.first_name, c.last_name].filter(Boolean).join(" ") ??
+      (c.username ? `@${c.username}` : chatId);
+    const kind = c.type === "private" ? "direct message" : c.type;
+
+    return {
+      id: "telegram",
+      label: "Telegram — how you find out",
+      status: "ready",
+      detail: `Payments, failed cards and suspensions go to "${who}" (${kind}, id ${chatId}) via ${bot}.`,
+      blocksAds: false,
+    };
+  } catch (err) {
+    return {
+      id: "telegram", label: "Telegram — how you find out", status: "warn",
+      detail: `Could not reach Telegram to confirm where alerts go: ${err instanceof Error ? err.message : "unknown"}.`,
+      blocksAds: false,
+    };
+  }
 }
 
 function checkPush(): Check {
@@ -519,15 +584,16 @@ async function checkHostingGate(): Promise<Check> {
 export async function GET() {
   if (!(await isAdminAuthed())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const [anthropic, stripe, resend, supabase, gate] = await Promise.all([
+  const [anthropic, stripe, resend, supabase, gate, alerts] = await Promise.all([
     checkAnthropic(),
     checkStripe(),
     checkResend(),
     checkSupabase(),
     checkHostingGate(),
+    checkAlerts(),
   ]);
 
-  const checks: Check[] = [supabase, ...stripe, anthropic, resend, gate, checkAlerts(), checkPush(), checkAds()];
+  const checks: Check[] = [supabase, ...stripe, anthropic, resend, gate, alerts, checkPush(), checkAds()];
   const blockers = checks.filter((c) => c.blocksAds);
 
   return NextResponse.json({
