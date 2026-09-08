@@ -161,7 +161,18 @@ export async function POST(req: NextRequest) {
             session.metadata.gate_widget,
             false,
           ).catch((e) => {
+            /* LOUD, not just logged. The suspended notice on the client's own
+               storefront promises the assistant returns "automatiquement dès
+               reception du paiement". If this fails — a missing GH_TOKEN, a
+               revoked one, a GitHub outage — the client has paid and the thing
+               they paid for is still off, and a console line in a serverless
+               log is not something anyone reads. */
             console.error("[stripe] chatbot restore failed:", e?.message);
+            sendTelegramMessage(
+              `*PAID but NOT restored — ${session.metadata?.business || session.metadata?.ref || "a client"}*\n` +
+              `${e?.message ?? "unknown error"}\n` +
+              `They have paid and the service is still off. Restore it by hand.`,
+            ).catch(() => {});
             return false;
           });
         }
