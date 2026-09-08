@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { isAdminAuthed } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
-import { telegramConfigured } from "@/lib/telegram";
+import { telegramConfigured, sendTelegramMessage } from "@/lib/telegram";
 import { isLiveKey, isRestrictedKey } from "@/lib/stripeMode";
 import { CLIENT_REFS } from "@/lib/clientRefs";
 import { sitePath } from "@/lib/hostingGate";
@@ -599,7 +599,7 @@ async function checkHostingGate(): Promise<Check> {
   };
 }
 
-export async function GET() {
+export async function GET(req: Request) {
   if (!(await isAdminAuthed())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const [anthropic, stripe, resend, supabase, gate, alerts] = await Promise.all([
@@ -614,10 +614,49 @@ export async function GET() {
   const checks: Check[] = [supabase, ...stripe, anthropic, resend, gate, alerts, checkPush(), checkAds()];
   const blockers = checks.filter((c) => c.blocksAds);
 
+  /* ?ping=1 — push this whole report to Telegram.
+   *
+   * Two jobs in one press. It proves the alert channel actually delivers,
+   * which no configuration check can: a valid token and a valid chat id still
+   * produce nothing if the bot was blocked or removed from the chat. And it
+   * puts the report where it is useful — the failures this page reports are
+   * ones you act on away from a desk.
+   *
+   * Sent PLAIN. The details contain Stripe event names, and an underscore in
+   * invoice.payment_failed is enough for Markdown to reject the whole message.
+   */
+  const ping = new URL(req.url).searchParams.get("ping");
+  let pinged: boolean | null = null;
+  if (ping) {
+    const icon = (st: Status) => (st === "ready" ? "OK  " : st === "warn" ? "WARN" : "STOP");
+    const lines = [
+      `Servolia preflight - ${new Date().toUTCString()}`,
+      "",
+      ...checks.map((c) =>
+        // Detail only where something is wrong: a digest nobody can skim is a
+        // digest nobody reads.
+        c.status === "ready" ? `${icon(c.status)} ${c.label}` : `${icon(c.status)} ${c.label}
+     ${c.detail}`,
+      ),
+      "",
+      blockers.length ? `${blockers.length} blocking ads.` : "Nothing blocking ads.",
+    ];
+    // Joined with a template literal rather than an escape: this file is
+    // patched by scripts, and a "\n" written through a shell heredoc arrives
+    // as a real newline inside the quotes and breaks the string.
+    const sent = await sendTelegramMessage(lines.join(`
+`).slice(0, 3900), undefined, {
+      plain: true,
+      silent: true,
+    });
+    pinged = sent !== null;
+  }
+
   return NextResponse.json({
     checkedAt: new Date().toISOString(),
     canRunAds: blockers.length === 0,
     blockerCount: blockers.length,
+    ...(ping ? { pingedTelegram: pinged } : {}),
     checks,
   });
 }

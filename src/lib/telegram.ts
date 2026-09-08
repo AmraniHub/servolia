@@ -36,6 +36,18 @@ export function telegramConfigured(): boolean {
 export interface SendOptions {
   /** Deliver without sound/vibration. Use for digests, reports and summaries. */
   silent?: boolean;
+  /**
+   * Send with NO parse mode, for text that was not written as Markdown.
+   *
+   * Every message here goes out as Markdown by default, which is fine for
+   * hand-written alerts and quietly fatal for machine-generated ones: a
+   * Stripe event name like invoice.payment_failed carries an underscore that
+   * opens an italic run and never closes it, Telegram answers 400 "can't
+   * parse entities", and this function returns null. The caller sees no
+   * throw, no log, and no message — the failure mode is silence, which is the
+   * worst possible one for an alert channel.
+   */
+  plain?: boolean;
 }
 
 /** Send a message, optionally with a row of inline buttons. Returns the message_id, or null if not configured/failed. */
@@ -54,7 +66,7 @@ export async function sendTelegramMessage(
       body: JSON.stringify({
         chat_id: chatId,
         text,
-        parse_mode: "Markdown",
+        ...(opts?.plain === true ? {} : { parse_mode: "Markdown" }),
         disable_notification: opts?.silent === true,
         reply_markup: buttons ? { inline_keyboard: buttons } : undefined,
       }),
