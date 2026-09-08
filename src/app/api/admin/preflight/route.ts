@@ -627,6 +627,7 @@ export async function GET(req: Request) {
    */
   const ping = new URL(req.url).searchParams.get("ping");
   let pinged: boolean | null = null;
+  let pingError: string | null = null;
   if (ping) {
     const icon = (st: Status) => (st === "ready" ? "OK  " : st === "warn" ? "WARN" : "STOP");
     const lines = [
@@ -644,19 +645,53 @@ export async function GET(req: Request) {
     // Joined with a template literal rather than an escape: this file is
     // patched by scripts, and a "\n" written through a shell heredoc arrives
     // as a real newline inside the quotes and breaks the string.
-    const sent = await sendTelegramMessage(lines.join(`
-`).slice(0, 3900), undefined, {
-      plain: true,
-      silent: true,
-    });
+    const body = lines.join(`
+`).slice(0, 3900);
+
+    /* LOUD, unlike the scheduled digests. A person pressed this to watch a
+       message arrive; delivering it with disable_notification means it lands
+       silently in the chat and they conclude the channel is broken. */
+    const sent = await sendTelegramMessage(body, undefined, { plain: true });
     pinged = sent !== null;
+
+    /* sendTelegramMessage swallows every error and returns null, which is the
+       right call for a fire-and-forget alert beside a payment and useless for
+       a test whose entire purpose is to say WHY nothing arrived. So on failure
+       ask Telegram again and keep its own words. */
+    if (!pinged) {
+      try {
+        const t = process.env.TELEGRAM_BOT_TOKEN?.trim();
+        const c = process.env.TELEGRAM_CHAT_ID?.trim();
+        if (!t || !c) {
+          pingError = "TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID is not set in this environment.";
+        } else {
+          const r = await retryFetch(`https://api.telegram.org/bot${t}/sendMessage`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ chat_id: c, text: body }),
+          });
+          const j = (await r.json().catch(() => ({}))) as { ok?: boolean; description?: string };
+          pinged = j.ok === true;
+          if (!pinged) pingError = j.description ?? `Telegram returned HTTP ${r.status}`;
+        }
+      } catch (err) {
+        pingError = err instanceof Error ? err.message : "could not reach Telegram";
+      }
+    }
   }
 
   return NextResponse.json({
     checkedAt: new Date().toISOString(),
     canRunAds: blockers.length === 0,
     blockerCount: blockers.length,
-    ...(ping ? { pingedTelegram: pinged } : {}),
+    ...(ping
+      ? {
+          pingedTelegram: pinged,
+          // Telegram's own words when it refused, so a failure is actionable
+          // rather than a bare false.
+          ...(pingError ? { pingError } : {}),
+        }
+      : {}),
     checks,
   });
 }
