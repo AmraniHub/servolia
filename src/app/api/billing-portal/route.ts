@@ -1,62 +1,42 @@
-import Stripe from "stripe";
 import { NextRequest, NextResponse } from "next/server";
-import { getClientEmail } from "@/lib/clientAuth";
+import { readUpgradeToken } from "@/lib/upgrade";
+import { billingPortalUrl } from "@/lib/clientPortal";
+import { subscriptionContext } from "@/lib/upgrade";
 
 export const runtime = "nodejs";
 
 /**
- * Opens the Stripe billing portal for the LOGGED-IN client.
- * Requires a portal session (magic-link login) — the email comes from the
- * signed session cookie, never from the request body, so nobody can open
- * another customer's billing portal.
+ * "Manage billing" — hands the client straight into Stripe's portal.
+ *
+ * A GET that redirects, because this is a link in an email and a link in an
+ * email is a GET. The session is created at the moment it is clicked, so the
+ * URL in the email never goes stale: Stripe portal sessions are short-lived,
+ * and minting one at send time would have expired long before a client
+ * clicked it a fortnight later.
+ *
+ * Authorised by the same signed token as the upgrade page. Both grant actions
+ * on the client's own subscription and both are delivered only to the address
+ * already on it, so they carry the same trust: holding the link means holding
+ * the inbox.
  */
-export async function POST(req: NextRequest) {
-  const email = await getClientEmail();
-  if (!email) {
-    return NextResponse.json({ error: "Please log in first", login: true }, { status: 401 });
-  }
+export async function GET(req: NextRequest) {
+  const token = req.nextUrl.searchParams.get("t") ?? "";
+  const subscriptionId = await readUpgradeToken(token);
+  const origin = req.nextUrl.origin;
 
-  const key = process.env.STRIPE_SECRET_KEY;
-  if (!key) {
-    return NextResponse.json({ error: "Stripe not configured" }, { status: 503 });
-  }
-  const stripe = new Stripe(key);
+  const bad = (reason: string) =>
+    NextResponse.redirect(`${origin}/hosting/billing?problem=${reason}`, 302);
 
-  try {
-    const customers = await stripe.customers.list({ email: email.toLowerCase().trim(), limit: 1 });
+  if (!subscriptionId) return bad("invalid-link");
 
-    if (!customers.data.length) {
-      return NextResponse.json(
-        { error: "No billing account found for your email yet — contact hello@servolia.com." },
-        { status: 404 },
-      );
-    }
+  const ctx = await subscriptionContext(subscriptionId);
+  const url = await billingPortalUrl(subscriptionId, {
+    locale: ctx?.lang ?? "en",
+    // Back to a page of ours that says what just happened, rather than the
+    // marketing home page, which reads as being dumped out of the process.
+    returnUrl: `${origin}/hosting/billing?done=1${ctx?.lang === "fr" ? "&lang=fr" : ""}`,
+  });
 
-    const origin = req.headers.get("origin") ?? "https://servolia.com";
-    const session = await stripe.billingPortal.sessions.create({
-      customer: customers.data[0].id,
-      return_url: `${origin}/portal`,
-    });
-
-    return NextResponse.json({ url: session.url });
-  } catch (err) {
-    console.error("Billing portal error:", err);
-
-    // The portal CONFIGURATION is per-mode, and switching to live keys does not
-    // carry the test one over. Until the portal settings are saved once in the
-    // live dashboard, this call fails for every client - and the generic
-    // message that used to be returned gave nobody a way to work that out.
-    const msg = err instanceof Error ? err.message : "";
-    if (/default configuration has not been created|No configuration provided/i.test(msg)) {
-      console.error(
-        "[billing-portal] SETUP REQUIRED: save the Customer Portal settings once in the LIVE Stripe dashboard " +
-          "(Settings -> Billing -> Customer portal). Configurations do not carry over from test mode.",
-      );
-      return NextResponse.json(
-        { error: "Billing self-service is not switched on yet - email hello@servolia.com and we will sort it in minutes." },
-        { status: 503 },
-      );
-    }
-    return NextResponse.json({ error: "Could not open billing portal" }, { status: 500 });
-  }
+  if (!url) return bad("unavailable");
+  return NextResponse.redirect(url, 302);
 }

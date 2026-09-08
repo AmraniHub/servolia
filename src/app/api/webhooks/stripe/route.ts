@@ -7,6 +7,7 @@ import {
   installationPaidEmail,
   clientServicePaidEmail,
   balanceSettledEmail,
+  paymentFailedEmail,
 } from "@/lib/email";
 import { sendMetaCapiEvent } from "@/lib/metaCapi";
 import { generateScopeDocument } from "@/lib/scopeDocument";
@@ -18,7 +19,8 @@ import {
   productCopy,
 } from "@/lib/hosting";
 import { setShopifyGate } from "@/lib/hostingGate";
-import { upgradeLinkFor } from "@/lib/upgrade";
+import { upgradeLinkFor, billingPortalLinkFor, subscriptionContext } from "@/lib/upgrade";
+import { billingPortalUrl } from "@/lib/clientPortal";
 import { provisionAddon } from "@/lib/provisioning";
 
 export const runtime = "nodejs";
@@ -191,6 +193,14 @@ export async function POST(req: NextRequest) {
           if (period === "monthly" && subId && product && product.annualUsd < product.monthlyUsd * 12) {
             upgradeUrl = await upgradeLinkFor(subId, "https://servolia.com").catch(() => null);
           }
+          /* A standing way into Stripe's billing portal — card, invoices,
+             cancel. Points at our own route, which mints the Stripe session
+             when it is clicked: a portal session minted here would expire
+             long before the month their card runs out. */
+          let portalUrl: string | null = null;
+          if (subId) {
+            portalUrl = await billingPortalLinkFor(subId, "https://servolia.com").catch(() => null);
+          }
           const tpl = clientServicePaidEmail({
             productName: copy?.heading ?? "Website hosting",
             productNoun: copy?.sentenceName ?? "hosting",
@@ -203,6 +213,7 @@ export async function POST(req: NextRequest) {
             includes: copy?.includes ?? [],
             lang: emailLang,
             upgradeUrl,
+            portalUrl,
           });
           sendEmail(customerEmail, tpl.subject, tpl.html).catch(() => {});
         }
@@ -570,7 +581,7 @@ export async function POST(req: NextRequest) {
 
       if (filter) {
         const { data: host } = await db.from("hosting_clients")
-          .select("id, past_due_since, business, repo, branch, site_root")
+          .select("id, past_due_since, business, repo, branch, site_root, email, plan, subscription_id, payment_status")
           .or(filter).maybeSingle();
 
         if (host) {
@@ -579,11 +590,45 @@ export async function POST(req: NextRequest) {
           const suspendAt = new Date(new Date(pastDueSince).getTime() + GRACE_DAYS * 86400000).toISOString();
           await db.from("hosting_clients").update({
             status: "past_due",
-            payment_status: "past_due",
+            /* Never walk the marker back. Stripe retries a declined card for
+               days, and each retry lands here; overwriting `past_due_final`
+               with `past_due` would put a client who has already had their
+               final notice back into the dunning cron's queue and email them
+               the same warning again. */
+            ...(host.payment_status === "past_due_final" ? {} : { payment_status: "past_due" }),
             past_due_since: pastDueSince,
             suspend_at: suspendAt,
             open_invoice_url: invoice.hosted_invoice_url ?? null,
           }).eq("id", host.id);
+
+          /* TELL THE CLIENT. Their card was declined and, until this existed,
+           * the only people who found out were us. Stripe retries over several
+           * days, each retry firing this same event, so the notice is sent
+           * ONLY on the first failure — `past_due_since` was null before the
+           * update above, and that is the flag. Without the guard a client
+           * gets four identical warnings for one expired card, which reads as
+           * dunning by machine gun. */
+          if (!host.past_due_since && host.email && host.subscription_id) {
+            const failedPlan = resolveHostingPlan(host.plan);
+            const ctx = await subscriptionContext(host.subscription_id);
+            const failLang = ctx?.lang ?? "en";
+            const failCopy = failedPlan ? productCopy(failedPlan, failLang) : null;
+            const portalUrl = await billingPortalUrl(host.subscription_id, {
+              locale: failLang,
+              returnUrl: `https://servolia.com/hosting/billing?done=1${failLang === "fr" ? "&lang=fr" : ""}`,
+            });
+            const tpl = paymentFailedEmail({
+              productName: failCopy?.heading ?? "Website hosting",
+              productNoun: failCopy?.sentenceName ?? "hosting",
+              siteLabel: ctx?.siteLabel || host.business || "",
+              portalUrl,
+              invoiceUrl: invoice.hosted_invoice_url ?? null,
+              graceEndsIso: suspendAt,
+              attempt: "first",
+              lang: failLang,
+            });
+            sendEmail(host.email, tpl.subject, tpl.html).catch(() => {});
+          }
 
           // The site is NOT gated here. Stripe retries a failed card over
           // several days, and cutting a paid-up-until-yesterday client off the

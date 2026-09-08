@@ -722,11 +722,20 @@ export const clientServicePaidEmail = (input: {
    * remembered.
    */
   upgradeUrl?: string | null;
+  /**
+   * Stripe's billing portal — card, invoices, cancel.
+   *
+   * Standing in every receipt so a client never has to ask for it, and never
+   * has to find an old email when their card expires. The link is to OUR
+   * route, which mints the Stripe session at click time: a portal session
+   * minted now would be long expired by the time anyone needed it.
+   */
+  portalUrl?: string | null;
 }) => {
   const {
     productName, productNoun, siteLabel, amountUsd, period,
     nextChargeIso = null, monthlyUsd, restored = false, includes = [], lang = "en",
-    upgradeUrl = null,
+    upgradeUrl = null, portalUrl = null,
   } = input;
 
   const fr = lang === "fr";
@@ -846,6 +855,10 @@ export const clientServicePaidEmail = (input: {
 
       ${upsell}
       <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:${BODY};">${L.receipt}</p>
+      ${portalUrl ? `<p style="margin:0 0 16px;font-size:14px;line-height:1.6;color:${MUTED};">
+        ${fr ? "Changer de carte, retrouver vos factures ou résilier :" : "Change your card, find your invoices, or cancel:"}
+        <a href="${portalUrl}" style="color:${GREEN};text-decoration:none;font-weight:600;">${fr ? "gérer ma facturation" : "manage billing"}</a>.
+      </p>` : ""}
       <p style="margin:0;font-size:14px;line-height:1.6;color:${MUTED};">${L.questions}</p>
       `, { preheader: L.preheader, lang }),
   };
@@ -1019,5 +1032,100 @@ export const upgradeDoneEmail = (input: {
         The service did not stop for a second. Any questions, just reply here.
       </p>
     `, { preheader: `Yearly billing is active. Next payment ${when}.`, lang: "en" }),
+  };
+};
+
+/**
+ * CARD DECLINED — the email that decides whether this client stays.
+ *
+ * Involuntary churn is the expensive kind: the client did not choose to leave,
+ * their card expired. Until this existed the webhook recorded past_due, opened
+ * a grace period and messaged the operator on Telegram — and told the CLIENT
+ * nothing. They found out when their site or assistant stopped, which is the
+ * moment a small subscription stops being worth the bother.
+ *
+ * Written as a heads-up, not a demand. Nothing has been lost yet, the service
+ * is still running, and the fix is thirty seconds of their time. `attempt`
+ * changes the urgency but never the tone: the second one names the date the
+ * service stops, because by then that is the useful fact.
+ */
+export const paymentFailedEmail = (input: {
+  productName: string;
+  productNoun: string;
+  siteLabel: string;
+  /** Stripe's hosted portal, where the card is actually replaced. Null when a
+   *  session could not be created — the email still goes, without the button. */
+  portalUrl?: string | null;
+  /** Stripe's own invoice page, as a second route to paying. */
+  invoiceUrl?: string | null;
+  /** When the service stops if nothing changes. */
+  graceEndsIso?: string | null;
+  attempt?: "first" | "final";
+  lang?: "en" | "fr";
+}) => {
+  const {
+    productName, productNoun, siteLabel, portalUrl = null,
+    invoiceUrl = null, graceEndsIso = null, attempt = "first", lang = "en",
+  } = input;
+
+  const fr = lang === "fr";
+  const final = attempt === "final";
+  const forSite = siteLabel ? (fr ? ` pour ${siteLabel}` : ` for ${siteLabel}`) : "";
+  const deadline = graceEndsIso
+    ? new Date(graceEndsIso).toLocaleDateString(fr ? "fr-FR" : "en-GB", {
+        day: "numeric", month: "long", timeZone: "UTC",
+      })
+    : null;
+
+  const L = fr
+    ? {
+        subject: final
+          ? `Action requise — votre ${productNoun}${siteLabel ? ` pour ${siteLabel}` : ""} va s'arrêter`
+          : `Votre carte a été refusée — ${productName}${siteLabel ? ` pour ${siteLabel}` : ""}`,
+        headline: final ? "Votre carte n'a toujours pas été mise à jour" : "Votre carte a été refusée",
+        opening: final
+          ? `Nous n'avons toujours pas pu débiter votre carte pour votre ${productNoun}${forSite}. Le service fonctionne encore${deadline ? `, mais il s'arrêtera le <strong>${deadline}</strong> si rien ne change` : ""}.`
+          : `Le paiement de votre ${productNoun}${forSite} n'est pas passé. Cela arrive presque toujours pour une raison banale : une carte expirée, remplacée, ou un plafond atteint.`,
+        reassure: final
+          ? "Il n'y a rien à réactiver ensuite : dès que le paiement passe, tout continue normalement."
+          : "Votre service continue de fonctionner normalement. Rien n'est interrompu, et nous réessaierons automatiquement.",
+        cta: "Mettre à jour ma carte",
+        invoice: "Ou régler la facture directement",
+        help: "Si vous préférez qu'on s'en occupe, répondez simplement à cet email.",
+        preheader: final
+          ? `Le service s'arrête${deadline ? ` le ${deadline}` : " bientôt"} si la carte n'est pas mise à jour.`
+          : "Rien n'est interrompu. Il suffit de mettre la carte à jour.",
+      }
+    : {
+        subject: final
+          ? `Action needed — your ${productNoun}${siteLabel ? ` for ${siteLabel}` : ""} is about to stop`
+          : `Your card was declined — ${productName}${siteLabel ? ` for ${siteLabel}` : ""}`,
+        headline: final ? "Your card still hasn't been updated" : "Your card was declined",
+        opening: final
+          ? `We still haven't been able to charge your card for your ${productNoun}${forSite}. The service is still running${deadline ? `, but it will stop on <strong>${deadline}</strong> if nothing changes` : ""}.`
+          : `The payment for your ${productNoun}${forSite} didn't go through. It is almost always something ordinary — a card that expired, was replaced, or hit a limit.`,
+        reassure: final
+          ? "There is nothing to reactivate afterwards: the moment the payment clears, everything carries on."
+          : "Your service is still running as normal. Nothing has stopped, and we will retry automatically.",
+        cta: "Update my card",
+        invoice: "Or pay the invoice directly",
+        help: "If you would rather we handled it, just reply to this email.",
+        preheader: final
+          ? `The service stops${deadline ? ` on ${deadline}` : " soon"} unless the card is updated.`
+          : "Nothing has stopped. The card just needs updating.",
+      };
+
+  return {
+    subject: L.subject,
+    html: wrapper(`
+      <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">${L.headline}</h1>
+      <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:${BODY};">${L.opening}</p>
+      <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:${BODY};">${L.reassure}</p>
+      ${portalUrl ? btn(portalUrl, L.cta) : ""}
+      ${invoiceUrl ? `<p style="margin:${portalUrl ? "14px" : "24px"} 0 0;font-size:14px;line-height:1.6;">
+        <a href="${invoiceUrl}" style="color:${GREEN};text-decoration:none;font-weight:600;">${L.invoice} &rarr;</a>
+      </p>` : ""}
+      <p style="margin:24px 0 0;font-size:14px;line-height:1.6;color:${MUTED};">${L.help}</p>
+      `, { preheader: L.preheader, lang }),
   };
 };

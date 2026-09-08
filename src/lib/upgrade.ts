@@ -64,6 +64,20 @@ export async function upgradeLinkFor(subscriptionId: string, origin = "https://s
   return `${origin}/hosting/upgrade?t=${encodeURIComponent(await mintUpgradeToken(subscriptionId))}`;
 }
 
+/**
+ * Into Stripe's billing portal — card, invoices, cancel.
+ *
+ * Points at our own route rather than at Stripe, because a Stripe portal
+ * session is short-lived and this link sits in a receipt somebody opens when
+ * their card expires months later. The route mints the session at click time.
+ *
+ * Same token as the upgrade link: both act only on the holder's own
+ * subscription, and both are delivered only to the address already on it.
+ */
+export async function billingPortalLinkFor(subscriptionId: string, origin = "https://servolia.com") {
+  return `${origin}/api/billing-portal?t=${encodeURIComponent(await mintUpgradeToken(subscriptionId))}`;
+}
+
 /* ── The quote ─────────────────────────────────────────────────────────── */
 
 export type QuoteProblem =

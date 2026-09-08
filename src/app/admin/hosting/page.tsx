@@ -130,7 +130,7 @@ export default async function HostingPage() {
                       >
                         {String(c.status).toUpperCase()}
                       </span>
-                      {c.payment_status === "past_due" ? (
+                      {c.payment_status?.startsWith("past_due") ? (
                         <span
                           title={c.suspend_at ? `Suspends ${new Date(c.suspend_at).toLocaleDateString()}` : "Payment failed"}
                           className="inline-flex items-center gap-1 text-[10px] font-black px-2 py-1 rounded-full bg-[#FEE2E2] text-[#991B1B]"
