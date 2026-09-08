@@ -45,7 +45,11 @@ export async function billingPortalUrl(
     const session = await stripe.billingPortal.sessions.create({
       customer,
       locale: opts.locale ?? "en",
-      return_url: opts.returnUrl ?? "https://servolia.com",
+      /* Every caller passes its own, language-tagged. The default is the same
+         page rather than the marketing home page so a future call site that
+         forgets still returns the client somewhere that acknowledges what they
+         just did, instead of dumping them on a sales page. */
+      return_url: opts.returnUrl ?? "https://servolia.com/hosting/billing?done=1",
     });
     return session.url;
   } catch (err) {

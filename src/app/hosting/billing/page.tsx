@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import Link from "next/link";
 import { CheckCircle2, AlertCircle } from "lucide-react";
 
@@ -56,7 +57,22 @@ export default async function BillingPage({
   searchParams: Promise<{ problem?: string; done?: string; lang?: string }>;
 }) {
   const { problem = "", done = "", lang = "" } = await searchParams;
-  const fr = lang === "fr";
+
+  /* Language: the parameter first, then the browser.
+   *
+   * Every portal session this codebase creates passes a return_url carrying
+   * ?lang=, so those always land correct. The exception is Stripe's no-code
+   * portal link, which sends everyone to the ONE default URL configured in the
+   * dashboard — a single string that cannot carry a per-client language. Left
+   * at the parameter alone, a French client returning through that route would
+   * read English.
+   *
+   * Falling back to Accept-Language means the configured default needs no
+   * language in it and never needs revisiting: one URL, right for both.
+   */
+  const fr =
+    lang === "fr" ||
+    (lang === "" && /(^|,)\s*fr\b/i.test((await headers()).get("accept-language") ?? ""));
   const t = T[fr ? "fr" : "en"];
 
   const ok = done === "1";
