@@ -1143,3 +1143,68 @@ export const paymentFailedEmail = (input: {
       `, { preheader: L.preheader, lang }),
   };
 };
+
+/**
+ * "Your assistant is paused — here is how to switch it back on."
+ *
+ * Sent by hand from /admin, not by a schedule: this is the one-off nudge for a
+ * client whose service was already suspended before any of the automatic
+ * dunning existed, so no card failed and no grace period is running.
+ *
+ * The payment page needs no token. It takes money rather than granting access,
+ * so a forwarded link costs the recipient nothing and lets the client pay from
+ * whichever device they read this on.
+ */
+export const reactivateEmail = (input: {
+  productName: string;
+  productNoun: string;
+  siteLabel: string;
+  url: string;
+  monthlyUsd: number;
+  lang?: "en" | "fr";
+}) => {
+  const { productName, productNoun, siteLabel, url, monthlyUsd, lang = "en" } = input;
+  const fr = lang === "fr";
+  const money = fr ? `${monthlyUsd}&nbsp;$` : `$${monthlyUsd}`;
+  const forSite = siteLabel ? (fr ? ` sur ${siteLabel}` : ` on ${siteLabel}`) : "";
+
+  if (fr) {
+    return {
+      subject: `Votre ${productNoun} est en pause — réactivation immédiate`,
+      html: wrapper(`
+        <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">Votre ${productNoun} est en pause</h1>
+        <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:${BODY};">
+          Bonjour,
+        </p>
+        <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:${BODY};">
+          Votre ${productNoun}${forSite} est actuellement désactivé. Vos clients ne reçoivent donc plus de réponse automatique, de jour comme de nuit — et une question sans réponse est souvent une vente perdue.
+        </p>
+        <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:${BODY};">
+          Pour le réactiver, c'est <strong>${money} par mois</strong>, résiliable à tout moment. Le paiement est traité par Stripe, et <strong>le service revient automatiquement</strong> dès réception — vous n'avez rien d'autre à faire.
+        </p>
+        ${btn(url, "Réactiver mon assistant →")}
+        <p style="margin:22px 0 0;font-size:14px;line-height:1.6;color:${MUTED};">
+          La page vous montre le montant exact avant tout paiement. Une question ? Répondez simplement à cet email.
+        </p>
+      `, { preheader: `Réactivation en une minute — ${monthlyUsd} $ par mois, le service revient tout seul.`, lang: "fr" }),
+    };
+  }
+
+  return {
+    subject: `Your ${productNoun} is paused — switch it back on`,
+    html: wrapper(`
+      <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">Your ${productNoun} is paused</h1>
+      <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:${BODY};">Hello,</p>
+      <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:${BODY};">
+        Your ${productNoun}${forSite} is currently switched off, so your customers are no longer getting an instant answer day or night — and an unanswered question is usually a lost sale.
+      </p>
+      <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:${BODY};">
+        Switching it back on is <strong>${money} a month</strong>, cancel any time. Payment is handled by Stripe, and <strong>the service returns automatically</strong> the moment it clears — there is nothing else for you to do.
+      </p>
+      ${btn(url, "Switch my assistant back on →")}
+      <p style="margin:22px 0 0;font-size:14px;line-height:1.6;color:${MUTED};">
+        The page shows you the exact amount before anything is charged. Any questions, just reply to this email.
+      </p>
+      `, { preheader: `Back on in a minute — ${monthlyUsd} a month, and it restores itself.`, lang: "en" }),
+  };
+};

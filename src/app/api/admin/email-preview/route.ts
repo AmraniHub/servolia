@@ -14,10 +14,12 @@ import {
   balanceSettledEmail,
   upgradeLinkEmail,
   upgradeDoneEmail,
+  reactivateEmail,
   sendEmail,
   currentFrom,
 } from "@/lib/email";
 import { CLIENT_PRODUCTS, nextChargeDate, productCopy } from "@/lib/hosting";
+import { CLIENT_REFS } from "@/lib/clientRefs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -137,6 +139,19 @@ function build(id: string, lang: "en" | "fr"): Built | null {
         savingUsd: CLIENT_PRODUCTS.chatbot.monthlyUsd * 12 - CLIENT_PRODUCTS.chatbot.annualUsd,
       });
     }
+    /* The real reactivation nudge for Temghid: a live link, not sample data,
+       because this template exists to be SENT rather than looked at. */
+    case "reactivate-temghid": {
+      const c = productCopy(CLIENT_PRODUCTS.chatbot, "fr");
+      return reactivateEmail({
+        lang: "fr",
+        productName: c.heading,
+        productNoun: c.sentenceName,
+        siteLabel: CLIENT_REFS.temghid.label,
+        url: "https://servolia.com/chatbot?ref=temghid&billing=monthly",
+        monthlyUsd: CLIENT_PRODUCTS.chatbot.monthlyUsd,
+      });
+    }
     default:
       return null;
   }
@@ -156,6 +171,7 @@ const TEMPLATES: { id: string; label: string; bilingual: boolean }[] = [
   { id: "balance-settled", label: "Old balance settled", bilingual: true },
   { id: "upgrade-offer", label: "Switch to yearly — the offer", bilingual: true },
   { id: "upgrade-done", label: "Switch to yearly — confirmed", bilingual: true },
+  { id: "reactivate-temghid", label: "Temghid — reactivate the assistant (REAL link, FR)", bilingual: false },
 ];
 
 export async function GET(req: NextRequest) {
