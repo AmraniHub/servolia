@@ -53,7 +53,18 @@ export interface ClientRef {
 }
 
 export const CLIENT_REFS: Record<string, ClientRef> = {
-  goodscochina: { label: "goodscochina.com" },
+  goodscochina: {
+    label: "goodscochina.com",
+    repo: "AmraniHub/yiwugoodsco-com",
+    branch: "main",
+    /* The site deploys from web/, not the repo root, so the gate files live
+       there too. Get this wrong and site-status.js lands somewhere Vercel
+       never serves: the write succeeds, the site keeps running, and the
+       suspension is recorded as done. */
+    siteRoot: "web",
+    // No gateWidget: this is a whole Vercel site, not a Shopify add-on, so it
+    // gates through site-status.js + middleware rather than a snippet swap.
+  },
   excellenceagency: { label: "excellenceagency.ma" },
   temghid: {
     label: "temghid.ma",
