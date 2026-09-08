@@ -71,7 +71,10 @@ export default function ClientProductPage({
             {fr ? " · Paiement traité par Stripe" : " · Payments processed by Stripe"}
           </p>
           <div className="flex items-center justify-center gap-4 text-xs text-[#A8A8A0]">
-            <Link href="/legal" className="hover:text-[#52525B]">
+            {/* /legal is not a page — only its children are. A 404 behind
+                "Terms" sits on the one screen where a buyer is deciding
+                whether this company is real. */}
+            <Link href="/legal/terms" className="hover:text-[#52525B]">
               {fr ? "Conditions" : "Terms"}
             </Link>
             <Link href="/contact" className="hover:text-[#52525B]">
