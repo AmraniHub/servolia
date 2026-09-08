@@ -18,9 +18,11 @@ import {
   nextChargeDate,
   productCopy,
 } from "@/lib/hosting";
-import { setShopifyGate } from "@/lib/hostingGate";
+import { setShopifyGate, applyGate } from "@/lib/hostingGate";
 import { upgradeLinkFor, billingPortalLinkFor, subscriptionContext } from "@/lib/upgrade";
+import { clientRefFor } from "@/lib/clientRefs";
 import { billingPortalUrl } from "@/lib/clientPortal";
+import { sendTelegramMessage } from "@/lib/telegram";
 import { provisionAddon } from "@/lib/provisioning";
 
 export const runtime = "nodejs";
@@ -663,8 +665,22 @@ export async function POST(req: NextRequest) {
           open_invoice_url: null,
         }).or(filter);
 
-        // Hosting equivalent. Restores status to active so a client who was
-        // suspended for non-payment comes back on the next successful charge.
+        /* Hosting equivalent — and the half that makes automatic suspension
+         * safe to have at all.
+         *
+         * This used to clear the STATUS only, which meant a client whose site
+         * had been paused stayed paused after paying until somebody noticed.
+         * Automating the cut-off without automating the restore would have
+         * been strictly worse than leaving both manual: the punishment would
+         * run on a schedule and the forgiveness would not.
+         *
+         * The row is read BEFORE the update, because the update is what
+         * destroys the evidence that they were suspended.
+         */
+        const { data: wasHost } = await db.from("hosting_clients")
+          .select("id, business, status, repo, branch, site_root, subscription_id")
+          .or(filter).maybeSingle();
+
         await db.from("hosting_clients").update({
           status: "active",
           payment_status: "ok",
@@ -672,6 +688,32 @@ export async function POST(req: NextRequest) {
           suspend_at: null,
           open_invoice_url: null,
         }).or(filter);
+
+        if (wasHost?.status === "suspended" && wasHost.subscription_id) {
+          const ctx = await subscriptionContext(wasHost.subscription_id);
+          const ref = clientRefFor(ctx?.ref);
+          const outcome = await applyGate(
+            {
+              repo: ref?.repo ?? wasHost.repo,
+              branch: ref?.branch ?? wasHost.branch,
+              siteRoot: ref?.siteRoot ?? wasHost.site_root,
+              gateWidget: ref?.gateWidget ?? null,
+            },
+            false,
+          );
+          /* Never throw from here. Stripe replays any non-2xx and the client
+             would be charged again for a payment that already succeeded. A
+             failed restore is loud instead, because the client has paid and
+             their site is still dark. */
+          if (!outcome.ok) {
+            console.error("[stripe] restore failed:", wasHost.business, outcome.reason, outcome.detail);
+            sendTelegramMessage(
+              `*PAID but NOT restored — ${wasHost.business}*\n` +
+              `${outcome.reason}${outcome.detail ? ` (${outcome.detail})` : ""}\n` +
+              `They have paid and their service is still off. Restore it by hand.`,
+            ).catch(() => {});
+          }
+        }
       }
     }
 

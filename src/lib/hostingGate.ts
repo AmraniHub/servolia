@@ -161,3 +161,77 @@ export async function setSuspended(target: GateTarget, suspended: boolean): Prom
   });
   return true;
 }
+
+/* ── One entry point for "pause this client" ────────────────────────────────
+ *
+ * Two mechanisms exist and they are not interchangeable: a Shopify theme flips
+ * a snippet, a Vercel site flips a line in site-status.js that its middleware
+ * reads. Picking the wrong one writes a file nobody reads.
+ *
+ * THE REASON THIS RETURNS A RESULT INSTEAD OF THROWING OR RESOLVING QUIETLY
+ *
+ * The Vercel mechanism only works if the site actually carries the gate —
+ * site-status.js AND a middleware that reads it. goodscochina.com carries
+ * neither. Writing site-status.js there succeeds at the GitHub API level, so
+ * the caller would record a suspension, alert the operator that the site was
+ * paused, and the site would carry on serving. That is worse than not
+ * automating at all: the operator stops checking.
+ *
+ * So the files are verified BEFORE anything is written, and "the gate is not
+ * installed" is a distinct outcome from "done" and from "failed".
+ */
+
+export type GateKind = "shopify" | "vercel";
+
+export interface GateRow {
+  repo?: string | null;
+  branch?: string | null;
+  siteRoot?: string | null;
+  /** Present only for a Shopify add-on gate, e.g. "chatbot". */
+  gateWidget?: string | null;
+}
+
+export type GateOutcome =
+  | { ok: true; kind: GateKind; changed: boolean }
+  | { ok: false; reason: "no-repo" | "not-installed" | "error"; detail?: string };
+
+/** True when the path exists on that branch. Any other error is rethrown. */
+async function exists(repo: string, branch: string, path: string): Promise<boolean> {
+  try {
+    await gh(`/repos/${repo}/contents/${encodeURIComponent(path)}?ref=${encodeURIComponent(branch)}`);
+    return true;
+  } catch (err) {
+    if (err instanceof Error && /GitHub 404/.test(err.message)) return false;
+    throw err;
+  }
+}
+
+export async function applyGate(row: GateRow, suspend: boolean): Promise<GateOutcome> {
+  if (!row.repo) return { ok: false, reason: "no-repo" };
+  const branch = row.branch || "main";
+  const target: GateTarget = { repo: row.repo, branch, siteRoot: row.siteRoot ?? null };
+
+  try {
+    if (row.gateWidget) {
+      // Shopify: the generated gate snippet is the whole mechanism, so its
+      // absence is the same "not installed" case.
+      if (!(await exists(row.repo, branch, sitePath(row.siteRoot, GATE_PATH)))) {
+        return { ok: false, reason: "not-installed", detail: GATE_PATH };
+      }
+      const changed = await setShopifyGate(target, row.gateWidget, suspend);
+      return { ok: true, kind: "shopify", changed };
+    }
+
+    // Vercel: BOTH halves must be present. site-status.js on its own is a
+    // switch with no wire attached.
+    for (const file of ["site-status.js", "middleware.js"]) {
+      if (!(await exists(row.repo, branch, sitePath(row.siteRoot, file)))) {
+        return { ok: false, reason: "not-installed", detail: sitePath(row.siteRoot, file) };
+      }
+    }
+    const changed = await setSuspended(target, suspend);
+    return { ok: true, kind: "vercel", changed };
+  } catch (err) {
+    return { ok: false, reason: "error", detail: err instanceof Error ? err.message : String(err) };
+  }
+}

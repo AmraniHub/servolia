@@ -5,6 +5,8 @@ import { sendTelegramMessage } from "@/lib/telegram";
 import { subscriptionContext } from "@/lib/upgrade";
 import { billingPortalUrl } from "@/lib/clientPortal";
 import { resolveHostingPlan, productCopy } from "@/lib/hosting";
+import { applyGate } from "@/lib/hostingGate";
+import { clientRefFor } from "@/lib/clientRefs";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -124,5 +126,87 @@ export async function GET(req: NextRequest) {
     ).catch(() => {});
   }
 
-  return NextResponse.json({ ok: true, checked: overdue.length, nudged: sent });
+  /* ── STAGE TWO: the deadline we already told them about ──────────────────
+   *
+   * The day-seven email names the date the service stops. Nothing used to make
+   * that happen, so it was a threat that expired quietly — and a deadline a
+   * client discovers is empty is worse than no deadline, because the next one
+   * is ignored too.
+   *
+   * Everything here is guarded, because this is the one job that takes a live
+   * site off the air:
+   *   - the row must still be past due AND past its own grace deadline
+   *   - STRIPE must still say the subscription is unpaid, checked live, so a
+   *     client who paid an hour ago is never cut off by a stale row
+   *   - the gate must actually be installed; writing site-status.js into a
+   *     repo with no middleware reports a suspension that did not happen
+   *   - `status` becomes suspended only once the commit really landed
+   */
+  const { data: expired } = await db
+    .from("hosting_clients")
+    .select("id, business, plan, subscription_id, repo, branch, site_root, suspend_at, status")
+    .in("payment_status", ["past_due", NOTIFIED])
+    .neq("status", "suspended")
+    .not("suspend_at", "is", null)
+    .lte("suspend_at", new Date(now).toISOString());
+
+  let suspended = 0;
+  const blocked: string[] = [];
+
+  for (const c of expired ?? []) {
+    if (!c.subscription_id) continue;
+
+    const ctx = await subscriptionContext(c.subscription_id);
+    if (!ctx || (ctx.status !== "past_due" && ctx.status !== "unpaid")) continue;
+
+    /* Gate details come from CLIENT_REFS where the client is known: that map
+       is the server-side authority on which repository may be written to and
+       which widget is flipped, and the database row has no gate_widget column
+       at all. It falls back to the row for a client not in the map. */
+    const ref = clientRefFor(ctx.ref);
+    const outcome = await applyGate(
+      {
+        repo: ref?.repo ?? c.repo,
+        branch: ref?.branch ?? c.branch,
+        siteRoot: ref?.siteRoot ?? c.site_root,
+        gateWidget: ref?.gateWidget ?? null,
+      },
+      true,
+    );
+
+    if (!outcome.ok) {
+      blocked.push(`${c.business} — ${outcome.reason}${outcome.detail ? ` (${outcome.detail})` : ""}`);
+      continue;
+    }
+
+    const { error: sErr } = await db
+      .from("hosting_clients").update({ status: "suspended" }).eq("id", c.id);
+    if (sErr) {
+      console.error("[dunning] suspended but could not record it:", sErr.message);
+      blocked.push(`${c.business} — paused, but the record did not save`);
+      continue;
+    }
+    suspended++;
+  }
+
+  if (suspended) {
+    await sendTelegramMessage(
+      `*Paused for non-payment — ${suspended} client${suspended === 1 ? "" : "s"}*\n` +
+      `Grace ran out. Service restores by itself the moment they pay.\n\n` +
+      `[Open](https://servolia.com/admin/hosting)`,
+    ).catch(() => {});
+  }
+  /* Loud on purpose. A client past their deadline whose gate could not be
+     applied is still being served for free, and only a human can fix it. */
+  if (blocked.length) {
+    await sendTelegramMessage(
+      `*COULD NOT pause ${blocked.length} overdue client${blocked.length === 1 ? "" : "s"}*\n` +
+      `They are past the deadline and still being served. This needs you.\n\n` +
+      blocked.map((b) => `- ${b}`).join("\n"),
+    ).catch(() => {});
+  }
+
+  return NextResponse.json({
+    ok: true, checked: overdue.length, nudged: sent, suspended, blocked: blocked.length,
+  });
 }

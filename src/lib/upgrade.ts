@@ -156,6 +156,10 @@ export async function subscriptionContext(subscriptionId: string) {
     return {
       plan,
       lang,
+      /* The client key, so a caller can look the row up in CLIENT_REFS — which
+         is the only place that knows which repository and which widget a
+         suspension is allowed to touch. */
+      ref: sub.metadata?.ref || "",
       siteLabel: sub.metadata?.business || clientRefFor(sub.metadata?.ref || "")?.label || "",
       interval: currentItem(sub).interval,
       status: sub.status,
