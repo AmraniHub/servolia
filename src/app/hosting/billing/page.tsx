@@ -75,7 +75,19 @@ export default async function BillingPage({
     (lang === "" && /(^|,)\s*fr\b/i.test((await headers()).get("accept-language") ?? ""));
   const t = T[fr ? "fr" : "en"];
 
-  const ok = done === "1";
+  /* Success is the DEFAULT, and a problem has to be named explicitly.
+   *
+   * The reverse — treating anything without ?done=1 as a failure — meant the
+   * bare URL said "this link has expired" to someone who had just finished
+   * updating their card perfectly well. That matters because this address is
+   * pasted into a Stripe dashboard field by hand: if the query string is ever
+   * dropped, trimmed, or simply typed without it, the client is told their
+   * link is broken at the exact moment it worked. Only our own redirect sets
+   * `problem`, and it always sets it, so nothing real is lost by defaulting
+   * the other way.
+   */
+  void done;
+  const ok = !problem;
   const copy = ok ? t.done : (t[problem as "invalid-link" | "unavailable"] ?? t["invalid-link"]);
 
   return (
