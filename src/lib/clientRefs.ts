@@ -27,6 +27,19 @@ export interface ClientRef {
    *  balance" on a receipt with no explanation causes a support email. */
   arrearsLabel?: string;
 
+  /**
+   * The address the account is created under, when it has been agreed in
+   * advance. Held SERVER-SIDE on purpose: putting it in the payment link would
+   * write a client's email into browser history, referrer headers and every
+   * access log the link passes through, to save them typing it once.
+   *
+   * Shown MASKED on the page — the ref is guessable, so anyone who tries
+   * /hosting?ref=<name> would otherwise harvest a real address — and sent to
+   * Stripe in full, which both guarantees the account lands on the agreed
+   * address and lets the client confirm it is theirs before paying.
+   */
+  email?: string;
+
   /* Where the gate lives, so a payment can restore the service by itself.
    * Held server-side rather than passed through the browser: these decide
    * which repository gets written to. */
@@ -55,6 +68,9 @@ export interface ClientRef {
 export const CLIENT_REFS: Record<string, ClientRef> = {
   goodscochina: {
     label: "goodscochina.com",
+    // Asked for explicitly by the client, and different from the address on
+    // the old agency dashboard — this one wins.
+    email: "samiramousa77@hotmail.com",
     repo: "AmraniHub/yiwugoodsco-com",
     branch: "main",
     /* The site deploys from web/, not the repo root, so the gate files live
@@ -82,6 +98,21 @@ export function clientRefFor(ref: string | undefined): ClientRef | undefined {
 
 export function siteLabelFor(ref: string | undefined): string {
   return clientRefFor(ref)?.label ?? "";
+}
+
+/**
+ * An address a client will recognise as theirs and a stranger cannot use.
+ *
+ * "samiramousa77@hotmail.com" becomes "sa****77@hotmail.com": enough for the
+ * owner to confirm it at a glance, not enough to be worth harvesting from a
+ * page whose ref anyone can guess.
+ */
+export function maskEmail(email: string | undefined): string {
+  if (!email) return "";
+  const [local, domain] = email.split("@");
+  if (!domain) return "";
+  if (local.length <= 4) return `${local[0]}***@${domain}`;
+  return `${local.slice(0, 2)}${"*".repeat(4)}${local.slice(-2)}@${domain}`;
 }
 
 /**

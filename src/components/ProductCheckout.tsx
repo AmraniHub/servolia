@@ -17,6 +17,7 @@ const T = {
     emailPlaceholder: "your@email.com",
     whyAsking: "So we can match the payment to your site.",
     forLabel: "For",
+    accountUnder: "Account and invoices:",
     yearly: "Yearly",
     monthly: "Monthly",
     perYear: "/ year",
@@ -39,6 +40,7 @@ const T = {
     emailPlaceholder: "votre@email.com",
     whyAsking: "Pour rattacher le paiement à votre site.",
     forLabel: "Pour",
+    accountUnder: "Compte et factures :",
     yearly: "Annuel",
     monthly: "Mensuel",
     perYear: "/ an",
@@ -65,6 +67,7 @@ export default function ProductCheckout({
   includes,
   refCode,
   siteLabel,
+  maskedEmail = "",
   defaultBilling = "annual",
   lang = "en",
 }: {
@@ -74,6 +77,8 @@ export default function ProductCheckout({
   includes: string[];
   refCode: string;
   siteLabel: string;
+  /** Masked form of the agreed account address, e.g. "sa****77@hotmail.com". */
+  maskedEmail?: string;
   /** Which term the link opens on, so a client agreed on monthly is not
    *  shown the annual price first. */
   defaultBilling?: "annual" | "monthly";
@@ -135,6 +140,15 @@ export default function ProductCheckout({
           <div className="px-7 pt-6 pb-5 border-b border-[#F0EFEA] bg-[#FAFAF7]">
             <p className="text-[10px] font-black text-[#8A8A80] uppercase tracking-widest mb-1">{t.forLabel}</p>
             <p className="text-[15px] font-bold text-[#18181B]">{siteLabel}</p>
+            {/* The client asked for the account to be under one named company
+                address. Showing it here is how they confirm that BEFORE the
+                field is locked on Stripe's page. Masked, because the ref is
+                guessable and this page is otherwise open. */}
+            {maskedEmail ? (
+              <p className="mt-2 text-[12px] text-[#71717A]">
+                {t.accountUnder} <span className="font-semibold text-[#52525B]">{maskedEmail}</span>
+              </p>
+            ) : null}
           </div>
         ) : (
           <div className="px-7 pt-6 pb-5 border-b border-[#F0EFEA] bg-[#FAFAF7]">

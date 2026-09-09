@@ -116,9 +116,14 @@ export async function POST(req: NextRequest) {
       mode: "subscription",
       // Renders Stripe's whole checkout page in the client's language.
       locale: lang,
-      // Stripe collects the email on its own page when we do not have one, so
-      // the page can ask for as little as possible.
-      ...(email ? { customer_email: email } : {}),
+      /* An agreed address wins over anything the browser sent. Setting
+       * customer_email also LOCKS the field on Stripe's page, which is the
+       * point: the client asked for the account to be under one specific
+       * company address, and this guarantees it rather than hoping they type
+       * it correctly. They see it (masked) on our page first, so a wrong one
+       * can be raised before they are locked into it. Where no address has
+       * been agreed, Stripe asks as before. */
+      ...((client?.email || email) ? { customer_email: client?.email || email } : {}),
       line_items: [
         {
           price_data: {

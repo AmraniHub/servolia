@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import ClientProductPage from "@/components/ClientProductPage";
 import { CLIENT_PRODUCTS, productCopy } from "@/lib/hosting";
-import { siteLabelFor, langFor } from "@/lib/clientRefs";
+import { siteLabelFor, langFor, clientRefFor, maskEmail } from "@/lib/clientRefs";
 
 /* The tab title follows the client's language, like the page itself. Next
    refuses a static `metadata` export beside generateMetadata, so noindex is
@@ -31,6 +31,7 @@ export default async function ChatbotPage({
       product={CLIENT_PRODUCTS.chatbot}
       refCode={ref}
       siteLabel={siteLabelFor(ref)}
+      maskedEmail={maskEmail(clientRefFor(ref)?.email)}
       defaultBilling={billing === "monthly" ? "monthly" : "annual"}
       lang={langFor(ref, lang)}
     />

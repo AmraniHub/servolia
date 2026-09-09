@@ -17,12 +17,14 @@ export default function ClientProductPage({
   product,
   refCode,
   siteLabel,
+  maskedEmail = "",
   defaultBilling,
   lang = "en",
 }: {
   product: ClientProduct;
   refCode: string;
   siteLabel: string;
+  maskedEmail?: string;
   defaultBilling?: "annual" | "monthly";
   lang?: "en" | "fr";
 }) {
@@ -58,6 +60,7 @@ export default function ClientProductPage({
           includes={copy.includes}
           refCode={refCode}
           siteLabel={siteLabel}
+          maskedEmail={maskedEmail}
           defaultBilling={defaultBilling}
           lang={lang}
         />
