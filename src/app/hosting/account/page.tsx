@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Check, ExternalLink, FileText, ArrowUpRight } from "lucide-react";
 import { readUpgradeToken, subscriptionContext } from "@/lib/upgrade";
-import { productCopy } from "@/lib/hosting";
+import { productCopy, CLIENT_PRODUCTS } from "@/lib/hosting";
 
 export const metadata: Metadata = {
   title: "Your service",
@@ -108,11 +108,41 @@ function Shell({ lang, children }: { lang: "en" | "fr"; children: React.ReactNod
 export default async function AccountPage({
   searchParams,
 }: {
-  searchParams: Promise<{ t?: string }>;
+  searchParams: Promise<{ t?: string; demo?: string; lang?: string }>;
 }) {
-  const { t: token = "" } = await searchParams;
-  const subscriptionId = token ? await readUpgradeToken(token) : null;
-  const ctx = subscriptionId ? await subscriptionContext(subscriptionId) : null;
+  const { t: token = "", demo = "", lang: demoLang = "" } = await searchParams;
+
+  /* ?demo=1 — the page with INVENTED data, so it can be looked at before any
+   * client exists and shown to a prospect without opening someone's account.
+   *
+   * Safe to leave reachable: it reads nothing. Every value below is written
+   * here, no token is accepted, and no subscription is fetched — so there is
+   * no real client whose details it could show by mistake. It is also banner-
+   * marked and noindex, because a sample that can be mistaken for a live
+   * account is worse than no sample.
+   */
+  const isDemo = demo === "1";
+  const ctx = isDemo
+    ? {
+        plan: CLIENT_PRODUCTS.hosting,
+        lang: (demoLang === "fr" ? "fr" : "en") as "en" | "fr",
+        ref: "goodscochina",
+        siteLabel: "goodscochina.com",
+        interval: "year" as const,
+        status: "active",
+        /* A FIXED date, not now-plus-a-year. Reading the clock during render
+           is impure and the lint rule is right to refuse it; a sample also
+           reads better when it does not quietly change every day. */
+        renewsAt: "2027-09-09T00:00:00.000Z",
+        cancelAtPeriodEnd: false,
+        amountCents: CLIENT_PRODUCTS.hosting.annualUsd * 100,
+      }
+    : token
+      ? await (async () => {
+          const id = await readUpgradeToken(token);
+          return id ? await subscriptionContext(id) : null;
+        })()
+      : null;
 
   if (!ctx) {
     const t = T.en;
@@ -160,6 +190,11 @@ export default async function AccountPage({
 
   return (
     <Shell lang={ctx.lang}>
+      {isDemo ? (
+        <div className="mb-6 rounded-xl border border-[#F5E3B3] bg-[#FEF7E7] px-4 py-3 text-[13px] text-[#92700E]">
+          <strong className="font-bold">Example page.</strong> Sample figures, not a real account.
+        </div>
+      ) : null}
       <h1 className="text-3xl font-black text-[#18181B] tracking-tight mb-7">{t.heading}</h1>
 
       <div className="rounded-2xl border border-[#E8E6E0] bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden mb-5">
