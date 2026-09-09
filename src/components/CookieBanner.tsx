@@ -2,15 +2,24 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { isClientSurface } from "@/lib/clientSurfaces";
 
 export default function CookieBanner() {
   const [visible, setVisible] = useState(false);
+  const pathname = usePathname();
+  /* No trackers run on a client's own pages, so there is nothing to consent
+     to -- and a consent bar covering the bottom of the service page someone
+     just paid for is a poor first impression of a company they are deciding
+     to trust. */
+  const suppressed = isClientSurface(pathname);
 
   useEffect(() => {
+    if (suppressed) return;
     try {
       if (!localStorage.getItem("servolia-cookie-consent")) setVisible(true);
     } catch {}
-  }, []);
+  }, [suppressed]);
 
   const accept = () => {
     try { localStorage.setItem("servolia-cookie-consent", "accepted"); } catch {}
@@ -22,7 +31,7 @@ export default function CookieBanner() {
     setVisible(false);
   };
 
-  if (!visible) return null;
+  if (suppressed || !visible) return null;
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-[100] bg-[#FAFAF7]/95 backdrop-blur-md border-t border-[#D4D2CC] px-4 py-4 shadow-2xl">

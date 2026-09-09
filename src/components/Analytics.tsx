@@ -2,6 +2,7 @@
 
 import Script from "next/script";
 import { usePathname } from "next/navigation";
+import { isClientSurface } from "@/lib/clientSurfaces";
 
 /**
  * Servolia's OWN analytics: GA4 + Meta Pixel.
@@ -36,6 +37,9 @@ export default function Analytics() {
 
   // Never fire Servolia's properties on a client's site.
   if (pathname?.startsWith("/sites/")) return null;
+  // Nor on a client's own payment, service or billing pages -- see
+  // src/lib/clientSurfaces.ts for why those are deliberately untracked.
+  if (isClientSurface(pathname)) return null;
   if (!ga && !pixel && !GOOGLE_ADS_ID) return null;
 
   return (
