@@ -78,6 +78,19 @@ export async function billingPortalLinkFor(subscriptionId: string, origin = "htt
   return `${origin}/api/billing-portal?t=${encodeURIComponent(await mintUpgradeToken(subscriptionId))}`;
 }
 
+/**
+ * The client's own service page — the front door, in our name.
+ *
+ * Stripe's portal answers "what am I paying and how do I stop", which is a
+ * billing question. It cannot answer "what am I actually getting, from whom,
+ * and until when" — and a client deciding whether they are dealing with a real
+ * company is asking the second one. This page answers it and hands off to
+ * Stripe for the parts Stripe owns.
+ */
+export async function accountLinkFor(subscriptionId: string, origin = "https://servolia.com") {
+  return `${origin}/hosting/account?t=${encodeURIComponent(await mintUpgradeToken(subscriptionId))}`;
+}
+
 /* ── The quote ─────────────────────────────────────────────────────────── */
 
 export type QuoteProblem =
@@ -153,6 +166,17 @@ export async function subscriptionContext(subscriptionId: string) {
     const plan = resolveHostingPlan(sub.metadata?.plan);
     if (!plan) return null;
     const lang = (sub.metadata?.lang === "fr" ? "fr" : "en") as "en" | "fr";
+    const { item, interval } = currentItem(sub);
+
+    /* THE RENEWAL DATE LIVES ON THE ITEM, NOT THE SUBSCRIPTION.
+     *
+     * Stripe moved current_period_end onto subscription items; on the
+     * subscription object it is gone. Reading sub.current_period_end compiles
+     * happily against a loose type and yields undefined, so the client is
+     * shown a blank or an epoch date on the one page where they are checking
+     * whether this is a real company. Read it where it actually is. */
+    const periodEnd = item?.current_period_end;
+
     return {
       plan,
       lang,
@@ -161,8 +185,14 @@ export async function subscriptionContext(subscriptionId: string) {
          suspension is allowed to touch. */
       ref: sub.metadata?.ref || "",
       siteLabel: sub.metadata?.business || clientRefFor(sub.metadata?.ref || "")?.label || "",
-      interval: currentItem(sub).interval,
+      interval,
       status: sub.status,
+      /** When the next charge falls, from Stripe rather than computed. */
+      renewsAt: periodEnd ? new Date(periodEnd * 1000).toISOString() : null,
+      /** True when they have cancelled and are running out the paid period. */
+      cancelAtPeriodEnd: sub.cancel_at_period_end === true,
+      /** What they actually pay, in cents, so no page has to guess. */
+      amountCents: item?.price?.unit_amount ?? null,
     };
   } catch {
     return null;

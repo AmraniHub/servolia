@@ -145,7 +145,6 @@ function build(id: string, lang: "en" | "fr"): Built | null {
       const c = productCopy(CLIENT_PRODUCTS.chatbot, "fr");
       return reactivateEmail({
         lang: "fr",
-        productName: c.heading,
         productNoun: c.sentenceName,
         siteLabel: CLIENT_REFS.temghid.label,
         url: "https://servolia.com/chatbot?ref=temghid&billing=monthly",

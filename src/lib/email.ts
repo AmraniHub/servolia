@@ -869,10 +869,22 @@ export const clientServicePaidEmail = (input: {
 
       ${upsell}
       <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:${BODY};">${L.receipt}</p>
-      ${portalUrl ? `<p style="margin:0 0 16px;font-size:14px;line-height:1.6;color:${MUTED};">
-        ${fr ? "Changer de carte, retrouver vos factures ou résilier :" : "Change your card, find your invoices, or cancel:"}
-        <a href="${portalUrl}" style="color:${GREEN};text-decoration:none;font-weight:600;">${fr ? "gérer ma facturation" : "manage billing"}</a>.
-      </p>` : ""}
+      ${portalUrl ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
+              style="margin:0 0 20px;border:1px solid ${LINE};border-radius:12px;">
+         <tr><td style="padding:16px 20px;font-family:${FONT};">
+           <p style="margin:0 0 4px;font-size:15px;font-weight:700;color:${INK};">
+             ${fr ? "Votre page de service" : "Your service page"}
+           </p>
+           <p style="margin:0 0 10px;font-size:14px;line-height:1.6;color:${BODY};">
+             ${fr
+               ? "Ce que couvre votre formule, la date de renouvellement, vos factures, votre carte, et la résiliation — tout au même endroit, sans mot de passe."
+               : "What your plan covers, when it renews, your invoices, your card, and cancelling — all in one place, no password."}
+           </p>
+           <a href="${portalUrl}" style="font-size:14px;font-weight:700;color:${GREEN};text-decoration:none;">
+             ${fr ? "Ouvrir ma page &rarr;" : "Open my page &rarr;"}
+           </a>
+         </td></tr>
+       </table>` : ""}
       <p style="margin:0;font-size:14px;line-height:1.6;color:${MUTED};">${L.questions}</p>
       `, { preheader: L.preheader, lang }),
   };
@@ -1156,14 +1168,14 @@ export const paymentFailedEmail = (input: {
  * whichever device they read this on.
  */
 export const reactivateEmail = (input: {
-  productName: string;
+  /** Mid-sentence form only -- this template never uses the headline form. */
   productNoun: string;
   siteLabel: string;
   url: string;
   monthlyUsd: number;
   lang?: "en" | "fr";
 }) => {
-  const { productName, productNoun, siteLabel, url, monthlyUsd, lang = "en" } = input;
+  const { productNoun, siteLabel, url, monthlyUsd, lang = "en" } = input;
   const fr = lang === "fr";
   const money = fr ? `${monthlyUsd}&nbsp;$` : `$${monthlyUsd}`;
   const forSite = siteLabel ? (fr ? ` sur ${siteLabel}` : ` on ${siteLabel}`) : "";

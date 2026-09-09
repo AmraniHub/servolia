@@ -19,7 +19,7 @@ import {
   productCopy,
 } from "@/lib/hosting";
 import { setShopifyGate, applyGate } from "@/lib/hostingGate";
-import { upgradeLinkFor, billingPortalLinkFor, subscriptionContext } from "@/lib/upgrade";
+import { upgradeLinkFor, accountLinkFor, subscriptionContext } from "@/lib/upgrade";
 import { clientRefFor } from "@/lib/clientRefs";
 import { billingPortalUrl } from "@/lib/clientPortal";
 import { sendTelegramMessage } from "@/lib/telegram";
@@ -206,13 +206,15 @@ export async function POST(req: NextRequest) {
           if (period === "monthly" && subId && product && product.annualUsd < product.monthlyUsd * 12) {
             upgradeUrl = await upgradeLinkFor(subId, "https://servolia.com").catch(() => null);
           }
-          /* A standing way into Stripe's billing portal — card, invoices,
-             cancel. Points at our own route, which mints the Stripe session
-             when it is clicked: a portal session minted here would expire
-             long before the month their card runs out. */
+          /* Their own service page, in OUR name, which then hands off to
+             Stripe for the billing parts Stripe owns. Sending a client
+             straight to a Stripe screen answers "what am I paying" with
+             somebody else's brand, and leaves "what am I actually getting,
+             from whom, until when" unanswered — which is the question a
+             client deciding whether we are a real company is asking. */
           let portalUrl: string | null = null;
           if (subId) {
-            portalUrl = await billingPortalLinkFor(subId, "https://servolia.com").catch(() => null);
+            portalUrl = await accountLinkFor(subId, "https://servolia.com").catch(() => null);
           }
           const tpl = clientServicePaidEmail({
             productName: copy?.heading ?? "Website hosting",
