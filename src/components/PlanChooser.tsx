@@ -102,6 +102,7 @@ export default function PlanChooser({
   siteLabel,
   maskedEmail = "",
   lang = "en",
+  initialPlan = null,
 }: {
   tiers: Tier[];
   features: Feature[];
@@ -109,10 +110,15 @@ export default function PlanChooser({
   siteLabel: string;
   maskedEmail?: string;
   lang?: "en" | "fr";
+  /** A plan already agreed in conversation: opens on step two with it chosen,
+   *  "Change plan" still available. */
+  initialPlan?: string | null;
 }) {
   const t = T[lang];
   const [billing, setBilling] = useState<"annual" | "monthly">("annual");
-  const [chosen, setChosen] = useState<string | null>(null);
+  const [chosen, setChosen] = useState<string | null>(
+    initialPlan && tiers.some((p) => p.planKey === initialPlan) ? initialPlan : null,
+  );
   const [site, setSite] = useState("");
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);

@@ -52,12 +52,16 @@ export async function POST(req: NextRequest) {
   ].filter(Boolean).join("\n");
 
   const db = supabaseAdmin();
+  let rowId: string | null = null;
   if (db) {
-    const { error } = await db
+    const { data, error } = await db
       .from("hosting_clients")
       .update({ site_url: siteUrl, notes: summary })
-      .eq("subscription_id", subscriptionId);
+      .eq("subscription_id", subscriptionId)
+      .select("id")
+      .maybeSingle();
     if (error) console.error("[hosting-setup] update failed:", error.message);
+    rowId = data?.id ?? null;
   }
 
   /* Loud, and with everything in it. This is the message that turns a payment
@@ -77,6 +81,8 @@ export async function POST(req: NextRequest) {
       notes ? `Notes: ${notes}` : null,
       ``,
       `Ask for DELEGATED access, never a password.`,
+      `When the site is in place, record the repo here so it can be paused and restored:`,
+      rowId ? `https://servolia.com/admin/hosting/${rowId}` : `https://servolia.com/admin/hosting`,
     ].filter((l) => l !== null).join("\n"),
     undefined,
     { plain: true },

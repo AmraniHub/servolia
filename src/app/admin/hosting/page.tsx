@@ -1,6 +1,8 @@
+import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabase";
 import { Server, ExternalLink, AlertTriangle } from "lucide-react";
 import HostingCheckout from "@/components/admin/HostingCheckout";
+import { referenceFor } from "@/lib/upgrade";
 
 export const dynamic = "force-dynamic";
 
@@ -39,6 +41,12 @@ export default async function HostingPage() {
   // Annual rows already store the monthly equivalent, so this sums correctly
   // across both billing periods.
   const mrr = active.reduce((s, c) => s + Number(c.monthly_usd || 0), 0);
+  // "Set up" is inferred from the gate columns, never stored: a row that says
+  // set up while its gate points at nothing is the failure this page exists
+  // to make visible.
+  const isSetUp = (c: { repo?: string | null; vercel_project?: string | null }) =>
+    Boolean(c.repo || c.vercel_project);
+  const needsSetup = clients.filter((c) => c.status === "active" && !isSetUp(c)).length;
 
   // The table is missing until supabase/hosting-migration.sql is run. Say so
   // plainly rather than rendering an empty list that looks like "no clients".
@@ -51,6 +59,9 @@ export default async function HostingPage() {
           <h1 className="text-2xl font-black text-[#18181B] mb-1">Hosting</h1>
           <p className="text-sm text-[#71717A]">
             {clients.length} site{clients.length === 1 ? "" : "s"} · {usd(mrr)}/mo recurring
+            {needsSetup > 0 ? (
+              <span className="ml-2 text-[#92400E] font-bold">· {needsSetup} paid, not hosted yet</span>
+            ) : null}
           </p>
         </div>
         <HostingCheckout />
@@ -79,6 +90,7 @@ export default async function HostingPage() {
             <thead className="bg-[#FAFAF7] border-b border-[#E8E6E0]">
               <tr className="text-left text-[10px] font-black text-[#71717A] uppercase tracking-widest">
                 <th className="px-4 py-3">Business</th>
+                <th className="px-4 py-3">Ref</th>
                 <th className="px-4 py-3">Site</th>
                 <th className="px-4 py-3">Plan</th>
                 <th className="px-4 py-3">Status</th>
@@ -90,8 +102,13 @@ export default async function HostingPage() {
               {clients.map((c) => (
                 <tr key={c.id} className="border-b border-[#F5F4EF] last:border-0 hover:bg-[#FAFAF7]">
                   <td className="px-4 py-3">
-                    <div className="font-semibold text-[#18181B]">{c.business}</div>
+                    <Link href={`/admin/hosting/${c.id}`} className="font-semibold text-[#18181B] hover:text-[#36671E] hover:underline">
+                      {c.business}
+                    </Link>
                     {c.email ? <div className="text-xs text-[#A1A1AA]">{c.email}</div> : null}
+                  </td>
+                  <td className="px-4 py-3 font-mono text-xs text-[#52525B]">
+                    {c.subscription_id ? referenceFor(c.subscription_id) : "—"}
                   </td>
                   <td className="px-4 py-3">
                     {c.site_url ? (
@@ -138,6 +155,15 @@ export default async function HostingPage() {
                           <AlertTriangle className="w-3 h-3" />
                           PAST DUE
                         </span>
+                      ) : null}
+                      {c.status === "active" && !isSetUp(c) ? (
+                        <Link
+                          href={`/admin/hosting/${c.id}`}
+                          title="Paid, but no repo or Vercel project recorded — the gate cannot pause or restore this site"
+                          className="inline-flex items-center gap-1 text-[10px] font-black px-2 py-1 rounded-full bg-[#FEF3C7] text-[#92400E] hover:bg-[#FDE68A]"
+                        >
+                          NEEDS SETUP
+                        </Link>
                       ) : null}
                     </div>
                   </td>

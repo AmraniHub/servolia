@@ -19,7 +19,7 @@ import {
   productCopy,
 } from "@/lib/hosting";
 import { setShopifyGate, applyGate } from "@/lib/hostingGate";
-import { upgradeLinkFor, accountLinkFor, subscriptionContext } from "@/lib/upgrade";
+import { upgradeLinkFor, accountLinkFor, setupLinkFor, referenceFor, subscriptionContext } from "@/lib/upgrade";
 import { clientRefFor } from "@/lib/clientRefs";
 import { billingPortalUrl } from "@/lib/clientPortal";
 import { sendTelegramMessage } from "@/lib/telegram";
@@ -116,7 +116,7 @@ export async function POST(req: NextRequest) {
         // figure either way so the column means one thing.
         const monthlyUsd = period === "annual" ? amount / 12 : amount;
 
-        const { error: hostErr } = await db.from("hosting_clients").insert({
+        const { data: hostRow, error: hostErr } = await db.from("hosting_clients").insert({
           business: session.metadata?.business || customerEmail || "Unknown",
           contact_name: session.metadata?.contact_name || null,
           email: customerEmail,
@@ -131,7 +131,7 @@ export async function POST(req: NextRequest) {
           status: "active",
           customer_id: (session.customer as string) ?? null,
           subscription_id: (session.subscription as string) ?? null,
-        });
+        }).select("id").maybeSingle();
         // A duplicate is the unique index doing its job on a Stripe retry, not
         // a failure — Stripe replays any non-2xx, so never 500 on it.
         const alreadySeen = Boolean(hostErr && /duplicate|unique/i.test(hostErr.message));
@@ -216,6 +216,13 @@ export async function POST(req: NextRequest) {
           if (subId) {
             portalUrl = await accountLinkFor(subId, "https://servolia.com").catch(() => null);
           }
+          /* The handover step, only for a buyer we do not already host. A
+             known ref means the site is already in our hands; asking them
+             where it lives would read as if we had lost it. */
+          let setupUrl: string | null = null;
+          if (subId && !clientRefFor(session.metadata?.ref ?? "")) {
+            setupUrl = await setupLinkFor(subId, "https://servolia.com").catch(() => null);
+          }
           const tpl = clientServicePaidEmail({
             productName: copy?.heading ?? "Website hosting",
             productNoun: copy?.sentenceName ?? "hosting",
@@ -229,6 +236,8 @@ export async function POST(req: NextRequest) {
             lang: emailLang,
             upgradeUrl,
             portalUrl,
+            setupUrl,
+            reference: subId ? referenceFor(subId) : null,
           });
           sendEmail(customerEmail, tpl.subject, tpl.html).catch(() => {});
         }
@@ -239,11 +248,22 @@ export async function POST(req: NextRequest) {
         const hostTgToken = process.env.TELEGRAM_BOT_TOKEN;
         const hostTgChatId = process.env.TELEGRAM_CHAT_ID;
         if (hostTgToken && hostTgChatId && !alreadySeen) {
+          /* The reference is what the client will quote, so it is what the
+             operator needs in hand. A self-serve buyer is not hosted yet —
+             say so here, at the moment the money lands, rather than leaving
+             it to be discovered on the list page. */
+          const subIdForRef = typeof session.subscription === "string" ? session.subscription : null;
+          const selfServe = !clientRefFor(session.metadata?.ref ?? "");
+          const adminUrl = hostRow?.id
+            ? `https://servolia.com/admin/hosting/${hostRow.id}`
+            : "https://servolia.com/admin/hosting";
           const msg = `🌐 *${product?.name ?? "Hosting"} paid — $${amount} ${period}*\n` +
                       `${session.metadata?.business || session.metadata?.ref || "unnamed site"}\n` +
                       `${customerEmail ?? "no email"}\n` +
+                      (subIdForRef ? `Ref ${referenceFor(subIdForRef)}\n` : "") +
                       (restored ? `♻️ ${session.metadata?.gate_widget} switched back on\n` : "") +
-                      `\n[Open](https://servolia.com/admin/hosting)`;
+                      (selfServe ? `⚠️ NEEDS SETUP — not hosted yet. Their handover arrives as a separate alert.\n` : "") +
+                      `\n[Open](${adminUrl})`;
           fetch(`https://api.telegram.org/bot${hostTgToken}/sendMessage`, {
             method: "POST", headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ chat_id: hostTgChatId, text: msg, parse_mode: "Markdown" }),

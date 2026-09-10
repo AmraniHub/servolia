@@ -747,11 +747,23 @@ export const clientServicePaidEmail = (input: {
    * minted now would be long expired by the time anyone needed it.
    */
   portalUrl?: string | null;
+  /**
+   * The handover form, for a client who bought from the plans page.
+   *
+   * This is the step that connects their payment to their website: until they
+   * say where the site lives, nothing can be hosted. The thank-you page
+   * offers it once; this is the copy that survives — the email is the thing
+   * they open again on Monday when they meant to do it on Friday. Null for a
+   * client we already host, who has nothing to hand over.
+   */
+  setupUrl?: string | null;
+  /** The reference to quote, shown beside the setup step. */
+  reference?: string | null;
 }) => {
   const {
     productName, productNoun, siteLabel, amountUsd, period,
     nextChargeIso = null, monthlyUsd, restored = false, includes = [], lang = "en",
-    upgradeUrl = null, portalUrl = null,
+    upgradeUrl = null, portalUrl = null, setupUrl = null, reference = null,
   } = input;
 
   const fr = lang === "fr";
@@ -869,6 +881,27 @@ export const clientServicePaidEmail = (input: {
         ${includes.map((line) => `<li>${line}</li>`).join("")}
       </ul>` : ""}
 
+      ${setupUrl ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
+              style="margin:0 0 22px;border:2px solid ${GREEN};border-radius:12px;">
+         <tr><td style="padding:18px 20px;font-family:${FONT};">
+           <p style="margin:0 0 6px;font-size:11px;font-weight:900;letter-spacing:1px;text-transform:uppercase;color:${GREEN};">
+             ${fr ? "Prochaine étape" : "Next step"}
+           </p>
+           <p style="margin:0 0 6px;font-size:15px;font-weight:700;color:${INK};">
+             ${fr ? "Dites-nous où se trouve votre site" : "Tell us where your site lives"}
+           </p>
+           <p style="margin:0 0 12px;font-size:14px;line-height:1.6;color:${BODY};">
+             ${fr
+               ? "Deux minutes : l'adresse actuelle, la plateforme, et comment nous y accéder. Nous ne demandons jamais de mot de passe — un accès délégué suffit. La mise en place commence dès réception."
+               : "Two minutes: the current address, the platform, and how to reach it. We never ask for a password — delegated access is enough. Setup starts as soon as it arrives."}
+           </p>
+           ${btn(setupUrl, fr ? "Compléter la mise en place" : "Complete setup")}
+           ${reference ? `<p style="margin:12px 0 0;font-size:13px;color:${MUTED};">
+             ${fr ? "Votre référence" : "Your reference"}: <strong style="color:${INK};font-family:ui-monospace,Menlo,Consolas,monospace;">${reference}</strong>
+             ${fr ? " — indiquez-la dans tout échange." : " — quote it in any message."}
+           </p>` : ""}
+         </td></tr>
+       </table>` : ""}
       ${upsell}
       <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:${BODY};">${L.receipt}</p>
       ${portalUrl ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
