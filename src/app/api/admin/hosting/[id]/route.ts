@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isAdminAuthed } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
-import { applyGate } from "@/lib/hostingGate";
+import { probeGate } from "@/lib/hostingGate";
 
 export const runtime = "nodejs";
 
@@ -18,9 +18,9 @@ export const runtime = "nodejs";
  *
  * It also VERIFIES the gate before saving it. Recording a repo the token
  * cannot reach, or one with no site-status.js, would report the client as set
- * up while the cut-off and the restore both silently did nothing. applyGate
- * with suspend=false is a safe probe: it checks the files exist and, if the
- * site is already unsuspended, changes nothing.
+ * up while the cut-off and the restore both silently did nothing. The probe
+ * is read-only on purpose -- see probeGate for why applyGate(row, false)
+ * would be wrong here.
  */
 const MAX = 300;
 const clean = (v: unknown) => (typeof v === "string" ? v.trim().slice(0, MAX) : "");
@@ -48,7 +48,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
      shows "set up" and does nothing on the day it matters. */
   let gate: { ok: boolean; detail: string } = { ok: false, detail: "no repo given" };
   if (repo) {
-    const outcome = await applyGate({ repo, branch, siteRoot: siteRoot || null, gateWidget: null }, false);
+    const outcome = await probeGate({ repo, branch, siteRoot: siteRoot || null, gateWidget: null });
     gate = outcome.ok
       ? { ok: true, detail: `${outcome.kind} gate reachable` }
       : { ok: false, detail: `${outcome.reason}${outcome.detail ? ` (${outcome.detail})` : ""}` };

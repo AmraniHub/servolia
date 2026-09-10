@@ -206,6 +206,35 @@ async function exists(repo: string, branch: string, path: string): Promise<boole
   }
 }
 
+/**
+ * Is the gate installed and reachable? Reads only, writes nothing.
+ *
+ * The operator's setup form calls this before it will record a repo. It must
+ * not be applyGate(row, false): a client who is currently suspended for
+ * non-payment would have their site switched back on by the act of an
+ * operator correcting their site_root.
+ */
+export async function probeGate(row: GateRow): Promise<
+  { ok: true; kind: GateKind } | { ok: false; reason: "no-repo" | "not-installed" | "error"; detail?: string }
+> {
+  if (!row.repo) return { ok: false, reason: "no-repo" };
+  const branch = row.branch || "main";
+  try {
+    if (row.gateWidget) {
+      const path = sitePath(row.siteRoot, GATE_PATH);
+      if (!(await exists(row.repo, branch, path))) return { ok: false, reason: "not-installed", detail: path };
+      return { ok: true, kind: "shopify" };
+    }
+    for (const file of ["site-status.js", "middleware.js"]) {
+      const path = sitePath(row.siteRoot, file);
+      if (!(await exists(row.repo, branch, path))) return { ok: false, reason: "not-installed", detail: path };
+    }
+    return { ok: true, kind: "vercel" };
+  } catch (err) {
+    return { ok: false, reason: "error", detail: err instanceof Error ? err.message : String(err) };
+  }
+}
+
 export async function applyGate(row: GateRow, suspend: boolean): Promise<GateOutcome> {
   if (!row.repo) return { ok: false, reason: "no-repo" };
   const branch = row.branch || "main";
