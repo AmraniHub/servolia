@@ -72,8 +72,8 @@ const HOSTING_EXPLAIN = {
       "We renew your domain on time and keep its records correct.",
     "Tracking and analytics kept connected":
       "Your Meta Pixel, Google tags and analytics keep working after changes.",
-    "Business email on your domain — up to 3 mailboxes":
-      "Addresses like you@yourdomain.com, working on your phone and computer.",
+    "Business email on your domain — 1 mailbox included":
+      "An address like you@yourdomain.com, working on your phone and computer. Extra mailboxes are $2/month each — just ask.",
     "Email deliverability set up (SPF, DKIM, DMARC)":
       "The records that make your emails land in inboxes rather than spam.",
   },
@@ -88,8 +88,8 @@ const HOSTING_EXPLAIN = {
       "Nous renouvelons votre domaine à temps et gardons ses enregistrements corrects.",
     "Suivi et statistiques maintenus":
       "Votre pixel Meta, vos balises Google et vos statistiques continuent de fonctionner après les modifications.",
-    "Messagerie professionnelle à votre domaine — jusqu'à 3 boîtes":
-      "Des adresses comme vous@votredomaine.com, qui fonctionnent sur téléphone et ordinateur.",
+    "Messagerie professionnelle à votre domaine — 1 boîte incluse":
+      "Une adresse comme vous@votredomaine.com, qui fonctionne sur téléphone et ordinateur. Chaque boîte supplémentaire est à 2 $/mois — il suffit de demander.",
     "Délivrabilité configurée (SPF, DKIM, DMARC)":
       "Les enregistrements qui font arriver vos emails dans la boîte de réception, pas dans les spams.",
   },
@@ -233,12 +233,18 @@ export const CLIENT_PRODUCTS: Record<string, ClientProduct> = {
   /**
    * BUSINESS — Complete plus email on the client's own domain.
    *
-   * The added lines are one-time work with no recurring cost: a Zoho mailbox
-   * on their domain (their free tier covers five, so three is comfortably
-   * inside it) and the SPF/DKIM/DMARC records that decide whether that mail
-   * lands in an inbox or a spam folder. Both are things a small business
-   * genuinely cannot do for itself and would otherwise pay a registrar ~100/yr
-   * for.
+   * The added lines: one Zoho mailbox on their domain and the SPF/DKIM/DMARC
+   * records that decide whether that mail lands in an inbox or a spam folder.
+   * Both are things a small business genuinely cannot do for itself and would
+   * otherwise pay a registrar ~100/yr for.
+   *
+   * THE MAILBOX HAS A RECURRING COST AND THE TIER MUST CLEAR IT. This was first
+   * priced on Zoho's free plan ("covers five, so three is comfortably inside
+   * it"). That plan is not offered in the EU data centre a Moroccan signup
+   * lands in, and has no forwarding or IMAP, so the real unit is Mail Lite at
+   * about USD 12 per mailbox per year. Three included mailboxes cost USD 36
+   * against a USD 33 annual gap to Complete -- negative before any labour. One
+   * mailbox included, USD 2/month each after, is what makes the tier honest.
    *
    * IT IS ALSO THE FIRST TIER THAT COMMITS US TO DOING SOMETHING PER CLIENT
    * rather than to a switch being on. Selling it means actually creating the
@@ -266,7 +272,7 @@ export const CLIENT_PRODUCTS: Record<string, ClientProduct> = {
       "Contact and quote forms kept connected",
       "Tracking and analytics kept connected",
       "Uptime watched — you hear it from us first",
-      "Business email on your domain — up to 3 mailboxes",
+      "Business email on your domain — 1 mailbox included",
       "Email deliverability set up (SPF, DKIM, DMARC)",
     ],
     description:
@@ -287,7 +293,7 @@ export const CLIENT_PRODUCTS: Record<string, ClientProduct> = {
         "Formulaires de contact et de devis maintenus",
         "Suivi et statistiques maintenus",
         "Disponibilité surveillée — vous l'apprenez par nous en premier",
-        "Messagerie professionnelle à votre domaine — jusqu'à 3 boîtes",
+        "Messagerie professionnelle à votre domaine — 1 boîte incluse",
         "Délivrabilité configurée (SPF, DKIM, DMARC)",
       ],
       description:
