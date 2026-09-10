@@ -1,88 +1,107 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Lock, ShieldCheck } from "lucide-react";
+import { Check, Minus, Lock, ShieldCheck, ArrowLeft } from "lucide-react";
 import { usd } from "@/lib/hosting";
 
 /**
- * TWO TIERS, SIDE BY SIDE, ONE BILLING TOGGLE.
+ * CHOOSE FIRST, IDENTIFY SECOND.
  *
- * Separate from ProductCheckout, which sells one product to a client who has
- * already agreed a plan. This is for the client who has not: the whole job is
- * making the difference between the tiers legible in a glance, which a page
- * showing one plan at a time cannot do however many times you send it.
+ * The first version put the domain and email box above the plans, which is the
+ * wrong order twice over: it asks for personal details before the visitor
+ * knows what they are buying, and it makes the page open on a form rather than
+ * on the thing being sold. Nobody fills a form to find out a price.
  *
- * The site and email are still collected here when the link carries no
- * recognised client, for the same reason as the single-plan page: an anonymous
- * payment arrives with nothing to attach it to, and the buyer has paid for
- * something unnamed. One form serves both cards — asking twice for the same
- * two facts, once per column, is how a chooser starts feeling like a form.
+ * So the page opens on the comparison, and the details panel only appears once
+ * a tier has been chosen — and never at all for a client arriving on their own
+ * link, since we already know who they are.
+ *
+ * A TABLE, not two lists of ticks. The tiers share three of five lines, and
+ * two parallel bullet lists make a reader compare by scanning back and forth
+ * and hoping they did not miss one. A row per feature with a tick or a dash in
+ * each column answers "what do I actually lose" in one glance, which is the
+ * only question a cheaper tier ever raises.
  */
+
+export interface Feature {
+  label: string;
+  essential: boolean;
+  complete: boolean;
+}
+
+export interface Tier {
+  planKey: string;
+  tier: string;
+  blurb: string;
+  monthlyUsd: number;
+  annualUsd: number;
+}
 
 const T = {
   en: {
     yearly: "Yearly", monthly: "Monthly",
     perYear: "/ year", perMonth: "/ month",
     save: (n: number) => `Save $${usd(n)} a year`,
-    yourSite: "Which website is this for?",
+    popular: "Most chosen",
+    choose: "Choose",
+    chosen: "Chosen",
+    included: "What's included",
+    // details step
+    almost: "Almost there",
+    yourSite: "Your website",
     sitePlaceholder: "yourdomain.com",
-    emailPlaceholder: "your@email.com",
+    yourEmail: "Your email",
+    emailPlaceholder: "you@company.com",
     whyAsking: "Your account, invoices and sign-in link all use this address.",
-    forLabel: "For",
-    plus: "Everything in Essential, plus:",
-    choose: (n: number) => `Choose — $${usd(n)}`,
-    needDetails: "Enter your website and email above",
+    changePlan: "Change plan",
+    pay: (n: number) => `Pay $${usd(n)}`,
+    needDetails: "Fill in both fields to continue",
     working: "Redirecting to Stripe…",
+    forLabel: "For",
     secured: "Secured by Stripe",
     cancelAnytime: "Cancel anytime",
     cardNote: "Card details are handled by Stripe and never reach our servers.",
     genericError: "Something went wrong",
     startError: "Could not start checkout",
-    popular: "Most chosen",
   },
   fr: {
     yearly: "Annuel", monthly: "Mensuel",
     perYear: "/ an", perMonth: "/ mois",
     save: (n: number) => `Économisez ${usd(n)} $ par an`,
-    yourSite: "Pour quel site web ?",
+    popular: "Le plus choisi",
+    choose: "Choisir",
+    chosen: "Choisi",
+    included: "Ce qui est inclus",
+    almost: "Dernière étape",
+    yourSite: "Votre site web",
     sitePlaceholder: "votredomaine.com",
-    emailPlaceholder: "votre@email.com",
+    yourEmail: "Votre email",
+    emailPlaceholder: "vous@societe.com",
     whyAsking: "Votre compte, vos factures et votre lien de connexion utilisent cette adresse.",
-    forLabel: "Pour",
-    plus: "Tout l'Essentiel, plus :",
-    choose: (n: number) => `Choisir — ${usd(n)} $`,
-    needDetails: "Indiquez votre site et votre email ci-dessus",
+    changePlan: "Changer de formule",
+    pay: (n: number) => `Payer ${usd(n)} $`,
+    needDetails: "Remplissez les deux champs pour continuer",
     working: "Redirection vers Stripe…",
+    forLabel: "Pour",
     secured: "Sécurisé par Stripe",
     cancelAnytime: "Résiliable à tout moment",
     cardNote:
       "Vos coordonnées bancaires sont traitées par Stripe et n'atteignent jamais nos serveurs.",
     genericError: "Une erreur est survenue",
     startError: "Impossible de démarrer le paiement",
-    popular: "Le plus choisi",
   },
 };
 
-export interface Tier {
-  planKey: string;
-  tier: string;
-  heading: string;
-  blurb: string;
-  monthlyUsd: number;
-  annualUsd: number;
-  includes: string[];
-  /** Lines this tier adds over the cheaper one, for the upper card. */
-  extra?: string[];
-}
-
 export default function PlanChooser({
   tiers,
+  features,
   refCode,
   siteLabel,
   maskedEmail = "",
   lang = "en",
 }: {
   tiers: [Tier, Tier];
+  features: Feature[];
   refCode: string;
   siteLabel: string;
   maskedEmail?: string;
@@ -90,17 +109,18 @@ export default function PlanChooser({
 }) {
   const t = T[lang];
   const [billing, setBilling] = useState<"annual" | "monthly">("annual");
+  const [chosen, setChosen] = useState<string | null>(null);
   const [site, setSite] = useState("");
   const [email, setEmail] = useState("");
-  const [busy, setBusy] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const known = Boolean(siteLabel);
-  const identified = known || (site.trim().length > 3 && /.+@.+\..+/.test(email));
   const annual = billing === "annual";
+  const priceOf = (p: Tier) => (annual ? p.annualUsd : p.monthlyUsd);
 
   async function pay(planKey: string) {
-    setBusy(planKey);
+    setBusy(true);
     setError(null);
     try {
       const res = await fetch("/api/hosting-checkout", {
@@ -108,70 +128,109 @@ export default function PlanChooser({
         headers: { "Content-Type": "application/json" },
         // A plan KEY, never a price. The server reads the figure.
         body: JSON.stringify({
-          plan: planKey,
-          billing,
-          ref: refCode,
-          business: siteLabel || site.trim(),
-          email: email.trim(),
-          lang,
+          plan: planKey, billing, ref: refCode,
+          business: siteLabel || site.trim(), email: email.trim(), lang,
         }),
       });
       const data = await res.json();
-      // assign() rather than `location.href = ...`: identical navigation, but
-      // the compiler's immutability rule rejects assigning to a value defined
-      // outside the component.
+      // assign() rather than `location.href = …`: identical navigation, but the
+      // compiler's immutability rule rejects assigning to an outside value.
       if (data.url) { window.location.assign(data.url); return; }
       throw new Error(data.error || t.startError);
     } catch (err) {
       setError(err instanceof Error ? err.message : t.genericError);
-      setBusy(null);
+      setBusy(false);
     }
   }
 
+  /* A client on their own link is already identified, so choosing IS paying.
+     Making them retype a domain we put in the link would be theatre. */
+  function choose(planKey: string) {
+    if (known) { pay(planKey); return; }
+    setChosen(planKey);
+    setError(null);
+  }
+
+  const picked = tiers.find((p) => p.planKey === chosen) ?? null;
+
+  /* ── STEP TWO ─────────────────────────────────────────────────────────── */
+  if (picked) {
+    const amount = priceOf(picked);
+    const ready = site.trim().length > 3 && /.+@.+\..+/.test(email);
+    return (
+      <div className="max-w-md mx-auto">
+        <button
+          onClick={() => setChosen(null)}
+          className="inline-flex items-center gap-1.5 text-sm text-[#71717A] hover:text-[#36671E] mb-4 transition"
+        >
+          <ArrowLeft className="w-4 h-4" /> {t.changePlan}
+        </button>
+
+        <div className="rounded-2xl border border-[#E8E6E0] bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden">
+          <div className="px-7 py-5 bg-gradient-to-r from-[#36671E] to-[#295115] text-[#FAFAF7]">
+            <p className="text-[10px] font-black uppercase tracking-widest opacity-75">{t.almost}</p>
+            <p className="text-[19px] font-black mt-0.5">
+              {picked.tier} · ${usd(amount)} <span className="font-medium opacity-80">{annual ? t.perYear : t.perMonth}</span>
+            </p>
+          </div>
+
+          <div className="px-7 py-6">
+            <label htmlFor="pc-site" className="block text-[11px] font-black text-[#8A8A80] uppercase tracking-widest mb-1.5">
+              {t.yourSite}
+            </label>
+            <input
+              id="pc-site"
+              value={site}
+              onChange={(e) => setSite(e.target.value)}
+              placeholder={t.sitePlaceholder}
+              className="w-full h-11 px-3 mb-4 text-sm border border-[#E8E6E0] rounded-lg bg-white focus:outline-none focus:border-[#36671E] focus:ring-1 focus:ring-[#36671E]"
+            />
+            <label htmlFor="pc-email" className="block text-[11px] font-black text-[#8A8A80] uppercase tracking-widest mb-1.5">
+              {t.yourEmail}
+            </label>
+            <input
+              id="pc-email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder={t.emailPlaceholder}
+              className="w-full h-11 px-3 text-sm border border-[#E8E6E0] rounded-lg bg-white focus:outline-none focus:border-[#36671E] focus:ring-1 focus:ring-[#36671E]"
+            />
+            <p className="mt-2 text-[11px] text-[#8A8A80] leading-relaxed">{t.whyAsking}</p>
+
+            <button
+              onClick={() => pay(picked.planKey)}
+              disabled={!ready || busy}
+              className="mt-6 w-full h-12 rounded-xl bg-gradient-to-r from-[#36671E] to-[#295115] text-[#FAFAF7] font-bold hover:opacity-90 disabled:opacity-50 transition"
+            >
+              {busy ? t.working : ready ? t.pay(amount) : t.needDetails}
+            </button>
+            {error ? <p className="mt-3 text-sm text-[#B91C1C] text-center">{error}</p> : null}
+          </div>
+        </div>
+
+        <Trust t={t} />
+      </div>
+    );
+  }
+
+  /* ── STEP ONE: the comparison ─────────────────────────────────────────── */
   return (
     <div className="max-w-3xl mx-auto">
-      {/* Who this is for, or who we need it to be. */}
-      <div className="rounded-2xl border border-[#E8E6E0] bg-white p-6 mb-6">
-        {known ? (
-          <>
-            <p className="text-[10px] font-black text-[#8A8A80] uppercase tracking-widest mb-1">{t.forLabel}</p>
-            <p className="text-[15px] font-bold text-[#18181B]">{siteLabel}</p>
-            {maskedEmail ? (
-              <p className="mt-2 text-[12px] text-[#71717A]">{maskedEmail}</p>
-            ) : null}
-          </>
-        ) : (
-          <>
-            <p className="text-[10px] font-black text-[#8A8A80] uppercase tracking-widest mb-3">{t.yourSite}</p>
-            <div className="grid sm:grid-cols-2 gap-3">
-              <input
-                value={site}
-                onChange={(e) => setSite(e.target.value)}
-                placeholder={t.sitePlaceholder}
-                className="h-11 px-3 text-sm border border-[#E8E6E0] rounded-lg bg-white focus:outline-none focus:border-[#36671E]"
-              />
-              <input
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                type="email"
-                placeholder={t.emailPlaceholder}
-                className="h-11 px-3 text-sm border border-[#E8E6E0] rounded-lg bg-white focus:outline-none focus:border-[#36671E]"
-              />
-            </div>
-            <p className="mt-2.5 text-[11px] text-[#8A8A80]">{t.whyAsking}</p>
-          </>
-        )}
-      </div>
+      {known ? (
+        <p className="text-center text-sm text-[#71717A] mb-6">
+          {t.forLabel} <span className="font-bold text-[#18181B]">{siteLabel}</span>
+          {maskedEmail ? <span className="text-[#A8A8A0]"> · {maskedEmail}</span> : null}
+        </p>
+      ) : null}
 
-      {/* One toggle for both columns: two toggles invite comparing a monthly
-          price against a yearly one without noticing. */}
-      <div className="flex items-center gap-1 p-1 rounded-xl bg-[#F4F4F0] mb-6 max-w-xs mx-auto">
+      <div className="flex items-center gap-1 p-1 rounded-xl bg-[#EDF1E8] mb-7 max-w-[260px] mx-auto">
         {(["annual", "monthly"] as const).map((b) => (
           <button
             key={b}
             onClick={() => setBilling(b)}
             className={`flex-1 h-9 rounded-lg text-sm font-bold transition ${
-              billing === b ? "bg-white text-[#18181B] shadow-sm" : "text-[#71717A] hover:text-[#18181B]"
+              billing === b ? "bg-white text-[#295115] shadow-sm" : "text-[#5E6659] hover:text-[#295115]"
             }`}
           >
             {b === "annual" ? t.yearly : t.monthly}
@@ -179,79 +238,116 @@ export default function PlanChooser({
         ))}
       </div>
 
-      <div className="grid md:grid-cols-2 gap-5">
-        {tiers.map((p, i) => {
-          const amount = annual ? p.annualUsd : p.monthlyUsd;
-          const saving = p.monthlyUsd * 12 - p.annualUsd;
-          const upper = i === 1;
-          return (
-            <div
-              key={p.planKey}
-              className={`rounded-2xl border bg-white overflow-hidden flex flex-col ${
-                upper ? "border-[#36671E] shadow-[0_1px_3px_rgba(54,103,30,0.15)]" : "border-[#E8E6E0]"
-              }`}
-            >
-              <div className="px-6 pt-6 pb-5 flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <p className="text-[11px] font-black text-[#8A8A80] uppercase tracking-widest">{p.tier}</p>
-                  {upper ? (
-                    <span className="text-[10px] font-bold text-[#36671E] bg-[#F3F9EE] border border-[#CBE3BC] rounded-full px-2 py-0.5">
-                      {t.popular}
-                    </span>
-                  ) : null}
-                </div>
-                <p className="text-[15px] text-[#52525B] leading-relaxed mb-5">{p.blurb}</p>
+      {/* Wide content scrolls inside its own box rather than the page. */}
+      <div className="overflow-x-auto rounded-2xl border border-[#E8E6E0] bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+        <table className="w-full min-w-[560px] border-collapse">
+          <thead>
+            <tr>
+              <th className="w-[42%] p-0" />
+              {tiers.map((p, i) => {
+                const upper = i === 1;
+                const amount = priceOf(p);
+                const saving = p.monthlyUsd * 12 - p.annualUsd;
+                return (
+                  <th
+                    key={p.planKey}
+                    className={`align-top p-0 border-l border-[#F0EFEA] ${upper ? "bg-[#F7FBF4]" : ""}`}
+                  >
+                    <div className="px-5 pt-6 pb-5 text-left">
+                      <div className="flex items-center gap-2 mb-2 flex-wrap">
+                        <span className="text-[11px] font-black uppercase tracking-widest text-[#5E6659]">{p.tier}</span>
+                        {upper ? (
+                          <span className="text-[10px] font-bold text-[#295115] bg-[#DDEFCB] rounded-full px-2 py-0.5">
+                            {t.popular}
+                          </span>
+                        ) : null}
+                      </div>
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-[32px] leading-none font-black tracking-tight bg-gradient-to-r from-[#36671E] to-[#6B8439] bg-clip-text text-transparent">
+                          ${usd(amount)}
+                        </span>
+                        <span className="text-[13px] text-[#71717A] font-medium">{annual ? t.perYear : t.perMonth}</span>
+                      </div>
+                      <p className="mt-1.5 text-[12px] font-semibold text-[#36671E] min-h-[18px]">
+                        {annual && saving > 0 ? t.save(saving) : " "}
+                      </p>
+                      <p className="mt-3 text-[12.5px] leading-relaxed text-[#71717A]">{p.blurb}</p>
+                    </div>
+                  </th>
+                );
+              })}
+            </tr>
+          </thead>
 
-                <div className="flex items-baseline gap-1.5">
-                  <span className="text-[38px] leading-none font-black text-[#18181B] tracking-tight">
-                    ${usd(amount)}
-                  </span>
-                  <span className="text-[#71717A] font-medium">{annual ? t.perYear : t.perMonth}</span>
-                </div>
-                {annual && saving > 0 ? (
-                  <p className="mt-2 text-sm font-semibold text-[#36671E]">{t.save(saving)}</p>
-                ) : (
-                  <p className="mt-2 text-sm text-[#71717A]">&nbsp;</p>
-                )}
+          <tbody>
+            <tr>
+              <td colSpan={3} className="px-5 py-2.5 bg-[#FAFAF7] border-y border-[#F0EFEA]">
+                <span className="text-[10px] font-black uppercase tracking-widest text-[#8A8A80]">{t.included}</span>
+              </td>
+            </tr>
+            {features.map((f) => (
+              <tr key={f.label} className="border-b border-[#F4F3EF] last:border-0">
+                <td className="px-5 py-3.5 text-[13.5px] text-[#3F3F46] leading-snug">{f.label}</td>
+                <td className="px-5 py-3.5 text-center border-l border-[#F0EFEA]">
+                  <Mark on={f.essential} />
+                </td>
+                <td className="px-5 py-3.5 text-center border-l border-[#F0EFEA] bg-[#F7FBF4]">
+                  <Mark on={f.complete} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
 
-                <ul className="mt-6 space-y-2.5">
-                  {(upper && p.extra ? p.extra : p.includes).map((line) => (
-                    <li key={line} className="flex items-start gap-2.5 text-sm text-[#3F3F46]">
-                      <Check className="w-4 h-4 text-[#36671E] mt-0.5 shrink-0" />
-                      <span>{line}</span>
-                    </li>
-                  ))}
-                </ul>
-                {upper && p.extra ? (
-                  <p className="mt-3 text-[12px] text-[#8A8A80]">{t.plus}</p>
-                ) : null}
-              </div>
-
-              <div className="px-6 pb-6">
-                <button
-                  onClick={() => pay(p.planKey)}
-                  disabled={!identified || busy !== null}
-                  className={`w-full h-12 rounded-xl font-bold disabled:opacity-60 transition ${
-                    upper
-                      ? "bg-[#18181B] text-white hover:bg-[#27272A]"
-                      : "bg-white text-[#18181B] border border-[#D8D6D0] hover:border-[#18181B]"
-                  }`}
-                >
-                  {busy === p.planKey ? t.working : identified ? t.choose(amount) : t.needDetails}
-                </button>
-              </div>
-            </div>
-          );
-        })}
+          <tfoot>
+            <tr>
+              <td className="p-0" />
+              {tiers.map((p, i) => {
+                const upper = i === 1;
+                return (
+                  <td key={p.planKey} className={`p-0 border-l border-[#F0EFEA] ${upper ? "bg-[#F7FBF4]" : ""}`}>
+                    <div className="px-5 py-5">
+                      <button
+                        onClick={() => choose(p.planKey)}
+                        disabled={busy}
+                        className={`w-full h-11 rounded-xl font-bold text-sm disabled:opacity-60 transition ${
+                          upper
+                            ? "bg-gradient-to-r from-[#36671E] to-[#295115] text-[#FAFAF7] hover:opacity-90"
+                            : "bg-white text-[#295115] border border-[#CBD8BE] hover:border-[#36671E]"
+                        }`}
+                      >
+                        {busy ? t.working : t.choose}
+                      </button>
+                    </div>
+                  </td>
+                );
+              })}
+            </tr>
+          </tfoot>
+        </table>
       </div>
 
       {error ? <p className="mt-4 text-sm text-[#B91C1C] text-center">{error}</p> : null}
+      <Trust t={t} />
+    </div>
+  );
+}
 
+function Mark({ on }: { on: boolean }) {
+  return on ? (
+    <Check className="w-[18px] h-[18px] text-[#36671E] mx-auto" strokeWidth={2.75} aria-label="included" />
+  ) : (
+    <Minus className="w-[18px] h-[18px] text-[#C9CDC3] mx-auto" aria-label="not included" />
+  );
+}
+
+function Trust({ t }: { t: (typeof T)["en"] }) {
+  return (
+    <>
       <div className="mt-7 flex items-center justify-center gap-5 text-[11px] text-[#8A8A80]">
         <span className="inline-flex items-center gap-1.5"><Lock className="w-3.5 h-3.5" /> {t.secured}</span>
         <span className="inline-flex items-center gap-1.5"><ShieldCheck className="w-3.5 h-3.5" /> {t.cancelAnytime}</span>
       </div>
       <p className="mt-2.5 text-[11px] text-[#A8A8A0] text-center">{t.cardNote}</p>
-    </div>
+    </>
   );
 }

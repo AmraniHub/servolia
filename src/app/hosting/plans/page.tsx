@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import PlanChooser, { type Tier } from "@/components/PlanChooser";
+import PlanChooser, { type Tier, type Feature } from "@/components/PlanChooser";
 import { CLIENT_PRODUCTS, productCopy } from "@/lib/hosting";
 import { siteLabelFor, langFor, clientRefFor, maskEmail } from "@/lib/clientRefs";
 
@@ -47,29 +47,35 @@ export default async function PlansPage({
   const liteCopy = productCopy(lite, l);
   const fullCopy = productCopy(full, l);
 
-  /* What Complete adds over Essential, computed rather than written out, so a
-     feature added to one list can never silently vanish from the comparison. */
-  const extra = fullCopy.includes.filter((line) => !liteCopy.includes.includes(line));
+  /* The feature matrix, BUILT from the two lists rather than written out.
+     Shared lines first, in Essential's order, then what Complete adds — so a
+     feature added to either product appears in the comparison automatically
+     and cannot silently go missing from it. */
+  const features: Feature[] = [
+    ...liteCopy.includes.map((label) => ({
+      label,
+      essential: true,
+      complete: fullCopy.includes.includes(label),
+    })),
+    ...fullCopy.includes
+      .filter((label) => !liteCopy.includes.includes(label))
+      .map((label) => ({ label, essential: false, complete: true })),
+  ];
 
   const tiers: [Tier, Tier] = [
     {
       planKey: lite.key,
       tier: liteCopy.tier ?? "Essential",
-      heading: liteCopy.heading,
       blurb: liteCopy.blurb,
       monthlyUsd: lite.monthlyUsd,
       annualUsd: lite.annualUsd,
-      includes: liteCopy.includes,
     },
     {
       planKey: full.key,
       tier: fullCopy.tier ?? "Complete",
-      heading: fullCopy.heading,
       blurb: fullCopy.blurb,
       monthlyUsd: full.monthlyUsd,
       annualUsd: full.annualUsd,
-      includes: fullCopy.includes,
-      extra,
     },
   ];
 
@@ -87,8 +93,14 @@ export default async function PlansPage({
 
       <div className="flex-1 px-5 py-12 sm:py-16">
         <div className="max-w-3xl mx-auto text-center mb-9">
-          <h1 className="text-3xl sm:text-[34px] font-black text-[#18181B] tracking-tight mb-3">
-            {fr ? "Deux formules d'hébergement" : "Two hosting plans"}
+          <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#36671E] mb-3">
+            {fr ? "Hébergement Servolia" : "Servolia hosting"}
+          </p>
+          <h1 className="text-3xl sm:text-[38px] font-black tracking-tight mb-3 text-[#18181B]">
+            {fr ? "Choisissez votre " : "Choose your "}
+            <span className="bg-gradient-to-r from-[#36671E] to-[#6B8439] bg-clip-text text-transparent">
+              {fr ? "formule" : "plan"}
+            </span>
           </h1>
           <p className="text-[#52525B] leading-relaxed max-w-xl mx-auto">
             {fr
@@ -99,6 +111,7 @@ export default async function PlansPage({
 
         <PlanChooser
           tiers={tiers}
+          features={features}
           refCode={ref}
           siteLabel={siteLabelFor(ref)}
           maskedEmail={maskEmail(clientRefFor(ref)?.email)}
