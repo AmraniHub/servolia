@@ -68,6 +68,7 @@ const T = {
     compare: "Compare plans",
     groupAll: "In every plan",
     groupAdds: (tier: string) => `${tier} adds`,
+    everythingIn: (tier: string) => `Everything in ${tier}, plus:`,
     billedYearly: "Billed once a year",
     billedMonthly: "Billed monthly",
     included: "What's included",
@@ -104,6 +105,7 @@ const T = {
     compare: "Comparer les formules",
     groupAll: "Dans chaque formule",
     groupAdds: (tier: string) => `${tier} ajoute`,
+    everythingIn: (tier: string) => `Tout ce qu'inclut ${tier}, plus :`,
     billedYearly: "Facturé une fois par an",
     billedMonthly: "Facturé chaque mois",
     included: "Ce qui est inclus",
@@ -385,7 +387,59 @@ export default function PlanChooser({
         <p className="text-center text-[11px] font-black uppercase tracking-[0.16em] text-[#8A8A80] mb-5">
           {t.compare}
         </p>
-        <div className="overflow-x-auto rounded-2xl border border-[#E2E6DD] bg-white">
+
+        {/* PHONE: the same ladder, stacked. A 640px table on a 375px screen
+            shows one column and a scrollbar, which is no comparison at all.
+            Each tier is a block with its price and its own Choose; the base
+            tier lists everything, each step up says what it adds. */}
+        <div className="sm:hidden space-y-3">
+          {tiers.map((p, i) => {
+            const added = features.filter((f) => f.on.findIndex(Boolean) === i);
+            return (
+              <div
+                key={p.planKey}
+                className={`rounded-2xl bg-white p-4 ${p.featured ? "border border-[#36671E]" : "border border-[#E2E6DD]"}`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-black uppercase tracking-[0.14em] text-[#295115]">{p.tier}</p>
+                    {p.bestFor ? <p className="mt-1 text-[12px] leading-snug text-[#8A8A80]">{p.bestFor}</p> : null}
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-[16px] font-black tracking-tight text-[#161A15] tabular-nums leading-none">
+                      ${usd(priceOf(p))}
+                      <span className="ml-1 text-[11px] font-medium text-[#71717A]">{annual ? t.perYear : t.perMonth}</span>
+                    </p>
+                    <button
+                      onClick={() => choose(p.planKey)}
+                      disabled={busy}
+                      className="mt-2 h-8 px-3.5 rounded-lg text-[12.5px] font-bold text-[#295115] bg-white border border-[#CBD8BE] hover:border-[#36671E] disabled:opacity-55"
+                    >
+                      {t.choose}
+                    </button>
+                  </div>
+                </div>
+                {i > 0 ? (
+                  <p className="mt-3 text-[12.5px] font-semibold text-[#3F3F46]">{t.everythingIn(tiers[i - 1].tier)}</p>
+                ) : null}
+                <ul className="mt-2.5 space-y-2">
+                  {added.map((f) => (
+                    <li key={f.label} className="flex items-start gap-2">
+                      <Check className="w-[15px] h-[15px] mt-[2px] text-[#36671E] shrink-0" strokeWidth={3} />
+                      <div>
+                        <span className="block text-[13.5px] leading-snug text-[#3F3F46]">{f.label}</span>
+                        {f.hint ? <span className="mt-0.5 block text-[12px] leading-snug text-[#8A8A80]">{f.hint}</span> : null}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* DESKTOP: the matrix. */}
+        <div className="hidden sm:block overflow-x-auto rounded-2xl border border-[#E2E6DD] bg-white">
           <table className="w-full min-w-[640px] border-collapse text-left">
             <thead>
               <tr className="border-b border-[#E8E6E0]">
