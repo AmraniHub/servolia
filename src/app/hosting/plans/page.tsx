@@ -78,7 +78,7 @@ export default async function PlansPage({
   return (
     <main className="min-h-screen bg-[#FAFAF7] flex flex-col">
       <header className="px-5 py-6 border-b border-[#E8E6E0] bg-white">
-        <div className="max-w-3xl mx-auto">
+        <div className="max-w-5xl mx-auto">
           <Link href="/" className="inline-flex items-center">
             <span className="text-xl font-black tracking-tight text-[#18181B]">
               Serv<span className="gradient-text">olia</span>
@@ -88,7 +88,7 @@ export default async function PlansPage({
       </header>
 
       <div className="flex-1 px-5 py-12 sm:py-16">
-        <div className="max-w-3xl mx-auto text-center mb-9">
+        <div className="max-w-3xl mx-auto text-center mb-10">
           <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#36671E] mb-3">
             {fr ? "Hébergement Servolia" : "Servolia hosting"}
           </p>
@@ -122,7 +122,7 @@ export default async function PlansPage({
       </div>
 
       <footer className="px-5 py-8 border-t border-[#E8E6E0] bg-white">
-        <div className="max-w-3xl mx-auto text-center">
+        <div className="max-w-5xl mx-auto text-center">
           <p className="text-xs text-[#8A8A80]">
             {fr ? "Facturé par " : "Billed by "}
             <span className="font-bold text-[#52525B]">Servolia</span>
