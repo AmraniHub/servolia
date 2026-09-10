@@ -93,7 +93,11 @@ export const CLIENT_REFS: Record<string, ClientRef> = {
 
 export function clientRefFor(ref: string | undefined): ClientRef | undefined {
   if (!ref) return undefined;
-  return CLIENT_REFS[ref.toLowerCase()];
+  const key = ref.toLowerCase();
+  // hasOwn, not a bare index: `?ref=constructor` would otherwise resolve to
+  // Object's constructor, which is truthy -- a "known client" with no email,
+  // no label and no setup step, on a URL anyone can type.
+  return Object.hasOwn(CLIENT_REFS, key) ? CLIENT_REFS[key] : undefined;
 }
 
 export function siteLabelFor(ref: string | undefined): string {
@@ -127,7 +131,9 @@ export function langFor(
   ref: string | undefined,
   fallback?: string | null,
 ): "en" | "fr" {
-  const known = clientRefFor(ref)?.lang;
-  if (known) return known;
+  const client = clientRefFor(ref);
+  // A known client with no language set is an English-speaking client, not a
+  // client whose page may be flipped by whatever ?lang= a forwarded link has.
+  if (client) return client.lang ?? "en";
   return fallback === "fr" ? "fr" : "en";
 }

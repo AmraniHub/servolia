@@ -110,23 +110,7 @@ export default async function HostingPage({
       </header>
 
       <div className="flex-1 px-5 py-12 sm:py-16">
-        <div className="max-w-3xl mx-auto text-center mb-10">
-          <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#36671E] mb-3">
-            {fr ? "Hébergement Servolia" : "Servolia hosting"}
-          </p>
-          <h1 className="text-3xl sm:text-[38px] font-black tracking-tight mb-3 text-[#18181B]">
-            {fr ? "Choisissez votre " : "Choose your "}
-            <span className="bg-gradient-to-r from-[#36671E] to-[#6B8439] bg-clip-text text-transparent">
-              {fr ? "formule" : "plan"}
-            </span>
-          </h1>
-          <p className="text-[#52525B] leading-relaxed max-w-xl mx-auto">
-            {fr
-              ? "L'hébergement, le SSL et la surveillance sont identiques sur les trois. Ce qui change : si nous gérons votre domaine, et si vous avez une messagerie à votre nom."
-              : "Hosting, SSL and monitoring are the same on all three. What changes is whether we handle your domain, and whether you get email on it."}
-          </p>
-        </div>
-
+        {/* The heading is rendered by the chooser: it changes with the step. */}
         <PlanChooser
           tiers={tiers}
           features={features}

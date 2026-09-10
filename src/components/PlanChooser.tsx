@@ -45,6 +45,15 @@ export interface Tier {
 
 const T = {
   en: {
+    eyebrow: "Servolia hosting",
+    /* The heading follows the step. "Choose your plan" above a form for a
+       plan already chosen told the reader the page had lost track of them. */
+    h1Choose: ["Choose your ", "plan"],
+    subChoose:
+      "Hosting, SSL and monitoring are the same on all three. What changes is whether we handle your domain, and whether you get email on it.",
+    h1Details: ["Your ", "details"],
+    subDetails:
+      "Your domain, and the email for your account and invoices. You pay on the next screen, with Stripe.",
     yearly: "Yearly", monthly: "Monthly",
     perYear: "/ year", perMonth: "/ month",
     save: (n: number) => `Save $${usd(n)} a year`,
@@ -69,6 +78,13 @@ const T = {
     startError: "Could not start checkout",
   },
   fr: {
+    eyebrow: "Hébergement Servolia",
+    h1Choose: ["Choisissez votre ", "formule"],
+    subChoose:
+      "L'hébergement, le SSL et la surveillance sont identiques sur les trois. Ce qui change : si nous gérons votre domaine, et si vous avez une messagerie à votre nom.",
+    h1Details: ["Vos ", "coordonnées"],
+    subDetails:
+      "Votre domaine, et l'email de votre compte et de vos factures. Le paiement se fait à l'écran suivant, avec Stripe.",
     yearly: "Annuel", monthly: "Mensuel",
     perYear: "/ an", perMonth: "/ mois",
     save: (n: number) => `Économisez ${usd(n)} $ par an`,
@@ -160,12 +176,26 @@ export default function PlanChooser({
 
   const picked = tiers.find((p) => p.planKey === chosen) ?? null;
 
+  /* One heading, owned here rather than by the page, because only this
+     component knows which step is showing. */
+  const heading = (h1: string[], sub: string) => (
+    <div className="max-w-3xl mx-auto text-center mb-10">
+      <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#36671E] mb-3">{t.eyebrow}</p>
+      <h1 className="text-3xl sm:text-[38px] font-black tracking-tight mb-3 text-[#18181B]">
+        {h1[0]}
+        <span className="bg-gradient-to-r from-[#36671E] to-[#6B8439] bg-clip-text text-transparent">{h1[1]}</span>
+      </h1>
+      <p className="text-[#52525B] leading-relaxed max-w-xl mx-auto">{sub}</p>
+    </div>
+  );
+
   /* ── STEP TWO ─────────────────────────────────────────────────────────── */
   if (picked) {
     const amount = priceOf(picked);
     const ready = site.trim().length > 3 && /.+@.+\..+/.test(email);
     return (
       <div className="max-w-md mx-auto">
+        {heading(t.h1Details, t.subDetails)}
         <button
           onClick={() => setChosen(null)}
           className="inline-flex items-center gap-1.5 text-sm text-[#71717A] hover:text-[#36671E] mb-4 transition"
@@ -225,6 +255,7 @@ export default function PlanChooser({
   /* ── STEP ONE ─────────────────────────────────────────────────────────── */
   return (
     <div className="max-w-5xl mx-auto">
+      {heading(t.h1Choose, t.subChoose)}
       {known ? (
         <p className="text-center text-sm text-[#71717A] mb-6">
           {t.forLabel} <span className="font-bold text-[#18181B]">{siteLabel}</span>

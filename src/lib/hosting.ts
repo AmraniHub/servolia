@@ -281,7 +281,10 @@ export const HOSTING_PLANS = CLIENT_PRODUCTS;
 
 export function resolveHostingPlan(key?: string | null): ClientProduct | undefined {
   if (!key) return undefined;
-  return CLIENT_PRODUCTS[key.toLowerCase()];
+  const k = key.toLowerCase();
+  // hasOwn, not a bare index: plan=constructor would resolve to Object's
+  // constructor, and the checkout would send Stripe a NaN amount.
+  return Object.hasOwn(CLIENT_PRODUCTS, k) ? CLIENT_PRODUCTS[k] : undefined;
 }
 
 /**
