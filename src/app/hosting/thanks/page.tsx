@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { CheckCircle2 } from "lucide-react";
+import { setupLinkForSession } from "@/lib/upgrade";
 
 export const metadata: Metadata = {
   title: "Thank you",
@@ -82,6 +83,23 @@ const COPY: Record<string, Copy> = {
   },
 };
 
+/* A brand-new client is told the opposite of an existing one. "Nothing to
+   switch over" is true for a site we already run and a plain falsehood for a
+   site that is still on somebody else's server -- and it is the first thing
+   they read after paying. */
+const SETUP_EN = {
+  title: "Payment received",
+  body:
+    "One short step left: tell us where your site and domain live today, and we will take it from there. It takes about a minute.",
+  cta: "Tell us where your site is",
+};
+const SETUP_FR = {
+  title: "Paiement reçu",
+  body:
+    "Il reste une étape courte : indiquez-nous où se trouvent votre site et votre domaine aujourd'hui, et nous prenons le relais. Cela prend une minute.",
+  cta: "Indiquer où se trouve mon site",
+};
+
 const FALLBACK: Copy = {
   title: "You're all set",
   body: "Your payment went through and your service is active. Nothing else to do.",
@@ -90,9 +108,13 @@ const FALLBACK: Copy = {
 export default async function HostingThanks({
   searchParams,
 }: {
-  searchParams: Promise<{ product?: string; restored?: string; lang?: string }>;
+  searchParams: Promise<{
+    product?: string; restored?: string; lang?: string;
+    setup?: string; session_id?: string;
+  }>;
 }) {
-  const { product = "", restored = "", lang = "" } = await searchParams;
+  const { product = "", restored = "", lang = "", setup = "", session_id: sessionId = "" } =
+    await searchParams;
   const fr = lang === "fr";
 
   /* A first purchase and a reinstatement need different words, and the
@@ -101,6 +123,12 @@ export default async function HostingThanks({
      never happened; telling a reinstated client it is "now live" ignores the
      week it was off. Falls back to the plain wording when a product has no
      restored variant. */
+  /* Only the server knows whether this buyer already had a site with us, so
+     the checkout flags it rather than the page guessing. */
+  const isSetup = setup === "1";
+  const setupUrl = isSetup && sessionId ? await setupLinkForSession(sessionId) : null;
+  const setupCopy = fr ? SETUP_FR : SETUP_EN;
+
   const entry = (fr ? COPY_FR : COPY)[product];
   const isRestore = restored === "1";
   const copy: Copy = entry
@@ -125,8 +153,20 @@ export default async function HostingThanks({
       <div className="flex-1 px-5 py-20">
         <div className="max-w-md mx-auto text-center">
           <CheckCircle2 className="w-14 h-14 text-[#16A34A] mx-auto mb-5" />
-          <h1 className="text-2xl font-black text-[#18181B] mb-3">{copy.title}</h1>
-          <p className="text-[#52525B] leading-relaxed mb-6">{copy.body}</p>
+          <h1 className="text-2xl font-black text-[#18181B] mb-3">
+            {isSetup ? setupCopy.title : copy.title}
+          </h1>
+          <p className="text-[#52525B] leading-relaxed mb-6">
+            {isSetup ? setupCopy.body : copy.body}
+          </p>
+          {isSetup && setupUrl ? (
+            <a
+              href={setupUrl}
+              className="inline-flex items-center justify-center h-12 px-7 mb-6 rounded-xl bg-gradient-to-r from-[#36671E] to-[#295115] text-[#FAFAF7] font-bold hover:opacity-90 transition"
+            >
+              {setupCopy.cta}
+            </a>
+          ) : null}
 
           {/* This promise is now kept by our own webhook rather than by a
               Stripe dashboard toggle nobody can see — see

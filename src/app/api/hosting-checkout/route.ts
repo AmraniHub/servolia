@@ -177,7 +177,11 @@ export async function POST(req: NextRequest) {
        * redirect, so the page cannot know the outcome. The confirmation EMAIL
        * uses the real result. Worst case a client who was never suspended
        * reads "back online" on one page. */
-      success_url: `${origin}/hosting/thanks?product=${hostingPlan.key}&lang=${lang}${client?.gateWidget ? "&restored=1" : ""}`,
+      /* `setup=1` for a buyer we do not already host: their site lives
+       * somewhere else and nothing can happen until they tell us where. Only
+       * the server knows which case this is, so the flag is set here rather
+       * than guessed by the page. */
+      success_url: `${origin}/hosting/thanks?product=${hostingPlan.key}&lang=${lang}${client?.gateWidget ? "&restored=1" : ""}${client ? "" : "&setup=1&session_id={CHECKOUT_SESSION_ID}"}`,
       cancel_url: `${origin}/${hostingPlan.key === "chatbot" ? "chatbot" : "hosting"}${ref ? `?ref=${encodeURIComponent(ref)}` : ""}`,
     });
 

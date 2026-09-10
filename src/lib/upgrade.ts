@@ -59,6 +59,22 @@ export async function readUpgradeToken(token: string): Promise<string | null> {
   }
 }
 
+/**
+ * A short reference for one subscription, e.g. "SV-K4M2X9".
+ *
+ * Derived from the Stripe subscription id rather than stored, so it needs no
+ * column, cannot drift, and is the same string every time it is rendered. It
+ * exists because a client who has paid and then hears nothing has no way to
+ * connect the charge on their card to the work happening on their site — and
+ * "the hosting I bought" is not something either side can look up. This is.
+ *
+ * Not a secret and not a credential: it identifies a subscription to two people
+ * who already know about it, and grants nothing.
+ */
+export function referenceFor(subscriptionId: string): string {
+  return `SV-${subscriptionId.replace(/[^a-zA-Z0-9]/g, "").slice(-6).toUpperCase()}`;
+}
+
 /** A link the client can act on, for the email templates. */
 export async function upgradeLinkFor(subscriptionId: string, origin = "https://servolia.com") {
   return `${origin}/hosting/upgrade?t=${encodeURIComponent(await mintUpgradeToken(subscriptionId))}`;
@@ -89,6 +105,41 @@ export async function billingPortalLinkFor(subscriptionId: string, origin = "htt
  */
 export async function accountLinkFor(subscriptionId: string, origin = "https://servolia.com") {
   return `${origin}/hosting/account?t=${encodeURIComponent(await mintUpgradeToken(subscriptionId))}`;
+}
+
+/**
+ * Where a new client tells us where their site actually lives.
+ *
+ * Only sent to someone who bought without a ref — a client we already host
+ * has nothing to hand over, and asking would be noise.
+ */
+export async function setupLinkFor(subscriptionId: string, origin = "https://servolia.com") {
+  return `${origin}/hosting/setup?t=${encodeURIComponent(await mintUpgradeToken(subscriptionId))}`;
+}
+
+/**
+ * The same link, from the checkout session id Stripe puts on the return URL.
+ *
+ * The thank-you page has no token — it is reached by a redirect from Stripe,
+ * not from an email. Resolving the session here lets that page offer the next
+ * step in the moment the client is most likely to complete it, instead of
+ * sending them to their inbox to look for it. Returns null on anything
+ * unexpected: a missing next step is a worse page, a wrong one is a broken
+ * promise.
+ */
+export async function setupLinkForSession(
+  sessionId: string,
+  origin = "https://servolia.com",
+): Promise<string | null> {
+  const key = process.env.STRIPE_SECRET_KEY;
+  if (!key || !sessionId.startsWith("cs_")) return null;
+  try {
+    const session = await new Stripe(key).checkout.sessions.retrieve(sessionId);
+    const sub = typeof session.subscription === "string" ? session.subscription : null;
+    return sub ? setupLinkFor(sub, origin) : null;
+  } catch {
+    return null;
+  }
 }
 
 /* ── The quote ─────────────────────────────────────────────────────────── */
