@@ -16,17 +16,18 @@ import { usd } from "@/lib/hosting";
  * a tier has been chosen — and never at all for a client arriving on their own
  * link, since we already know who they are.
  *
- * A TABLE, not two lists of ticks. The tiers share three of five lines, and
- * two parallel bullet lists make a reader compare by scanning back and forth
- * and hoping they did not miss one. A row per feature with a tick or a dash in
- * each column answers "what do I actually lose" in one glance, which is the
- * only question a cheaper tier ever raises.
+ * A TABLE, not parallel lists of ticks. The tiers share most of their lines,
+ * and side-by-side bullet lists make a reader compare by scanning back and
+ * forth and hoping they did not miss one. A row per feature with a tick or a
+ * dash in every column answers "what do I actually lose" in one glance, which
+ * is the only question a cheaper tier ever raises — and it keeps working when
+ * a third column is added, which two bullet lists do not.
  */
 
 export interface Feature {
   label: string;
-  essential: boolean;
-  complete: boolean;
+  /** One flag per tier, in the same order as `tiers`. */
+  on: boolean[];
 }
 
 export interface Tier {
@@ -35,6 +36,8 @@ export interface Tier {
   blurb: string;
   monthlyUsd: number;
   annualUsd: number;
+  /** The recommended column: darker button, tint, badge. At most one. */
+  featured?: boolean;
 }
 
 const T = {
@@ -100,7 +103,7 @@ export default function PlanChooser({
   maskedEmail = "",
   lang = "en",
 }: {
-  tiers: [Tier, Tier];
+  tiers: Tier[];
   features: Feature[];
   refCode: string;
   siteLabel: string;
@@ -240,12 +243,12 @@ export default function PlanChooser({
 
       {/* Wide content scrolls inside its own box rather than the page. */}
       <div className="overflow-x-auto rounded-2xl border border-[#E8E6E0] bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
-        <table className="w-full min-w-[560px] border-collapse">
+        <table className="w-full min-w-[720px] border-collapse">
           <thead>
             <tr>
-              <th className="w-[42%] p-0" />
-              {tiers.map((p, i) => {
-                const upper = i === 1;
+              <th className="w-[34%] p-0" />
+              {tiers.map((p) => {
+                const upper = p.featured === true;
                 const amount = priceOf(p);
                 const saving = p.monthlyUsd * 12 - p.annualUsd;
                 return (
@@ -253,7 +256,7 @@ export default function PlanChooser({
                     key={p.planKey}
                     className={`align-top p-0 border-l border-[#F0EFEA] ${upper ? "bg-[#F7FBF4]" : ""}`}
                   >
-                    <div className="px-5 pt-6 pb-5 text-left">
+                    <div className="px-4 pt-6 pb-5 text-left">
                       <div className="flex items-center gap-2 mb-2 flex-wrap">
                         <span className="text-[11px] font-black uppercase tracking-widest text-[#5E6659]">{p.tier}</span>
                         {upper ? (
@@ -263,7 +266,7 @@ export default function PlanChooser({
                         ) : null}
                       </div>
                       <div className="flex items-baseline gap-1">
-                        <span className="text-[32px] leading-none font-black tracking-tight bg-gradient-to-r from-[#36671E] to-[#6B8439] bg-clip-text text-transparent">
+                        <span className="text-[30px] leading-none font-black tracking-tight bg-gradient-to-r from-[#36671E] to-[#6B8439] bg-clip-text text-transparent">
                           ${usd(amount)}
                         </span>
                         <span className="text-[13px] text-[#71717A] font-medium">{annual ? t.perYear : t.perMonth}</span>
@@ -281,19 +284,23 @@ export default function PlanChooser({
 
           <tbody>
             <tr>
-              <td colSpan={3} className="px-5 py-2.5 bg-[#FAFAF7] border-y border-[#F0EFEA]">
+              <td colSpan={tiers.length + 1} className="px-5 py-2.5 bg-[#FAFAF7] border-y border-[#F0EFEA]">
                 <span className="text-[10px] font-black uppercase tracking-widest text-[#8A8A80]">{t.included}</span>
               </td>
             </tr>
             {features.map((f) => (
               <tr key={f.label} className="border-b border-[#F4F3EF] last:border-0">
                 <td className="px-5 py-3.5 text-[13.5px] text-[#3F3F46] leading-snug">{f.label}</td>
-                <td className="px-5 py-3.5 text-center border-l border-[#F0EFEA]">
-                  <Mark on={f.essential} />
-                </td>
-                <td className="px-5 py-3.5 text-center border-l border-[#F0EFEA] bg-[#F7FBF4]">
-                  <Mark on={f.complete} />
-                </td>
+                {tiers.map((p, i) => (
+                  <td
+                    key={p.planKey}
+                    className={`px-5 py-3.5 text-center border-l border-[#F0EFEA] ${
+                      p.featured ? "bg-[#F7FBF4]" : ""
+                    }`}
+                  >
+                    <Mark on={f.on[i] === true} />
+                  </td>
+                ))}
               </tr>
             ))}
           </tbody>
@@ -301,11 +308,11 @@ export default function PlanChooser({
           <tfoot>
             <tr>
               <td className="p-0" />
-              {tiers.map((p, i) => {
-                const upper = i === 1;
+              {tiers.map((p) => {
+                const upper = p.featured === true;
                 return (
                   <td key={p.planKey} className={`p-0 border-l border-[#F0EFEA] ${upper ? "bg-[#F7FBF4]" : ""}`}>
-                    <div className="px-5 py-5">
+                    <div className="px-4 py-5">
                       <button
                         onClick={() => choose(p.planKey)}
                         disabled={busy}

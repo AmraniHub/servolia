@@ -97,8 +97,8 @@ export const CLIENT_PRODUCTS: Record<string, ClientProduct> = {
    * cheaper tier that differed only in wording would be a discount pretending
    * to be a plan.
    *
-   * 59/year is 11 x monthly, the same "one month free" rule as Complete, so a
-   * client comparing the two is comparing like with like.
+   * 66/year is 11 x monthly, the same "one month free" rule as the other
+   * tiers, so a client comparing them is comparing like with like.
    */
   hosting_lite: {
     key: "hosting_lite",
@@ -108,8 +108,8 @@ export const CLIENT_PRODUCTS: Record<string, ClientProduct> = {
     sentenceName: "hosting",
     blurb:
       "Your site stays online, fast and secure, and your forms keep working. You keep your domain wherever it is today.",
-    monthlyUsd: 5.39,
-    annualUsd: 59,
+    monthlyUsd: 6,
+    annualUsd: 66,
     includes: [
       "Hosting on a global CDN, with SSL",
       "Contact and quote forms kept connected",
@@ -173,6 +173,69 @@ export const CLIENT_PRODUCTS: Record<string, ClientProduct> = {
         "Hébergement, SSL, renouvellement du domaine, DNS, et maintien des " +
         "formulaires et du suivi du site. Les modifications de contenu et les " +
         "nouvelles pages sont devisées séparément.",
+    },
+  },
+  /**
+   * BUSINESS — Complete plus email on the client's own domain.
+   *
+   * The added lines are one-time work with no recurring cost: a Zoho mailbox
+   * on their domain (their free tier covers five, so three is comfortably
+   * inside it) and the SPF/DKIM/DMARC records that decide whether that mail
+   * lands in an inbox or a spam folder. Both are things a small business
+   * genuinely cannot do for itself and would otherwise pay a registrar ~100/yr
+   * for.
+   *
+   * IT IS ALSO THE FIRST TIER THAT COMMITS US TO DOING SOMETHING PER CLIENT
+   * rather than to a switch being on. Selling it means actually creating the
+   * mailbox and the DNS records; if that is not done, the client has paid for
+   * an address that bounces, which is worse than not offering it. Do not sell
+   * this tier to someone you are not going to set up this week.
+   *
+   * 121/year is 11 x monthly, the same rule as the other two.
+   */
+  hosting_business: {
+    key: "hosting_business",
+    name: "Hosting Business",
+    tier: "Business",
+    heading: "Website hosting — Business",
+    sentenceName: "hosting",
+    blurb:
+      "Everything in Complete, plus email on your own domain — so you write to customers from your business, not from a free mailbox.",
+    monthlyUsd: 11,
+    annualUsd: 121,
+    includes: [
+      "Hosting on a global CDN, with SSL",
+      "Domain renewal and DNS managed",
+      "Contact and quote forms kept connected",
+      "Tracking and analytics kept connected",
+      "Uptime watched — you hear it from us first",
+      "Business email on your domain — up to 3 mailboxes",
+      "Email deliverability set up (SPF, DKIM, DMARC)",
+    ],
+    description:
+      "Hosting, SSL, domain renewal, DNS, forms and tracking kept connected, " +
+      "plus business email on your own domain with deliverability configured. " +
+      "Content changes and new pages are quoted separately.",
+    fr: {
+      tier: "Business",
+      heading: "Hébergement du site — Business",
+      sentenceName: "hébergement",
+      blurb:
+        "Tout le Complet, plus une messagerie à votre nom de domaine — pour écrire à vos clients depuis votre entreprise, pas depuis une adresse gratuite.",
+      includes: [
+        "Hébergement sur un réseau mondial, avec SSL",
+        "Renouvellement du domaine et DNS gérés",
+        "Formulaires de contact et de devis maintenus",
+        "Suivi et statistiques maintenus",
+        "Disponibilité surveillée — vous l'apprenez par nous en premier",
+        "Messagerie professionnelle à votre domaine — jusqu'à 3 boîtes",
+        "Délivrabilité configurée (SPF, DKIM, DMARC)",
+      ],
+      description:
+        "Hébergement, SSL, renouvellement du domaine, DNS, formulaires et suivi " +
+        "maintenus, plus une messagerie professionnelle à votre domaine avec la " +
+        "délivrabilité configurée. Les modifications de contenu et les nouvelles " +
+        "pages sont devisées séparément.",
     },
   },
   chatbot: {

@@ -42,42 +42,38 @@ export default async function PlansPage({
   const l = langFor(ref, lang);
   const fr = l === "fr";
 
-  const lite = CLIENT_PRODUCTS.hosting_lite;
-  const full = CLIENT_PRODUCTS.hosting;
-  const liteCopy = productCopy(lite, l);
-  const fullCopy = productCopy(full, l);
-
-  /* The feature matrix, BUILT from the two lists rather than written out.
-     Shared lines first, in Essential's order, then what Complete adds — so a
-     feature added to either product appears in the comparison automatically
-     and cannot silently go missing from it. */
-  const features: Feature[] = [
-    ...liteCopy.includes.map((label) => ({
-      label,
-      essential: true,
-      complete: fullCopy.includes.includes(label),
-    })),
-    ...fullCopy.includes
-      .filter((label) => !liteCopy.includes.includes(label))
-      .map((label) => ({ label, essential: false, complete: true })),
+  /* Cheapest to dearest. Everything below is DERIVED from these three, so a
+     price change or a new feature line lands on the page by itself. */
+  const products = [
+    CLIENT_PRODUCTS.hosting_lite,
+    CLIENT_PRODUCTS.hosting,
+    CLIENT_PRODUCTS.hosting_business,
   ];
+  const copies = products.map((p) => productCopy(p, l));
 
-  const tiers: [Tier, Tier] = [
-    {
-      planKey: lite.key,
-      tier: liteCopy.tier ?? "Essential",
-      blurb: liteCopy.blurb,
-      monthlyUsd: lite.monthlyUsd,
-      annualUsd: lite.annualUsd,
-    },
-    {
-      planKey: full.key,
-      tier: fullCopy.tier ?? "Complete",
-      blurb: fullCopy.blurb,
-      monthlyUsd: full.monthlyUsd,
-      annualUsd: full.annualUsd,
-    },
-  ];
+  /* The matrix, built from the products rather than written out: labels in the
+     order they first appear going up the ladder, then a tick per tier that
+     lists that exact line. Written by hand it would drift the first time a
+     feature was added to one plan and not to the table. */
+  const labels: string[] = [];
+  for (const c of copies) {
+    for (const label of c.includes) if (!labels.includes(label)) labels.push(label);
+  }
+  const features: Feature[] = labels.map((label) => ({
+    label,
+    on: copies.map((c) => c.includes.includes(label)),
+  }));
+
+  const tiers: Tier[] = products.map((p, i) => ({
+    planKey: p.key,
+    tier: copies[i].tier ?? p.name,
+    blurb: copies[i].blurb,
+    monthlyUsd: p.monthlyUsd,
+    annualUsd: p.annualUsd,
+    // The middle one carries the badge: it is the plan most clients should be
+    // on, and an unmarked three-column table makes people default to cheapest.
+    featured: p.key === "hosting",
+  }));
 
   return (
     <main className="min-h-screen bg-[#FAFAF7] flex flex-col">
@@ -104,8 +100,8 @@ export default async function PlansPage({
           </h1>
           <p className="text-[#52525B] leading-relaxed max-w-xl mx-auto">
             {fr
-              ? "La seule différence : qui renouvelle votre domaine et gère le DNS. L'hébergement, le SSL et la surveillance sont identiques."
-              : "The only difference is who renews your domain and manages DNS. The hosting, SSL and monitoring are the same on both."}
+              ? "L'hébergement, le SSL et la surveillance sont identiques sur les trois. Ce qui change : si nous gérons votre domaine, et si vous avez une messagerie à votre nom."
+              : "Hosting, SSL and monitoring are the same on all three. What changes is whether we handle your domain, and whether you get email on it."}
           </p>
         </div>
 
