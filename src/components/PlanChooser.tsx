@@ -29,6 +29,8 @@ import { usd } from "@/lib/hosting";
 
 export interface Feature {
   label: string;
+  /** What the line means in plain words, shown under it in the comparison. */
+  hint?: string;
   /** One flag per tier, in the same order as `tiers`. */
   on: boolean[];
 }
@@ -41,6 +43,10 @@ export interface Tier {
   annualUsd: number;
   /** The recommended column: ring, badge, filled button. At most one. */
   featured?: boolean;
+  /** Who this tier is for, one line, under its name in the comparison. */
+  bestFor?: string;
+  /** What it includes, listed on step two so the buyer confirms before paying. */
+  includes?: string[];
 }
 
 const T = {
@@ -60,6 +66,11 @@ const T = {
     popular: "Most chosen",
     choose: "Choose",
     compare: "Compare plans",
+    groupAll: "In every plan",
+    groupAdds: (tier: string) => `${tier} adds`,
+    billedYearly: "Billed once a year",
+    billedMonthly: "Billed monthly",
+    included: "What's included",
     almost: "Almost there",
     yourSite: "Your website",
     sitePlaceholder: "yourdomain.com",
@@ -91,6 +102,11 @@ const T = {
     popular: "Le plus choisi",
     choose: "Choisir",
     compare: "Comparer les formules",
+    groupAll: "Dans chaque formule",
+    groupAdds: (tier: string) => `${tier} ajoute`,
+    billedYearly: "Facturé une fois par an",
+    billedMonthly: "Facturé chaque mois",
+    included: "Ce qui est inclus",
     almost: "Dernière étape",
     yourSite: "Votre site web",
     sitePlaceholder: "votredomaine.com",
@@ -211,6 +227,22 @@ export default function PlanChooser({
               <span className="font-medium opacity-80 text-[15px]"> {annual ? t.perYear : t.perMonth}</span>
             </p>
           </div>
+
+          {/* What they are about to pay for, on the screen where they pay for
+              it. Nobody should have to scroll back up to check. */}
+          {picked.includes?.length ? (
+            <div className="px-7 pt-5 pb-4 border-b border-[#F2F1ED] bg-[#FBFBF8]">
+              <p className="text-[11px] font-black text-[#8A8A80] uppercase tracking-[0.14em] mb-2">{t.included}</p>
+              <ul className="space-y-1.5">
+                {picked.includes.map((line) => (
+                  <li key={line} className="flex items-start gap-2 text-[13px] text-[#3F3F46] leading-snug">
+                    <Check className="w-3.5 h-3.5 mt-[3px] text-[#36671E] shrink-0" strokeWidth={3} />
+                    <span>{line}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
 
           <div className="px-7 py-6">
             <label htmlFor="pc-site" className="block text-[11px] font-black text-[#8A8A80] uppercase tracking-[0.14em] mb-1.5">
@@ -340,44 +372,102 @@ export default function PlanChooser({
 
       {error ? <p className="mt-4 text-sm text-[#B91C1C] text-center">{error}</p> : null}
 
-      {/* The matrix: labels and marks only. Everything that varies in height
-          was moved into the cards above. */}
+      {/* THE COMPARISON IS A DECISION TOOL, NOT A GRID.
+          Rows are grouped by the tier that first includes them -- "In every
+          plan", then "Complete adds", then "Business adds" -- so the ladder
+          reads at a glance; the grouping is derived from the data, never
+          typed. Each line carries its plain-words meaning, each column says
+          who it is for, and the last row prices and chooses, so comparing
+          ends in choosing without a scroll back to the cards. Nothing of
+          varying height sits beside a figure: the tier names align at the
+          top of the header, and the price row is one line. */}
       <div className="mt-14">
         <p className="text-center text-[11px] font-black uppercase tracking-[0.16em] text-[#8A8A80] mb-5">
           {t.compare}
         </p>
         <div className="overflow-x-auto rounded-2xl border border-[#E2E6DD] bg-white">
-          <table className="w-full min-w-[600px] border-collapse text-left">
+          <table className="w-full min-w-[640px] border-collapse text-left">
             <thead>
               <tr className="border-b border-[#E8E6E0]">
-                <th className="w-[46%] px-5 py-3.5" />
+                <th className="w-[40%] px-5 py-4 align-top" />
                 {tiers.map((p) => (
                   <th
                     key={p.planKey}
-                    className={`px-4 py-3.5 text-center text-[11px] font-black uppercase tracking-[0.13em] ${
-                      p.featured ? "bg-[#F7FBF4] text-[#295115]" : "text-[#5E6659]"
-                    }`}
+                    className={`px-4 py-4 text-center align-top ${p.featured ? "bg-[#F7FBF4]" : ""}`}
                   >
-                    {p.tier}
+                    <span className={`block text-[11px] font-black uppercase tracking-[0.13em] ${
+                      p.featured ? "text-[#295115]" : "text-[#5E6659]"
+                    }`}>
+                      {p.tier}
+                    </span>
+                    {p.bestFor ? (
+                      <span className="mt-1.5 block text-[12px] font-medium normal-case tracking-normal leading-snug text-[#8A8A80]">
+                        {p.bestFor}
+                      </span>
+                    ) : null}
                   </th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {features.map((f) => (
-                <tr key={f.label} className="border-b border-[#F2F1ED] last:border-0">
-                  <td className="px-5 py-3.5 text-[13.5px] text-[#3F3F46] leading-snug">{f.label}</td>
-                  {tiers.map((p, i) => (
-                    <td
-                      key={p.planKey}
-                      className={`px-4 py-3.5 text-center ${p.featured ? "bg-[#F7FBF4]" : ""}`}
-                    >
-                      <Mark on={f.on[i] === true} />
+              {features.map((f, idx) => {
+                const firstOn = f.on.findIndex(Boolean);
+                const prevFirstOn = idx === 0 ? -1 : features[idx - 1].on.findIndex(Boolean);
+                const newGroup = firstOn !== prevFirstOn;
+                return [
+                  newGroup ? (
+                    <tr key={`g-${f.label}`} className="border-b border-[#F2F1ED]">
+                      <td colSpan={tiers.length + 1}
+                          className="px-5 pt-4 pb-2 text-[10.5px] font-black uppercase tracking-[0.14em] text-[#36671E]">
+                        {firstOn <= 0 ? t.groupAll : t.groupAdds(tiers[firstOn].tier)}
+                      </td>
+                    </tr>
+                  ) : null,
+                  <tr key={f.label} className="border-b border-[#F2F1ED]">
+                    <td className="px-5 py-3.5 align-top">
+                      <span className="block text-[13.5px] text-[#3F3F46] leading-snug">{f.label}</span>
+                      {f.hint ? <span className="mt-0.5 block text-[12px] text-[#8A8A80] leading-snug">{f.hint}</span> : null}
                     </td>
-                  ))}
-                </tr>
-              ))}
+                    {tiers.map((p, i) => (
+                      <td
+                        key={p.planKey}
+                        className={`px-4 py-3.5 text-center align-middle ${p.featured ? "bg-[#F7FBF4]" : ""}`}
+                      >
+                        <Mark on={f.on[i] === true} />
+                      </td>
+                    ))}
+                  </tr>,
+                ];
+              })}
             </tbody>
+            <tfoot>
+              <tr className="border-t border-[#E8E6E0]">
+                <td className="px-5 py-4 text-[12px] text-[#8A8A80] align-middle">
+                  {annual ? t.billedYearly : t.billedMonthly}
+                </td>
+                {tiers.map((p) => (
+                  <td key={p.planKey} className={`px-4 py-4 text-center align-middle ${p.featured ? "bg-[#F7FBF4]" : ""}`}>
+                    <span className="block text-[18px] font-black tracking-tight text-[#161A15] tabular-nums leading-none">
+                      ${usd(priceOf(p))}
+                      <span className="ml-1 text-[11px] font-medium text-[#71717A] tracking-normal">
+                        {annual ? t.perYear : t.perMonth}
+                      </span>
+                    </span>
+                    <button
+                      onClick={() => choose(p.planKey)}
+                      disabled={busy}
+                      className={`mt-2.5 h-9 px-5 rounded-lg font-bold text-[13px] disabled:opacity-55 transition ${
+                        p.featured
+                          ? "bg-gradient-to-r from-[#36671E] to-[#295115] text-[#FAFAF7] hover:opacity-90"
+                          : "bg-white text-[#295115] border border-[#CBD8BE] hover:border-[#36671E] hover:bg-[#F7FBF4]"
+                      }`}
+                    >
+                      {t.choose}
+                    </button>
+                  </td>
+                ))}
+              </tr>
+            </tfoot>
           </table>
         </div>
       </div>

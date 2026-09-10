@@ -48,7 +48,52 @@ export interface ClientProductCopy {
   includes: string[];
   /** Sent to Stripe as the product description. */
   description: string;
+  /** Who this tier is for, in one line, for the comparison table. */
+  bestFor?: string;
+  /**
+   * What an `includes` line means in plain words, keyed by that exact line.
+   * Shown under the label in the comparison, where a reader is deciding
+   * rather than skimming. A restatement, never a promise the line does not
+   * already make.
+   */
+  explain?: Record<string, string>;
 }
+
+/** Shared by the hosting tiers: the same line means the same thing on each. */
+const HOSTING_EXPLAIN = {
+  en: {
+    "Hosting on a global CDN, with SSL":
+      "Your pages are served from servers close to your visitors, over https.",
+    "Contact and quote forms kept connected":
+      "The forms on your site keep reaching you; if one breaks, we fix it.",
+    "Uptime watched — you hear it from us first":
+      "The site is monitored; if it goes down, we tell you rather than a customer.",
+    "Domain renewal and DNS managed":
+      "We renew your domain on time and keep its records correct.",
+    "Tracking and analytics kept connected":
+      "Your Meta Pixel, Google tags and analytics keep working after changes.",
+    "Business email on your domain — up to 3 mailboxes":
+      "Addresses like you@yourdomain.com, working on your phone and computer.",
+    "Email deliverability set up (SPF, DKIM, DMARC)":
+      "The records that make your emails land in inboxes rather than spam.",
+  },
+  fr: {
+    "Hébergement sur un réseau mondial, avec SSL":
+      "Vos pages sont servies depuis des serveurs proches de vos visiteurs, en https.",
+    "Formulaires de contact et de devis maintenus":
+      "Les formulaires de votre site continuent de vous parvenir ; s'ils cassent, nous réparons.",
+    "Disponibilité surveillée — vous l'apprenez par nous en premier":
+      "Le site est surveillé ; s'il tombe, c'est nous qui vous prévenons, pas un client.",
+    "Renouvellement du domaine et DNS gérés":
+      "Nous renouvelons votre domaine à temps et gardons ses enregistrements corrects.",
+    "Suivi et statistiques maintenus":
+      "Votre pixel Meta, vos balises Google et vos statistiques continuent de fonctionner après les modifications.",
+    "Messagerie professionnelle à votre domaine — jusqu'à 3 boîtes":
+      "Des adresses comme vous@votredomaine.com, qui fonctionnent sur téléphone et ordinateur.",
+    "Délivrabilité configurée (SPF, DKIM, DMARC)":
+      "Les enregistrements qui font arriver vos emails dans la boîte de réception, pas dans les spams.",
+  },
+} satisfies Record<"en" | "fr", Record<string, string>>;
 
 /**
  * A product, in English, with its French copy alongside.
@@ -104,6 +149,8 @@ export const CLIENT_PRODUCTS: Record<string, ClientProduct> = {
     key: "hosting_lite",
     name: "Hosting Essential",
     tier: "Essential",
+    bestFor: "A site whose domain you already manage yourself.",
+    explain: HOSTING_EXPLAIN.en,
     heading: "Website hosting — Essential",
     sentenceName: "hosting",
     blurb:
@@ -121,6 +168,8 @@ export const CLIENT_PRODUCTS: Record<string, ClientProduct> = {
       "changes and new pages are quoted separately.",
     fr: {
       tier: "Essentiel",
+      bestFor: "Un site dont vous gérez déjà le domaine vous-même.",
+      explain: HOSTING_EXPLAIN.fr,
       heading: "Hébergement du site — Essentiel",
       sentenceName: "hébergement",
       blurb:
@@ -140,6 +189,8 @@ export const CLIENT_PRODUCTS: Record<string, ClientProduct> = {
     key: "hosting",
     name: "Hosting",
     tier: "Complete",
+    bestFor: "Most business sites — one provider for everything.",
+    explain: HOSTING_EXPLAIN.en,
     heading: "Website hosting",
     sentenceName: "hosting",
     blurb:
@@ -158,6 +209,8 @@ export const CLIENT_PRODUCTS: Record<string, ClientProduct> = {
       "tracking connected. Content changes and new pages are quoted separately.",
     fr: {
       tier: "Complet",
+      bestFor: "La plupart des sites d'entreprise — un seul prestataire pour tout.",
+      explain: HOSTING_EXPLAIN.fr,
       heading: "Hébergement du site",
       sentenceName: "hébergement",
       blurb:
@@ -197,6 +250,8 @@ export const CLIENT_PRODUCTS: Record<string, ClientProduct> = {
     key: "hosting_business",
     name: "Hosting Business",
     tier: "Business",
+    bestFor: "Companies that want email at their own domain.",
+    explain: HOSTING_EXPLAIN.en,
     heading: "Website hosting — Business",
     sentenceName: "hosting",
     blurb:
@@ -218,6 +273,8 @@ export const CLIENT_PRODUCTS: Record<string, ClientProduct> = {
       "Content changes and new pages are quoted separately.",
     fr: {
       tier: "Business",
+      bestFor: "Les entreprises qui veulent une messagerie à leur nom de domaine.",
+      explain: HOSTING_EXPLAIN.fr,
       heading: "Hébergement du site — Business",
       sentenceName: "hébergement",
       blurb:

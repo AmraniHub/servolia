@@ -83,6 +83,9 @@ export default async function HostingPage({
   for (const c of copies) for (const label of c.includes) if (!labels.includes(label)) labels.push(label);
   const features: Feature[] = labels.map((label) => ({
     label,
+    // The same line means the same thing on every tier, so the first
+    // explanation found is the explanation.
+    hint: copies.map((c) => c.explain?.[label]).find(Boolean),
     on: copies.map((c) => c.includes.includes(label)),
   }));
 
@@ -90,6 +93,8 @@ export default async function HostingPage({
     planKey: p.key,
     tier: copies[i].tier ?? p.name,
     blurb: copies[i].blurb,
+    bestFor: copies[i].bestFor,
+    includes: copies[i].includes,
     monthlyUsd: p.monthlyUsd,
     annualUsd: p.annualUsd,
     // The middle carries the badge: an unmarked three-column choice makes
