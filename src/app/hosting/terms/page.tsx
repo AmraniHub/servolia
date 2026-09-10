@@ -6,7 +6,7 @@ export const metadata: Metadata = {
   title: "Hosting — what you get",
   description:
     "What the Servolia hosting plan covers, what it costs, and how to take your site elsewhere.",
-  robots: { index: false, follow: false },
+  robots: { index: true, follow: true },
 };
 
 /**

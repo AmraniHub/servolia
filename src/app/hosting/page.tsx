@@ -35,11 +35,19 @@ export async function generateMetadata({
   const known = Boolean(clientRefFor(ref));
   const copy = productCopy(CLIENT_PRODUCTS.hosting, l);
   return {
-    title: known ? copy.heading : l === "fr" ? "Hébergement — formules" : "Hosting plans",
-    description: copy.description,
-    // Operator-sold and sent by link. Indexing it would put an $8 page in
-    // search against Servolia's own pricing.
-    robots: { index: false, follow: false },
+    title: known
+      ? copy.heading
+      : l === "fr"
+        ? "Hébergement de site web — à partir de 6 $/mois | Servolia"
+        : "Website hosting — from $6/month | Servolia",
+    description: known
+      ? copy.description
+      : l === "fr"
+        ? "Hébergement, SSL, surveillance et formulaires maintenus pour un site que vous avez déjà. Trois formules, de 6 à 11 $ par mois. Résiliable à tout moment."
+        : "Hosting, SSL, monitoring and forms kept working for a website you already have. Three plans from $6 to $11 a month. Cancel anytime.",
+    // The plan chooser is a public product, linked from the menu, so it is
+    // indexed. A client's own page (?ref=) is about one business and is not.
+    robots: known ? { index: false, follow: false } : { index: true, follow: true },
   };
 }
 
@@ -106,7 +114,7 @@ export default async function HostingPage({
     <main className="min-h-screen bg-[#FAFAF7] flex flex-col">
       <header className="px-5 py-6 border-b border-[#E8E6E0] bg-white">
         <div className="max-w-5xl mx-auto">
-          <Link href="/" className="inline-flex items-center">
+          <Link href={fr ? "/fr" : "/"} className="inline-flex items-center">
             <span className="text-xl font-black tracking-tight text-[#18181B]">
               Serv<span className="gradient-text">olia</span>
             </span>
@@ -128,6 +136,19 @@ export default async function HostingPage({
         <p className="mt-10 text-center text-[13px] text-[#8A8A80]">
           <Link href="/hosting/terms" className="text-[#36671E] hover:underline">
             {fr ? "Le détail de la prestation" : "What you get, in full"}
+          </Link>
+        </p>
+
+        {/* A visitor from the main menu needs to know which product this is:
+            hosting for a site that exists, not the Servolia plans that build
+            one. Without this line, an $8 figure sits one click from a €49
+            plan with no explanation of why. */}
+        <p className="mt-6 text-center text-[13px] text-[#8A8A80] max-w-xl mx-auto leading-relaxed">
+          {fr
+            ? "Ces formules hébergent et entretiennent un site que vous avez déjà. Il vous faut un site neuf, avec un réceptionniste IA ? "
+            : "These plans host and look after a website you already have. Need a new site, with an AI receptionist? "}
+          <Link href={fr ? "/fr/tarifs" : "/pricing"} className="text-[#36671E] hover:underline">
+            {fr ? "Voir les offres Servolia" : "See Servolia plans"}
           </Link>
         </p>
       </div>

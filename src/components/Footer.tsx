@@ -7,6 +7,7 @@ const services = [
   { label: "AI Receptionist", href: "/solutions/ai-receptionist" },
   { label: "Booking Systems", href: "/solutions/booking-systems" },
   { label: "CRM Dashboards", href: "/solutions/crm-dashboards" },
+  { label: "Website Hosting", href: "/hosting" },
   { label: "All Solutions", href: "/solutions" },
 ];
 

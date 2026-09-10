@@ -5,6 +5,7 @@ import EmailSignup from "./EmailSignup";
 const systemes = [
   { label: "Toutes les solutions", href: "/fr/solutions" },
   { label: "Tarifs", href: "/fr/tarifs" },
+  { label: "Hébergement de site", href: "/hosting?lang=fr" },
   { label: "Comment ça marche", href: "/fr/comment-ca-marche" },
   { label: "Cas clients", href: "/fr/cas-clients" },
   { label: "Exemples", href: "/fr/exemples" },

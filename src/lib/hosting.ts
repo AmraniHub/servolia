@@ -151,7 +151,7 @@ export const CLIENT_PRODUCTS: Record<string, ClientProduct> = {
     tier: "Essential",
     bestFor: "A site whose domain you already manage yourself.",
     explain: HOSTING_EXPLAIN.en,
-    heading: "Website hosting — Essential",
+    heading: "Website hosting · Essential",
     sentenceName: "hosting",
     blurb:
       "Your site stays online, fast and secure, and your forms keep working. You keep your domain wherever it is today.",
@@ -170,7 +170,7 @@ export const CLIENT_PRODUCTS: Record<string, ClientProduct> = {
       tier: "Essentiel",
       bestFor: "Un site dont vous gérez déjà le domaine vous-même.",
       explain: HOSTING_EXPLAIN.fr,
-      heading: "Hébergement du site — Essentiel",
+      heading: "Hébergement du site · Essentiel",
       sentenceName: "hébergement",
       blurb:
         "Votre site reste en ligne, rapide et sécurisé, et vos formulaires continuent de fonctionner. Vous gardez votre domaine là où il est aujourd'hui.",
@@ -191,7 +191,9 @@ export const CLIENT_PRODUCTS: Record<string, ClientProduct> = {
     tier: "Complete",
     bestFor: "Most business sites — one provider for everything.",
     explain: HOSTING_EXPLAIN.en,
-    heading: "Website hosting",
+    // Named like its siblings, so the tier a client chose is the tier every
+    // later screen -- Stripe, the receipt, the service page -- calls it.
+    heading: "Website hosting · Complete",
     sentenceName: "hosting",
     blurb:
       "Your site stays online, fast and secure — and the forms that bring you enquiries keep working.",
@@ -211,7 +213,7 @@ export const CLIENT_PRODUCTS: Record<string, ClientProduct> = {
       tier: "Complet",
       bestFor: "La plupart des sites d'entreprise — un seul prestataire pour tout.",
       explain: HOSTING_EXPLAIN.fr,
-      heading: "Hébergement du site",
+      heading: "Hébergement du site · Complet",
       sentenceName: "hébergement",
       blurb:
         "Votre site reste en ligne, rapide et sécurisé — et les formulaires qui vous apportent des demandes continuent de fonctionner.",
@@ -252,7 +254,7 @@ export const CLIENT_PRODUCTS: Record<string, ClientProduct> = {
     tier: "Business",
     bestFor: "Companies that want email at their own domain.",
     explain: HOSTING_EXPLAIN.en,
-    heading: "Website hosting — Business",
+    heading: "Website hosting · Business",
     sentenceName: "hosting",
     blurb:
       "Everything in Complete, plus email on your own domain — so you write to customers from your business, not from a free mailbox.",
@@ -275,7 +277,7 @@ export const CLIENT_PRODUCTS: Record<string, ClientProduct> = {
       tier: "Business",
       bestFor: "Les entreprises qui veulent une messagerie à leur nom de domaine.",
       explain: HOSTING_EXPLAIN.fr,
-      heading: "Hébergement du site — Business",
+      heading: "Hébergement du site · Business",
       sentenceName: "hébergement",
       blurb:
         "Tout le Complet, plus une messagerie à votre nom de domaine — pour écrire à vos clients depuis votre entreprise, pas depuis une adresse gratuite.",
