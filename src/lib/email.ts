@@ -2,6 +2,8 @@ import { Resend } from "resend";
 import { businessWaLink } from "./whatsapp";
 import { sendTelegramMessage } from "@/lib/telegram";
 import { rateLimited } from "@/lib/security";
+// Aliased: this file already uses `money` and `usd` as local names in templates.
+import { usd as usdFmt } from "@/lib/hosting";
 
 /**
  * Email service — uses Resend (resend.com). Free up to 3,000 emails/month.
@@ -764,13 +766,13 @@ export const clientServicePaidEmail = (input: {
     : null;
   /* USD written the French way: "12 $", space before the sign. Getting this
      wrong is a small thing that makes a payment page read as machine output. */
-  const money = (n: number) => (fr ? `${n}&nbsp;$` : `$${n}`);
+  const money = (n: number) => (fr ? `${usdFmt(n)}&nbsp;$` : `$${usdFmt(n)}`);
 
   /* An annual buyer is told what they saved, but only when there is a saving.
      Claiming one that does not exist is the kind of small lie that costs more
      than the discount is worth. */
   const saving = period === "annual" && monthlyUsd
-    ? Math.round(monthlyUsd * 12 - amountUsd)
+    ? monthlyUsd * 12 - amountUsd
     : 0;
 
   const headline = fr

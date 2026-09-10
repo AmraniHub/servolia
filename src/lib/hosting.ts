@@ -22,7 +22,22 @@
  * optional fields — a half-translated product then fails to compile instead of
  * shipping a French page with three English bullets in the middle of it.
  */
+/**
+ * A price as a person writes it: 88 stays "88", 5.39 stays "5.39".
+ *
+ * Every price used to be a whole dollar, so five call sites reached for
+ * Math.round and were correct by luck. The moment a plan is priced at 5.39
+ * those same lines quietly render "$5" on the client's own service page and
+ * "Save $6" against a real saving of 5.68 -- wrong in the direction that looks
+ * deliberate. Rounding money for display is never right; do it here, once.
+ */
+export function usd(n: number): string {
+  return Number.isInteger(n) ? String(n) : n.toFixed(2);
+}
+
 export interface ClientProductCopy {
+  /** Short tier name for a side-by-side comparison, e.g. "Essential". */
+  tier?: string;
   /** Shown as the card heading on the payment page. */
   heading: string;
   /** The name written mid-sentence: "hosting", "assistant IA". */
@@ -72,9 +87,59 @@ export interface ClientProduct extends ClientProductCopy {
  * If a consistent rule is wanted, change one line here rather than in a page.
  */
 export const CLIENT_PRODUCTS: Record<string, ClientProduct> = {
+  /**
+   * ESSENTIAL — the same hosting without the domain.
+   *
+   * The difference between the tiers is deliberately ONE thing a client can
+   * check rather than a wall of asterisks: who renews the domain. That is also
+   * the only line with a hard cash cost attached (a .com renewal at the
+   * registrar), which is exactly why the cheaper tier can exist at all. A
+   * cheaper tier that differed only in wording would be a discount pretending
+   * to be a plan.
+   *
+   * 59/year is 11 x monthly, the same "one month free" rule as Complete, so a
+   * client comparing the two is comparing like with like.
+   */
+  hosting_lite: {
+    key: "hosting_lite",
+    name: "Hosting Essential",
+    tier: "Essential",
+    heading: "Website hosting — Essential",
+    sentenceName: "hosting",
+    blurb:
+      "Your site stays online, fast and secure, and your forms keep working. You keep your domain wherever it is today.",
+    monthlyUsd: 5.39,
+    annualUsd: 59,
+    includes: [
+      "Hosting on a global CDN, with SSL",
+      "Contact and quote forms kept connected",
+      "Uptime watched — you hear it from us first",
+    ],
+    description:
+      "Hosting, SSL and a global CDN, with the site's contact and quote forms " +
+      "kept connected. Your domain stays with your own registrar. Content " +
+      "changes and new pages are quoted separately.",
+    fr: {
+      tier: "Essentiel",
+      heading: "Hébergement du site — Essentiel",
+      sentenceName: "hébergement",
+      blurb:
+        "Votre site reste en ligne, rapide et sécurisé, et vos formulaires continuent de fonctionner. Vous gardez votre domaine là où il est aujourd'hui.",
+      includes: [
+        "Hébergement sur un réseau mondial, avec SSL",
+        "Formulaires de contact et de devis maintenus",
+        "Disponibilité surveillée — vous l'apprenez par nous en premier",
+      ],
+      description:
+        "Hébergement, SSL et réseau mondial, avec les formulaires de contact " +
+        "et de devis maintenus. Votre domaine reste chez votre registrar. Les " +
+        "modifications de contenu et les nouvelles pages sont devisées séparément.",
+    },
+  },
   hosting: {
     key: "hosting",
     name: "Hosting",
+    tier: "Complete",
     heading: "Website hosting",
     sentenceName: "hosting",
     blurb:
@@ -92,6 +157,7 @@ export const CLIENT_PRODUCTS: Record<string, ClientProduct> = {
       "Hosting, SSL, domain renewal, DNS, and keeping the site's forms and " +
       "tracking connected. Content changes and new pages are quoted separately.",
     fr: {
+      tier: "Complet",
       heading: "Hébergement du site",
       sentenceName: "hébergement",
       blurb:

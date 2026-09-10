@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Check, ExternalLink, FileText, ArrowUpRight } from "lucide-react";
 import { readUpgradeToken, subscriptionContext } from "@/lib/upgrade";
-import { productCopy, CLIENT_PRODUCTS } from "@/lib/hosting";
+import { productCopy, CLIENT_PRODUCTS, usd } from "@/lib/hosting";
 
 export const metadata: Metadata = {
   title: "Your service",
@@ -160,8 +160,9 @@ export default async function AccountPage({
   const fr = ctx.lang === "fr";
   const copy = productCopy(ctx.plan, ctx.lang);
 
-  const money = (n: number) => (fr ? `${n} $` : `$${n}`);
-  const amount = ctx.amountCents !== null ? Math.round(ctx.amountCents / 100) : null;
+  const money = (n: number) => (fr ? `${usd(n)} $` : `$${usd(n)}`);
+  // Cents to dollars WITHOUT rounding: a 5.39 plan must not read "$5".
+  const amount = ctx.amountCents !== null ? ctx.amountCents / 100 : null;
   const per = ctx.interval === "year" ? (fr ? "an" : "year") : (fr ? "mois" : "month");
   const date = ctx.renewsAt
     ? new Date(ctx.renewsAt).toLocaleDateString(fr ? "fr-FR" : "en-GB", {
@@ -185,7 +186,7 @@ export default async function AccountPage({
         : "bg-[#F4F4F0] text-[#71717A] border-[#E8E6E0]";
 
   // Only where the year genuinely beats twelve months, and only when monthly.
-  const saving = Math.round(ctx.plan.monthlyUsd * 12 - ctx.plan.annualUsd);
+  const saving = ctx.plan.monthlyUsd * 12 - ctx.plan.annualUsd;
   const showUpgrade = ctx.interval === "month" && saving > 0 && active && !ending;
 
   return (

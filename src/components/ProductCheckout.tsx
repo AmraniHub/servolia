@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Check, ShieldCheck, Lock } from "lucide-react";
+import { usd } from "@/lib/hosting";
 
 /**
  * Every visible string, in both languages.
@@ -24,9 +25,9 @@ const T = {
     perMonth: "/ month",
     billedAnnually: "Billed once a year. Cancel anytime.",
     billedMonthly: "Billed monthly. Cancel anytime.",
-    save: (n: number) => `Save $${n}.`,
+    save: (n: number) => `Save $${usd(n)}.`,
     redirecting: "Redirecting to Stripe…",
-    pay: (n: number) => `Pay $${n} — get started`,
+    pay: (n: number) => `Pay $${usd(n)} — get started`,
     needSite: "Enter your website to continue",
     secured: "Secured by Stripe",
     cancelAnytime: "Cancel anytime",
@@ -47,9 +48,9 @@ const T = {
     perMonth: "/ mois",
     billedAnnually: "Facturé une fois par an. Résiliable à tout moment.",
     billedMonthly: "Facturé chaque mois. Résiliable à tout moment.",
-    save: (n: number) => `Économisez ${n} $.`,
+    save: (n: number) => `Économisez ${usd(n)} $.`,
     redirecting: "Redirection vers Stripe…",
-    pay: (n: number) => `Payer ${n} $ — activer`,
+    pay: (n: number) => `Payer ${usd(n)} $ — activer`,
     needSite: "Indiquez votre site pour continuer",
     secured: "Sécurisé par Stripe",
     cancelAnytime: "Résiliable à tout moment",
@@ -131,7 +132,7 @@ export default function ProductCheckout({
   const annual = billing === "annual";
   const amount = annual ? annualUsd : monthlyUsd;
   // Only claim a saving when the annual price is actually below 12 months.
-  const saving = Math.round(monthlyUsd * 12 - annualUsd);
+  const saving = monthlyUsd * 12 - annualUsd;
 
   return (
     <div className="max-w-md mx-auto">
@@ -190,7 +191,7 @@ export default function ProductCheckout({
           </div>
 
           <div className="flex items-baseline gap-1.5">
-            <span className="text-[44px] leading-none font-black text-[#18181B] tracking-tight">${amount}</span>
+            <span className="text-[44px] leading-none font-black text-[#18181B] tracking-tight">${usd(amount)}</span>
             <span className="text-[#71717A] font-medium">{annual ? t.perYear : t.perMonth}</span>
           </div>
           <p className="text-sm text-[#71717A] mt-2 mb-6">
