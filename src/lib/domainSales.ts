@@ -11,10 +11,17 @@
  * PRICING IS DERIVED FROM VERCEL'S RENEWAL PRICE, NEVER ITS FIRST-YEAR PRICE.
  * Vercel sells .store for 1.99 and renews it at 44.00, .shop for 2.99 and
  * renews at 38.39. A flat price built on the teaser would lose money from
- * year two on every one of them. The rule: at least DOMAIN_MIN_RETAIL_USD,
- * and at least the renewal price plus DOMAIN_MARGIN_USD; anything that comes
- * out above DOMAIN_MAX_RETAIL_USD is not offered. A domain is never bought
- * for more than the client is charged for it.
+ * year two on every one of them.
+ *
+ * THE RULE IS A PROFIT, NOT A PRICE. Abdelali wants at least
+ * DOMAIN_TARGET_PROFIT_USD in his pocket per domain per year, after Stripe.
+ * So: retail = (renewal + target profit + Stripe's fixed fee) / (1 - Stripe's
+ * rate), rounded up, never below DOMAIN_MIN_RETAIL_USD (so a .org is not
+ * cheaper than a .com), never above DOMAIN_MAX_RETAIL_USD (not offered). The
+ * Stripe rate is set high on purpose -- cards from outside the US and
+ * Adaptive Pricing conversions cost more than the headline 2.9 % -- because
+ * a margin that is right on the median card is wrong on the worst one.
+ * A domain is never bought for more than the client is charged for it.
  *
  * Needs VERCEL_TOKEN (a token for the team), VERCEL_TEAM_ID, and
  * DOMAIN_CONTACT_JSON -- the registrant contact, which is SERVOLIA'S and not
@@ -26,8 +33,12 @@
 
 const API = "https://api.vercel.com";
 
-export const DOMAIN_MIN_RETAIL_USD = 20;
-export const DOMAIN_MARGIN_USD = 8;
+/** What Abdelali keeps per domain per year, after Stripe. */
+export const DOMAIN_TARGET_PROFIT_USD = 13;
+/** Stripe, assumed at its worst realistic case: non-US card + currency conversion. */
+export const STRIPE_RATE = 0.05;
+export const STRIPE_FIXED_USD = 0.3;
+export const DOMAIN_MIN_RETAIL_USD = 26;
 export const DOMAIN_MAX_RETAIL_USD = 80;
 
 export function isDomainSalesConfigured(): boolean {
@@ -55,7 +66,13 @@ export function normalizeDomain(input: string | null | undefined): string | null
 }
 
 export function retailYearlyUsd(renewalUsd: number): number {
-  return Math.max(DOMAIN_MIN_RETAIL_USD, Math.ceil(renewalUsd + DOMAIN_MARGIN_USD));
+  const needed = (renewalUsd + DOMAIN_TARGET_PROFIT_USD + STRIPE_FIXED_USD) / (1 - STRIPE_RATE);
+  return Math.max(DOMAIN_MIN_RETAIL_USD, Math.ceil(needed));
+}
+
+/** What is left after Vercel's renewal and Stripe's worst case -- for the admin's eyes. */
+export function netProfitUsd(retailUsd: number, renewalUsd: number): number {
+  return Math.round((retailUsd * (1 - STRIPE_RATE) - STRIPE_FIXED_USD - renewalUsd) * 100) / 100;
 }
 
 /** Twelve monthly payments cost a little more than one yearly one, like the plans. */
@@ -142,7 +159,10 @@ export async function domainQuote(domain: string): Promise<FullQuote> {
   const renewalUsd = num(price.data.renewalPrice);
   if (!Number.isFinite(purchaseUsd) || !Number.isFinite(renewalUsd)) return { ...none, reason: "error" };
 
-  const yearlyUsd = retailYearlyUsd(renewalUsd);
+  // Priced off whichever year costs more: a .co is bought at 29.99 and
+  // renewed at 24.80, so a price built on the renewal alone shortchanges the
+  // first year.
+  const yearlyUsd = retailYearlyUsd(Math.max(purchaseUsd, renewalUsd));
   const monthlyUsd = retailMonthlyUsd(yearlyUsd);
   const base = { ...none, available: avail.data.available, purchaseUsd, renewalUsd, yearlyUsd, monthlyUsd };
 
