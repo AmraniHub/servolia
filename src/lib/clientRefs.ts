@@ -82,8 +82,8 @@ export const CLIENT_REFS: Record<string, ClientRef> = {
     // gates through site-status.js + middleware rather than a snippet swap.
   },
   excellenceagency: {
-    // Update the label when the new domain is connected.
-    label: "excellenceagency.ma",
+    // The .ma domain was suspended at the registry; the site moved here.
+    label: "excellence-agency.org",
     // From the agency dashboard's contact record.
     email: "transferhos@gmail.com",
     repo: "AmraniHub/excellenceagency-ma",
