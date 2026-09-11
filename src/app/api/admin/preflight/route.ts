@@ -6,6 +6,7 @@ import { telegramConfigured, sendTelegramMessage } from "@/lib/telegram";
 import { isLiveKey, isRestrictedKey } from "@/lib/stripeMode";
 import { CLIENT_REFS } from "@/lib/clientRefs";
 import { sitePath } from "@/lib/hostingGate";
+import { isDomainSalesConfigured, domainContact, domainQuote } from "@/lib/domainSales";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -528,6 +529,55 @@ function checkAds(): Check {
  *
  * Not a blocker for ads: a broken gate costs collections, not conversions.
  */
+/**
+ * Domain sales: can the chooser quote, and can the webhook buy? Two
+ * different questions, because the second needs a registrant contact the
+ * first does not, and "quotes work" must not read as "purchases work".
+ */
+async function checkDomainSales(): Promise<Check> {
+  const id = "domains";
+  const label = "Domain sales — Vercel registrar";
+  if (!isDomainSalesConfigured()) {
+    return {
+      id, label, status: "warn",
+      detail: "Not configured — the plan chooser does not offer domains.",
+      fix: "Set VERCEL_TOKEN and VERCEL_TEAM_ID (then DOMAIN_CONTACT_JSON for purchases) in Vercel → Settings → Environment Variables, and redeploy.",
+      blocksAds: false,
+    };
+  }
+  const contact = domainContact();
+  try {
+    const q = await withTimeout(domainQuote("servolia-preflight-check.com"), 8000);
+    if (q.reason === "error" || q.reason === "not-configured") {
+      return {
+        id, label, status: "blocked",
+        detail: "Vercel's registrar API did not answer with this token.",
+        fix: "Check VERCEL_TOKEN is a valid token with access to the team, and VERCEL_TEAM_ID is the team's id.",
+        blocksAds: false,
+      };
+    }
+    if (!contact) {
+      return {
+        id, label, status: "warn",
+        detail: `Quotes work (a .com sells at $${q.yearlyUsd}/yr) but purchases will wait for you: DOMAIN_CONTACT_JSON is missing or invalid.`,
+        fix: "Set DOMAIN_CONTACT_JSON to the registrant contact as JSON: firstName, lastName, email, phone (E.164, e.g. +212612345678), address1, city, state, zip, country (ISO-2, e.g. MA), optional companyName.",
+        blocksAds: false,
+      };
+    }
+    return {
+      id, label, status: "ready",
+      detail: `Quotes and purchases enabled — a .com sells at $${q.yearlyUsd}/yr; registrant ${contact.email}.`,
+      blocksAds: false,
+    };
+  } catch (e) {
+    return {
+      id, label, status: "warn",
+      detail: `Could not reach Vercel's registrar: ${e instanceof Error ? e.message : String(e)}`,
+      blocksAds: false,
+    };
+  }
+}
+
 async function checkHostingGate(): Promise<Check> {
   const token = process.env.GH_TOKEN;
   const gated = Object.entries(CLIENT_REFS).filter(([, c]) => c.repo);
@@ -602,16 +652,17 @@ async function checkHostingGate(): Promise<Check> {
 export async function GET(req: Request) {
   if (!(await isAdminAuthed())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const [anthropic, stripe, resend, supabase, gate, alerts] = await Promise.all([
+  const [anthropic, stripe, resend, supabase, gate, alerts, domains] = await Promise.all([
     checkAnthropic(),
     checkStripe(),
     checkResend(),
     checkSupabase(),
     checkHostingGate(),
     checkAlerts(),
+    checkDomainSales(),
   ]);
 
-  const checks: Check[] = [supabase, ...stripe, anthropic, resend, gate, alerts, checkPush(), checkAds()];
+  const checks: Check[] = [supabase, ...stripe, anthropic, resend, gate, domains, alerts, checkPush(), checkAds()];
   const blockers = checks.filter((c) => c.blocksAds);
 
   /* ?ping=1 — push this whole report to Telegram.

@@ -19,6 +19,7 @@ import {
   productCopy,
 } from "@/lib/hosting";
 import { setShopifyGate, applyGate } from "@/lib/hostingGate";
+import { normalizeDomain, purchaseDomainForClient, readDomainRecord, writeDomainRecord, setDomainAutoRenew } from "@/lib/domainSales";
 import { upgradeLinkFor, accountLinkFor, setupLinkFor, referenceFor, subscriptionContext } from "@/lib/upgrade";
 import { clientRefFor } from "@/lib/clientRefs";
 import { billingPortalUrl } from "@/lib/clientPortal";
@@ -205,6 +206,52 @@ export async function POST(req: NextRequest) {
           }
         }
 
+        /* A DOMAIN BOUGHT WITH THE PLAN.
+         *
+         * The client has paid for it, so the purchase is funded before it is
+         * made. It is quoted again at this moment and refused if the name
+         * has gone or Vercel now wants more than was charged; any refusal is
+         * recorded on the row as "pending" and shouted to the operator, who
+         * has a Buy button on the client's page. Awaited, because the
+         * receipt below says whether the domain is registered, and that must
+         * not be a guess. */
+        const domainWanted = normalizeDomain(session.metadata?.domain ?? "");
+        let domainBought = false;
+        if (domainWanted && !alreadySeen) {
+          const retail = Number(session.metadata?.domain_retail_usd ?? 0);
+          const outcome = await purchaseDomainForClient(domainWanted, retail);
+          domainBought = outcome.ok;
+          if (hostRow?.id) {
+            await db.from("hosting_clients").update({
+              site_url: `https://${domainWanted}`,
+              notes: writeDomainRecord(null, {
+                domain: domainWanted,
+                retailUsd: retail,
+                status: outcome.ok ? "bought" : "pending",
+                orderId: outcome.ok ? outcome.orderId : undefined,
+                boughtAt: outcome.ok ? new Date().toISOString().slice(0, 10) : undefined,
+                note: outcome.ok ? undefined : `${outcome.reason}${outcome.detail ? ` (${outcome.detail})` : ""}`,
+              }),
+            }).eq("id", hostRow.id);
+          }
+          if (!outcome.ok) {
+            console.error("[stripe] domain purchase failed:", domainWanted, outcome.reason, outcome.detail);
+            sendTelegramMessage(
+              [
+                `DOMAIN NOT BOUGHT - ${domainWanted}`,
+                `Client paid for it: ${session.metadata?.business || customerEmail || "unknown"}`,
+                `Reason: ${outcome.reason}${outcome.detail ? ` (${outcome.detail})` : ""}`,
+                outcome.reason === "no-contact" || outcome.reason === "not-configured"
+                  ? `Set VERCEL_TOKEN, VERCEL_TEAM_ID and DOMAIN_CONTACT_JSON, then press Buy on the client's page.`
+                  : `Press Buy on the client's page, or buy it by hand.`,
+                hostRow?.id ? `https://servolia.com/admin/hosting/${hostRow.id}` : `https://servolia.com/admin/hosting`,
+              ].join("\n"),
+              undefined,
+              { plain: true },
+            ).catch(() => {});
+          }
+        }
+
         /* CONFIRM IT TO THE CLIENT, IN OUR OWN NAME.
          *
          * /hosting/thanks tells the buyer a receipt is on its way. Until this
@@ -267,6 +314,8 @@ export async function POST(req: NextRequest) {
             portalUrl,
             setupUrl,
             reference: subId ? referenceFor(subId) : null,
+            domainName: domainWanted,
+            domainRegistered: domainBought,
           });
           sendEmail(customerEmail, tpl.subject, tpl.html).catch(() => {});
         }
@@ -292,6 +341,7 @@ export async function POST(req: NextRequest) {
                       (subIdForRef ? `Ref ${referenceFor(subIdForRef)}\n` : "") +
                       (restored ? `♻️ ${session.metadata?.gate_widget} switched back on\n` : "") +
                       (activated ? `🟢 Site switched on — the notice is lifted\n` : "") +
+                      (domainWanted ? `🌐 Domain ${domainWanted}: ${domainBought ? "bought on Vercel" : "NOT bought — see the alert"}\n` : "") +
                       (selfServe ? `⚠️ NEEDS SETUP — not hosted yet. Their handover arrives as a separate alert.\n` : "") +
                       `\n[Open](${adminUrl})`;
           fetch(`https://api.telegram.org/bot${hostTgToken}/sendMessage`, {
@@ -791,10 +841,27 @@ export async function POST(req: NextRequest) {
       // Hosting equivalent. A cancelled hosting subscription is the one case
       // where the site should actually stop being served -- but that is a
       // deliberate action, not an automatic one, so it is only recorded here.
+      const { data: churnedHost } = await db.from("hosting_clients")
+        .select("id, business, notes").eq("subscription_id", sub.id).maybeSingle();
       await db.from("hosting_clients").update({
         status: "churned",
         churned_at: new Date().toISOString(),
       }).eq("subscription_id", sub.id);
+
+      /* A domain we bought for them stops renewing on our card. It stays
+       * theirs until it expires, and a transfer is theirs for the asking;
+       * what ends is us paying Vercel every year for a client who left. */
+      const churnedDomain = readDomainRecord(churnedHost?.notes);
+      if (churnedDomain?.status === "bought") {
+        const res = await setDomainAutoRenew(churnedDomain.domain, false);
+        sendTelegramMessage(
+          `Hosting cancelled - ${churnedHost?.business ?? "client"}\n` +
+          `Domain ${churnedDomain.domain}: auto-renew ${res.ok ? "switched OFF" : `NOT switched off (${res.code ?? res.status}) - do it in Vercel > Domains`}. ` +
+          `It stays registered until it expires; transfer it to them if they ask.`,
+          undefined,
+          { plain: true },
+        ).catch(() => {});
+      }
 
       const tgToken = process.env.TELEGRAM_BOT_TOKEN;
       const tgChatId = process.env.TELEGRAM_CHAT_ID;

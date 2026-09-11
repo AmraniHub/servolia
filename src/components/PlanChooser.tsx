@@ -49,8 +49,31 @@ export interface Tier {
   includes?: string[];
 }
 
+type Quote = { domain: string; sellable: boolean; reason: string | null; yearlyUsd: number; monthlyUsd: number };
+
+/** The browser's copy of the server's normaliser, so a quote can be matched
+ *  to what is in the box. The server checks again before charging. */
+function cleanDomain(input: string): string | null {
+  let s = input.trim().toLowerCase().replace(/^[a-z]+:\/\//, "").replace(/^www\./, "");
+  s = s.split(/[/?#]/)[0].replace(/\.+$/, "");
+  return /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,24}$/.test(s) ? s : null;
+}
+
 const T = {
   en: {
+    haveDomain: "I have a domain",
+    needDomain: "I need a domain",
+    newDomain: "The domain you want",
+    domainPlaceholder: "yourbusiness.com",
+    check: "Check",
+    checking: "Checking…",
+    domainNote: "Registered by Servolia for you — yours to keep, renewed with your plan, transferable anywhere on request.",
+    available: (d: string, price: number, yearly: boolean) =>
+      `${d} is available — $${usd(price)} ${yearly ? "/ year" : "/ month"}, billed with your plan.`,
+    taken: "Taken — try another name or ending.",
+    unsupported: "We don't sell that ending. Bring it from another registrar and choose \"I have a domain\".",
+    tooExpensive: "That ending costs too much for this plan — try .com, .org or .net.",
+    checkFailed: "Could not check right now — try again in a moment.",
     eyebrow: "Servolia hosting",
     /* The heading follows the step. "Choose your plan" above a form for a
        plan already chosen told the reader the page had lost track of them. */
@@ -90,6 +113,19 @@ const T = {
     startError: "Could not start checkout",
   },
   fr: {
+    haveDomain: "J'ai un domaine",
+    needDomain: "Il me faut un domaine",
+    newDomain: "Le domaine que vous voulez",
+    domainPlaceholder: "votreentreprise.com",
+    check: "Vérifier",
+    checking: "Vérification…",
+    domainNote: "Enregistré par Servolia pour vous — il vous appartient, renouvelé avec votre formule, transférable où vous voulez sur demande.",
+    available: (d: string, price: number, yearly: boolean) =>
+      `${d} est disponible — ${usd(price)} $ ${yearly ? "/ an" : "/ mois"}, facturé avec votre formule.`,
+    taken: "Déjà pris — essayez un autre nom ou une autre extension.",
+    unsupported: "Nous ne vendons pas cette extension. Apportez-la d'un autre registrar et choisissez « J'ai un domaine ».",
+    tooExpensive: "Cette extension coûte trop cher pour cette formule — essayez .com, .org ou .net.",
+    checkFailed: "Vérification impossible pour le moment — réessayez dans un instant.",
     eyebrow: "Hébergement Servolia",
     h1Choose: ["Choisissez votre ", "formule"],
     subChoose:
@@ -137,6 +173,7 @@ export default function PlanChooser({
   maskedEmail = "",
   lang = "en",
   initialPlan = null,
+  domainsOffered = false,
 }: {
   tiers: Tier[];
   features: Feature[];
@@ -147,6 +184,8 @@ export default function PlanChooser({
   /** A plan already agreed in conversation: opens on step two with it chosen,
    *  "Change plan" still available. */
   initialPlan?: string | null;
+  /** Only the server knows whether the registrar is configured. */
+  domainsOffered?: boolean;
 }) {
   const t = T[lang];
   const [billing, setBilling] = useState<"annual" | "monthly">("annual");
@@ -157,6 +196,28 @@ export default function PlanChooser({
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [domainMode, setDomainMode] = useState<"have" | "need">("have");
+  const [quote, setQuote] = useState<Quote | null>(null);
+  const [checking, setChecking] = useState(false);
+
+  async function checkDomain() {
+    const name = cleanDomain(site);
+    if (!name) { setQuote(null); return; }
+    setChecking(true); setQuote(null); setError(null);
+    try {
+      const res = await fetch(`/api/domain-quote?name=${encodeURIComponent(name)}`);
+      const data = await res.json();
+      if (!data.ok) {
+        setQuote({ domain: name, sellable: false, reason: data.reason ?? "error", yearlyUsd: 0, monthlyUsd: 0 });
+        return;
+      }
+      setQuote({ domain: data.domain, sellable: data.sellable, reason: data.reason, yearlyUsd: data.yearlyUsd, monthlyUsd: data.monthlyUsd });
+    } catch {
+      setQuote({ domain: name, sellable: false, reason: "error", yearlyUsd: 0, monthlyUsd: 0 });
+    } finally {
+      setChecking(false);
+    }
+  }
 
   const known = Boolean(siteLabel);
   const annual = billing === "annual";
@@ -173,6 +234,9 @@ export default function PlanChooser({
         body: JSON.stringify({
           plan: planKey, billing, ref: refCode,
           business: siteLabel || site.trim(), email: email.trim(), lang,
+          // The server quotes the domain again before charging for it.
+          buyDomain: domainsOffered && domainMode === "need",
+          domain: site.trim(),
         }),
       });
       const data = await res.json();
@@ -210,7 +274,14 @@ export default function PlanChooser({
   /* ── STEP TWO ─────────────────────────────────────────────────────────── */
   if (picked) {
     const amount = priceOf(picked);
-    const ready = site.trim().length > 3 && /.+@.+\..+/.test(email);
+    const buying = domainsOffered && domainMode === "need";
+    // A quote counts only for the exact name in the box: editing the box
+    // after checking must not carry the old price into the payment.
+    const quoteMatches = buying && quote !== null && quote.sellable && quote.domain === cleanDomain(site);
+    const domainAmount = quoteMatches && quote ? (annual ? quote.yearlyUsd : quote.monthlyUsd) : 0;
+    const total = amount + domainAmount;
+    const ready = site.trim().length > 3 && /.+@.+\..+/.test(email) && (!buying || quoteMatches);
+    const fieldCls = "w-full h-11 px-3.5 text-[15px] border border-[#E2E6DD] rounded-lg bg-white outline-none focus:border-[#36671E] focus:ring-2 focus:ring-[#36671E]/15";
     return (
       <div className="max-w-md mx-auto">
         {heading(t.h1Details, t.subDetails)}
@@ -247,16 +318,62 @@ export default function PlanChooser({
           ) : null}
 
           <div className="px-7 py-6">
+            {domainsOffered ? (
+              <div className="flex gap-1 p-1 rounded-lg bg-[#EAEFE4] mb-4">
+                {(["have", "need"] as const).map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => { setDomainMode(m); setQuote(null); }}
+                    className={`flex-1 h-8 rounded-md text-[12.5px] font-bold transition ${
+                      domainMode === m ? "bg-white text-[#295115] shadow-[0_1px_2px_rgba(22,26,21,0.10)]" : "text-[#5E6659] hover:text-[#295115]"
+                    }`}
+                  >
+                    {m === "have" ? t.haveDomain : t.needDomain}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+
             <label htmlFor="pc-site" className="block text-[11px] font-black text-[#8A8A80] uppercase tracking-[0.14em] mb-1.5">
-              {t.yourSite}
+              {buying ? t.newDomain : t.yourSite}
             </label>
-            <input
-              id="pc-site"
-              value={site}
-              onChange={(e) => setSite(e.target.value)}
-              placeholder={t.sitePlaceholder}
-              className="w-full h-11 px-3.5 mb-4 text-[15px] border border-[#E2E6DD] rounded-lg bg-white outline-none focus:border-[#36671E] focus:ring-2 focus:ring-[#36671E]/15"
-            />
+            <div className={buying ? "flex gap-2" : ""}>
+              <input
+                id="pc-site"
+                value={site}
+                onChange={(e) => { setSite(e.target.value); if (buying) setQuote(null); }}
+                onKeyDown={(e) => { if (buying && e.key === "Enter") { e.preventDefault(); checkDomain(); } }}
+                placeholder={buying ? t.domainPlaceholder : t.sitePlaceholder}
+                className={`${fieldCls} ${buying ? "flex-1" : "mb-4"}`}
+              />
+              {buying ? (
+                <button
+                  type="button"
+                  onClick={checkDomain}
+                  disabled={checking || cleanDomain(site) === null}
+                  className="h-11 px-4 shrink-0 rounded-lg border border-[#CBD8BE] text-[#295115] font-bold text-[14px] hover:border-[#36671E] hover:bg-[#F7FBF4] disabled:opacity-45 transition"
+                >
+                  {checking ? t.checking : t.check}
+                </button>
+              ) : null}
+            </div>
+            {buying ? (
+              <p className={`mt-2 mb-4 text-[12.5px] leading-relaxed ${quote?.sellable ? "text-[#36671E] font-semibold" : "text-[#8A8A80]"}`}>
+                {quote === null
+                  ? t.domainNote
+                  : quote.sellable
+                    ? t.available(quote.domain, annual ? quote.yearlyUsd : quote.monthlyUsd, annual)
+                    : quote.reason === "taken"
+                      ? t.taken
+                      : quote.reason === "unsupported"
+                        ? t.unsupported
+                        : quote.reason === "too-expensive"
+                          ? t.tooExpensive
+                          : t.checkFailed}
+              </p>
+            ) : null}
+
             <label htmlFor="pc-email" className="block text-[11px] font-black text-[#8A8A80] uppercase tracking-[0.14em] mb-1.5">
               {t.yourEmail}
             </label>
@@ -266,16 +383,23 @@ export default function PlanChooser({
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder={t.emailPlaceholder}
-              className="w-full h-11 px-3.5 text-[15px] border border-[#E2E6DD] rounded-lg bg-white outline-none focus:border-[#36671E] focus:ring-2 focus:ring-[#36671E]/15"
+              className={fieldCls}
             />
             <p className="mt-2.5 text-[12px] text-[#8A8A80] leading-relaxed">{t.whyAsking}</p>
+
+            {quoteMatches && quote ? (
+              <p className="mt-5 text-[13px] text-[#5E6659] text-center tabular-nums">
+                {picked.tier} ${usd(amount)} + {quote.domain} ${usd(domainAmount)} ={" "}
+                <strong className="text-[#18181B]">${usd(total)}</strong> {annual ? t.perYear : t.perMonth}
+              </p>
+            ) : null}
 
             <button
               onClick={() => pay(picked.planKey)}
               disabled={!ready || busy}
               className="mt-6 w-full h-12 rounded-xl bg-gradient-to-r from-[#36671E] to-[#295115] text-[#FAFAF7] font-bold hover:opacity-90 disabled:opacity-45 transition"
             >
-              {busy ? t.working : ready ? t.pay(amount) : t.needDetails}
+              {busy ? t.working : ready ? t.pay(total) : t.needDetails}
             </button>
             {error ? <p className="mt-3 text-sm text-[#B91C1C] text-center">{error}</p> : null}
           </div>

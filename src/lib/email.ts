@@ -761,11 +761,15 @@ export const clientServicePaidEmail = (input: {
   setupUrl?: string | null;
   /** The reference to quote, shown beside the setup step. */
   reference?: string | null;
+  /** A domain bought with the plan, and whether the registration went through. */
+  domainName?: string | null;
+  domainRegistered?: boolean;
 }) => {
   const {
     productName, productNoun, siteLabel, amountUsd, period,
     nextChargeIso = null, monthlyUsd, restored = false, activated = false, includes = [], lang = "en",
     upgradeUrl = null, portalUrl = null, setupUrl = null, reference = null,
+    domainName = null, domainRegistered = false,
   } = input;
 
   const fr = lang === "fr";
@@ -882,6 +886,16 @@ export const clientServicePaidEmail = (input: {
             <strong>${money(amountUsd)}</strong> ${L.per}${saving > 0 ? ` &middot; ${L.saved}` : ""}
           </p>
           <p style="margin:10px 0 0;font-size:14px;color:${MUTED};">${nextCharge ? L.renewsOn(nextCharge) : L.renewsEach}</p>
+          ${domainName ? `<p style="margin:12px 0 0;padding-top:12px;border-top:1px solid ${LINE};font-size:14px;line-height:1.6;color:${BODY};">
+            ${fr ? "Domaine" : "Domain"} <strong style="color:${INK};">${domainName}</strong> —
+            ${domainRegistered
+              ? (fr
+                  ? "enregistré par Servolia pour vous et renouvelé avec votre formule. Il vous appartient ; nous vous le transférons sur simple demande."
+                  : "registered by Servolia for you and renewed with your plan. It is yours; we transfer it to you on request.")
+              : (fr
+                  ? "nous l'enregistrons pour vous en ce moment et vous le confirmons par email."
+                  : "we are registering it for you now and will confirm by email.")}
+          </p>` : ""}
         </td></tr>
       </table>
 

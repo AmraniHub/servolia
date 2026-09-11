@@ -4,6 +4,7 @@ import ClientProductPage from "@/components/ClientProductPage";
 import PlanChooser, { type Tier, type Feature } from "@/components/PlanChooser";
 import { CLIENT_PRODUCTS, productCopy, resolveHostingPlan } from "@/lib/hosting";
 import { siteLabelFor, langFor, clientRefFor, maskEmail } from "@/lib/clientRefs";
+import { isDomainSalesConfigured } from "@/lib/domainSales";
 
 /**
  * ONE URL, TWO SITUATIONS.
@@ -131,6 +132,7 @@ export default async function HostingPage({
           siteLabel=""
           lang={l}
           initialPlan={resolveHostingPlan(plan)?.key ?? null}
+          domainsOffered={isDomainSalesConfigured()}
         />
 
         <p className="mt-10 text-center text-[13px] text-[#8A8A80]">

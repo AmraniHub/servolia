@@ -46,7 +46,10 @@ export default function HostingSetupForm({
         return;
       }
       if (!res.ok) throw new Error(data.error || "save failed");
-      setMsg({ ok: true, text: `Saved. ${data.gate?.detail ?? ""}` });
+      const dom = data.domain
+        ? ` · Domain ${data.domain.name} ${data.domain.attached ? "attached to the project" : `NOT attached: ${data.domain.detail}`}`
+        : "";
+      setMsg({ ok: true, text: `Saved. ${data.gate?.detail ?? ""}${dom}` });
       router.refresh();
     } catch (err) {
       setMsg({ ok: false, text: err instanceof Error ? err.message : "Save failed" });

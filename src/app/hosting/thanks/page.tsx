@@ -110,12 +110,19 @@ export default async function HostingThanks({
 }: {
   searchParams: Promise<{
     product?: string; restored?: string; lang?: string;
-    setup?: string; session_id?: string;
+    setup?: string; session_id?: string; domain?: string;
   }>;
 }) {
-  const { product = "", restored = "", lang = "", setup = "", session_id: sessionId = "" } =
+  const { product = "", restored = "", lang = "", setup = "", session_id: sessionId = "", domain = "" } =
     await searchParams;
   const fr = lang === "fr";
+  /* A domain bought with the plan is being registered by the webhook as this
+     page renders. Said here so the buyer does not go looking for it. */
+  const domainNote = domain === "1"
+    ? (fr
+        ? " Votre domaine est en cours d'enregistrement — vous le retrouverez dans l'email de confirmation."
+        : " Your domain is being registered — you will find it in the confirmation email.")
+    : "";
 
   /* A first purchase and a reinstatement need different words, and the
      difference is within a product rather than between two. Telling a
@@ -157,7 +164,7 @@ export default async function HostingThanks({
             {isSetup ? setupCopy.title : copy.title}
           </h1>
           <p className="text-[#52525B] leading-relaxed mb-6">
-            {isSetup ? setupCopy.body : copy.body}
+            {(isSetup ? setupCopy.body : copy.body) + domainNote}
           </p>
           {isSetup && setupUrl ? (
             <a

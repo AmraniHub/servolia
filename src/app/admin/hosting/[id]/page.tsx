@@ -5,6 +5,8 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { referenceFor } from "@/lib/upgrade";
 import { resolveHostingPlan } from "@/lib/hosting";
 import HostingSetupForm from "@/components/admin/HostingSetupForm";
+import DomainActions from "@/components/admin/DomainActions";
+import { readDomainRecord } from "@/lib/domainSales";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +28,7 @@ export default async function HostingClientPage({ params }: { params: Promise<{ 
   const plan = resolveHostingPlan(c.plan);
   const reference = c.subscription_id ? referenceFor(c.subscription_id) : "—";
   const setUp = Boolean(c.repo || c.vercel_project);
+  const domainRec = readDomainRecord(c.notes);
   const period = c.billing_period === "annual" ? "yearly" : "monthly";
   const usd = (n: number) => `$${Number(n).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
 
@@ -78,6 +81,29 @@ export default async function HostingClientPage({ params }: { params: Promise<{ 
           is recorded below, the gate points at nothing: a missed payment would alert you but do nothing,
           and a later payment could not switch anything back on. Read their handover in Notes, do the
           setup, then record it here — the save verifies the gate is reachable before it accepts.
+        </div>
+      ) : null}
+
+      {domainRec ? (
+        <div className={`rounded-2xl border bg-white p-6 mb-6 ${domainRec.status === "bought" ? "border-[#E4E4E7]" : "border-[#FDE68A]"}`}>
+          <h2 className="text-base font-black text-[#18181B] mb-1">Domain bought through Servolia</h2>
+          <p className="text-sm text-[#52525B] leading-relaxed">
+            <span className="font-mono font-bold text-[#18181B]">{domainRec.domain}</span>
+            {" · "}
+            {domainRec.status === "bought"
+              ? `bought ${domainRec.boughtAt ?? ""} · order ${domainRec.orderId ?? "?"}`
+              : `NOT bought yet${domainRec.note ? ` — ${domainRec.note}` : ""}`}
+            {" · "}
+            {domainRec.attached ? `attached to ${domainRec.attached}` : "not attached to a project yet"}
+            {" · "}client pays ${domainRec.retailUsd}/yr
+          </p>
+          <DomainActions
+            id={c.id}
+            status={domainRec.status}
+            hasOrder={Boolean(domainRec.orderId)}
+            attached={domainRec.attached ?? null}
+            vercelProject={c.vercel_project ?? null}
+          />
         </div>
       ) : null}
 

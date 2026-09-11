@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { sendTelegramMessage } from "@/lib/telegram";
 import { readUpgradeToken, subscriptionContext, referenceFor } from "@/lib/upgrade";
+import { readDomainRecord, writeDomainRecord } from "@/lib/domainSales";
 
 export const runtime = "nodejs";
 
@@ -54,9 +55,15 @@ export async function POST(req: NextRequest) {
   const db = supabaseAdmin();
   let rowId: string | null = null;
   if (db) {
+    /* The notes may already carry the record of a domain bought with the
+       plan. The handover is written around it, never over it. */
+    const { data: existing } = await db
+      .from("hosting_clients").select("id, notes").eq("subscription_id", subscriptionId).maybeSingle();
+    const domainRec = readDomainRecord(existing?.notes);
+    const notes = domainRec ? writeDomainRecord(summary, domainRec) : summary;
     const { data, error } = await db
       .from("hosting_clients")
-      .update({ site_url: siteUrl, notes: summary })
+      .update({ site_url: siteUrl, notes })
       .eq("subscription_id", subscriptionId)
       .select("id")
       .maybeSingle();

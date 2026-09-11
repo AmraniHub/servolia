@@ -149,6 +149,12 @@ export default function HostingTerms() {
                 developer whatever they need to take over. There is no exit fee and
                 no notice period.
               </p>
+              <p>
+                <strong className="text-[#18181B]">A domain bought through Servolia</strong> is registered
+                by Servolia on your behalf, with WHOIS privacy, and renewed together with
+                your plan for as long as the plan runs. The same rule applies: it is yours,
+                and on request we transfer it to a registrar account you name.
+              </p>
               <p className="text-[14px] bg-white border border-[#E8E6E0] rounded-xl p-4">
                 <strong className="text-[#18181B]">One timing rule we do not control:</strong> ICANN forbids
                 transferring any <code className="text-[13px]">.com</code> to a different registrar for

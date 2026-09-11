@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { isAdminAuthed } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { probeGate } from "@/lib/hostingGate";
+import { attachDomainToProject, readDomainRecord, writeDomainRecord } from "@/lib/domainSales";
 
 export const runtime = "nodejs";
 
@@ -74,5 +75,23 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
     .eq("id", id);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ ok: true, gate });
+
+  /* A domain bought with the plan is attached the moment we know the
+     project -- the one step that could otherwise be forgotten between "the
+     site is up" and "the site answers on its own name". */
+  let domain: { name: string; attached: boolean; detail: string | null } | null = null;
+  if (vercelProject) {
+    const { data: fresh } = await db.from("hosting_clients").select("notes").eq("id", id).maybeSingle();
+    const rec = readDomainRecord(fresh?.notes);
+    if (rec?.status === "bought" && rec.attached !== vercelProject) {
+      const res = await attachDomainToProject(vercelProject, rec.domain);
+      if (res.ok) {
+        await db.from("hosting_clients")
+          .update({ notes: writeDomainRecord(fresh?.notes, { ...rec, attached: vercelProject }) })
+          .eq("id", id);
+      }
+      domain = { name: rec.domain, attached: res.ok, detail: res.ok ? null : `${res.code ?? res.status}${res.message ? `: ${res.message}` : ""}` };
+    }
+  }
+  return NextResponse.json({ ok: true, gate, domain });
 }
