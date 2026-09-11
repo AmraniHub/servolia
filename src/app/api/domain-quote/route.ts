@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { canBuyDomains, domainQuote, isDomainSalesConfigured, normalizeDomain } from "@/lib/domainSales";
+import { alternativesFor, canBuyDomains, domainQuote, isDomainSalesConfigured, normalizeDomain } from "@/lib/domainSales";
 
 export const runtime = "nodejs";
 
@@ -14,11 +14,14 @@ export async function GET(req: NextRequest) {
   if (!isDomainSalesConfigured()) return NextResponse.json({ ok: false, reason: "not-offered" });
 
   const q = await domainQuote(name);
+  // A taken name is answered with what IS available, so the buyer's next
+  // click is a choice rather than another guess.
+  const alternatives = q.reason === "taken" ? await alternativesFor(name) : [];
   return NextResponse.json(
     // `purchasable` says whether the webhook can buy (registrant contact
     // configured) -- a boolean, nothing private, so the operator can verify
     // the setup from outside without an admin session.
-    { ok: true, domain: q.domain, sellable: q.sellable, reason: q.reason ?? null, yearlyUsd: q.yearlyUsd, monthlyUsd: q.monthlyUsd, purchasable: canBuyDomains() },
+    { ok: true, domain: q.domain, sellable: q.sellable, reason: q.reason ?? null, yearlyUsd: q.yearlyUsd, purchasable: canBuyDomains(), alternatives },
     { headers: { "cache-control": "no-store" } },
   );
 }

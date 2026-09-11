@@ -75,20 +75,21 @@ export function netProfitUsd(retailUsd: number, renewalUsd: number): number {
   return Math.round((retailUsd * (1 - STRIPE_RATE) - STRIPE_FIXED_USD - renewalUsd) * 100) / 100;
 }
 
-/** Twelve monthly payments cost a little more than one yearly one, like the plans. */
-export function retailMonthlyUsd(yearlyUsd: number): number {
-  return Math.ceil(yearlyUsd / 12);
-}
-
 export type QuoteReason = "unsupported" | "taken" | "too-expensive" | "not-configured" | "error";
 
-/** What the browser is told. Vercel's own numbers stay on the server. */
+/**
+ * What the browser is told. Vercel's own numbers stay on the server.
+ *
+ * A domain is priced PER YEAR, whatever the plan's rhythm: a domain is a
+ * yearly thing wherever it is bought, and a "$3 a month" domain would have
+ * been a fiction over a yearly registration. On a monthly plan the year is
+ * paid up front and again on each anniversary invoice.
+ */
 export interface DomainQuote {
   domain: string;
   sellable: boolean;
   reason?: QuoteReason;
   yearlyUsd: number;
-  monthlyUsd: number;
 }
 
 export interface FullQuote extends DomainQuote {
@@ -136,7 +137,7 @@ const num = (v: unknown) => (typeof v === "number" ? v : Number(v));
 
 export async function domainQuote(domain: string): Promise<FullQuote> {
   const none: FullQuote = {
-    domain, sellable: false, yearlyUsd: 0, monthlyUsd: 0, available: false, purchaseUsd: 0, renewalUsd: 0,
+    domain, sellable: false, yearlyUsd: 0, available: false, purchaseUsd: 0, renewalUsd: 0,
   };
   if (!isDomainSalesConfigured()) return { ...none, reason: "not-configured" };
 
@@ -163,14 +164,28 @@ export async function domainQuote(domain: string): Promise<FullQuote> {
   // renewed at 24.80, so a price built on the renewal alone shortchanges the
   // first year.
   const yearlyUsd = retailYearlyUsd(Math.max(purchaseUsd, renewalUsd));
-  const monthlyUsd = retailMonthlyUsd(yearlyUsd);
-  const base = { ...none, available: avail.data.available, purchaseUsd, renewalUsd, yearlyUsd, monthlyUsd };
+  const base = { ...none, available: avail.data.available, purchaseUsd, renewalUsd, yearlyUsd };
 
   if (!avail.data.available) return { ...base, reason: "taken" };
   // Never sell what would be bought at a loss, and never offer a price that
   // makes the hosting look like the cheap part.
   if (yearlyUsd > DOMAIN_MAX_RETAIL_USD || purchaseUsd > yearlyUsd) return { ...base, reason: "too-expensive" };
   return { ...base, sellable: true };
+}
+
+/**
+ * The same name under the common endings, for when the one they typed is
+ * taken. Only endings we would actually sell come back, priced, at most
+ * three -- a wall of options is worse than a short list.
+ */
+export async function alternativesFor(domain: string): Promise<{ domain: string; yearlyUsd: number }[]> {
+  const i = domain.indexOf(".");
+  if (i <= 0) return [];
+  const label = domain.slice(0, i);
+  const current = domain.slice(i + 1);
+  const endings = ["com", "org", "net", "co"].filter((t) => t !== current);
+  const quotes = await Promise.all(endings.map((t) => domainQuote(`${label}.${t}`)));
+  return quotes.filter((q) => q.sellable).map((q) => ({ domain: q.domain, yearlyUsd: q.yearlyUsd })).slice(0, 3);
 }
 
 /* ── Registrant contact ──────────────────────────────────────────────────── */
@@ -283,6 +298,8 @@ export interface DomainRecord {
   retailUsd: number;
   orderId?: string;
   boughtAt?: string;
+  /** Monthly plans only: the day the next yearly domain charge goes on the invoice. */
+  nextChargeAt?: string;
   attached?: string;
   note?: string;
 }
@@ -307,6 +324,7 @@ export function readDomainRecord(notes: string | null | undefined): DomainRecord
     retailUsd: Number(kv.retail) || 0,
     orderId: kv.order && kv.order !== "-" ? kv.order : undefined,
     boughtAt: kv.bought && kv.bought !== "-" ? kv.bought : undefined,
+    nextChargeAt: kv.renew && kv.renew !== "-" ? kv.renew : undefined,
     attached: kv.attached && kv.attached !== "-" ? kv.attached : undefined,
     note: kv.note && kv.note !== "-" ? kv.note : undefined,
   };
@@ -320,6 +338,7 @@ export function writeDomainRecord(notes: string | null | undefined, rec: DomainR
     `retail: ${rec.retailUsd}`,
     `order: ${rec.orderId ?? "-"}`,
     `bought: ${rec.boughtAt ?? "-"}`,
+    `renew: ${rec.nextChargeAt ?? "-"}`,
     `attached: ${rec.attached ?? "-"}`,
     `note: ${(rec.note ?? "-").replace(/\s*\|\s*/g, "/").replace(/\n/g, " ")}`,
   ].join(" | ");

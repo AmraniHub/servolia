@@ -129,22 +129,37 @@ export async function POST(req: NextRequest) {
         : { taken: "That domain is no longer available", unsupported: "That ending is not offered", "too-expensive": "That ending is too expensive for this plan" };
       return NextResponse.json({ error: why[q.reason as keyof typeof why] ?? (lang === "fr" ? "Domaine indisponible" : "Domain unavailable") }, { status: 400 });
     }
-    const amountUsd = period === "annual" ? q.yearlyUsd : q.monthlyUsd;
+    /* ALWAYS A YEAR. A domain is a yearly thing wherever it is bought, and
+       Stripe will not put a yearly item on a monthly subscription. So on a
+       yearly plan the domain is a second yearly item that renews with the
+       plan; on a monthly plan the first year is a one-time line on the first
+       invoice, and each later year is added to the anniversary invoice by
+       the domain-billing cron. */
+    const withPlan = period === "annual";
     domainLine = {
       price_data: {
         currency: "usd",
         product_data: {
-          name: `${lang === "fr" ? "Domaine" : "Domain"} · ${name}`,
+          name: `${lang === "fr" ? "Domaine" : "Domain"} · ${name}${withPlan ? "" : lang === "fr" ? " — 1 an" : " — 1 year"}`,
           description: lang === "fr"
-            ? "Enregistré et renouvelé par Servolia. Il vous appartient."
-            : "Registered and renewed by Servolia. Yours to keep.",
+            ? (withPlan
+                ? "Enregistré par Servolia, renouvelé avec votre formule. Il vous appartient."
+                : "Enregistré par Servolia, renouvelé chaque année sur votre facture. Il vous appartient.")
+            : (withPlan
+                ? "Registered by Servolia, renewed with your plan. Yours to keep."
+                : "Registered by Servolia, renewed each year on your invoice. Yours to keep."),
         },
-        unit_amount: amountUsd * 100,
-        recurring: { interval: period === "annual" ? "year" : "month" },
+        unit_amount: q.yearlyUsd * 100,
+        ...(withPlan ? { recurring: { interval: "year" as const } } : {}),
       },
       quantity: 1,
     };
-    domainMeta = { domain: name, domain_retail_usd: String(q.yearlyUsd), domain_cost_usd: String(q.purchaseUsd) };
+    domainMeta = {
+      domain: name,
+      domain_retail_usd: String(q.yearlyUsd),
+      domain_cost_usd: String(q.purchaseUsd),
+      domain_billing: withPlan ? "with-plan" : "yearly-invoice",
+    };
     business = name;
   }
 

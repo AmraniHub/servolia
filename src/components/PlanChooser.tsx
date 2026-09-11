@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Minus, Lock, ShieldCheck, ArrowLeft } from "lucide-react";
+import { Check, Minus, Lock, ShieldCheck, ArrowLeft, X } from "lucide-react";
 import { usd } from "@/lib/hosting";
 
 /**
@@ -49,7 +49,13 @@ export interface Tier {
   includes?: string[];
 }
 
-type Quote = { domain: string; sellable: boolean; reason: string | null; yearlyUsd: number; monthlyUsd: number };
+type Quote = {
+  domain: string;
+  sellable: boolean;
+  reason: string | null;
+  yearlyUsd: number;
+  alternatives: { domain: string; yearlyUsd: number }[];
+};
 
 /** The browser's copy of the server's normaliser, so a quote can be matched
  *  to what is in the box. The server checks again before charging. */
@@ -67,13 +73,18 @@ const T = {
     domainPlaceholder: "yourbusiness.com",
     check: "Check",
     checking: "Checking…",
-    domainNote: "Registered by Servolia for you — yours to keep, renewed with your plan, transferable anywhere on request.",
-    available: (d: string, price: number, yearly: boolean) =>
-      `${d} is available — $${usd(price)} ${yearly ? "/ year" : "/ month"}, billed with your plan.`,
-    taken: "Taken — try another name or ending.",
+    domainNote: "Domains are billed yearly. Registered by Servolia for you — yours to keep, transferable anywhere on request.",
+    priceLine: (price: number) => `$${usd(price)} / year`,
+    availableTag: "Available",
+    domainBilledYearly: "Billed yearly. Registered by Servolia for you — yours to keep, transferable anywhere on request.",
+    taken: "Taken — one of these instead, or another name:",
+    takenNoAlt: "Taken — try another name.",
     unsupported: "We don't sell that ending. Bring it from another registrar and choose \"I have a domain\".",
     tooExpensive: "That ending costs too much for this plan — try .com, .org or .net.",
     checkFailed: "Could not check right now — try again in a moment.",
+    today: "today",
+    thenMonthly: (n: number) => `then $${usd(n)} / month`,
+    payToday: (n: number) => `Pay $${usd(n)} today`,
     eyebrow: "Servolia hosting",
     /* The heading follows the step. "Choose your plan" above a form for a
        plan already chosen told the reader the page had lost track of them. */
@@ -99,8 +110,8 @@ const T = {
     yourSite: "Your website",
     sitePlaceholder: "yourdomain.com",
     yourEmail: "Your email",
-    emailPlaceholder: "you@company.com",
-    whyAsking: "Your account, invoices and sign-in link all use this address.",
+    emailPlaceholder: "name@email.com",
+    whyAsking: "Personal or business, either is fine — it's where your invoices and your sign-in link go.",
     changePlan: "Change plan",
     pay: (n: number) => `Pay $${usd(n)}`,
     needDetails: "Fill in both fields to continue",
@@ -119,13 +130,18 @@ const T = {
     domainPlaceholder: "votreentreprise.com",
     check: "Vérifier",
     checking: "Vérification…",
-    domainNote: "Enregistré par Servolia pour vous — il vous appartient, renouvelé avec votre formule, transférable où vous voulez sur demande.",
-    available: (d: string, price: number, yearly: boolean) =>
-      `${d} est disponible — ${usd(price)} $ ${yearly ? "/ an" : "/ mois"}, facturé avec votre formule.`,
-    taken: "Déjà pris — essayez un autre nom ou une autre extension.",
+    domainNote: "Les domaines sont facturés à l'année. Enregistré par Servolia pour vous — il vous appartient, transférable où vous voulez sur demande.",
+    priceLine: (price: number) => `${usd(price)} $ / an`,
+    availableTag: "Disponible",
+    domainBilledYearly: "Facturé à l'année. Enregistré par Servolia pour vous — il vous appartient, transférable où vous voulez sur demande.",
+    taken: "Déjà pris — l'une de ces options, ou un autre nom :",
+    takenNoAlt: "Déjà pris — essayez un autre nom.",
     unsupported: "Nous ne vendons pas cette extension. Apportez-la d'un autre registrar et choisissez « J'ai un domaine ».",
     tooExpensive: "Cette extension coûte trop cher pour cette formule — essayez .com, .org ou .net.",
     checkFailed: "Vérification impossible pour le moment — réessayez dans un instant.",
+    today: "aujourd'hui",
+    thenMonthly: (n: number) => `puis ${usd(n)} $ / mois`,
+    payToday: (n: number) => `Payer ${usd(n)} $ aujourd'hui`,
     eyebrow: "Hébergement Servolia",
     h1Choose: ["Choisissez votre ", "formule"],
     subChoose:
@@ -149,8 +165,8 @@ const T = {
     yourSite: "Votre site web",
     sitePlaceholder: "votredomaine.com",
     yourEmail: "Votre email",
-    emailPlaceholder: "vous@societe.com",
-    whyAsking: "Votre compte, vos factures et votre lien de connexion utilisent cette adresse.",
+    emailPlaceholder: "nom@email.com",
+    whyAsking: "Personnelle ou professionnelle, peu importe — c'est là qu'arrivent vos factures et votre lien de connexion.",
     changePlan: "Changer de formule",
     pay: (n: number) => `Payer ${usd(n)} $`,
     needDetails: "Remplissez les deux champs pour continuer",
@@ -200,20 +216,25 @@ export default function PlanChooser({
   const [quote, setQuote] = useState<Quote | null>(null);
   const [checking, setChecking] = useState(false);
 
-  async function checkDomain() {
-    const name = cleanDomain(site);
+  /** Check the box's name, or a suggested one (which also goes into the box). */
+  async function checkDomain(suggested?: string) {
+    const name = cleanDomain(suggested ?? site);
     if (!name) { setQuote(null); return; }
+    if (suggested) setSite(suggested);
     setChecking(true); setQuote(null); setError(null);
     try {
       const res = await fetch(`/api/domain-quote?name=${encodeURIComponent(name)}`);
       const data = await res.json();
       if (!data.ok) {
-        setQuote({ domain: name, sellable: false, reason: data.reason ?? "error", yearlyUsd: 0, monthlyUsd: 0 });
+        setQuote({ domain: name, sellable: false, reason: data.reason ?? "error", yearlyUsd: 0, alternatives: [] });
         return;
       }
-      setQuote({ domain: data.domain, sellable: data.sellable, reason: data.reason, yearlyUsd: data.yearlyUsd, monthlyUsd: data.monthlyUsd });
+      setQuote({
+        domain: data.domain, sellable: data.sellable, reason: data.reason,
+        yearlyUsd: data.yearlyUsd, alternatives: Array.isArray(data.alternatives) ? data.alternatives : [],
+      });
     } catch {
-      setQuote({ domain: name, sellable: false, reason: "error", yearlyUsd: 0, monthlyUsd: 0 });
+      setQuote({ domain: name, sellable: false, reason: "error", yearlyUsd: 0, alternatives: [] });
     } finally {
       setChecking(false);
     }
@@ -278,8 +299,11 @@ export default function PlanChooser({
     // A quote counts only for the exact name in the box: editing the box
     // after checking must not carry the old price into the payment.
     const quoteMatches = buying && quote !== null && quote.sellable && quote.domain === cleanDomain(site);
-    const domainAmount = quoteMatches && quote ? (annual ? quote.yearlyUsd : quote.monthlyUsd) : 0;
+    // A domain is a year, whatever the plan's rhythm. On a monthly plan the
+    // first payment is this month plus the domain's year.
+    const domainAmount = quoteMatches && quote ? quote.yearlyUsd : 0;
     const total = amount + domainAmount;
+    const money = (n: number) => (lang === "fr" ? `${usd(n)} $` : `$${usd(n)}`);
     const ready = site.trim().length > 3 && /.+@.+\..+/.test(email) && (!buying || quoteMatches);
     const fieldCls = "w-full h-11 px-3.5 text-[15px] border border-[#E2E6DD] rounded-lg bg-white outline-none focus:border-[#36671E] focus:ring-2 focus:ring-[#36671E]/15";
     return (
@@ -350,7 +374,7 @@ export default function PlanChooser({
               {buying ? (
                 <button
                   type="button"
-                  onClick={checkDomain}
+                  onClick={() => checkDomain()}
                   disabled={checking || cleanDomain(site) === null}
                   className="h-11 px-4 shrink-0 rounded-lg border border-[#CBD8BE] text-[#295115] font-bold text-[14px] hover:border-[#36671E] hover:bg-[#F7FBF4] disabled:opacity-45 transition"
                 >
@@ -358,20 +382,57 @@ export default function PlanChooser({
                 </button>
               ) : null}
             </div>
-            {buying ? (
-              <p className={`mt-2 mb-4 text-[12.5px] leading-relaxed ${quote?.sellable ? "text-[#36671E] font-semibold" : "text-[#8A8A80]"}`}>
-                {quote === null
-                  ? t.domainNote
-                  : quote.sellable
-                    ? t.available(quote.domain, annual ? quote.yearlyUsd : quote.monthlyUsd, annual)
+            {buying && quote ? (
+              <div
+                className={`mt-2 mb-4 rounded-xl border p-3.5 text-[13px] leading-relaxed ${
+                  quote.sellable
+                    ? "border-[#CBE3BC] bg-[#F3F9EE]"
                     : quote.reason === "taken"
-                      ? t.taken
-                      : quote.reason === "unsupported"
-                        ? t.unsupported
-                        : quote.reason === "too-expensive"
-                          ? t.tooExpensive
-                          : t.checkFailed}
-              </p>
+                      ? "border-[#FDE68A] bg-[#FFFBEB]"
+                      : "border-[#E2E6DD] bg-[#FAFAF7]"
+                }`}
+              >
+                {quote.sellable ? (
+                  <>
+                    <p className="flex items-center gap-2 font-bold text-[#295115]">
+                      <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-[0.12em] bg-[#DDEFCB] rounded-full px-2 py-0.5">
+                        <Check className="w-3 h-3" /> {t.availableTag}
+                      </span>
+                      <span className="truncate">{quote.domain}</span>
+                      <span className="ml-auto tabular-nums whitespace-nowrap">{t.priceLine(quote.yearlyUsd)}</span>
+                    </p>
+                    <p className="mt-1.5 text-[#5E6659]">{t.domainBilledYearly}</p>
+                  </>
+                ) : quote.reason === "taken" ? (
+                  <>
+                    <p className="flex items-center gap-2 font-bold text-[#92400E]">
+                      <X className="w-4 h-4 shrink-0" />
+                      <span className="truncate">{quote.domain}</span>
+                    </p>
+                    <p className="mt-1 text-[#78350F]">{quote.alternatives.length ? t.taken : t.takenNoAlt}</p>
+                    {quote.alternatives.length ? (
+                      <div className="mt-2.5 flex flex-wrap gap-2">
+                        {quote.alternatives.map((a) => (
+                          <button
+                            key={a.domain}
+                            type="button"
+                            onClick={() => checkDomain(a.domain)}
+                            className="h-8 px-3 rounded-lg border border-[#CBD8BE] bg-white text-[12.5px] font-bold text-[#295115] hover:border-[#36671E] hover:bg-[#F7FBF4] transition tabular-nums"
+                          >
+                            {a.domain} · {t.priceLine(a.yearlyUsd)}
+                          </button>
+                        ))}
+                      </div>
+                    ) : null}
+                  </>
+                ) : (
+                  <p className="text-[#5E6659]">
+                    {quote.reason === "unsupported" ? t.unsupported : quote.reason === "too-expensive" ? t.tooExpensive : t.checkFailed}
+                  </p>
+                )}
+              </div>
+            ) : buying ? (
+              <p className="mt-2 mb-4 text-[12.5px] leading-relaxed text-[#8A8A80]">{t.domainNote}</p>
             ) : null}
 
             <label htmlFor="pc-email" className="block text-[11px] font-black text-[#8A8A80] uppercase tracking-[0.14em] mb-1.5">
@@ -388,9 +449,18 @@ export default function PlanChooser({
             <p className="mt-2.5 text-[12px] text-[#8A8A80] leading-relaxed">{t.whyAsking}</p>
 
             {quoteMatches && quote ? (
-              <p className="mt-5 text-[13px] text-[#5E6659] text-center tabular-nums">
-                {picked.tier} ${usd(amount)} + {quote.domain} ${usd(domainAmount)} ={" "}
-                <strong className="text-[#18181B]">${usd(total)}</strong> {annual ? t.perYear : t.perMonth}
+              <p className="mt-5 text-[13px] text-[#5E6659] text-center tabular-nums leading-relaxed">
+                {annual ? (
+                  <>
+                    {picked.tier} {money(amount)} + {quote.domain} {money(domainAmount)} ={" "}
+                    <strong className="text-[#18181B]">{money(total)}</strong> {t.perYear}
+                  </>
+                ) : (
+                  <>
+                    {picked.tier} {money(amount)} {t.perMonth} + {quote.domain} {money(domainAmount)} {t.perYear} ={" "}
+                    <strong className="text-[#18181B]">{money(total)}</strong> {t.today}, {t.thenMonthly(amount)}
+                  </>
+                )}
               </p>
             ) : null}
 
@@ -399,7 +469,7 @@ export default function PlanChooser({
               disabled={!ready || busy}
               className="mt-6 w-full h-12 rounded-xl bg-gradient-to-r from-[#36671E] to-[#295115] text-[#FAFAF7] font-bold hover:opacity-90 disabled:opacity-45 transition"
             >
-              {busy ? t.working : ready ? t.pay(total) : t.needDetails}
+              {busy ? t.working : ready ? (quoteMatches && !annual ? t.payToday(total) : t.pay(total)) : t.needDetails}
             </button>
             {error ? <p className="mt-3 text-sm text-[#B91C1C] text-center">{error}</p> : null}
           </div>

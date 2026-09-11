@@ -5,6 +5,7 @@ import {
   attachDomainToProject, domainOrder, purchaseDomainForClient,
   readDomainRecord, writeDomainRecord,
 } from "@/lib/domainSales";
+import { nextChargeDate } from "@/lib/hosting";
 
 export const runtime = "nodejs";
 
@@ -22,7 +23,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   const body = await req.json().catch(() => ({}));
   const action = typeof body?.action === "string" ? body.action : "";
 
-  const { data: row } = await db.from("hosting_clients").select("id, notes, vercel_project, business").eq("id", id).maybeSingle();
+  const { data: row } = await db.from("hosting_clients").select("id, notes, vercel_project, business, billing_period").eq("id", id).maybeSingle();
   if (!row) return NextResponse.json({ error: "not-found" }, { status: 404 });
   const rec = readDomainRecord(row.notes);
   if (!rec) return NextResponse.json({ error: "no-domain-on-record" }, { status: 400 });
@@ -31,7 +32,11 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     if (rec.status === "bought") return NextResponse.json({ error: "already-bought", record: rec }, { status: 409 });
     const outcome = await purchaseDomainForClient(rec.domain, rec.retailUsd);
     const next = outcome.ok
-      ? { ...rec, status: "bought" as const, orderId: outcome.orderId, boughtAt: new Date().toISOString().slice(0, 10), note: undefined }
+      ? {
+          ...rec, status: "bought" as const, orderId: outcome.orderId, boughtAt: new Date().toISOString().slice(0, 10), note: undefined,
+          // A monthly plan's domain is charged yearly by the domain-billing cron.
+          nextChargeAt: row.billing_period === "monthly" ? nextChargeDate(new Date(), "annual").toISOString().slice(0, 10) : undefined,
+        }
       : { ...rec, status: "pending" as const, note: `${outcome.reason}${outcome.detail ? ` (${outcome.detail})` : ""}` };
     await db.from("hosting_clients").update({ notes: writeDomainRecord(row.notes, next) }).eq("id", id);
     return NextResponse.json({ ok: outcome.ok, outcome, record: next }, { status: outcome.ok ? 200 : 502 });

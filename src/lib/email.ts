@@ -764,12 +764,14 @@ export const clientServicePaidEmail = (input: {
   /** A domain bought with the plan, and whether the registration went through. */
   domainName?: string | null;
   domainRegistered?: boolean;
+  /** Renews with a yearly plan, or is charged each year on a monthly plan's invoice. */
+  domainBilling?: "with-plan" | "yearly-invoice";
 }) => {
   const {
     productName, productNoun, siteLabel, amountUsd, period,
     nextChargeIso = null, monthlyUsd, restored = false, activated = false, includes = [], lang = "en",
     upgradeUrl = null, portalUrl = null, setupUrl = null, reference = null,
-    domainName = null, domainRegistered = false,
+    domainName = null, domainRegistered = false, domainBilling = "with-plan",
   } = input;
 
   const fr = lang === "fr";
@@ -890,8 +892,12 @@ export const clientServicePaidEmail = (input: {
             ${fr ? "Domaine" : "Domain"} <strong style="color:${INK};">${domainName}</strong> —
             ${domainRegistered
               ? (fr
-                  ? "enregistré par Servolia pour vous et renouvelé avec votre formule. Il vous appartient ; nous vous le transférons sur simple demande."
-                  : "registered by Servolia for you and renewed with your plan. It is yours; we transfer it to you on request.")
+                  ? (domainBilling === "yearly-invoice"
+                      ? "enregistré par Servolia pour vous, payé pour un an, puis renouvelé chaque année sur votre facture. Il vous appartient ; nous vous le transférons sur simple demande."
+                      : "enregistré par Servolia pour vous et renouvelé avec votre formule. Il vous appartient ; nous vous le transférons sur simple demande.")
+                  : (domainBilling === "yearly-invoice"
+                      ? "registered by Servolia for you, paid for one year, then renewed each year on your invoice. It is yours; we transfer it to you on request."
+                      : "registered by Servolia for you and renewed with your plan. It is yours; we transfer it to you on request."))
               : (fr
                   ? "nous l'enregistrons pour vous en ce moment et vous le confirmons par email."
                   : "we are registering it for you now and will confirm by email.")}

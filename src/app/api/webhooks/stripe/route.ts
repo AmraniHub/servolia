@@ -230,6 +230,12 @@ export async function POST(req: NextRequest) {
                 status: outcome.ok ? "bought" : "pending",
                 orderId: outcome.ok ? outcome.orderId : undefined,
                 boughtAt: outcome.ok ? new Date().toISOString().slice(0, 10) : undefined,
+                // On a monthly plan the domain is not on the subscription, so
+                // its next year is charged by the domain-billing cron on this
+                // date. On a yearly plan it renews with the plan: no date.
+                nextChargeAt: outcome.ok && session.metadata?.domain_billing === "yearly-invoice"
+                  ? nextChargeDate(new Date(event.created * 1000), "annual").toISOString().slice(0, 10)
+                  : undefined,
                 note: outcome.ok ? undefined : `${outcome.reason}${outcome.detail ? ` (${outcome.detail})` : ""}`,
               }),
             }).eq("id", hostRow.id);
@@ -316,6 +322,7 @@ export async function POST(req: NextRequest) {
             reference: subId ? referenceFor(subId) : null,
             domainName: domainWanted,
             domainRegistered: domainBought,
+            domainBilling: session.metadata?.domain_billing === "yearly-invoice" ? "yearly-invoice" : "with-plan",
           });
           sendEmail(customerEmail, tpl.subject, tpl.html).catch(() => {});
         }

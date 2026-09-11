@@ -96,6 +96,7 @@ export default async function HostingClientPage({ params }: { params: Promise<{ 
             {" · "}
             {domainRec.attached ? `attached to ${domainRec.attached}` : "not attached to a project yet"}
             {" · "}client pays ${domainRec.retailUsd}/yr
+            {domainRec.nextChargeAt ? ` · next yearly charge on the invoice: ${domainRec.nextChargeAt}` : ""}
           </p>
           <DomainActions
             id={c.id}
