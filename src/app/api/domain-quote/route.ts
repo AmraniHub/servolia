@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { domainQuote, isDomainSalesConfigured, normalizeDomain } from "@/lib/domainSales";
+import { canBuyDomains, domainQuote, isDomainSalesConfigured, normalizeDomain } from "@/lib/domainSales";
 
 export const runtime = "nodejs";
 
@@ -15,7 +15,10 @@ export async function GET(req: NextRequest) {
 
   const q = await domainQuote(name);
   return NextResponse.json(
-    { ok: true, domain: q.domain, sellable: q.sellable, reason: q.reason ?? null, yearlyUsd: q.yearlyUsd, monthlyUsd: q.monthlyUsd },
+    // `purchasable` says whether the webhook can buy (registrant contact
+    // configured) -- a boolean, nothing private, so the operator can verify
+    // the setup from outside without an admin session.
+    { ok: true, domain: q.domain, sellable: q.sellable, reason: q.reason ?? null, yearlyUsd: q.yearlyUsd, monthlyUsd: q.monthlyUsd, purchasable: canBuyDomains() },
     { headers: { "cache-control": "no-store" } },
   );
 }
