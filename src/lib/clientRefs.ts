@@ -81,7 +81,16 @@ export const CLIENT_REFS: Record<string, ClientRef> = {
     // No gateWidget: this is a whole Vercel site, not a Shopify add-on, so it
     // gates through site-status.js + middleware rather than a snippet swap.
   },
-  excellenceagency: { label: "excellenceagency.ma" },
+  excellenceagency: {
+    // Update the label when the new domain is connected.
+    label: "excellenceagency.ma",
+    // From the agency dashboard's contact record.
+    email: "transferhos@gmail.com",
+    repo: "AmraniHub/excellenceagency-ma",
+    branch: "master",
+    // Repo root: site-status.js and middleware.js sit beside index.html.
+    lang: "fr",
+  },
   temghid: {
     label: "temghid.ma",
     repo: "AmraniHub/temghid-theme",

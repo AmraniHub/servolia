@@ -15,6 +15,7 @@ import {
   upgradeLinkEmail,
   upgradeDoneEmail,
   reactivateEmail,
+  activateEmail,
   sendEmail,
   currentFrom,
 } from "@/lib/email";
@@ -151,6 +152,18 @@ function build(id: string, lang: "en" | "fr"): Built | null {
         monthlyUsd: CLIENT_PRODUCTS.chatbot.monthlyUsd,
       });
     }
+    case "activate-excellenceagency": {
+      const c = productCopy(CLIENT_PRODUCTS.hosting, "fr");
+      return activateEmail({
+        lang: "fr",
+        siteLabel: CLIENT_REFS.excellenceagency.label,
+        url: "https://servolia.com/hosting?ref=excellenceagency",
+        productName: c.heading,
+        monthlyUsd: CLIENT_PRODUCTS.hosting.monthlyUsd,
+        annualUsd: CLIENT_PRODUCTS.hosting.annualUsd,
+        includes: c.includes,
+      });
+    }
     default:
       return null;
   }
@@ -171,6 +184,7 @@ const TEMPLATES: { id: string; label: string; bilingual: boolean }[] = [
   { id: "upgrade-offer", label: "Switch to yearly — the offer", bilingual: true },
   { id: "upgrade-done", label: "Switch to yearly — confirmed", bilingual: true },
   { id: "reactivate-temghid", label: "Temghid — reactivate the assistant (REAL link, FR)", bilingual: false },
+  { id: "activate-excellenceagency", label: "Excellence Agency — activate hosting on the new domain (REAL link, FR)", bilingual: false },
 ];
 
 export async function GET(req: NextRequest) {

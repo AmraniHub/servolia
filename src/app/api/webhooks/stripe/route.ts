@@ -177,6 +177,34 @@ export async function POST(req: NextRequest) {
           });
         }
 
+        /* SWITCH ON A WHOLE SITE ON ITS FIRST PAYMENT.
+         *
+         * The block above restores a Shopify add-on. This is the Vercel gate,
+         * and it is also how a site is brought online in the first place: a
+         * client moving to a new domain sits behind the neutral notice until
+         * hosting is paid for, and the payment is what lifts it. Same
+         * promise as the add-on -- "live the moment payment clears" -- so it
+         * is awaited and loud on failure for the same reasons. A site that
+         * was never gated comes back changed=false and is left alone. */
+        let activated = false;
+        const hostRef = clientRefFor(session.metadata?.ref ?? "");
+        if (hostRef?.repo && !hostRef.gateWidget && !alreadySeen) {
+          const outcome = await applyGate(
+            { repo: hostRef.repo, branch: hostRef.branch, siteRoot: hostRef.siteRoot ?? null, gateWidget: null },
+            false,
+          );
+          if (outcome.ok) {
+            activated = outcome.changed;
+          } else if (outcome.reason !== "no-repo") {
+            console.error("[stripe] activation failed:", outcome.reason, outcome.detail);
+            sendTelegramMessage(
+              `*PAID but NOT switched on — ${session.metadata?.business || session.metadata?.ref || "a client"}*\n` +
+              `${outcome.reason}${outcome.detail ? ` (${outcome.detail})` : ""}\n` +
+              `They have paid and their site is still behind the notice. Lift it by hand.`,
+            ).catch(() => {});
+          }
+        }
+
         /* CONFIRM IT TO THE CLIENT, IN OUR OWN NAME.
          *
          * /hosting/thanks tells the buyer a receipt is on its way. Until this
@@ -232,6 +260,7 @@ export async function POST(req: NextRequest) {
             nextChargeIso: nextChargeDate(new Date(event.created * 1000), period).toISOString(),
             monthlyUsd: product?.monthlyUsd,
             restored,
+            activated,
             includes: copy?.includes ?? [],
             lang: emailLang,
             upgradeUrl,
@@ -262,6 +291,7 @@ export async function POST(req: NextRequest) {
                       `${customerEmail ?? "no email"}\n` +
                       (subIdForRef ? `Ref ${referenceFor(subIdForRef)}\n` : "") +
                       (restored ? `♻️ ${session.metadata?.gate_widget} switched back on\n` : "") +
+                      (activated ? `🟢 Site switched on — the notice is lifted\n` : "") +
                       (selfServe ? `⚠️ NEEDS SETUP — not hosted yet. Their handover arrives as a separate alert.\n` : "") +
                       `\n[Open](${adminUrl})`;
           fetch(`https://api.telegram.org/bot${hostTgToken}/sendMessage`, {

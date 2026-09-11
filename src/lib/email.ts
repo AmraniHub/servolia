@@ -724,6 +724,8 @@ export const clientServicePaidEmail = (input: {
   monthlyUsd?: number;
   /** True when this payment switched a suspended add-on back on. */
   restored?: boolean;
+  /** True when this payment lifted the notice on a site waiting to go live. */
+  activated?: boolean;
   /** A few lines of what the money covers. */
   includes?: string[];
   lang?: "en" | "fr";
@@ -762,7 +764,7 @@ export const clientServicePaidEmail = (input: {
 }) => {
   const {
     productName, productNoun, siteLabel, amountUsd, period,
-    nextChargeIso = null, monthlyUsd, restored = false, includes = [], lang = "en",
+    nextChargeIso = null, monthlyUsd, restored = false, activated = false, includes = [], lang = "en",
     upgradeUrl = null, portalUrl = null, setupUrl = null, reference = null,
   } = input;
 
@@ -788,14 +790,18 @@ export const clientServicePaidEmail = (input: {
     : 0;
 
   const headline = fr
-    ? (restored ? `Votre ${productNoun} est de nouveau actif` : "Paiement reçu")
-    : (restored ? `Your ${productNoun} is back on` : "Payment received");
+    ? (activated ? "Votre site est en ligne" : restored ? `Votre ${productNoun} est de nouveau actif` : "Paiement reçu")
+    : (activated ? "Your site is live" : restored ? `Your ${productNoun} is back on` : "Payment received");
 
   const opening = fr
-    ? (restored
+    ? (activated
+        ? `Merci — votre paiement a été validé et votre site${forSite} est maintenant en ligne. Rien d'autre à faire.`
+        : restored
         ? `Merci — votre paiement a été validé et votre ${productNoun} a été réactivé${forSite}. Il fonctionne de nouveau ; vous n'avez rien à faire.`
         : `Merci — votre paiement a été validé et votre ${productNoun}${forSite} est actif. Rien d'autre à faire.`)
-    : (restored
+    : (activated
+        ? `Thank you — your payment cleared and your site${forSite} is now live. Nothing else to do.`
+        : restored
         ? `Thank you — your payment cleared and your ${productNoun} has been switched back on${forSite}. It is live again now; you do not need to do anything.`
         : `Thank you — your payment cleared and your ${productNoun}${forSite} is active. Nothing else to do.`);
 
@@ -812,7 +818,9 @@ export const clientServicePaidEmail = (input: {
         receipt:
           "Stripe vous a envoyé un reçu séparé pour vos archives. Si vous avez besoin d'une facture à en-tête de votre société, répondez à cet email et je vous l'envoie.",
         questions: `Une question sur votre ${productNoun} ? Répondez simplement ici — une personne lit chaque message.`,
-        preheader: restored
+        preheader: activated
+          ? "Votre site est en ligne. Voici ce que vous avez payé et la date de renouvellement."
+          : restored
           ? `Votre ${productNoun} fonctionne de nouveau. Voici ce que vous avez payé et la date de renouvellement.`
           : "C'est confirmé. Voici ce que vous avez payé et la date de renouvellement.",
       }
@@ -828,7 +836,9 @@ export const clientServicePaidEmail = (input: {
         receipt:
           "Stripe has emailed you a separate receipt for your records. If you need an invoice with your company details on it, reply to this email and I will send one.",
         questions: `Any question about your ${productNoun} — just reply here. A person reads every message.`,
-        preheader: restored
+        preheader: activated
+          ? "Your site is live. Here is what you paid and when it renews."
+          : restored
           ? `Your ${productNoun} is live again. Here is what you paid and when it renews.`
           : "Confirmed. Here is what you paid and when it renews.",
       };
@@ -1202,6 +1212,87 @@ export const paymentFailedEmail = (input: {
  * so a forwarded link costs the recipient nothing and lets the client pay from
  * whichever device they read this on.
  */
+/**
+ * Sent when a client's site is in place behind the neutral notice and only
+ * the hosting payment stands between it and being live -- a new client, or
+ * an existing one moving to a new domain.
+ *
+ * Says plainly what visitors see meanwhile, because the owner will open the
+ * new address before opening this email and needs to know the "temporarily
+ * unavailable" page is expected, not a broken DNS change.
+ */
+export const activateEmail = (input: {
+  siteLabel: string;
+  url: string;
+  productName: string;
+  monthlyUsd: number;
+  annualUsd: number;
+  includes: string[];
+  lang?: "en" | "fr";
+}) => {
+  const { siteLabel, url, productName, monthlyUsd, annualUsd, includes, lang = "en" } = input;
+  const fr = lang === "fr";
+  const money = (n: number) => (fr ? `${usdFmt(n)}&nbsp;$` : `$${usdFmt(n)}`);
+  const saving = monthlyUsd * 12 - annualUsd;
+
+  const L = fr
+    ? {
+        subject: `Votre site est prêt à passer en ligne — ${siteLabel}`,
+        headline: "Votre site est prêt à passer en ligne",
+        p1: `Le domaine <strong>${siteLabel}</strong> est connecté et votre site est en place. Il reste une étape : activer l'hébergement.`,
+        p2: "Dès que le paiement est validé, le site passe en ligne automatiquement — en une minute environ. Vous n'avez rien d'autre à faire.",
+        plan: "Votre formule",
+        price: `${money(monthlyUsd)} par mois, ou ${money(annualUsd)} par an${saving > 0 ? ` (vous économisez ${money(saving)})` : ""}. Résiliable à tout moment.`,
+        covers: "Ce que cela comprend :",
+        cta: "Activer l'hébergement",
+        meanwhile: "En attendant, les visiteurs voient une page d'attente neutre — « site temporairement indisponible » — sans aucune mention de paiement.",
+        questions: "Une question ? Répondez simplement à cet email — une personne lit chaque message.",
+        preheader: "Une étape : activer l'hébergement, et le site passe en ligne automatiquement.",
+      }
+    : {
+        subject: `Your site is ready to go live — ${siteLabel}`,
+        headline: "Your site is ready to go live",
+        p1: `The domain <strong>${siteLabel}</strong> is connected and your site is in place. One step remains: activating the hosting.`,
+        p2: "The moment payment clears, the site goes live automatically — within about a minute. Nothing else to do.",
+        plan: "Your plan",
+        price: `${money(monthlyUsd)} a month, or ${money(annualUsd)} a year${saving > 0 ? ` (saving ${money(saving)})` : ""}. Cancel anytime.`,
+        covers: "What this covers:",
+        cta: "Activate hosting",
+        meanwhile: "Until then, visitors see a neutral holding page — \"temporarily unavailable\" — with no mention of payment.",
+        questions: "Any question — just reply to this email. A person reads every message.",
+        preheader: "One step: activate the hosting, and the site goes live by itself.",
+      };
+
+  return {
+    subject: L.subject,
+    html: wrapper(`
+      <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">${L.headline}</h1>
+      <p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:${BODY};">${L.p1}</p>
+      <p style="margin:0 0 20px;font-size:15px;line-height:1.6;color:${BODY};">${L.p2}</p>
+
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
+             style="margin:0 0 20px;border:1px solid ${LINE};border-radius:12px;background:${CREAM};">
+        <tr><td style="padding:18px 20px;font-family:${FONT};">
+          <p style="margin:0 0 6px;font-size:11px;font-weight:900;letter-spacing:1px;text-transform:uppercase;color:${MUTED};">${L.plan}</p>
+          <p style="margin:0 0 4px;font-size:17px;font-weight:800;color:${INK};">${productName}</p>
+          <p style="margin:0;font-size:14px;line-height:1.6;color:${BODY};">${L.price}</p>
+        </td></tr>
+      </table>
+
+      ${includes.length ? `
+      <p style="margin:0 0 10px;font-size:15px;line-height:1.6;color:${BODY};"><strong>${L.covers}</strong></p>
+      <ul style="margin:0 0 8px;padding-left:20px;font-size:15px;line-height:1.7;color:${BODY};">
+        ${includes.map((line) => `<li>${line}</li>`).join("")}
+      </ul>` : ""}
+
+      ${btn(url, L.cta)}
+
+      <p style="margin:20px 0 12px;font-size:14px;line-height:1.6;color:${MUTED};">${L.meanwhile}</p>
+      <p style="margin:0;font-size:14px;line-height:1.6;color:${MUTED};">${L.questions}</p>
+      `, { preheader: L.preheader, lang }),
+  };
+};
+
 export const reactivateEmail = (input: {
   /** Mid-sentence form only -- this template never uses the headline form. */
   productNoun: string;
