@@ -1307,6 +1307,42 @@ export const activateEmail = (input: {
   };
 };
 
+/**
+ * The service-page link, resent on request from the client's own /hosting
+ * page. Short on purpose: the person asked for one thing.
+ */
+export const accountLinkEmail = (input: { url: string; siteLabel: string; lang?: "en" | "fr" }) => {
+  const { url, siteLabel, lang = "en" } = input;
+  const fr = lang === "fr";
+  const forSite = siteLabel ? (fr ? ` pour ${siteLabel}` : ` for ${siteLabel}`) : "";
+  const L = fr
+    ? {
+        subject: `Votre page de service${forSite} — Servolia`,
+        headline: "Votre page de service",
+        body: `Voici le lien vers votre page de service${forSite} : ce que couvre votre formule, la date de renouvellement, vos factures, votre carte et la résiliation — sans mot de passe. Gardez cet email ; le lien reste valable un an.`,
+        cta: "Ouvrir ma page",
+        ignore: "Vous n'avez rien demandé ? Ignorez simplement cet email — personne ne peut utiliser ce lien sans y avoir accès.",
+        preheader: "Le lien vers votre page de service, comme demandé.",
+      }
+    : {
+        subject: `Your service page${forSite} — Servolia`,
+        headline: "Your service page",
+        body: `Here is the link to your service page${forSite}: what your plan covers, when it renews, your invoices, your card and cancelling — no password. Keep this email; the link works for a year.`,
+        cta: "Open my page",
+        ignore: "Didn't ask for this? Just ignore it — nobody can use the link without access to this email.",
+        preheader: "The link to your service page, as requested.",
+      };
+  return {
+    subject: L.subject,
+    html: wrapper(`
+      <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">${L.headline}</h1>
+      <p style="margin:0 0 8px;font-size:15px;line-height:1.6;color:${BODY};">${L.body}</p>
+      ${btn(url, L.cta)}
+      <p style="margin:20px 0 0;font-size:13px;line-height:1.6;color:${MUTED};">${L.ignore}</p>
+      `, { preheader: L.preheader, lang }),
+  };
+};
+
 export const reactivateEmail = (input: {
   /** Mid-sentence form only -- this template never uses the headline form. */
   productNoun: string;

@@ -5,6 +5,9 @@ import PlanChooser, { type Tier, type Feature } from "@/components/PlanChooser";
 import { CLIENT_PRODUCTS, productCopy, resolveHostingPlan } from "@/lib/hosting";
 import { siteLabelFor, langFor, clientRefFor, maskEmail } from "@/lib/clientRefs";
 import { isDomainSalesConfigured } from "@/lib/domainSales";
+import { supabaseAdmin } from "@/lib/supabase";
+import { nextChargeDate } from "@/lib/hosting";
+import AlreadyActive from "@/components/AlreadyActive";
 
 /**
  * ONE URL, TWO SITUATIONS.
@@ -64,6 +67,101 @@ export default async function HostingPage({
 
   /* ── A quoted client: their plan, and only their plan ────────────────── */
   if (client) {
+    /* ALREADY PAYING? Then this is not a pay page any more.
+     *
+     * The link a client was sent lives on in their inbox, their bookmarks
+     * and whatever they forwarded to a colleague. Rendering "Pay $88" to a
+     * client who paid last month invites a second subscription -- and reads,
+     * to them, as if we had no idea who they are. So the server checks for a
+     * live subscription on the address we hold for this ref, and if there is
+     * one the page says so and offers the one thing they are here for: their
+     * service page. */
+    const db = client.email ? supabaseAdmin() : null;
+    const { data: live } = db
+      ? await db
+          .from("hosting_clients")
+          .select("plan, billing_period, started_at, status")
+          .eq("email", client.email!)
+          .in("status", ["active", "past_due"])
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle()
+      : { data: null };
+
+    if (live) {
+      const fr = l === "fr";
+      const livePlan = resolveHostingPlan(live.plan) ?? CLIENT_PRODUCTS.hosting;
+      const liveCopy = productCopy(livePlan, l);
+      const period: "monthly" | "annual" = live.billing_period === "annual" ? "annual" : "monthly";
+      const started = live.started_at ? new Date(live.started_at) : null;
+      const fmt = (d: Date) => d.toLocaleDateString(fr ? "fr-FR" : "en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+      const renews = started ? nextChargeDate(started, period) : null;
+      return (
+        <main className="min-h-screen bg-[#FAFAF7] flex flex-col">
+          <header className="px-5 py-6 border-b border-[#E8E6E0] bg-white">
+            <div className="max-w-md mx-auto">
+              <Link href={fr ? "/fr" : "/"} className="inline-flex items-center">
+                <span className="text-xl font-black tracking-tight text-[#18181B]">
+                  Serv<span className="gradient-text">olia</span>
+                </span>
+              </Link>
+            </div>
+          </header>
+          <div className="flex-1 px-5 py-16">
+            <div className="max-w-md mx-auto">
+              <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#36671E] mb-3">
+                {fr ? "Hébergement Servolia" : "Servolia hosting"}
+              </p>
+              <h1 className="text-3xl font-black tracking-tight text-[#18181B] mb-3">
+                {live.status === "past_due"
+                  ? (fr ? "Un paiement est en attente" : "A payment is outstanding")
+                  : (fr ? "Votre hébergement est actif" : "Your hosting is active")}
+              </h1>
+              <p className="text-[#52525B] leading-relaxed mb-8">
+                {liveCopy.heading}
+                {client.label ? ` · ${client.label}` : ""}
+                {started ? (fr ? ` · depuis le ${fmt(started)}` : ` · since ${fmt(started)}`) : ""}
+                {renews && live.status !== "past_due"
+                  ? (fr ? `. Renouvellement le ${fmt(renews)}.` : `. Renews on ${fmt(renews)}.`)
+                  : "."}
+              </p>
+              <div className="rounded-2xl border border-[#E8E6E0] bg-white p-6 shadow-[0_1px_3px_rgba(22,26,21,0.05)]">
+                <p className="text-[15px] text-[#18181B] font-semibold mb-1">
+                  {fr ? "Votre page de service" : "Your service page"}
+                </p>
+                <p className="text-[14px] text-[#5E6659] leading-relaxed mb-5">
+                  {live.status === "past_due"
+                    ? (fr
+                        ? "Le lien de votre page de service permet de mettre à jour votre carte en une minute. Il est dans votre email — ou renvoyez-le-vous ici."
+                        : "Your service page is where you update your card in a minute. The link is in your email — or send it to yourself again here.")
+                    : (fr
+                        ? "Ce que couvre votre formule, la date de renouvellement, vos factures, votre carte et la résiliation — sans mot de passe. Le lien est dans votre email de confirmation ; renvoyez-le-vous ici si besoin."
+                        : "What your plan covers, when it renews, your invoices, your card and cancelling — no password. The link is in your confirmation email; send it to yourself again here if you need it.")}
+                </p>
+                <AlreadyActive refCode={ref} maskedEmail={maskEmail(client.email)} lang={l} />
+              </div>
+              <p className="mt-8 text-center text-[13px] text-[#8A8A80]">
+                <Link href="/hosting/terms" className="text-[#36671E] hover:underline">
+                  {fr ? "Le détail de la prestation" : "What you get, in full"}
+                </Link>
+                {" · "}
+                {fr ? "Une question ? Répondez à n'importe lequel de nos emails." : "A question? Reply to any of our emails."}
+              </p>
+            </div>
+          </div>
+          <footer className="px-5 py-8 border-t border-[#E8E6E0] bg-white">
+            <div className="max-w-md mx-auto text-center">
+              <p className="text-xs text-[#8A8A80]">
+                {fr ? "Facturé par " : "Billed by "}
+                <span className="font-bold text-[#52525B]">Servolia</span>
+                {fr ? " · Paiement traité par Stripe" : " · Payments processed by Stripe"}
+              </p>
+            </div>
+          </footer>
+        </main>
+      );
+    }
+
     const agreed = resolveHostingPlan(plan) ?? CLIENT_PRODUCTS.hosting;
     return (
       <ClientProductPage
