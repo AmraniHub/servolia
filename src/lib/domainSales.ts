@@ -302,6 +302,21 @@ export interface DomainRecord {
   nextChargeAt?: string;
   attached?: string;
   note?: string;
+  /** The Vercel renewal price the margin watch last warned about, so it warns once per change. */
+  warnedAt?: string;
+}
+
+/**
+ * Vercel's CURRENT renewal price for a registered name. Registrars raise
+ * renewal prices over the years (the .com registry alone is allowed ~7 % a
+ * year); a retail price fixed at purchase quietly loses margin unless
+ * somebody looks. The domain-billing cron looks.
+ */
+export async function currentRenewalUsd(domain: string): Promise<number | null> {
+  const res = await registrar<{ renewalPrice: unknown }>(`/v1/registrar/domains/${encodeURIComponent(domain)}/price`);
+  if (!res.ok) return null;
+  const n = num(res.data.renewalPrice);
+  return Number.isFinite(n) ? n : null;
 }
 
 const MARKER = "servolia-domain:";
@@ -326,6 +341,7 @@ export function readDomainRecord(notes: string | null | undefined): DomainRecord
     boughtAt: kv.bought && kv.bought !== "-" ? kv.bought : undefined,
     nextChargeAt: kv.renew && kv.renew !== "-" ? kv.renew : undefined,
     attached: kv.attached && kv.attached !== "-" ? kv.attached : undefined,
+    warnedAt: kv.warned && kv.warned !== "-" ? kv.warned : undefined,
     note: kv.note && kv.note !== "-" ? kv.note : undefined,
   };
 }
@@ -340,6 +356,7 @@ export function writeDomainRecord(notes: string | null | undefined, rec: DomainR
     `bought: ${rec.boughtAt ?? "-"}`,
     `renew: ${rec.nextChargeAt ?? "-"}`,
     `attached: ${rec.attached ?? "-"}`,
+    `warned: ${rec.warnedAt ?? "-"}`,
     `note: ${(rec.note ?? "-").replace(/\s*\|\s*/g, "/").replace(/\n/g, " ")}`,
   ].join(" | ");
   return [...kept, line].join("\n");

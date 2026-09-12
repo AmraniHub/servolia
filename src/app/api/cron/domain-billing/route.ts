@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { supabaseAdmin } from "@/lib/supabase";
 import { sendTelegramMessage } from "@/lib/telegram";
-import { readDomainRecord, writeDomainRecord } from "@/lib/domainSales";
+import {
+  readDomainRecord, writeDomainRecord, currentRenewalUsd, netProfitUsd, DOMAIN_TARGET_PROFIT_USD,
+} from "@/lib/domainSales";
 import { nextChargeDate } from "@/lib/hosting";
 
 export const runtime = "nodejs";
@@ -72,16 +74,45 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  if (charged.length || failed.length) {
+  /* THE MARGIN WATCH, for every domain we hold on any plan.
+   *
+   * The client's price was set from Vercel's renewal price on the day of
+   * purchase and it stays fixed on their subscription. Vercel's renewal
+   * price does not stay fixed. When the gap closes to within a few dollars
+   * of the profit target, the operator is told once -- with the numbers --
+   * so the next renewal can be repriced with notice, never mid-term. */
+  const { data: held } = await db
+    .from("hosting_clients")
+    .select("id, business, notes")
+    .in("status", ["active", "past_due"])
+    .like("notes", "%servolia-domain:%");
+  const warnings: string[] = [];
+  for (const row of held ?? []) {
+    const rec = readDomainRecord(row.notes);
+    if (!rec || rec.status !== "bought") continue;
+    const renewal = await currentRenewalUsd(rec.domain);
+    if (renewal === null) continue;
+    const net = netProfitUsd(rec.retailUsd, renewal);
+    const key = renewal.toFixed(2);
+    if (net < DOMAIN_TARGET_PROFIT_USD - 3 && rec.warnedAt !== key) {
+      warnings.push(`${rec.domain} (${row.business}): Vercel now renews at $${key}, client pays $${rec.retailUsd}/yr -> you keep ~$${net.toFixed(2)} (target $${DOMAIN_TARGET_PROFIT_USD}). Reprice at the next renewal, with notice.`);
+      await db.from("hosting_clients")
+        .update({ notes: writeDomainRecord(row.notes, { ...rec, warnedAt: key }) })
+        .eq("id", row.id);
+    }
+  }
+
+  if (charged.length || failed.length || warnings.length) {
     sendTelegramMessage(
       [
-        "Domain renewals (monthly plans)",
+        "Domain billing",
         ...charged.map((c) => `charged: ${c}`),
         ...failed.map((f) => `FAILED: ${f}`),
+        ...warnings.map((w) => `MARGIN: ${w}`),
       ].join("\n"),
       undefined,
       { plain: true },
     ).catch(() => {});
   }
-  return NextResponse.json({ charged, failed, checked: rows?.length ?? 0 });
+  return NextResponse.json({ charged, failed, warnings, checked: rows?.length ?? 0, held: held?.length ?? 0 });
 }
