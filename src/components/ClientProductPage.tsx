@@ -57,6 +57,7 @@ export default function ClientProductPage({
           planKey={product.key}
           monthlyUsd={product.monthlyUsd}
           annualUsd={product.annualUsd}
+          setupUsd={product.setupUsd}
           includes={copy.includes}
           refCode={refCode}
           siteLabel={siteLabel}

@@ -15,6 +15,7 @@ import { BUILD_PLANS, SETUP_PLAN, resolvePlan } from "@/lib/pricing";
 import {
   HOSTING_METADATA_KIND,
   resolveHostingPlan,
+  hostingAmountCents,
   nextChargeDate,
   productCopy,
 } from "@/lib/hosting";
@@ -111,11 +112,16 @@ export async function POST(req: NextRequest) {
       // exists and was never scoped here.
       if (session.mode === "subscription" && session.metadata?.kind === HOSTING_METADATA_KIND) {
         const customerEmail = session.customer_details?.email ?? session.customer_email ?? null;
-        const amount = (session.amount_total ?? 0) / 100;
+        const amount = (session.amount_total ?? 0) / 100; // everything charged today
         const period = session.metadata?.period === "annual" ? "annual" : "monthly";
-        // An annual charge is a year of the monthly rate; store the monthly
-        // figure either way so the column means one thing.
-        const monthlyUsd = period === "annual" ? amount / 12 : amount;
+        /* The PLAN's price, not the session total. The total may carry a
+           domain's year and a one-time setup, and neither belongs in the
+           monthly figure the admin sums as recurring revenue. An annual
+           charge is a year of the monthly rate; the monthly figure is stored
+           either way so the column means one thing. */
+        const paidPlan = resolveHostingPlan(session.metadata?.plan);
+        const planUsd = paidPlan ? hostingAmountCents(paidPlan, period) / 100 : amount;
+        const monthlyUsd = period === "annual" ? planUsd / 12 : planUsd;
 
         const { data: hostRow, error: hostErr } = await db.from("hosting_clients").insert({
           business: session.metadata?.business || customerEmail || "Unknown",
@@ -308,7 +314,10 @@ export async function POST(req: NextRequest) {
             productName: copy?.heading ?? "Website hosting",
             productNoun: copy?.sentenceName ?? "hosting",
             siteLabel: session.metadata?.business || session.metadata?.ref || "",
-            amountUsd: amount,
+            amountUsd: planUsd,
+            totalPaidUsd: amount,
+            domainUsd: Number(session.metadata?.domain_retail_usd) || null,
+            oneTimeUsd: Number(session.metadata?.setup_usd) || null,
             period,
             nextChargeIso: nextChargeDate(new Date(event.created * 1000), period).toISOString(),
             monthlyUsd: product?.monthlyUsd,

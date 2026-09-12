@@ -204,6 +204,7 @@ export default async function HostingPage({
     includes: copies[i].includes,
     monthlyUsd: p.monthlyUsd,
     annualUsd: p.annualUsd,
+    setupUsd: p.setupUsd,
     // The middle carries the badge: an unmarked three-column choice makes
     // people default to cheapest, and Complete is where most should be.
     featured: p.key === "hosting",

@@ -163,6 +163,25 @@ export async function POST(req: NextRequest) {
     business = name;
   }
 
+  /* A ONE-TIME LINE THE PLAN CARRIES (Business: mailbox setup). Charged on
+     the first invoice only; the subscription itself stays at the plan's
+     price. Same one-time shape as a domain's year on a monthly plan. */
+  const setupLine: Stripe.Checkout.SessionCreateParams.LineItem | null = hostingPlan.setupUsd
+    ? {
+        price_data: {
+          currency: "usd",
+          product_data: {
+            name: lang === "fr" ? "Mise en place des boîtes email — une fois" : "Mailbox setup — one time",
+            description: lang === "fr"
+              ? "Jusqu'à 3 boîtes sur votre domaine, avec SPF, DKIM et DMARC configurés. Facturé une seule fois."
+              : "Up to 3 mailboxes on your domain, with SPF, DKIM and DMARC set up. Charged once.",
+          },
+          unit_amount: hostingPlan.setupUsd * 100,
+        },
+        quantity: 1,
+      }
+    : null;
+
   try {
     const stripe = new Stripe(key);
     /* The copy Stripe's own page will show. It used to be the literal string
@@ -196,6 +215,7 @@ export async function POST(req: NextRequest) {
           quantity: 1,
         },
         ...(domainLine ? [domainLine] : []),
+        ...(setupLine ? [setupLine] : []),
       ],
       metadata: {
         kind: HOSTING_METADATA_KIND,
@@ -212,6 +232,7 @@ export async function POST(req: NextRequest) {
         ...(client?.siteRoot ? { site_root: client.siteRoot } : {}),
         ...(client?.gateWidget ? { gate_widget: client.gateWidget } : {}),
         ...domainMeta,
+        ...(hostingPlan.setupUsd ? { setup_usd: String(hostingPlan.setupUsd) } : {}),
       },
       /* The SAME metadata on the subscription, not only on the session.
        * Stripe does not copy one to the other, and the session is a record of

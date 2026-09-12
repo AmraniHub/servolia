@@ -766,12 +766,19 @@ export const clientServicePaidEmail = (input: {
   domainRegistered?: boolean;
   /** Renews with a yearly plan, or is charged each year on a monthly plan's invoice. */
   domainBilling?: "with-plan" | "yearly-invoice";
+  /** Everything charged today, when it differs from the plan's own price. */
+  totalPaidUsd?: number | null;
+  /** The domain's yearly price, when one was bought with the plan. */
+  domainUsd?: number | null;
+  /** A one-time line on the first payment (Business: mailbox setup). */
+  oneTimeUsd?: number | null;
 }) => {
   const {
     productName, productNoun, siteLabel, amountUsd, period,
     nextChargeIso = null, monthlyUsd, restored = false, activated = false, includes = [], lang = "en",
     upgradeUrl = null, portalUrl = null, setupUrl = null, reference = null,
     domainName = null, domainRegistered = false, domainBilling = "with-plan",
+    totalPaidUsd = null, domainUsd = null, oneTimeUsd = null,
   } = input;
 
   const fr = lang === "fr";
@@ -887,6 +894,9 @@ export const clientServicePaidEmail = (input: {
           <p style="margin:0;font-size:15px;color:${BODY};">
             <strong>${money(amountUsd)}</strong> ${L.per}${saving > 0 ? ` &middot; ${L.saved}` : ""}
           </p>
+          ${domainUsd ? `<p style="margin:4px 0 0;font-size:14px;color:${BODY};">+ ${money(domainUsd)} ${fr ? "par an" : "per year"} &middot; ${fr ? "domaine" : "domain"}${domainName ? ` ${domainName}` : ""}</p>` : ""}
+          ${oneTimeUsd ? `<p style="margin:4px 0 0;font-size:14px;color:${BODY};">+ ${money(oneTimeUsd)} ${fr ? "une fois" : "once"} &middot; ${fr ? "mise en place des boîtes email" : "mailbox setup"}</p>` : ""}
+          ${totalPaidUsd && Math.abs(totalPaidUsd - amountUsd) > 0.005 ? `<p style="margin:8px 0 0;font-size:14px;font-weight:700;color:${INK};">${fr ? "Total prélevé aujourd'hui" : "Total charged today"} : ${money(totalPaidUsd)}</p>` : ""}
           <p style="margin:10px 0 0;font-size:14px;color:${MUTED};">${nextCharge ? L.renewsOn(nextCharge) : L.renewsEach}</p>
           ${domainName ? `<p style="margin:12px 0 0;padding-top:12px;border-top:1px solid ${LINE};font-size:14px;line-height:1.6;color:${BODY};">
             ${fr ? "Domaine" : "Domain"} <strong style="color:${INK};">${domainName}</strong> —

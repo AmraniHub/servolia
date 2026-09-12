@@ -132,8 +132,9 @@ export default function HostingTerms() {
                 buying a set number of changes.
               </p>
               <p>
-                Email hosting on your domain is separate, and paid advertising is
-                separate.
+                Email on your domain is part of the Business plan — up to three
+                mailboxes, set up once for a one-time $39 and then included. On the
+                other plans it is separate. Paid advertising is separate on every plan.
               </p>
             </Section>
 

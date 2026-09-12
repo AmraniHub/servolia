@@ -113,6 +113,13 @@ export interface ClientProduct extends ClientProductCopy {
   monthlyUsd: number;
   /** USD per year when prepaid. */
   annualUsd: number;
+  /**
+   * A one-time charge on the first invoice, for work the plan's monthly
+   * price cannot carry. Business: three mailboxes plus SPF/DKIM/DMARC is
+   * about an hour at the cost floor, against +$3/month over Complete --
+   * twelve months to recover without this line.
+   */
+  setupUsd?: number;
 }
 
 /**
@@ -266,6 +273,7 @@ export const CLIENT_PRODUCTS: Record<string, ClientProduct> = {
       "Everything in Complete, plus email on your own domain — so you write to customers from your business, not from a free mailbox.",
     monthlyUsd: 11,
     annualUsd: 121,
+    setupUsd: 39,
     includes: [
       "Hosting on a global CDN, with SSL",
       "Domain renewal and DNS managed",

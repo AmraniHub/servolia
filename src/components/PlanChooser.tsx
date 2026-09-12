@@ -47,6 +47,8 @@ export interface Tier {
   bestFor?: string;
   /** What it includes, listed on step two so the buyer confirms before paying. */
   includes?: string[];
+  /** A one-time charge on the first payment (Business: mailbox setup). */
+  setupUsd?: number;
 }
 
 type Quote = {
@@ -85,6 +87,9 @@ const T = {
     today: "today",
     thenMonthly: (n: number) => `then $${usd(n)} / month`,
     payToday: (n: number) => `Pay $${usd(n)} today`,
+    setupOnce: (n: number) => `+ $${usd(n)} once — mailboxes set up`,
+    setupWord: "mailbox setup",
+    once: "once",
     eyebrow: "Servolia hosting",
     /* The heading follows the step. "Choose your plan" above a form for a
        plan already chosen told the reader the page had lost track of them. */
@@ -142,6 +147,9 @@ const T = {
     today: "aujourd'hui",
     thenMonthly: (n: number) => `puis ${usd(n)} $ / mois`,
     payToday: (n: number) => `Payer ${usd(n)} $ aujourd'hui`,
+    setupOnce: (n: number) => `+ ${usd(n)} $ une fois — boîtes email mises en place`,
+    setupWord: "mise en place email",
+    once: "une fois",
     eyebrow: "Hébergement Servolia",
     h1Choose: ["Choisissez votre ", "formule"],
     subChoose:
@@ -302,7 +310,11 @@ export default function PlanChooser({
     // A domain is a year, whatever the plan's rhythm. On a monthly plan the
     // first payment is this month plus the domain's year.
     const domainAmount = quoteMatches && quote ? quote.yearlyUsd : 0;
-    const total = amount + domainAmount;
+    const setupAmount = picked.setupUsd ?? 0;
+    const total = amount + domainAmount + setupAmount;
+    // "today" wording whenever the first payment differs from what repeats:
+    // a one-time setup, or a domain's year on a monthly plan.
+    const firstDiffers = setupAmount > 0 || (!annual && domainAmount > 0);
     const money = (n: number) => (lang === "fr" ? `${usd(n)} $` : `$${usd(n)}`);
     const ready = site.trim().length > 3 && /.+@.+\..+/.test(email) && (!buying || quoteMatches);
     const fieldCls = "w-full h-11 px-3.5 text-[15px] border border-[#E2E6DD] rounded-lg bg-white outline-none focus:border-[#36671E] focus:ring-2 focus:ring-[#36671E]/15";
@@ -323,6 +335,9 @@ export default function PlanChooser({
               {picked.tier} · ${usd(amount)}
               <span className="font-medium opacity-80 text-[15px]"> {annual ? t.perYear : t.perMonth}</span>
             </p>
+            {picked.setupUsd ? (
+              <p className="mt-1 text-[12.5px] font-semibold opacity-85">{t.setupOnce(picked.setupUsd)}</p>
+            ) : null}
           </div>
 
           {/* What they are about to pay for, on the screen where they pay for
@@ -448,19 +463,15 @@ export default function PlanChooser({
             />
             <p className="mt-2.5 text-[12px] text-[#8A8A80] leading-relaxed">{t.whyAsking}</p>
 
-            {quoteMatches && quote ? (
+            {(quoteMatches && quote) || setupAmount > 0 ? (
               <p className="mt-5 text-[13px] text-[#5E6659] text-center tabular-nums leading-relaxed">
-                {annual ? (
-                  <>
-                    {picked.tier} {money(amount)} + {quote.domain} {money(domainAmount)} ={" "}
-                    <strong className="text-[#18181B]">{money(total)}</strong> {t.perYear}
-                  </>
-                ) : (
-                  <>
-                    {picked.tier} {money(amount)} {t.perMonth} + {quote.domain} {money(domainAmount)} {t.perYear} ={" "}
-                    <strong className="text-[#18181B]">{money(total)}</strong> {t.today}, {t.thenMonthly(amount)}
-                  </>
-                )}
+                {picked.tier} {money(amount)} {annual ? t.perYear : t.perMonth}
+                {quoteMatches && quote ? <> + {quote.domain} {money(domainAmount)} {t.perYear}</> : null}
+                {setupAmount > 0 ? <> + {t.setupWord} {money(setupAmount)} {t.once}</> : null}
+                {" = "}
+                <strong className="text-[#18181B]">{money(total)}</strong>{" "}
+                {firstDiffers ? t.today : t.perYear}
+                {!annual && firstDiffers ? <>, {t.thenMonthly(amount)}</> : null}
               </p>
             ) : null}
 
@@ -469,7 +480,7 @@ export default function PlanChooser({
               disabled={!ready || busy}
               className="mt-6 w-full h-12 rounded-xl bg-gradient-to-r from-[#36671E] to-[#295115] text-[#FAFAF7] font-bold hover:opacity-90 disabled:opacity-45 transition"
             >
-              {busy ? t.working : ready ? (quoteMatches && !annual ? t.payToday(total) : t.pay(total)) : t.needDetails}
+              {busy ? t.working : ready ? (firstDiffers ? t.payToday(total) : t.pay(total)) : t.needDetails}
             </button>
             {error ? <p className="mt-3 text-sm text-[#B91C1C] text-center">{error}</p> : null}
           </div>
@@ -545,6 +556,11 @@ export default function PlanChooser({
               <p className="mt-2 h-[18px] text-[12.5px] font-semibold text-[#36671E]">
                 {annual && saving > 0 ? t.save(saving) : ""}
               </p>
+              {/* Same fixed height on every card, so a one-time line on one
+                  tier does not push its blurb below the others'. */}
+              <p className="mt-0.5 h-[16px] text-[11.5px] text-[#8A8A80]">
+                {p.setupUsd ? t.setupOnce(p.setupUsd) : ""}
+              </p>
 
               {/* flex-1 pushes every button to the bottom, so three blurbs of
                   different lengths still produce one row of aligned buttons. */}
@@ -604,6 +620,7 @@ export default function PlanChooser({
                       ${usd(priceOf(p))}
                       <span className="ml-1 text-[11px] font-medium text-[#71717A]">{annual ? t.perYear : t.perMonth}</span>
                     </p>
+                    {p.setupUsd ? <p className="mt-1 text-[10.5px] text-[#8A8A80]">{t.setupOnce(p.setupUsd)}</p> : null}
                     <button
                       onClick={() => choose(p.planKey)}
                       disabled={busy}
@@ -701,6 +718,7 @@ export default function PlanChooser({
                         {annual ? t.perYear : t.perMonth}
                       </span>
                     </span>
+                    {p.setupUsd ? <span className="block mt-1 text-[10.5px] text-[#8A8A80]">{t.setupOnce(p.setupUsd)}</span> : null}
                     <button
                       onClick={() => choose(p.planKey)}
                       disabled={busy}

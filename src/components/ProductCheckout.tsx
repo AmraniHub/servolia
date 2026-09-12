@@ -26,6 +26,7 @@ const T = {
     billedAnnually: "Billed once a year. Cancel anytime.",
     billedMonthly: "Billed monthly. Cancel anytime.",
     save: (n: number) => `Save $${usd(n)}.`,
+    setupOnce: (n: number) => `+ $${usd(n)} once — mailboxes set up`,
     redirecting: "Redirecting to Stripe…",
     pay: (n: number) => `Pay $${usd(n)} — get started`,
     needSite: "Enter your website to continue",
@@ -49,6 +50,7 @@ const T = {
     billedAnnually: "Facturé une fois par an. Résiliable à tout moment.",
     billedMonthly: "Facturé chaque mois. Résiliable à tout moment.",
     save: (n: number) => `Économisez ${usd(n)} $.`,
+    setupOnce: (n: number) => `+ ${usd(n)} $ une fois — boîtes email mises en place`,
     redirecting: "Redirection vers Stripe…",
     pay: (n: number) => `Payer ${usd(n)} $ — activer`,
     needSite: "Indiquez votre site pour continuer",
@@ -65,6 +67,7 @@ export default function ProductCheckout({
   planKey,
   monthlyUsd,
   annualUsd,
+  setupUsd = 0,
   includes,
   refCode,
   siteLabel,
@@ -75,6 +78,8 @@ export default function ProductCheckout({
   planKey: string;
   monthlyUsd: number;
   annualUsd: number;
+  /** A one-time charge on the first payment (Business: mailbox setup). */
+  setupUsd?: number;
   includes: string[];
   refCode: string;
   siteLabel: string;
@@ -194,12 +199,13 @@ export default function ProductCheckout({
             <span className="text-[44px] leading-none font-black text-[#18181B] tracking-tight">${usd(amount)}</span>
             <span className="text-[#71717A] font-medium">{annual ? t.perYear : t.perMonth}</span>
           </div>
-          <p className="text-sm text-[#71717A] mt-2 mb-6">
+          <p className={`text-sm text-[#71717A] mt-2 ${setupUsd ? "mb-1" : "mb-6"}`}>
             {annual ? t.billedAnnually : t.billedMonthly}
             {annual && saving > 0 ? (
               <span className="ml-1.5 font-semibold text-[#36671E]">{t.save(saving)}</span>
             ) : null}
           </p>
+          {setupUsd ? <p className="text-sm text-[#71717A] mb-6">{t.setupOnce(setupUsd)}</p> : null}
 
           <ul className="space-y-2.5 mb-7">
             {includes.map((line) => (
@@ -220,7 +226,7 @@ export default function ProductCheckout({
             {loading
               ? t.redirecting
               : identified
-                ? t.pay(amount)
+                ? t.pay(amount + setupUsd)
                 : t.needSite}
           </button>
 
