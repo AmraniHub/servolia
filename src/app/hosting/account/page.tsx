@@ -3,6 +3,8 @@ import Link from "next/link";
 import { Check, ExternalLink, FileText, ArrowUpRight } from "lucide-react";
 import { readUpgradeToken, subscriptionContext } from "@/lib/upgrade";
 import { productCopy, CLIENT_PRODUCTS, usd } from "@/lib/hosting";
+import { supabaseAdmin } from "@/lib/supabase";
+import { readDomainRecord, type DomainRecord } from "@/lib/domainSales";
 
 export const metadata: Metadata = {
   title: "Your service",
@@ -50,6 +52,12 @@ const T = {
     upgrade: "Pay yearly and save",
     provider: "Provided by Servolia LLC · Wyoming, USA",
     help: "Questions? Reply to any email from us.",
+    domain: "Your domain",
+    domainRegistered: "Registered by Servolia for you",
+    domainRenews: "renews with your plan",
+    domainRenewsInvoice: (d: string) => `renewed each year on your invoice — next on ${d}`,
+    domainPending: "Being registered — we will confirm by email.",
+    domainYours: "It is yours: on request we transfer it to any registrar account you name.",
     problem: {
       title: "This link has expired",
       body: "Service links do not last forever. Reply to any email from us and we will send a fresh one.",
@@ -73,6 +81,12 @@ const T = {
     upgrade: "Passer à l'année et économiser",
     provider: "Fourni par Servolia LLC · Wyoming, USA",
     help: "Une question ? Répondez à n'importe lequel de nos emails.",
+    domain: "Votre domaine",
+    domainRegistered: "Enregistré par Servolia pour vous",
+    domainRenews: "renouvelé avec votre formule",
+    domainRenewsInvoice: (d: string) => `renouvelé chaque année sur votre facture — prochaine fois le ${d}`,
+    domainPending: "En cours d'enregistrement — nous vous confirmons par email.",
+    domainYours: "Il vous appartient : sur simple demande, nous le transférons vers le compte registrar de votre choix.",
     problem: {
       title: "Ce lien a expiré",
       body: "Les liens de service ne durent pas indéfiniment. Répondez à l'un de nos emails et nous vous en envoyons un nouveau.",
@@ -122,6 +136,9 @@ export default async function AccountPage({
    * account is worse than no sample.
    */
   const isDemo = demo === "1";
+  // Resolved once, because two things hang off it: Stripe's view of the
+  // subscription, and our own row (where a domain bought with the plan lives).
+  const subId = !isDemo && token ? await readUpgradeToken(token) : null;
   const ctx = isDemo
     ? {
         plan: CLIENT_PRODUCTS.hosting,
@@ -137,12 +154,22 @@ export default async function AccountPage({
         cancelAtPeriodEnd: false,
         amountCents: CLIENT_PRODUCTS.hosting.annualUsd * 100,
       }
-    : token
-      ? await (async () => {
-          const id = await readUpgradeToken(token);
-          return id ? await subscriptionContext(id) : null;
-        })()
+    : subId
+      ? await subscriptionContext(subId)
       : null;
+
+  /* The domain bought with the plan, if any. Read from our row rather than
+     from Stripe: Stripe knows a line item was paid; only we know whether the
+     registration went through and where it is attached. */
+  const DEMO_DOMAIN: DomainRecord = { domain: "goodscochina-shop.com", status: "bought", retailUsd: 26, boughtAt: "2026-09-09" };
+  let domainRec: DomainRecord | null = isDemo ? DEMO_DOMAIN : null;
+  if (!isDemo && subId) {
+    const db = supabaseAdmin();
+    const { data: row } = db
+      ? await db.from("hosting_clients").select("notes").eq("subscription_id", subId).maybeSingle()
+      : { data: null };
+    domainRec = readDomainRecord(row?.notes);
+  }
 
   if (!ctx) {
     const t = T.en;
@@ -233,6 +260,27 @@ export default async function AccountPage({
           ))}
         </ul>
       </div>
+
+      {domainRec ? (
+        <div className="rounded-2xl border border-[#E8E6E0] bg-white p-7 mb-5">
+          <p className="text-[10px] font-black text-[#8A8A80] uppercase tracking-widest mb-3">{t.domain}</p>
+          <p className="text-[17px] font-bold text-[#18181B] break-all">{domainRec.domain}</p>
+          <p className="mt-1.5 text-[14px] text-[#52525B] leading-relaxed">
+            {domainRec.status === "bought"
+              ? `${t.domainRegistered} · ${
+                  domainRec.nextChargeAt
+                    ? t.domainRenewsInvoice(
+                        new Date(`${domainRec.nextChargeAt}T00:00:00Z`).toLocaleDateString(fr ? "fr-FR" : "en-GB", {
+                          day: "numeric", month: "long", year: "numeric", timeZone: "UTC",
+                        }),
+                      )
+                    : t.domainRenews
+                }`
+              : t.domainPending}
+          </p>
+          <p className="mt-2 text-[13px] text-[#8A8A80] leading-relaxed">{t.domainYours}</p>
+        </div>
+      ) : null}
 
       {showUpgrade ? (
         <Link
