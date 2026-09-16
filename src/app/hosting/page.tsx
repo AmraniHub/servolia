@@ -42,12 +42,18 @@ import AlreadyActive from "@/components/AlreadyActive";
 export async function generateMetadata({
   searchParams,
 }: {
-  searchParams: Promise<{ ref?: string; lang?: string }>;
+  searchParams: Promise<{ ref?: string; lang?: string; plan?: string }>;
 }): Promise<Metadata> {
-  const { ref = "", lang = "" } = await searchParams;
+  const { ref = "", lang = "", plan = "" } = await searchParams;
   const l = langFor(ref, lang);
   const known = Boolean(clientRefFor(ref));
-  const copy = productCopy(CLIENT_PRODUCTS.hosting, l);
+  /* An add-on page must title itself after the add-on. Reading only `ref` here
+     titled the AI assistant page "Hebergement du site - Complet", so the tab,
+     the bookmark and every link preview named the wrong product on the page a
+     client is being asked to pay on. The body was right; only this was not. */
+  const addOn = resolveHostingPlan(plan);
+  const titled = addOn && isAddOn(addOn.key) ? addOn : CLIENT_PRODUCTS.hosting;
+  const copy = productCopy(titled, l);
   return {
     title: known
       ? copy.heading
@@ -61,7 +67,11 @@ export async function generateMetadata({
         : "Hosting, SSL, monitoring and forms kept working for a website you already have. Three plans from $6 to $11 a month. Cancel anytime.",
     // The plan chooser is a public product, linked from the menu, so it is
     // indexed. A client's own page (?ref=) is about one business and is not.
-    robots: known ? { index: false, follow: false } : { index: true, follow: true },
+    // An add-on page is always about one client's purchase, so it is never
+    // indexed even when the visitor is not a known ref.
+    robots: known || (addOn && isAddOn(addOn.key))
+      ? { index: false, follow: false }
+      : { index: true, follow: true },
   };
 }
 
