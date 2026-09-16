@@ -429,6 +429,27 @@ export const CLIENT_PRODUCTS: Record<string, ClientProduct> = {
 /** Back-compat: the original single-product export. */
 export const HOSTING_PLANS = CLIENT_PRODUCTS;
 
+/**
+ * The three tiers the /hosting comparison table shows. Everything else in
+ * CLIENT_PRODUCTS is an ADD-ON: a thing an existing client buys on top of
+ * hosting, not instead of it.
+ *
+ * The distinction is load-bearing. A client who already pays for hosting is
+ * shown "your hosting is active" and can never reach a pay page from /hosting
+ * — which is right for a tier and wrong for an add-on, and is why the AI
+ * assistant sat in this file for months with no way to sell it.
+ */
+export const HOSTING_TIERS: readonly string[] = ["hosting_lite", "hosting", "hosting_business"];
+
+/** True for a product sold on top of hosting rather than as a tier of it. */
+export function isAddOn(key?: string | null): boolean {
+  if (!key) return false;
+  const k = key.toLowerCase();
+  // hasOwn for the same reason resolveHostingPlan uses it: `constructor`
+  // must not resolve to Object's, and then read as a sellable product.
+  return Object.hasOwn(CLIENT_PRODUCTS, k) && !HOSTING_TIERS.includes(k);
+}
+
 export function resolveHostingPlan(key?: string | null): ClientProduct | undefined {
   if (!key) return undefined;
   const k = key.toLowerCase();

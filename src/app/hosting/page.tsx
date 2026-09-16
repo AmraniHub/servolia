@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import ClientProductPage from "@/components/ClientProductPage";
 import PlanChooser, { type Tier, type Feature } from "@/components/PlanChooser";
-import { CLIENT_PRODUCTS, productCopy, resolveHostingPlan } from "@/lib/hosting";
+import { CLIENT_PRODUCTS, productCopy, resolveHostingPlan, isAddOn } from "@/lib/hosting";
 import { siteLabelFor, langFor, clientRefFor, maskEmail } from "@/lib/clientRefs";
 import { isDomainSalesConfigured } from "@/lib/domainSales";
 import { supabaseAdmin } from "@/lib/supabase";
@@ -27,6 +27,16 @@ import AlreadyActive from "@/components/AlreadyActive";
  *
  * `?plan=hosting_lite` pre-selects a tier on the chooser, for the case where
  * a plan has been discussed but the client is not yet in CLIENT_REFS.
+ *
+ * THIRD SITUATION, added 2026-09-16:
+ * /hosting?plan=chatbot&ref=x → an ADD-ON. Sellable to anyone, including a
+ *                           client who already pays for hosting, because an
+ *                           add-on is bought on top rather than instead.
+ *                           Checked before the client branch, since a paying
+ *                           client is otherwise shown "your hosting is active"
+ *                           and has no route to a pay page at all. That is why
+ *                           the AI assistant sat in the price list for months
+ *                           with nothing that could sell it.
  */
 
 export async function generateMetadata({
@@ -64,6 +74,31 @@ export default async function HostingPage({
   const { ref = "", billing = "", lang = "", plan = "" } = await searchParams;
   const l = langFor(ref, lang);
   const client = clientRefFor(ref);
+
+  /* ── AN ADD-ON: sellable to anyone, including a paying client ─────────
+   *
+   * Checked BEFORE the client branch on purpose. An existing client is shown
+   * "your hosting is active" and has no route to a pay page — correct for a
+   * hosting tier, since nobody should buy hosting twice, and wrong for an
+   * add-on, which only an existing client would ever want. That ordering is
+   * why the AI assistant lived in the price list for months with no page that
+   * could sell it, and why the new multilingual search line would have had
+   * the same fate.
+   *
+   * An add-on is by definition not a tier, so this cannot sell hosting twice. */
+  const addOn = resolveHostingPlan(plan);
+  if (addOn && isAddOn(addOn.key)) {
+    return (
+      <ClientProductPage
+        product={addOn}
+        refCode={ref}
+        siteLabel={siteLabelFor(ref)}
+        maskedEmail={client?.email ? maskEmail(client.email) : ""}
+        defaultBilling={billing === "monthly" ? "monthly" : "annual"}
+        lang={l}
+      />
+    );
+  }
 
   /* ── A quoted client: their plan, and only their plan ────────────────── */
   if (client) {
