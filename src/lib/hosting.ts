@@ -347,6 +347,83 @@ export const CLIENT_PRODUCTS: Record<string, ClientProduct> = {
         "24h/24 et vous transmet les vraies demandes.",
     },
   },
+
+  /* MULTILINGUAL SEARCH — the one SEO line Servolia sells.
+   *
+   * Why this and not "SEO": a Servolia client is typically a service business
+   * whose site runs in two or three languages, and the thing that is actually
+   * broken is always the same — no hreflang, no per-language sitemap, no
+   * robots.txt, no structured data. Excellence Agency serves Arabic, French
+   * and English and carries none of the four. A generic SEO retainer promises
+   * rankings, which is a promise nobody can keep; this promises a specific
+   * technical state, which can be verified the day it is delivered.
+   *
+   * PRICING, 2026-09-16, against the measured floor of USD 35.10/billable hour:
+   *  - setup  345 = 4 honest hours (audit, hreflang matrix, sitemaps, robots,
+   *    JSON-LD, Search Console per language, verify indexation) at 1.97x cost.
+   *    Four hours assumes a site we built and host. On a stranger's codebase it
+   *    is seven, and the setup should be 490 -- quote that, do not absorb it.
+   *  - monthly 45 = 0.5 h/month of indexation checks and regression fixes at
+   *    2.4x cost to serve. Dearer than hosting because it is human minutes
+   *    every month, not disk.
+   *  - annual  450 = 10 x monthly, the chatbot's house rule rather than
+   *    hosting's 11x. At 45/month the margin carries a two-month discount;
+   *    at 8/month it did not, which is why the two differ.
+   *
+   * The FRENCH MARKET pays far more for SEO -- freelances EUR 300-1,500/month,
+   * PME median EUR 980/month (checked 2026-09-16). This is deliberately not
+   * that product. Selling retainer money would mean promising retainer work. */
+  seo_multilingual: {
+    key: "seo_multilingual",
+    name: "Multilingual search",
+    tier: "Search",
+    bestFor: "A site in more than one language that Google indexes as though it were one.",
+    heading: "Multilingual search",
+    sentenceName: "multilingual search",
+    blurb:
+      "Your site is in several languages — this is what tells Google which one to show to whom, so the right visitor lands on the right version.",
+    monthlyUsd: 45,
+    annualUsd: 450,
+    setupUsd: 345,
+    includes: [
+      "Each language declared to Google (hreflang), so versions stop competing",
+      "A sitemap per language, and a robots file that lets them be found",
+      "Your company described in the format search engines read",
+      "Google Search Console set up and watched for every language",
+      "Checked every month, and fixed when a new page breaks it",
+    ],
+    explain: {
+      "Each language declared to Google (hreflang), so versions stop competing":
+        "Without it Google may treat your French and Arabic pages as duplicates of each other, and show the wrong one — or neither.",
+    },
+    description:
+      "Multilingual search setup: hreflang, per-language sitemaps, robots and " +
+      "structured data, with Search Console configured for each language and " +
+      "checked monthly.",
+    fr: {
+      tier: "Recherche",
+      bestFor: "Un site en plusieurs langues que Google indexe comme s'il n'en avait qu'une.",
+      heading: "Recherche multilingue",
+      sentenceName: "recherche multilingue",
+      blurb:
+        "Votre site existe en plusieurs langues — voici ce qui indique à Google laquelle montrer à qui, pour que le bon visiteur arrive sur la bonne version.",
+      includes: [
+        "Chaque langue déclarée à Google (hreflang), pour qu'elles cessent de se concurrencer",
+        "Un sitemap par langue, et un fichier robots qui les rend trouvables",
+        "Votre entreprise décrite dans le format que lisent les moteurs de recherche",
+        "Google Search Console configuré et surveillé pour chaque langue",
+        "Vérifié chaque mois, et corrigé quand une nouvelle page casse l'ensemble",
+      ],
+      explain: {
+        "Chaque langue déclarée à Google (hreflang), pour qu'elles cessent de se concurrencer":
+          "Sans cela, Google peut traiter vos pages françaises et arabes comme des doublons l'une de l'autre, et afficher la mauvaise — ou aucune.",
+      },
+      description:
+        "Mise en place de la recherche multilingue : hreflang, sitemaps par " +
+        "langue, robots et données structurées, avec Search Console configuré " +
+        "pour chaque langue et vérifié chaque mois.",
+    },
+  },
 };
 
 /** Back-compat: the original single-product export. */
