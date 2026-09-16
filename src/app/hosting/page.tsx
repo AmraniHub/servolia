@@ -54,13 +54,17 @@ export async function generateMetadata({
   const addOn = resolveHostingPlan(plan);
   const titled = addOn && isAddOn(addOn.key) ? addOn : CLIENT_PRODUCTS.hosting;
   const copy = productCopy(titled, l);
+  const isAdd = Boolean(addOn && isAddOn(addOn.key));
   return {
-    title: known
+    // An add-on titles itself whether or not the visitor is a known ref —
+    // otherwise ?plan=seo_multilingual with no ref renders the search page
+    // under a "Website hosting from $6" title.
+    title: known || isAdd
       ? copy.heading
       : l === "fr"
         ? "Hébergement de site web — à partir de 6 $/mois | Servolia"
         : "Website hosting — from $6/month | Servolia",
-    description: known
+    description: known || isAdd
       ? copy.description
       : l === "fr"
         ? "Hébergement, SSL, surveillance et formulaires maintenus pour un site que vous avez déjà. Trois formules, de 6 à 11 $ par mois. Résiliable à tout moment."
@@ -69,7 +73,7 @@ export async function generateMetadata({
     // indexed. A client's own page (?ref=) is about one business and is not.
     // An add-on page is always about one client's purchase, so it is never
     // indexed even when the visitor is not a known ref.
-    robots: known || (addOn && isAddOn(addOn.key))
+    robots: known || isAdd
       ? { index: false, follow: false }
       : { index: true, follow: true },
   };
