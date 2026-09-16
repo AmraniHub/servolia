@@ -31,6 +31,11 @@ export default async function ClientSitePage({ params }: { params: Promise<{ slu
   const { slug } = await params;
   const config = await getClientSite(slug);
   if (!config) notFound();
+  // A config that exists only for the assistant add-on has no site to render:
+  // the client's real site is on their own domain and we never built one.
+  // Rendering a template from a brief would put a fake Excellence Agency
+  // homepage on servolia.com, indexed or not.
+  if (config.assistantOnly) notFound();
   // Unpublished drafts are private until an admin publishes them.
   if (await isHiddenDraft(config)) notFound();
 

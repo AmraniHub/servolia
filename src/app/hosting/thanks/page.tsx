@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { CheckCircle2 } from "lucide-react";
-import { setupLinkForSession } from "@/lib/upgrade";
+import { setupLinkForSession, assistantLinkForSession } from "@/lib/upgrade";
 
 export const metadata: Metadata = {
   title: "Thank you",
@@ -21,6 +21,12 @@ export const metadata: Metadata = {
  *
  * `product` is display only. It picks wording and nothing else; it never
  * decides an amount, so a hand-edited URL can mislabel a page and do no harm.
+ *
+ * THE ASSISTANT HAS TWO TRUTHS. On a site we host it is being installed by
+ * the webhook as this page renders (`hosted=1`), and the page says so. On a
+ * site we do not host nothing can appear until the buyer adds one line and
+ * describes their business (`brief=1`) — and the page used to tell that
+ * buyer "nothing to install", which was the opposite of the truth.
  */
 interface Copy {
   title: string;
@@ -42,7 +48,7 @@ const COPY_FR: Record<string, Copy> = {
   chatbot: {
     title: "Votre assistant IA est actif",
     body:
-      "Il répond désormais à vos clients sur votre site, jour et nuit, dans leur langue. Rien à installer.",
+      "Il est en train d'être ajouté à votre site — comptez une ou deux minutes le temps que les pages se mettent à jour. Ensuite, il répond à vos visiteurs jour et nuit, dans leur langue. Rien à installer.",
     restoredTitle: "Votre assistant IA est de nouveau actif",
     restoredBody:
       "Il a été réactivé et répond de nouveau à vos clients sur votre site. Cela se fait automatiquement, vous n'avez rien à faire.",
@@ -71,7 +77,7 @@ const COPY: Record<string, Copy> = {
   chatbot: {
     title: "Your assistant is live",
     body:
-      "It is now answering customers on your site, day and night, in their own language. Nothing to install.",
+      "It is being added to your site now — allow a minute or two for the pages to update. From then on it answers your visitors day and night, in their own language. Nothing to install.",
     restoredTitle: "Your assistant is back on",
     restoredBody:
       "It has been switched back on and is answering customers on your site again. That happens automatically, so there is nothing for you to do.",
@@ -100,6 +106,20 @@ const SETUP_FR = {
   cta: "Indiquer où se trouve mon site",
 };
 
+/* The assistant on a site we do not host: two things only the buyer can do. */
+const BRIEF_EN = {
+  title: "Payment received",
+  body:
+    "Two short steps and your assistant is answering: add one line to your site (it is in your confirmation email, ready to copy), and tell the assistant about your business so it answers correctly.",
+  cta: "Describe my business",
+};
+const BRIEF_FR = {
+  title: "Paiement reçu",
+  body:
+    "Deux étapes courtes et votre assistant répond : ajoutez une ligne à votre site (elle est dans votre email de confirmation, prête à copier), et décrivez-lui votre activité pour qu'il réponde juste.",
+  cta: "Décrire mon activité",
+};
+
 const FALLBACK: Copy = {
   title: "You're all set",
   body: "Your payment went through and your service is active. Nothing else to do.",
@@ -110,11 +130,13 @@ export default async function HostingThanks({
 }: {
   searchParams: Promise<{
     product?: string; restored?: string; lang?: string;
-    setup?: string; session_id?: string; domain?: string;
+    setup?: string; brief?: string; hosted?: string; session_id?: string; domain?: string;
   }>;
 }) {
-  const { product = "", restored = "", lang = "", setup = "", session_id: sessionId = "", domain = "" } =
-    await searchParams;
+  const {
+    product = "", restored = "", lang = "", setup = "", brief = "",
+    session_id: sessionId = "", domain = "",
+  } = await searchParams;
   const fr = lang === "fr";
   /* A domain bought with the plan is being registered by the webhook as this
      page renders. Said here so the buyer does not go looking for it. */
@@ -133,8 +155,12 @@ export default async function HostingThanks({
   /* Only the server knows whether this buyer already had a site with us, so
      the checkout flags it rather than the page guessing. */
   const isSetup = setup === "1";
+  const isBrief = brief === "1";
   const setupUrl = isSetup && sessionId ? await setupLinkForSession(sessionId) : null;
-  const setupCopy = fr ? SETUP_FR : SETUP_EN;
+  const briefUrl = isBrief && sessionId ? await assistantLinkForSession(sessionId) : null;
+  const stepCopy = isBrief ? (fr ? BRIEF_FR : BRIEF_EN) : (fr ? SETUP_FR : SETUP_EN);
+  const stepUrl = isBrief ? briefUrl : setupUrl;
+  const isStep = isSetup || isBrief;
 
   const entry = (fr ? COPY_FR : COPY)[product];
   const isRestore = restored === "1";
@@ -161,17 +187,17 @@ export default async function HostingThanks({
         <div className="max-w-md mx-auto text-center">
           <CheckCircle2 className="w-14 h-14 text-[#16A34A] mx-auto mb-5" />
           <h1 className="text-2xl font-black text-[#18181B] mb-3">
-            {isSetup ? setupCopy.title : copy.title}
+            {isStep ? stepCopy.title : copy.title}
           </h1>
           <p className="text-[#52525B] leading-relaxed mb-6">
-            {(isSetup ? setupCopy.body : copy.body) + domainNote}
+            {(isStep ? stepCopy.body : copy.body) + domainNote}
           </p>
-          {isSetup && setupUrl ? (
+          {isStep && stepUrl ? (
             <a
-              href={setupUrl}
+              href={stepUrl}
               className="inline-flex items-center justify-center h-12 px-7 mb-6 rounded-xl bg-gradient-to-r from-[#36671E] to-[#295115] text-[#FAFAF7] font-bold hover:opacity-90 transition"
             >
-              {setupCopy.cta}
+              {stepCopy.cta}
             </a>
           ) : null}
 

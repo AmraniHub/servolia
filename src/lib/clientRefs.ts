@@ -63,6 +63,14 @@ export interface ClientRef {
    * append a parameter.
    */
   lang?: "en" | "fr";
+
+  /**
+   * What the business does, in one word the demo scripts understand
+   * ("study-abroad"). Picks which conversation the AI-assistant pay page
+   * replays: a study-abroad agency is shown a student asking about medicine
+   * in Lithuania at 2am, not a dental patient. Unset = the generic script.
+   */
+  niche?: string;
 }
 
 export const CLIENT_REFS: Record<string, ClientRef> = {
@@ -90,6 +98,7 @@ export const CLIENT_REFS: Record<string, ClientRef> = {
     branch: "master",
     // Repo root: site-status.js and middleware.js sit beside index.html.
     lang: "fr",
+    niche: "study-abroad",
   },
   temghid: {
     label: "temghid.ma",
@@ -111,6 +120,17 @@ export function clientRefFor(ref: string | undefined): ClientRef | undefined {
 
 export function siteLabelFor(ref: string | undefined): string {
   return clientRefFor(ref)?.label ?? "";
+}
+
+/**
+ * The ref key behind a billing address, for code that has a hosting_clients
+ * row in hand but not the Stripe metadata — the admin page, mostly. The
+ * assistant's slug is the ref, so this is how that page finds the brief.
+ */
+export function refKeyForEmail(email: string | null | undefined): string | undefined {
+  const e = (email ?? "").trim().toLowerCase();
+  if (!e) return undefined;
+  return Object.keys(CLIENT_REFS).find((k) => (CLIENT_REFS[k].email ?? "").toLowerCase() === e);
 }
 
 /**

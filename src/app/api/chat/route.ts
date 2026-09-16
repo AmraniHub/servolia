@@ -6,9 +6,44 @@ import { notifyClientOfLead } from "@/lib/clientNotify";
 import { buildReceptionistPrompt } from "@/lib/clientPrompt";
 import { sendMetaCapiEvent } from "@/lib/metaCapi";
 import { pricingPromptLines } from "@/lib/pricing";
+import { assistantEnabled } from "@/lib/assistantAccess";
+import { originAllowed, corsHeaders, sanitizeMessages } from "@/lib/assistant";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
+
+/**
+ * CORS PREFLIGHT. A client's site embeds assistant.js, and the browser asks
+ * permission before the widget's first POST. The body is not readable here, so
+ * the slug is unknown and the preflight is answered for every origin; the
+ * POST below is where a foreign origin is actually checked against the slug
+ * it asks for. Answering `*` to a preflight and a specific origin to the
+ * request is valid CORS and leaks nothing.
+ */
+export function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: corsHeaders("*") });
+}
+
+/**
+ * A speed bump for the open endpoint, per serverless instance. Not a wall —
+ * instances do not share memory — but enough that a script hammering one
+ * slug pays for a fraction of what it would otherwise, and cheap enough to
+ * have. Real cost control is the message cap in sanitizeMessages.
+ */
+const RATE_WINDOW_MS = 60_000;
+const RATE_MAX = 30;
+const rate = new Map<string, { n: number; at: number }>();
+function rateLimited(key: string): boolean {
+  const now = Date.now();
+  const e = rate.get(key);
+  if (!e || now - e.at > RATE_WINDOW_MS) {
+    rate.set(key, { n: 1, at: now });
+    if (rate.size > 5000) rate.clear();
+    return false;
+  }
+  e.n += 1;
+  return e.n > RATE_MAX;
+}
 
 /**
  * Servolia chatbot — "Solia"
@@ -161,13 +196,26 @@ async function callCloudflareAI(messages: ChatMessage[], systemContent: string):
 }
 
 export async function POST(req: NextRequest) {
+  /* Set once the slug's config has accepted this origin. Every response in
+     the client-site branch — the reply, the refusals, the catch — carries it,
+     because a reply the browser is not allowed to read is a widget that shows
+     a spinner forever. */
+  const origin = req.headers.get("origin");
+  let cors: Record<string, string> = {};
   try {
-    const { messages, sessionId, pageUrl, siteSlug } = await req.json() as {
-      messages: ChatMessage[];
+    const body = await req.json() as {
+      messages?: unknown;
       sessionId?: string;
       pageUrl?: string;
       siteSlug?: string;
     };
+    const { sessionId, pageUrl } = body;
+    const siteSlug = typeof body.siteSlug === "string" ? body.siteSlug.trim().slice(0, 64) : undefined;
+    // Last twelve turns, each trimmed. A 200 KB "question" is a bill, not a customer.
+    const messages: ChatMessage[] = sanitizeMessages(body.messages);
+    if (!messages.length) {
+      return NextResponse.json({ error: "No message" }, { status: 400, headers: cors });
+    }
 
     // ZERO-MISS CLOCK. The CGV (s4 bis) guarantee a reply within 60 seconds,
     // measured on Servolia's own server-side timestamps — so the clock starts
@@ -175,6 +223,30 @@ export async function POST(req: NextRequest) {
     // message we persist. Without this the guarantee is unverifiable, which is
     // worse than not offering one. See src/lib/zeroMiss.ts.
     const replyClockStart = Date.now();
+
+    /* ── WHO MAY TALK TO WHICH ASSISTANT, decided before any model is paid for.
+     *
+     * A client-site request names a slug. Its config says which websites may
+     * embed it; a browser on any other site is refused, so nobody can put a
+     * client's assistant — and their model bill — on a page of their own. Then
+     * the subscription is checked: an assistant whose payment lapsed answers
+     * 403, and the widget (which already saw enabled:false from /api/assistant)
+     * is not on the page to ask. Both checks come before the no-backend
+     * fallback so that a refusal is a refusal, not a lead form. */
+    const config = siteSlug ? await getClientSite(siteSlug) : undefined;
+    if (siteSlug) {
+      if (config && !originAllowed(origin, config)) {
+        return NextResponse.json({ error: "This site may not use that assistant." }, { status: 403 });
+      }
+      cors = corsHeaders(origin);
+      if (!config || !(await assistantEnabled(config))) {
+        return NextResponse.json({ error: "Chat is not enabled for this site." }, { status: 403, headers: cors });
+      }
+      const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "?";
+      if (rateLimited(`${siteSlug}:${ip}`)) {
+        return NextResponse.json({ error: "Too many messages — try again in a minute." }, { status: 429, headers: cors });
+      }
+    }
 
     const cfConfigured = !!(process.env.CLOUDFLARE_ACCOUNT_ID && process.env.CLOUDFLARE_AI_TOKEN);
     if (!process.env.ANTHROPIC_API_KEY && !cfConfigured) {
@@ -186,20 +258,13 @@ export async function POST(req: NextRequest) {
           : "Hi! 👋 I'm Solia. Our chat is being upgraded right now — leave your details below and we'll get back to you within a few hours.",
         qualified: false,
         fallback: true,
-      });
+      }, { headers: cors });
     }
 
     const db = supabaseAdmin();
 
     // ── CLIENT SITE branch: speak AS the client's business ────────────────
     if (siteSlug) {
-      const config = await getClientSite(siteSlug);
-      // Plan-template gate: a site whose tier doesn't include the AI
-      // receptionist (Website System) must not consume inference even if
-      // someone calls the API directly — the widget is already hidden.
-      if (config && config.features?.chat === false) {
-        return NextResponse.json({ error: "Chat is not enabled for this site." }, { status: 403 });
-      }
       const systemContent = config ? buildReceptionistPrompt(config) : SYSTEM_PROMPT;
       const rawReply = (await runAssistant(messages, systemContent)).trim();
       const isBooking = /\[BOOKING\]/i.test(rawReply);
@@ -260,7 +325,7 @@ export async function POST(req: NextRequest) {
         } catch { /* table/column may not exist yet — reply still returns */ }
       }
 
-      return NextResponse.json({ reply, qualified: isBooking });
+      return NextResponse.json({ reply, qualified: isBooking }, { headers: cors });
     }
 
     // ── Check for returning visitor (chatbot memory) ──────────────────────
@@ -382,7 +447,7 @@ export async function POST(req: NextRequest) {
       reply: "Sorry, I'm having a connection issue — leave your details below and we'll get right back to you 🙏",
       qualified: false,
       fallback: true,
-    }, { status: 200 });
+    }, { status: 200, headers: cors });
   }
 }
 

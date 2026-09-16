@@ -118,6 +118,28 @@ export async function setupLinkFor(subscriptionId: string, origin = "https://ser
 }
 
 /**
+ * The AI assistant's own page: what it knows, how it greets, where its leads
+ * go, and the one line to add to a site we do not host. Same token, same
+ * rule — it edits only the holder's own assistant.
+ */
+export async function assistantLinkFor(subscriptionId: string, origin = "https://servolia.com") {
+  return `${origin}/hosting/assistant?t=${encodeURIComponent(await mintUpgradeToken(subscriptionId))}`;
+}
+
+/** The same link from the checkout session id on Stripe's return URL. */
+export async function assistantLinkForSession(sessionId: string, origin = "https://servolia.com"): Promise<string | null> {
+  const key = process.env.STRIPE_SECRET_KEY;
+  if (!key || !sessionId.startsWith("cs_")) return null;
+  try {
+    const session = await new Stripe(key).checkout.sessions.retrieve(sessionId);
+    const sub = typeof session.subscription === "string" ? session.subscription : null;
+    return sub ? assistantLinkFor(sub, origin) : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * The same link, from the checkout session id Stripe puts on the return URL.
  *
  * The thank-you page has no token — it is reached by a redirect from Stripe,

@@ -261,6 +261,29 @@ export default async function AccountPage({
         </ul>
       </div>
 
+      {/* The assistant's own page: its brief, its languages, where its leads
+          go, and the install line for a site we do not host. The one thing
+          an assistant client comes back here for, so it is a card and not a
+          footnote. */}
+      {!isDemo && ctx.plan.key === "chatbot" ? (
+        <Link
+          href={`/hosting/assistant?t=${encodeURIComponent(token)}`}
+          className="flex items-center justify-between gap-3 rounded-2xl border border-[#CBE3BC] bg-[#F7FBF4] px-6 py-5 mb-5 hover:bg-[#F3F9EE] transition"
+        >
+          <span>
+            <span className="block font-bold text-[#18181B]">
+              {fr ? "Régler mon assistant" : "Set up my assistant"}
+            </span>
+            <span className="block text-[13px] text-[#71717A] mt-0.5">
+              {fr
+                ? "Ce qu'il sait, ses langues, où arrivent les demandes — et la ligne à ajouter à votre site."
+                : "What it knows, its languages, where enquiries go — and the line to add to your site."}
+            </span>
+          </span>
+          <ArrowUpRight className="w-4 h-4 text-[#36671E] shrink-0" />
+        </Link>
+      ) : null}
+
       {domainRec ? (
         <div className="rounded-2xl border border-[#E8E6E0] bg-white p-7 mb-5">
           <p className="text-[10px] font-black text-[#8A8A80] uppercase tracking-widest mb-3">{t.domain}</p>

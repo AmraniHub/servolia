@@ -4,6 +4,7 @@ import ClientProductPage from "@/components/ClientProductPage";
 import PlanChooser, { type Tier, type Feature } from "@/components/PlanChooser";
 import { CLIENT_PRODUCTS, productCopy, resolveHostingPlan, isAddOn } from "@/lib/hosting";
 import { siteLabelFor, langFor, clientRefFor, maskEmail } from "@/lib/clientRefs";
+import { ASSISTANT_SITES } from "@/lib/assistantSites";
 import { isDomainSalesConfigured } from "@/lib/domainSales";
 import { supabaseAdmin } from "@/lib/supabase";
 import { nextChargeDate } from "@/lib/hosting";
@@ -102,6 +103,11 @@ export default async function HostingPage({
    * An add-on is by definition not a tier, so this cannot sell hosting twice. */
   const addOn = resolveHostingPlan(plan);
   if (addOn && isAddOn(addOn.key)) {
+    /* The assistant's demo runs in the client's own colour and tells the
+       client's own kind of story. Both come from the assistant brief kept
+       in code for a known client; a stranger gets the house green and the
+       generic script. */
+    const brief = client ? ASSISTANT_SITES[ref.toLowerCase()] : undefined;
     return (
       <ClientProductPage
         product={addOn}
@@ -110,6 +116,8 @@ export default async function HostingPage({
         maskedEmail={client?.email ? maskEmail(client.email) : ""}
         defaultBilling={billing === "monthly" ? "monthly" : "annual"}
         lang={l}
+        niche={client?.niche}
+        accent={brief?.accent}
       />
     );
   }

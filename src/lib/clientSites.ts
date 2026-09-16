@@ -12,6 +12,7 @@
  */
 
 import { supabaseAdmin } from "@/lib/supabase";
+import { ASSISTANT_SITES } from "@/lib/assistantSites";
 import {
   isDentalNiche, DENTAL_WHY_US, DENTAL_FAQS, DENTAL_AI_TONE, dentalAiGreeting,
   DENTAL_HERO_IMAGES, DENTAL_PAGE_BANNERS, DENTAL_PROCESS, DENTAL_VALUES, DENTAL_ADVICE, dentalTagline,
@@ -181,6 +182,27 @@ export interface ClientSiteConfig {
   // feature switches that tier grants (see planFeatures()). Absent = all-on.
   planKey?: string;
   features?: { chat?: boolean };
+
+  // ── The AI assistant sold as a hosting add-on (src/lib/assistant.ts) ──
+  //
+  // A config that exists ONLY so the assistant can speak for a business whose
+  // website we do not render. /sites/[slug] refuses to render it whatever its
+  // status, the client-report and invoice crons skip it (no build_id), and
+  // whether it answers at all is decided by the hosting_clients row that
+  // paid for it — see assistantEnabled() in src/lib/assistantAccess.ts.
+  assistantOnly?: boolean;
+  /** The address on the paying hosting_clients row. How the widget's
+   *  enabled/disabled state follows the subscription without a write here. */
+  hostingEmail?: string;
+  /** Hostnames allowed to embed the widget. www. is implied. */
+  domains?: string[];
+  /** What the assistant speaks; the visitor's language wins within this list. */
+  languages?: ("ar" | "fr" | "en")[];
+  greetings?: Partial<Record<"ar" | "fr" | "en", string>>;
+  quickReplies?: Partial<Record<"ar" | "fr" | "en", string[]>>;
+  widgetPosition?: "left" | "right";
+  /** IANA zone for the after-hours badge on lead alerts. Default Europe/Paris. */
+  timezone?: string;
 
   // Per-client Google Sheets CRM sync (Booking System promise): an Apps
   // Script webhook URL — every captured lead is POSTed there as a JSON row.
@@ -1019,7 +1041,17 @@ interface ClientSiteRow {
   status: string;
 }
 
-/** Load a single client site by slug — Supabase first, bundled demo as fallback. */
+/**
+ * Load a single client site by slug — Supabase first, then the assistant
+ * configs kept in code, then the bundled demos.
+ *
+ * ORDER MATTERS. A row in the database wins over the code-level config for
+ * the same slug: the code is the assistant's starting brief (written from
+ * the client's own website), and the row is what the client refined through
+ * /hosting/assistant afterwards. Code as the default means a known client's
+ * assistant is ready to answer the moment they pay, with no database write
+ * standing between the payment and the promise.
+ */
 export async function getClientSite(slug: string): Promise<ClientSiteConfig | undefined> {
   const clean = slugify(slug);
   const db = supabaseAdmin();
@@ -1033,9 +1065,11 @@ export async function getClientSite(slug: string): Promise<ClientSiteConfig | un
       const row = data as ClientSiteRow | null;
       if (row?.config) return { ...row.config, slug: row.slug, status: (row.status as ClientSiteConfig["status"]) ?? "published" };
     } catch {
-      /* table may not exist yet — fall through to demo */
+      /* table may not exist yet — fall through */
     }
   }
+  const assistant = ASSISTANT_SITES[clean];
+  if (assistant) return assistant;
   return DEMO_SITES.find((s) => s.slug === clean);
 }
 

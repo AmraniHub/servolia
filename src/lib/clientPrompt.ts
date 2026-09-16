@@ -9,8 +9,31 @@ import { isDentalNiche, DENTAL_RECEPTIONIST_GUIDANCE } from "@/lib/niches/dental
 import { isAestheticNiche, AESTHETIC_RECEPTIONIST_GUIDANCE } from "@/lib/niches/aesthetic";
 import { isHomeServicesNiche, HOME_SERVICES_RECEPTIONIST_GUIDANCE } from "@/lib/niches/homeServices";
 
-export function buildReceptionistPrompt(c: ClientSiteConfig): string {
+const LANG_NAMES = { ar: "Arabic", fr: "French", en: "English" } as const;
+
+/**
+ * The language rule. A single-language site keeps the original line. A site
+ * that lists several answers in whichever one the visitor writes — including
+ * Moroccan Darija, which is answered in Arabic — and never asks them to
+ * switch. The list is the business's promise ("Arabic, French and English" on
+ * the pay page), so it is stated to the model as a rule, not a hint.
+ */
+function languageRule(c: ClientSiteConfig): string {
+  const spoken = (c.languages ?? []).filter((l): l is "ar" | "fr" | "en" => l === "ar" || l === "fr" || l === "en");
+  if (spoken.length > 1) {
+    const names = spoken.map((l) => LANG_NAMES[l]);
+    const first = names[0];
+    return [
+      `- The business serves visitors in ${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}.`,
+      `- ALWAYS reply in the language the visitor writes in. Arabic or Moroccan Darija → reply in clear Arabic. French → French. English → English.`,
+      `- If you cannot tell, use ${first}. Never ask the visitor to change language.`,
+    ].join("\n");
+  }
   const lang = c.language === "fr" ? "French" : "English";
+  return `- Reply in ${lang}. Match the visitor's language if they switch.`;
+}
+
+export function buildReceptionistPrompt(c: ClientSiteConfig): string {
   const services = c.services.length
     ? c.services
         .map((s) => `- ${s.name}${s.price ? ` (${s.price})` : ""}${s.description ? `: ${s.description}` : ""}`)
@@ -19,6 +42,7 @@ export function buildReceptionistPrompt(c: ClientSiteConfig): string {
 
   const contactLines = [
     c.phone ? `Phone: ${c.phone}` : "",
+    c.whatsapp ? `WhatsApp: +${c.whatsapp.replace(/^\+/, "")} (the fastest way to reach a human)` : "",
     c.email ? `Email: ${c.email}` : "",
     c.address ? `Address: ${c.address}` : "",
     c.hours ? `Hours: ${c.hours}` : "",
@@ -61,7 +85,7 @@ ${faqs ? `# Known answers\n${faqs}\n` : ""}${
     : ""
   }
 # Style
-- Reply in ${lang}. Match the visitor's language if they switch.
+${languageRule(c)}
 - Tone: ${c.aiTone ?? "warm and professional"}.
 - 1–3 short sentences. Never a wall of text.
 - Only state facts given above. If you don't know something (exact price, a specific policy), say you'll have the team confirm and offer to take their details — never invent prices, availability, or medical/legal advice.

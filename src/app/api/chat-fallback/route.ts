@@ -1,13 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { sendTelegramMessage } from "@/lib/telegram";
+import { getClientSite } from "@/lib/clientSites";
+import { notifyClientOfLead } from "@/lib/clientNotify";
+import { originAllowed, corsHeaders } from "@/lib/assistant";
 
 /**
  * Chat graceful-degradation endpoint. When the AI backend is down, the widget
  * shows a mini lead-capture form that posts here — the enquiry is never lost.
  * Works for both Servolia's own site and client sites (siteSlug present).
+ *
+ * For a client site the lead goes to the CLIENT as well as to us: the reason
+ * the form exists is that their assistant could not answer, and an enquiry
+ * that only reaches the operator's Telegram is an enquiry the business never
+ * hears about until somebody forwards it.
  */
+export function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: corsHeaders("*") });
+}
+
 export async function POST(req: NextRequest) {
+  const origin = req.headers.get("origin");
+  let cors: Record<string, string> = {};
   try {
     const { name, contact, siteSlug, sessionId, pageUrl } = await req.json() as {
       name?: string;
@@ -17,9 +31,18 @@ export async function POST(req: NextRequest) {
       pageUrl?: string;
     };
 
-    const cleanContact = (contact ?? "").trim();
+    const config = siteSlug ? await getClientSite(siteSlug) : undefined;
+    if (siteSlug) {
+      if (config && !originAllowed(origin, config)) {
+        return NextResponse.json({ error: "Not allowed" }, { status: 403 });
+      }
+      cors = corsHeaders(origin);
+    }
+
+    const cleanContact = (contact ?? "").trim().slice(0, 200);
+    const cleanName = (name ?? "").trim().slice(0, 120);
     if (!cleanContact) {
-      return NextResponse.json({ error: "Contact required" }, { status: 400 });
+      return NextResponse.json({ error: "Contact required" }, { status: 400, headers: cors });
     }
     const isEmail = /@/.test(cleanContact);
 
@@ -33,13 +56,13 @@ export async function POST(req: NextRequest) {
           qualified: true,
           email_captured: isEmail ? cleanContact : null,
           phone_captured: isEmail ? null : cleanContact,
-          messages: [{ role: "user", content: `[fallback form] ${name ?? ""} — ${cleanContact}` }],
+          messages: [{ role: "user", content: `[fallback form] ${cleanName} — ${cleanContact}` }],
           message_count: 1,
           page_url: pageUrl ?? null,
         });
       } else {
         await db.from("leads").insert({
-          name: name || null,
+          name: cleanName || null,
           email: isEmail ? cleanContact : null,
           phone: isEmail ? null : cleanContact,
           source: "chatbot",
@@ -49,15 +72,25 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    if (config && !config.isDemo) {
+      notifyClientOfLead(config, {
+        name: cleanName || null,
+        phone: isEmail ? null : cleanContact,
+        email: isEmail ? cleanContact : null,
+        excerpt: cleanName ? `${cleanName} — ${cleanContact}` : cleanContact,
+        source: "chat",
+      }).catch(() => {});
+    }
+
     sendTelegramMessage(
       `⚠️ *Chat fallback capture* (AI was down)\n` +
       `${siteSlug ? `Client site: ${siteSlug}\n` : ""}` +
-      `👤 ${name || "—"}\n📞 ${cleanContact}`,
+      `👤 ${cleanName || "—"}\n📞 ${cleanContact}`,
     ).catch(() => {});
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true }, { headers: cors });
   } catch (err) {
     console.error("chat-fallback error:", err);
-    return NextResponse.json({ error: "Failed" }, { status: 500 });
+    return NextResponse.json({ error: "Failed" }, { status: 500, headers: cors });
   }
 }

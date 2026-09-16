@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import ClientProductPage from "@/components/ClientProductPage";
 import { CLIENT_PRODUCTS, productCopy } from "@/lib/hosting";
 import { siteLabelFor, langFor, clientRefFor, maskEmail } from "@/lib/clientRefs";
+import { ASSISTANT_SITES } from "@/lib/assistantSites";
 
 /* The tab title follows the client's language, like the page itself. Next
    refuses a static `metadata` export beside generateMetadata, so noindex is
@@ -20,20 +21,25 @@ export async function generateMetadata({
   };
 }
 
+/** The same page as /hosting?plan=chatbot — Temghid's suspended notice links here. */
 export default async function ChatbotPage({
   searchParams,
 }: {
   searchParams: Promise<{ ref?: string; billing?: string; lang?: string }>;
 }) {
   const { ref = "", billing = "", lang = "" } = await searchParams;
+  const client = clientRefFor(ref);
+  const brief = client ? ASSISTANT_SITES[ref.toLowerCase()] : undefined;
   return (
     <ClientProductPage
       product={CLIENT_PRODUCTS.chatbot}
       refCode={ref}
       siteLabel={siteLabelFor(ref)}
-      maskedEmail={maskEmail(clientRefFor(ref)?.email)}
+      maskedEmail={maskEmail(client?.email)}
       defaultBilling={billing === "monthly" ? "monthly" : "annual"}
       lang={langFor(ref, lang)}
+      niche={client?.niche}
+      accent={brief?.accent}
     />
   );
 }

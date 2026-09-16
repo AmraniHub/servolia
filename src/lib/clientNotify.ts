@@ -37,11 +37,17 @@ export interface LeadAlert {
   source: "form" | "chat";
 }
 
-/** Typical clinic hours heuristic (Europe/Paris): Mon–Sat 08:00–19:00. */
-function isAfterHours(now = new Date()): boolean {
-  const paris = new Date(now.toLocaleString("en-US", { timeZone: "Europe/Paris" }));
-  const day = paris.getDay(); // 0 = Sunday
-  const hour = paris.getHours();
+/** Typical business hours heuristic, in the client's own zone: Mon–Sat 08:00–19:00.
+ *  Default Europe/Paris; a Moroccan client sets Africa/Casablanca on its config. */
+function isAfterHours(now = new Date(), timeZone = "Europe/Paris"): boolean {
+  let local: Date;
+  try {
+    local = new Date(now.toLocaleString("en-US", { timeZone }));
+  } catch {
+    local = new Date(now.toLocaleString("en-US", { timeZone: "Europe/Paris" }));
+  }
+  const day = local.getDay(); // 0 = Sunday
+  const hour = local.getHours();
   return day === 0 || hour < 8 || hour >= 19;
 }
 
@@ -65,7 +71,7 @@ export async function notifyClientOfLead(config: ClientSiteConfig, lead: LeadAle
     if (!to) return;
 
     const fr = config.language === "fr";
-    const afterHours = isAfterHours();
+    const afterHours = isAfterHours(new Date(), config.timezone);
     const leadPhone = lead.phone ? digits(lead.phone) : null;
 
     const waText = fr
@@ -114,9 +120,16 @@ export async function notifyClientOfLead(config: ClientSiteConfig, lead: LeadAle
         ${leadPhone ? btn(`tel:${leadPhone}`, fr ? "Appeler" : "Call") : ""}
         ${lead.email ? btn(`mailto:${lead.email}`, fr ? "Répondre par email" : "Reply by email", "#52525B") : ""}
       </div>
-      <p style="margin:18px 0 0;font-size:12px;color:#A1A1AA;">
+      ${config.assistantOnly
+        /* An add-on client has no portal login: the email IS their record.
+           Pointing them at a page that asks for a password they never got
+           is the kind of dead end that makes a small company look fake. */
+        ? `<p style="margin:18px 0 0;font-size:12px;color:#A1A1AA;">
+        ${fr ? "Captée par l'assistant de votre site." : "Captured by your website's assistant."}
+      </p>`
+        : `<p style="margin:18px 0 0;font-size:12px;color:#A1A1AA;">
         ${fr ? "Toutes vos demandes :" : "All your enquiries:"} <a href="https://servolia.com/portal" style="color:#36671E;">servolia.com/portal</a>
-      </p>
+      </p>`}
     </div>
     <p style="margin-top:16px;font-size:11px;color:#A1A1AA;text-align:center;">${config.businessName} · ${fr ? "propulsé par" : "powered by"} Servolia</p>
   </div>

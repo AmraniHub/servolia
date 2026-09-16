@@ -772,13 +772,25 @@ export const clientServicePaidEmail = (input: {
   domainUsd?: number | null;
   /** A one-time line on the first payment (Business: mailbox setup). */
   oneTimeUsd?: number | null;
+  /**
+   * The AI assistant, when that is what was bought. `installed` is the real
+   * outcome of the webhook's commit to a site we host — never assumed.
+   * `snippet` is the line a client whose site lives elsewhere adds
+   * themselves, and `briefUrl` is where either kind of client tells the
+   * assistant about their business.
+   */
+  assistant?: {
+    installed: boolean;
+    snippet: string | null;
+    briefUrl: string | null;
+  } | null;
 }) => {
   const {
     productName, productNoun, siteLabel, amountUsd, period,
     nextChargeIso = null, monthlyUsd, restored = false, activated = false, includes = [], lang = "en",
     upgradeUrl = null, portalUrl = null, setupUrl = null, reference = null,
     domainName = null, domainRegistered = false, domainBilling = "with-plan",
-    totalPaidUsd = null, domainUsd = null, oneTimeUsd = null,
+    totalPaidUsd = null, domainUsd = null, oneTimeUsd = null, assistant = null,
   } = input;
 
   const fr = lang === "fr";
@@ -921,6 +933,37 @@ export const clientServicePaidEmail = (input: {
         ${includes.map((line) => `<li>${line}</li>`).join("")}
       </ul>` : ""}
 
+      ${assistant ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
+              style="margin:0 0 22px;border:2px solid ${GREEN};border-radius:12px;">
+         <tr><td style="padding:18px 20px;font-family:${FONT};">
+           <p style="margin:0 0 6px;font-size:11px;font-weight:900;letter-spacing:1px;text-transform:uppercase;color:${GREEN};">
+             ${assistant.installed ? (fr ? "Votre assistant est en ligne" : "Your assistant is live") : (fr ? "Dernière étape" : "Last step")}
+           </p>
+           ${assistant.installed
+             ? `<p style="margin:0 0 12px;font-size:14px;line-height:1.6;color:${BODY};">
+                  ${fr
+                    ? "Il a été ajouté à votre site automatiquement et répond dès maintenant à vos visiteurs, dans leur langue. Ouvrez sa fiche pour affiner ce qu'il sait — services, horaires, réponses types — et vérifier où arrivent les demandes."
+                    : "It has been added to your site automatically and is answering your visitors now, in their language. Open its page to refine what it knows — services, hours, standard answers — and check where enquiries are sent."}
+                </p>`
+             : `<p style="margin:0 0 10px;font-size:14px;line-height:1.6;color:${BODY};">
+                  ${fr
+                    ? "Ajoutez cette ligne à votre site, juste avant <code>&lt;/body&gt;</code> — ou transmettez-la à la personne qui gère votre site :"
+                    : "Add this line to your site, just before <code>&lt;/body&gt;</code> — or pass it to whoever looks after your site:"}
+                </p>
+                <p style="margin:0 0 12px;padding:10px 12px;background:${CREAM};border:1px solid ${LINE};border-radius:8px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;line-height:1.5;color:${INK};word-break:break-all;">${(assistant.snippet ?? "").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</p>
+                <p style="margin:0 0 12px;font-size:14px;line-height:1.6;color:${BODY};">
+                  ${fr
+                    ? "Puis dites-lui ce qu'il doit savoir sur votre activité — deux minutes, et il répond juste."
+                    : "Then tell it what it needs to know about your business — two minutes, and it answers correctly."}
+                </p>`}
+           ${assistant.briefUrl ? btn(assistant.briefUrl, assistant.installed
+             ? (fr ? "Régler mon assistant" : "Set up my assistant")
+             : (fr ? "Décrire mon activité" : "Describe my business")) : ""}
+           ${reference ? `<p style="margin:12px 0 0;font-size:13px;color:${MUTED};">
+             ${fr ? "Votre référence" : "Your reference"}: <strong style="color:${INK};font-family:ui-monospace,Menlo,Consolas,monospace;">${reference}</strong>
+           </p>` : ""}
+         </td></tr>
+       </table>` : ""}
       ${setupUrl ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
               style="margin:0 0 22px;border:2px solid ${GREEN};border-radius:12px;">
          <tr><td style="padding:18px 20px;font-family:${FONT};">

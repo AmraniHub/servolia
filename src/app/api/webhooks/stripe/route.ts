@@ -14,6 +14,7 @@ import { generateScopeDocument } from "@/lib/scopeDocument";
 import { BUILD_PLANS, SETUP_PLAN, resolvePlan } from "@/lib/pricing";
 import {
   HOSTING_METADATA_KIND,
+  HOSTING_TIERS,
   resolveHostingPlan,
   hostingAmountCents,
   nextChargeDate,
@@ -21,7 +22,11 @@ import {
 } from "@/lib/hosting";
 import { setShopifyGate, applyGate } from "@/lib/hostingGate";
 import { normalizeDomain, purchaseDomainForClient, readDomainRecord, writeDomainRecord, setDomainAutoRenew } from "@/lib/domainSales";
-import { upgradeLinkFor, accountLinkFor, setupLinkFor, referenceFor, subscriptionContext } from "@/lib/upgrade";
+import { upgradeLinkFor, accountLinkFor, setupLinkFor, assistantLinkFor, referenceFor, subscriptionContext } from "@/lib/upgrade";
+import { alreadyFulfilled, writeFulfilment } from "@/lib/fulfilment";
+import { assistantSlugFor, installSnippet } from "@/lib/assistant";
+import { installAssistantTag } from "@/lib/assistantInstall";
+import { ASSISTANT_SITES } from "@/lib/assistantSites";
 import { clientRefFor } from "@/lib/clientRefs";
 import { billingPortalUrl } from "@/lib/clientPortal";
 import { sendTelegramMessage } from "@/lib/telegram";
@@ -120,10 +125,53 @@ export async function POST(req: NextRequest) {
            charge is a year of the monthly rate; the monthly figure is stored
            either way so the column means one thing. */
         const paidPlan = resolveHostingPlan(session.metadata?.plan);
+        const planKey = paidPlan?.key ?? (session.metadata?.plan || "hosting");
         const planUsd = paidPlan ? hostingAmountCents(paidPlan, period) / 100 : amount;
         const monthlyUsd = period === "annual" ? planUsd / 12 : planUsd;
+        const subId = typeof session.subscription === "string" ? session.subscription : null;
+        const hostRef = clientRefFor(session.metadata?.ref ?? "");
+        /* Two kinds of thing are sold on this line and they are fulfilled
+           differently. A TIER hosts a site: paying for it lifts the site's
+           gate. An ADD-ON sits on a site that is already paid for: the AI
+           assistant is installed, the site's gate is not touched. Treating
+           the two alike is how buying a $12 assistant would switch on a site
+           whose hosting is unpaid. */
+        const isTier = HOSTING_TIERS.includes(planKey);
+        const isAssistant = planKey === "chatbot";
 
-        const { data: hostRow, error: hostErr } = await db.from("hosting_clients").insert({
+        /* IDEMPOTENCY, KEYED ON THE WORK, NOT ON THE INSERT.
+         *
+         * This used to read a duplicate-key error from the insert below as
+         * "already handled" and skip everything after it. Excellence Agency
+         * paid on 2026-09-16 with a row already on file, the insert collided,
+         * and the gate, the receipt and the alert were all skipped — silently,
+         * because a duplicate is not an error. The row existing says nothing
+         * about whether the site was switched on.
+         *
+         * So the question is asked of the row's notes, where the LAST step
+         * below records the checkout session it completed. A Stripe retry
+         * finds it and stops here. A first delivery that died halfway does
+         * not, and finishes — every step is safe to repeat. */
+        const { data: known } = subId
+          ? await db.from("hosting_clients").select("id, notes").eq("subscription_id", subId).maybeSingle()
+          : { data: null };
+        if (known && alreadyFulfilled(known.notes, session.id)) {
+          return NextResponse.json({ received: true, line: "hosting", replay: true });
+        }
+
+        /* A row created by hand before the payment — same address, same
+           plan, no subscription yet — is COMPLETED, not duplicated. That is
+           the normal shape for a client the operator set up in advance. */
+        let hostRow: { id: string; notes: string | null } | null = known ?? null;
+        if (!hostRow && customerEmail) {
+          const { data: pre } = await db.from("hosting_clients")
+            .select("id, notes")
+            .ilike("email", customerEmail).eq("plan", planKey).is("subscription_id", null)
+            .order("created_at", { ascending: false }).limit(1).maybeSingle();
+          if (pre) hostRow = pre;
+        }
+
+        const rowValues: Record<string, unknown> = {
           business: session.metadata?.business || customerEmail || "Unknown",
           contact_name: session.metadata?.contact_name || null,
           email: customerEmail,
@@ -132,19 +180,37 @@ export async function POST(req: NextRequest) {
           branch: session.metadata?.branch || "main",
           site_root: session.metadata?.site_root || null,
           vercel_project: session.metadata?.vercel_project || null,
-          plan: session.metadata?.plan || "hosting",
+          plan: planKey,
           monthly_usd: monthlyUsd,
           billing_period: period,
           status: "active",
           customer_id: (session.customer as string) ?? null,
-          subscription_id: (session.subscription as string) ?? null,
-        }).select("id").maybeSingle();
-        // A duplicate is the unique index doing its job on a Stripe retry, not
-        // a failure — Stripe replays any non-2xx, so never 500 on it.
-        const alreadySeen = Boolean(hostErr && /duplicate|unique/i.test(hostErr.message));
-        if (hostErr && !alreadySeen) {
-          console.error("[stripe] hosting_clients insert failed:", hostErr.message);
+          subscription_id: subId,
+        };
+        if (hostRow) {
+          /* Only overwrite what the payment actually knows. A pre-created
+             row carries the repo and site the operator recorded; a checkout
+             from the public page carries neither, and null must not win. */
+          const patch: Record<string, unknown> = { ...rowValues };
+          for (const k of ["site_url", "repo", "site_root", "vercel_project", "contact_name"]) {
+            if (patch[k] === null) delete patch[k];
+          }
+          if (!session.metadata?.branch) delete patch.branch;
+          const { error } = await db.from("hosting_clients").update(patch).eq("id", hostRow.id);
+          if (error) console.error("[stripe] hosting_clients update failed:", error.message);
+        } else {
+          const { data, error } = await db.from("hosting_clients").insert(rowValues).select("id, notes").maybeSingle();
+          if (data) {
+            hostRow = data;
+          } else if (error && /duplicate|unique/i.test(error.message) && subId) {
+            // Two deliveries at once: the other one inserted first. Use its row.
+            const { data: again } = await db.from("hosting_clients").select("id, notes").eq("subscription_id", subId).maybeSingle();
+            hostRow = again ?? null;
+          } else if (error) {
+            console.error("[stripe] hosting_clients insert failed:", error.message);
+          }
         }
+
         /* Auto-restore the paid add-on. The suspended notice promises the
          * assistant comes back "automatiquement dès reception du paiement",
          * so it has to actually happen -- a promise kept by a human doing it
@@ -184,7 +250,7 @@ export async function POST(req: NextRequest) {
           });
         }
 
-        /* SWITCH ON A WHOLE SITE ON ITS FIRST PAYMENT.
+        /* SWITCH ON A WHOLE SITE ON ITS FIRST PAYMENT — hosting tiers only.
          *
          * The block above restores a Shopify add-on. This is the Vercel gate,
          * and it is also how a site is brought online in the first place: a
@@ -194,8 +260,7 @@ export async function POST(req: NextRequest) {
          * is awaited and loud on failure for the same reasons. A site that
          * was never gated comes back changed=false and is left alone. */
         let activated = false;
-        const hostRef = clientRefFor(session.metadata?.ref ?? "");
-        if (hostRef?.repo && !hostRef.gateWidget && !alreadySeen) {
+        if (isTier && hostRef?.repo && !hostRef.gateWidget) {
           const outcome = await applyGate(
             { repo: hostRef.repo, branch: hostRef.branch, siteRoot: hostRef.siteRoot ?? null, gateWidget: null },
             false,
@@ -212,6 +277,44 @@ export async function POST(req: NextRequest) {
           }
         }
 
+        /* THE ASSISTANT, PUT ON THE SITE.
+         *
+         * For a client whose repository we already write to, the pay page's
+         * "nothing to install" is made true here: one commit adds the script
+         * tag to every page, and Vercel redeploys. The slug the tag carries is
+         * the client's ref, which is also the name of the brief in
+         * ASSISTANT_SITES — so the assistant answers about the right business
+         * from its first conversation. A site we do not host gets the one
+         * line in its receipt instead, with the page where they describe
+         * their business. */
+        let assistantInstalled = false;
+        let assistantDetail: string | null = null;
+        const assistantSlug = isAssistant ? assistantSlugFor(session.metadata?.ref, session.metadata?.business) : "";
+        if (isAssistant && hostRef?.repo && !hostRef.gateWidget) {
+          const brief = ASSISTANT_SITES[assistantSlug];
+          const outcome = await installAssistantTag(
+            { repo: hostRef.repo, branch: hostRef.branch, siteRoot: hostRef.siteRoot ?? null },
+            assistantSlug,
+            brief?.widgetPosition ?? "right",
+          );
+          if (outcome.ok) {
+            assistantInstalled = true;
+            assistantDetail = outcome.changed
+              ? `added to ${outcome.changed} page${outcome.changed === 1 ? "" : "s"}`
+              : "already on every page";
+          } else {
+            console.error("[stripe] assistant install failed:", outcome.reason, outcome.detail);
+            sendTelegramMessage(
+              `*PAID but assistant NOT installed — ${session.metadata?.business || session.metadata?.ref || "a client"}*\n` +
+              `${outcome.reason}${outcome.detail ? ` (${outcome.detail})` : ""}\n` +
+              `They have paid and the script is not on their site. Add it by hand:\n` +
+              installSnippet(assistantSlug, brief?.widgetPosition ?? "right"),
+              undefined,
+              { plain: true },
+            ).catch(() => {});
+          }
+        }
+
         /* A DOMAIN BOUGHT WITH THE PLAN.
          *
          * The client has paid for it, so the purchase is funded before it is
@@ -220,31 +323,35 @@ export async function POST(req: NextRequest) {
          * recorded on the row as "pending" and shouted to the operator, who
          * has a Buy button on the client's page. Awaited, because the
          * receipt below says whether the domain is registered, and that must
-         * not be a guess. */
+         * not be a guess. Never bought twice: a row whose record already says
+         * "bought" for this name is a first delivery that got this far. */
         const domainWanted = normalizeDomain(session.metadata?.domain ?? "");
         let domainBought = false;
-        if (domainWanted && !alreadySeen) {
+        const priorDomain = readDomainRecord(hostRow?.notes);
+        if (domainWanted && priorDomain?.status === "bought" && priorDomain.domain === domainWanted) {
+          domainBought = true;
+        } else if (domainWanted) {
           const retail = Number(session.metadata?.domain_retail_usd ?? 0);
           const outcome = await purchaseDomainForClient(domainWanted, retail);
           domainBought = outcome.ok;
           if (hostRow?.id) {
-            await db.from("hosting_clients").update({
-              site_url: `https://${domainWanted}`,
-              notes: writeDomainRecord(null, {
-                domain: domainWanted,
-                retailUsd: retail,
-                status: outcome.ok ? "bought" : "pending",
-                orderId: outcome.ok ? outcome.orderId : undefined,
-                boughtAt: outcome.ok ? new Date().toISOString().slice(0, 10) : undefined,
-                // On a monthly plan the domain is not on the subscription, so
-                // its next year is charged by the domain-billing cron on this
-                // date. On a yearly plan it renews with the plan: no date.
-                nextChargeAt: outcome.ok && session.metadata?.domain_billing === "yearly-invoice"
-                  ? nextChargeDate(new Date(event.created * 1000), "annual").toISOString().slice(0, 10)
-                  : undefined,
-                note: outcome.ok ? undefined : `${outcome.reason}${outcome.detail ? ` (${outcome.detail})` : ""}`,
-              }),
-            }).eq("id", hostRow.id);
+            const { data: fresh } = await db.from("hosting_clients").select("notes").eq("id", hostRow.id).maybeSingle();
+            const notes = writeDomainRecord(fresh?.notes ?? hostRow.notes, {
+              domain: domainWanted,
+              retailUsd: retail,
+              status: outcome.ok ? "bought" : "pending",
+              orderId: outcome.ok ? outcome.orderId : undefined,
+              boughtAt: outcome.ok ? new Date().toISOString().slice(0, 10) : undefined,
+              // On a monthly plan the domain is not on the subscription, so
+              // its next year is charged by the domain-billing cron on this
+              // date. On a yearly plan it renews with the plan: no date.
+              nextChargeAt: outcome.ok && session.metadata?.domain_billing === "yearly-invoice"
+                ? nextChargeDate(new Date(event.created * 1000), "annual").toISOString().slice(0, 10)
+                : undefined,
+              note: outcome.ok ? undefined : `${outcome.reason}${outcome.detail ? ` (${outcome.detail})` : ""}`,
+            });
+            await db.from("hosting_clients").update({ site_url: `https://${domainWanted}`, notes }).eq("id", hostRow.id);
+            hostRow = { ...hostRow, notes };
           }
           if (!outcome.ok) {
             console.error("[stripe] domain purchase failed:", domainWanted, outcome.reason, outcome.detail);
@@ -273,23 +380,23 @@ export async function POST(req: NextRequest) {
          * access. A small client paying a stranger's Stripe page and then
          * receiving nothing is exactly the moment a payment feels like a scam.
          *
-         * Guarded on `alreadySeen` so a replayed webhook cannot email them a
-         * second time: the unique index on subscription_id is the idempotency
-         * key, reused rather than reinvented. A non-duplicate insert error
-         * still sends — they paid, so they get their confirmation even if our
-         * bookkeeping had a bad moment. */
+         * Sent once per checkout session: the fulfilment marker at the end
+         * of this branch is what stops a replay from sending it twice. */
         const product = resolveHostingPlan(session.metadata?.plan);
         // Set at checkout from the client record, so the confirmation matches
         // the language they bought in rather than the language we default to.
         const emailLang = session.metadata?.lang === "fr" ? "fr" : "en";
-        if (customerEmail && !alreadySeen) {
+        let briefUrl: string | null = null;
+        if (isAssistant && subId) {
+          briefUrl = await assistantLinkFor(subId, "https://servolia.com").catch(() => null);
+        }
+        if (customerEmail) {
           const copy = product ? productCopy(product, emailLang) : null;
           /* The switch-to-yearly offer, minted only when the year is actually
              cheaper than twelve months. Never for an annual buyer, who has
              nothing to upgrade to. Failing to mint must not cost them their
              receipt, so it degrades to no offer rather than no email. */
           let upgradeUrl: string | null = null;
-          const subId = typeof session.subscription === "string" ? session.subscription : null;
           if (period === "monthly" && subId && product && product.annualUsd < product.monthlyUsd * 12) {
             upgradeUrl = await upgradeLinkFor(subId, "https://servolia.com").catch(() => null);
           }
@@ -303,11 +410,12 @@ export async function POST(req: NextRequest) {
           if (subId) {
             portalUrl = await accountLinkFor(subId, "https://servolia.com").catch(() => null);
           }
-          /* The handover step, only for a buyer we do not already host. A
-             known ref means the site is already in our hands; asking them
-             where it lives would read as if we had lost it. */
+          /* The handover step, only for a buyer of HOSTING we do not already
+             host. A known ref means the site is already in our hands; asking
+             them where it lives would read as if we had lost it. An assistant
+             buyer gets the assistant's own page instead, whatever their site. */
           let setupUrl: string | null = null;
-          if (subId && !clientRefFor(session.metadata?.ref ?? "")) {
+          if (subId && !hostRef && isTier) {
             setupUrl = await setupLinkFor(subId, "https://servolia.com").catch(() => null);
           }
           const tpl = clientServicePaidEmail({
@@ -332,6 +440,13 @@ export async function POST(req: NextRequest) {
             domainName: domainWanted,
             domainRegistered: domainBought,
             domainBilling: session.metadata?.domain_billing === "yearly-invoice" ? "yearly-invoice" : "with-plan",
+            assistant: isAssistant
+              ? {
+                  installed: assistantInstalled,
+                  snippet: assistantInstalled ? null : installSnippet(assistantSlug, ASSISTANT_SITES[assistantSlug]?.widgetPosition ?? "right"),
+                  briefUrl,
+                }
+              : null,
           });
           sendEmail(customerEmail, tpl.subject, tpl.html).catch(() => {});
         }
@@ -341,22 +456,24 @@ export async function POST(req: NextRequest) {
          * know until the Stripe balance was next opened. */
         const hostTgToken = process.env.TELEGRAM_BOT_TOKEN;
         const hostTgChatId = process.env.TELEGRAM_CHAT_ID;
-        if (hostTgToken && hostTgChatId && !alreadySeen) {
+        if (hostTgToken && hostTgChatId) {
           /* The reference is what the client will quote, so it is what the
              operator needs in hand. A self-serve buyer is not hosted yet —
              say so here, at the moment the money lands, rather than leaving
              it to be discovered on the list page. */
-          const subIdForRef = typeof session.subscription === "string" ? session.subscription : null;
-          const selfServe = !clientRefFor(session.metadata?.ref ?? "");
+          const selfServe = !hostRef && isTier;
           const adminUrl = hostRow?.id
             ? `https://servolia.com/admin/hosting/${hostRow.id}`
             : "https://servolia.com/admin/hosting";
           const msg = `🌐 *${product?.name ?? "Hosting"} paid — $${amount} ${period}*\n` +
                       `${session.metadata?.business || session.metadata?.ref || "unnamed site"}\n` +
                       `${customerEmail ?? "no email"}\n` +
-                      (subIdForRef ? `Ref ${referenceFor(subIdForRef)}\n` : "") +
+                      (subId ? `Ref ${referenceFor(subId)}\n` : "") +
                       (restored ? `♻️ ${session.metadata?.gate_widget} switched back on\n` : "") +
                       (activated ? `🟢 Site switched on — the notice is lifted\n` : "") +
+                      (isAssistant && assistantInstalled ? `🤖 Assistant installed — ${assistantDetail}\n` : "") +
+                      (isAssistant && !assistantInstalled && hostRef?.repo && !hostRef.gateWidget ? `⚠️ Assistant NOT installed — see the alert\n` : "") +
+                      (isAssistant && !hostRef ? `ℹ️ Site not hosted by us — they add one line; the brief page was emailed\n` : "") +
                       (domainWanted ? `🌐 Domain ${domainWanted}: ${domainBought ? "bought on Vercel" : "NOT bought — see the alert"}\n` : "") +
                       (selfServe ? `⚠️ NEEDS SETUP — not hosted yet. Their handover arrives as a separate alert.\n` : "") +
                       `\n[Open](${adminUrl})`;
@@ -364,6 +481,20 @@ export async function POST(req: NextRequest) {
             method: "POST", headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ chat_id: hostTgChatId, text: msg, parse_mode: "Markdown" }),
           }).catch(() => {});
+        }
+
+        /* LAST: record that this session's work is done. Written after the
+           email and the alert so that a crash anywhere above leaves no
+           marker, and the retry does the job properly. */
+        if (hostRow?.id) {
+          const { data: fresh } = await db.from("hosting_clients").select("notes").eq("id", hostRow.id).maybeSingle();
+          await db.from("hosting_clients").update({
+            notes: writeFulfilment(fresh?.notes ?? hostRow.notes, {
+              session: session.id,
+              at: new Date().toISOString(),
+              plan: planKey,
+            }),
+          }).eq("id", hostRow.id);
         }
 
         return NextResponse.json({ received: true, line: "hosting" });
@@ -807,7 +938,7 @@ export async function POST(req: NextRequest) {
          * destroys the evidence that they were suspended.
          */
         const { data: wasHost } = await db.from("hosting_clients")
-          .select("id, business, status, repo, branch, site_root, subscription_id")
+          .select("id, business, status, plan, repo, branch, site_root, subscription_id")
           .or(filter).maybeSingle();
 
         await db.from("hosting_clients").update({
@@ -818,7 +949,13 @@ export async function POST(req: NextRequest) {
           open_invoice_url: null,
         }).or(filter);
 
-        if (wasHost?.status === "suspended" && wasHost.subscription_id) {
+        /* Only a hosting TIER has a site gate to lift. A suspended add-on (the
+           AI assistant) comes back by itself: its widget reads this row's
+           status, which the update above just set to active. Lifting the site
+           gate on an add-on payment would switch on a website whose own
+           hosting may still be unpaid. */
+        const wasTier = HOSTING_TIERS.includes(String(wasHost?.plan ?? "").toLowerCase());
+        if (wasHost?.status === "suspended" && wasHost.subscription_id && wasTier) {
           const ctx = await subscriptionContext(wasHost.subscription_id);
           const ref = clientRefFor(ctx?.ref);
           const outcome = await applyGate(

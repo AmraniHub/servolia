@@ -7,6 +7,11 @@ import { resolveHostingPlan } from "@/lib/hosting";
 import HostingSetupForm from "@/components/admin/HostingSetupForm";
 import DomainActions from "@/components/admin/DomainActions";
 import { readDomainRecord } from "@/lib/domainSales";
+import { isAssistantPlan, conversationCount } from "@/lib/assistantAccess";
+import { assistantSlugFor } from "@/lib/assistant";
+import { assistantInstalled } from "@/lib/assistantInstall";
+import { getClientSite } from "@/lib/clientSites";
+import { clientRefFor, refKeyForEmail } from "@/lib/clientRefs";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +34,27 @@ export default async function HostingClientPage({ params }: { params: Promise<{ 
   const reference = c.subscription_id ? referenceFor(c.subscription_id) : "—";
   const setUp = Boolean(c.repo || c.vercel_project);
   const domainRec = readDomainRecord(c.notes);
+
+  /* For an assistant row: which brief answers, whether the tag is really on
+     the client's home page (read from the repo now, not from a past webhook),
+     and whether anyone has talked to it. */
+  let assistant: { slug: string; brief: string | null; installed: boolean | null; conversations: number } | null = null;
+  if (isAssistantPlan(c.plan)) {
+    const refKey = refKeyForEmail(c.email);
+    const ref = clientRefFor(refKey);
+    const slug = assistantSlugFor(refKey, c.site_url || c.business);
+    const config = await getClientSite(slug);
+    const target = ref?.repo && !ref.gateWidget
+      ? { repo: ref.repo, branch: ref.branch, siteRoot: ref.siteRoot ?? null }
+      : c.repo ? { repo: c.repo, branch: c.branch, siteRoot: c.site_root } : null;
+    const installed = target ? await assistantInstalled(target) : null;
+    assistant = {
+      slug,
+      brief: config ? `${config.businessName} (${config.services.length} services, ${config.faqs.length} Q&A, ${(config.languages ?? [config.language]).join("/")})` : null,
+      installed,
+      conversations: await conversationCount(slug),
+    };
+  }
   const period = c.billing_period === "annual" ? "yearly" : "monthly";
   const usd = (n: number) => `$${Number(n).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
 
@@ -105,6 +131,30 @@ export default async function HostingClientPage({ params }: { params: Promise<{ 
             attached={domainRec.attached ?? null}
             vercelProject={c.vercel_project ?? null}
           />
+        </div>
+      ) : null}
+
+      {assistant ? (
+        <div className={`rounded-2xl border bg-white p-6 mb-6 ${assistant.installed === false ? "border-[#FDE68A]" : "border-[#E4E4E7]"}`}>
+          <h2 className="text-base font-black text-[#18181B] mb-1">AI assistant</h2>
+          <p className="text-sm text-[#52525B] leading-relaxed">
+            slug <span className="font-mono font-bold text-[#18181B]">{assistant.slug}</span>
+            {" · "}
+            {assistant.brief ? `brief: ${assistant.brief}` : "NO BRIEF — answers generically until the client (or you) writes one"}
+            {" · "}
+            {assistant.installed === true ? "installed on the home page"
+              : assistant.installed === false ? "NOT on the home page — install failed or site not hosted"
+              : "install state unknown (no repo, or GitHub unreadable)"}
+            {" · "}
+            {assistant.conversations} conversation{assistant.conversations === 1 ? "" : "s"} in 30 days
+          </p>
+          <div className="flex flex-wrap gap-3 mt-3 text-sm">
+            <a href={`/hosting/assistant/try?site=${encodeURIComponent(assistant.slug)}`} target="_blank" rel="noreferrer"
+               className="inline-flex items-center gap-1 text-[#36671E] hover:underline">
+              Try it <ExternalLink className="w-3.5 h-3.5" />
+            </a>
+            <Link href="/admin/sites" className="text-[#36671E] hover:underline">Client sites</Link>
+          </div>
         </div>
       ) : null}
 

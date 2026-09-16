@@ -263,7 +263,15 @@ export async function POST(req: NextRequest) {
        * somewhere else and nothing can happen until they tell us where. Only
        * the server knows which case this is, so the flag is set here rather
        * than guessed by the page. */
-      success_url: `${origin}/hosting/thanks?product=${hostingPlan.key}&lang=${lang}${client?.gateWidget ? "&restored=1" : ""}${domainLine ? "&domain=1" : ""}${client ? "" : "&setup=1&session_id={CHECKOUT_SESSION_ID}"}`,
+      /* THE ASSISTANT'S TWO ENDINGS. A site we host gets the assistant
+       * installed by the webhook (`hosted=1`: "it is being added now"). A
+       * site elsewhere needs the buyer to add one line and describe their
+       * business (`brief=1`), which is NOT the hosting handover form — asking
+       * "where does your site live?" of someone who bought an assistant for a
+       * site they run themselves is the wrong question on the wrong page. */
+      success_url: hostingPlan.key === "chatbot"
+        ? `${origin}/hosting/thanks?product=chatbot&lang=${lang}${client?.gateWidget ? "&restored=1" : client?.repo ? "&hosted=1" : "&brief=1&session_id={CHECKOUT_SESSION_ID}"}`
+        : `${origin}/hosting/thanks?product=${hostingPlan.key}&lang=${lang}${client?.gateWidget ? "&restored=1" : ""}${domainLine ? "&domain=1" : ""}${client ? "" : "&setup=1&session_id={CHECKOUT_SESSION_ID}"}`,
       cancel_url: `${origin}/${hostingPlan.key === "chatbot" ? "chatbot" : "hosting"}${ref ? `?ref=${encodeURIComponent(ref)}` : ""}`,
     });
 

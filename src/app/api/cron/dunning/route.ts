@@ -4,7 +4,7 @@ import { sendEmail, paymentFailedEmail } from "@/lib/email";
 import { sendTelegramMessage } from "@/lib/telegram";
 import { subscriptionContext } from "@/lib/upgrade";
 import { billingPortalUrl } from "@/lib/clientPortal";
-import { resolveHostingPlan, productCopy } from "@/lib/hosting";
+import { resolveHostingPlan, productCopy, HOSTING_TIERS } from "@/lib/hosting";
 import { applyGate } from "@/lib/hostingGate";
 import { clientRefFor } from "@/lib/clientRefs";
 
@@ -158,6 +158,19 @@ export async function GET(req: NextRequest) {
 
     const ctx = await subscriptionContext(c.subscription_id);
     if (!ctx || (ctx.status !== "past_due" && ctx.status !== "unpaid")) continue;
+
+    /* AN ADD-ON IS NOT THE SITE. An unpaid AI assistant goes quiet by itself:
+       its widget asks /api/assistant whether it is paid for, and that answer
+       reads this row's status. Writing site-status.js here would take the
+       client's whole website — which they pay for separately — off the air
+       over a $12 add-on. So the row is marked and the gate is left alone. */
+    if (!HOSTING_TIERS.includes(String(c.plan ?? "").toLowerCase())) {
+      const { error: aErr } = await db
+        .from("hosting_clients").update({ status: "suspended" }).eq("id", c.id);
+      if (aErr) { blocked.push(`${c.business} — add-on paused, but the record did not save`); continue; }
+      suspended++;
+      continue;
+    }
 
     /* Gate details come from CLIENT_REFS where the client is known: that map
        is the server-side authority on which repository may be written to and

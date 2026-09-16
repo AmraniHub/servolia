@@ -74,6 +74,7 @@ export default function ProductCheckout({
   maskedEmail = "",
   defaultBilling = "annual",
   lang = "en",
+  onSiteChange,
 }: {
   planKey: string;
   monthlyUsd: number;
@@ -89,13 +90,17 @@ export default function ProductCheckout({
    *  shown the annual price first. */
   defaultBilling?: "annual" | "monthly";
   lang?: "en" | "fr";
+  /** Fires as the buyer types their website, so a sibling (the assistant
+   *  demo) can show it running on that site before they have paid. */
+  onSiteChange?: (site: string) => void;
 }) {
   const t = T[lang];
   const [billing, setBilling] = useState<"annual" | "monthly">(defaultBilling);
   // When the link carries no recognised client, the buyer identifies
   // themselves before paying -- otherwise an anonymous payment arrives with
   // nothing to attach it to, and they have paid for something unnamed.
-  const [site, setSite] = useState("");
+  const [site, setSiteState] = useState("");
+  const setSite = (v: string) => { setSiteState(v); onSiteChange?.(v); };
   const [email, setEmail] = useState("");
   const known = Boolean(siteLabel);
   const identified = known || (site.trim().length > 3 && /.+@.+\..+/.test(email));
