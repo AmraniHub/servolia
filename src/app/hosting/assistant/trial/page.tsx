@@ -25,17 +25,33 @@ export const metadata: Metadata = {
 export default async function TrialPage({
   searchParams,
 }: {
-  searchParams: Promise<{ t?: string }>;
+  searchParams: Promise<{ t?: string; demo?: string; lang?: string }>;
 }) {
-  const { t: token = "" } = await searchParams;
-  const subscriptionId = token ? await readUpgradeToken(token) : null;
-  const ctx = subscriptionId ? await subscriptionContext(subscriptionId) : null;
+  const { t: token = "", demo = "", lang: demoLang = "" } = await searchParams;
+
+  /* WALK-THROUGH MODE, the same `?demo=1` the service page carries.
+     The real page is signed per client, so without this the only way to see
+     it as a client sees it would be to run a real trial on a real client's
+     live website. Everything renders identically; the button starts nothing
+     (see StartTrialButton's `demo`), and the fictitious agency is the one
+     the demo assistant already uses, so nobody meets two inventions. */
+  const isDemo = demo === "1";
+  const subscriptionId = !isDemo && token ? await readUpgradeToken(token) : null;
+  const ctx = isDemo
+    ? {
+        plan: CLIENT_PRODUCTS.hosting,
+        lang: (demoLang === "fr" ? "fr" : "en") as "en" | "fr",
+        ref: "demo-study-abroad",
+      }
+    : subscriptionId
+      ? await subscriptionContext(subscriptionId)
+      : null;
   const fr = ctx?.lang === "fr";
   const ref = ctx?.ref?.toLowerCase() ?? "";
-  const client = clientRefFor(ref);
+  const client = isDemo ? { label: "atlas-etudes.ma" } : clientRefFor(ref);
   const brief = ASSISTANT_SITES[ref];
-  const eligible = Boolean(ctx && HOSTING_TIERS.includes(ctx.plan.key) && client && brief);
-  const state = eligible ? await trialStateFor(ref) : { state: "none" as const };
+  const eligible = isDemo || Boolean(ctx && HOSTING_TIERS.includes(ctx.plan.key) && client && brief);
+  const state = eligible && !isDemo ? await trialStateFor(ref) : { state: "none" as const };
   const price = CLIENT_PRODUCTS.chatbot;
   const payUrl = `/hosting?plan=chatbot&ref=${encodeURIComponent(ref)}`;
 
@@ -69,6 +85,15 @@ export default async function TrialPage({
             </div>
           ) : (
             <>
+              {isDemo ? (
+                <div className="rounded-xl border border-[#E8E6E0] bg-white px-4 py-3 mb-5">
+                  <p className="text-[12.5px] text-[#71717A] leading-relaxed">
+                    {fr
+                      ? "Aperçu interne : la page exacte que reçoit un client, avec une agence fictive. Le bouton ne lance rien."
+                      : "Internal walk-through: the exact page a client gets, with a fictitious agency. The button starts nothing."}
+                  </p>
+                </div>
+              ) : null}
               <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#36671E] mb-3">
                 {fr ? `${TRIAL_DAYS} jours d'essai, sans carte` : `${TRIAL_DAYS}-day trial, no card`}
               </p>
@@ -120,7 +145,7 @@ export default async function TrialPage({
                       ? `Au bout de ${TRIAL_DAYS} jours il se retire de lui-même. Rien à faire, rien à payer — sauf si vous le gardez (${price.monthlyUsd} $/mois, résiliable à tout moment).`
                       : `After ${TRIAL_DAYS} days it steps back on its own. Nothing to do, nothing to pay — unless you keep it ($${price.monthlyUsd}/month, cancel anytime).`}
                   </p>
-                  <StartTrialButton token={token} lang={ctx.lang} siteLabel={client!.label} />
+                  <StartTrialButton token={token} lang={ctx.lang} siteLabel={client!.label} demo={isDemo} />
                   <p className="mt-6 text-[13px] text-[#8A8A80]">
                     {fr ? "Vous voulez d'abord lui parler ? " : "Want to talk to it first? "}
                     <a href={`/hosting/assistant/try?site=${encodeURIComponent(ref)}${fr ? "&lang=fr" : ""}`} target="_blank" rel="noreferrer" className="font-bold text-[#36671E] hover:underline">

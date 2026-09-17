@@ -8,7 +8,7 @@ import { clientRefFor } from "@/lib/clientRefs";
 import { assistantSlugFor, installSnippet } from "@/lib/assistant";
 import { assistantInstalled } from "@/lib/assistantInstall";
 import { ASSISTANT_SITES } from "@/lib/assistantSites";
-import { HOSTING_TIERS } from "@/lib/hosting";
+import { HOSTING_TIERS, CLIENT_PRODUCTS } from "@/lib/hosting";
 
 export const metadata: Metadata = {
   title: "Your AI assistant",
@@ -34,11 +34,26 @@ export const metadata: Metadata = {
 export default async function AssistantPage({
   searchParams,
 }: {
-  searchParams: Promise<{ t?: string; saved?: string }>;
+  searchParams: Promise<{ t?: string; saved?: string; demo?: string; lang?: string }>;
 }) {
-  const { t: token = "" } = await searchParams;
-  const subscriptionId = token ? await readUpgradeToken(token) : null;
-  const ctx = subscriptionId ? await subscriptionContext(subscriptionId) : null;
+  const { t: token = "", demo = "", lang: demoLang = "" } = await searchParams;
+
+  /* WALK-THROUGH MODE (`?demo=1`), as on the service and trial pages: the
+     exact page a client gets, filled with the fictitious agency, so it can
+     be shown and clicked without a signed client link. Saving is refused —
+     the form posts a token, and the demo has none. */
+  const isDemo = demo === "1";
+  const subscriptionId = !isDemo && token ? await readUpgradeToken(token) : null;
+  const ctx = isDemo
+    ? {
+        plan: CLIENT_PRODUCTS.chatbot,
+        lang: (demoLang === "fr" ? "fr" : "en") as "en" | "fr",
+        ref: "demo-study-abroad",
+        siteLabel: "atlas-etudes.ma",
+      }
+    : subscriptionId
+      ? await subscriptionContext(subscriptionId)
+      : null;
   const fr = ctx?.lang === "fr";
 
   // The row is where the billing address lives; the config follows it.
@@ -47,7 +62,7 @@ export default async function AssistantPage({
     ? await db.from("hosting_clients").select("email, business, repo, branch, site_root, site_url, status").eq("subscription_id", subscriptionId).maybeSingle()
     : { data: null };
 
-  const slug = ctx ? assistantSlugFor(ctx.ref, ctx.siteLabel || row?.business) : "";
+  const slug = isDemo ? "demo-study-abroad" : ctx ? assistantSlugFor(ctx.ref, ctx.siteLabel || row?.business) : "";
   const config = slug ? await getClientSite(slug) : undefined;
   /* The assistant's subscriber edits it. So does a HOSTING client whose
      assistant Servolia already built (a brief in code under their reference):
@@ -100,7 +115,7 @@ export default async function AssistantPage({
 
       <div className="flex-1 px-5 py-12 sm:py-16">
         <div className="max-w-xl mx-auto">
-          {!subscriptionId || !ctx || !initial ? (
+          {(!subscriptionId && !isDemo) || !ctx || !initial ? (
             <div className="rounded-2xl border border-[#E8E6E0] bg-white p-7 text-center">
               <h1 className="text-xl font-black text-[#18181B] mb-2">This link has expired</h1>
               <p className="text-sm text-[#52525B] leading-relaxed">
@@ -133,7 +148,7 @@ export default async function AssistantPage({
               </p>
               <p className="text-[13px] text-[#8A8A80] mb-8">
                 {fr ? "Votre référence" : "Your reference"}{" "}
-                <span className="font-bold text-[#5E6659] tabular-nums">{referenceFor(subscriptionId)}</span>
+                <span className="font-bold text-[#5E6659] tabular-nums">{subscriptionId ? referenceFor(subscriptionId) : "DEMO-0000"}</span>
                 {ctx.siteLabel ? <> · {ctx.siteLabel}</> : null}
               </p>
 

@@ -12,10 +12,18 @@ export default function StartTrialButton({
   token,
   lang,
   siteLabel,
+  demo = false,
 }: {
   token: string;
   lang: "en" | "fr";
   siteLabel: string;
+  /**
+   * Walk-through mode: the button behaves exactly as a client's would and
+   * starts NOTHING. It exists because the real one is signed per client, so
+   * the only way to see this page as they see it would otherwise be to run a
+   * real trial on a real client's live website.
+   */
+  demo?: boolean;
 }) {
   const fr = lang === "fr";
   const [state, setState] = useState<"idle" | "busy" | "done" | "error">("idle");
@@ -25,6 +33,14 @@ export default function StartTrialButton({
 
   async function start() {
     setState("busy");
+    if (demo) {
+      // The same pause a real one takes, so the walk-through feels honest.
+      await new Promise((r) => setTimeout(r, 700));
+      setUntil(new Date(Date.now() + 7 * 86_400_000).toISOString());
+      setInstalled(true);
+      setState("done");
+      return;
+    }
     try {
       const r = await fetch("/api/assistant-trial", {
         method: "POST",
@@ -50,6 +66,11 @@ export default function StartTrialButton({
     const day = until ? new Date(until).toLocaleDateString(fr ? "fr-FR" : "en-GB", { day: "numeric", month: "long" }) : "";
     return (
       <div className="rounded-2xl border border-[#CBE3BC] bg-[#F3F9EE] p-5" data-testid="trial-started">
+        {demo ? (
+          <p className="text-[11px] font-black uppercase tracking-[0.14em] text-[#8A8A80] mb-2">
+            {fr ? "Démonstration — rien n'a été lancé" : "Walk-through — nothing was started"}
+          </p>
+        ) : null}
         <p className="font-bold text-[#161A15]">
           {fr ? `Il est en ligne sur ${siteLabel}` : `It is live on ${siteLabel}`}
         </p>
@@ -62,14 +83,16 @@ export default function StartTrialButton({
                 ? `Jusqu'au ${day}. Chaque demande qu'il prend arrive sur votre téléphone. Ce jour-là il se retire de lui-même, sauf si vous le gardez — nous vous l'avons écrit par email.`
                 : `Until ${day}. Every enquiry it takes reaches your phone. That day it steps back on its own unless you keep it — we have put this in writing by email.`)}
         </p>
-        <a
-          href={`https://${siteLabel}`}
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex items-center mt-3 text-[14px] font-bold text-[#36671E] hover:underline"
-        >
-          {fr ? "Voir mon site →" : "See my site →"}
-        </a>
+        {demo ? null : (
+          <a
+            href={`https://${siteLabel}`}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center mt-3 text-[14px] font-bold text-[#36671E] hover:underline"
+          >
+            {fr ? "Voir mon site →" : "See my site →"}
+          </a>
+        )}
       </div>
     );
   }
