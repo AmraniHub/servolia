@@ -117,6 +117,7 @@ export default async function HostingPage({
         defaultBilling={billing === "monthly" ? "monthly" : "annual"}
         lang={l}
         niche={client?.niche}
+        languages={brief?.languages}
         accent={brief?.accent}
       />
     );

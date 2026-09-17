@@ -29,6 +29,7 @@ export default function ClientProductPage({
   defaultBilling,
   lang = "en",
   niche,
+  languages,
   accent,
 }: {
   product: ClientProduct;
@@ -39,6 +40,8 @@ export default function ClientProductPage({
   lang?: "en" | "fr";
   /** The client's line of business, which picks the demo's script. */
   niche?: string;
+  /** The languages this client's assistant speaks — the demo's tabs. */
+  languages?: ("ar" | "fr" | "en")[];
   /** The client's brand colour, so the demo looks like THEIR widget. */
   accent?: string;
 }) {
@@ -81,6 +84,7 @@ export default function ClientProductPage({
             defaultBilling={defaultBilling}
             lang={lang}
             niche={niche}
+            languages={languages}
             accent={accent}
           />
         ) : (

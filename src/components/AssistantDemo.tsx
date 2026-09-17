@@ -8,169 +8,225 @@ import { Bot, RotateCcw, Send } from "lucide-react";
  * THE DEMO ON THE PAY PAGE — a conversation that plays itself.
  *
  * A feature list says "answers in Arabic, French and English". This shows a
- * student in Casablanca typing Darija at 02:14, an answer three seconds
- * later, a name and a number captured, and the owner's phone lighting up
- * with the lead — and then it says, in the owner's language, what just
- * happened. The buyer is not asked to imagine the product; they watch it.
+ * visitor writing at 02:14, an answer three seconds later, a name and a
+ * number captured, and the owner's phone lighting up with the lead — then it
+ * says, in the owner's language, what just happened. The buyer is not asked
+ * to imagine the product; they watch it.
  *
- * It is a replay, not a live chat, on purpose: a live demo needs the buyer
- * to think of a question, and most do not. A film needs nothing from them.
- * It plays when scrolled into view, loops with a pause, and under
+ * THREE RULES IT LEARNED THE HARD WAY (2026-09-17, from the buyer's side):
+ *
+ *  1. IT IS AN EXAMPLE AND MUST SAY SO. The first version put the CLIENT's
+ *     real domain in the frame's title bar next to an invented lead with an
+ *     invented phone number. To the one person the page is for, that reads as
+ *     "these are my visitors" — and the moment he doubts one number he
+ *     doubts the product. So the frame carries an EXEMPLE badge and an
+ *     obviously-other business, and a line under it says the real one takes
+ *     his name and his colours.
+ *  2. IT OPENS IN THE LANGUAGE THE BUYER READS. The page exists to convince
+ *     the owner. A French-reading owner met five Arabic bubbles he could not
+ *     judge, which is a demo of nothing.
+ *  3. THE LANGUAGES ARE TABS, NOT A CHOICE WE MAKE FOR HIM. Clicking from
+ *     Français to العربية and watching the same conversation happen again is
+ *     the multilingual promise demonstrated rather than claimed — and it is
+ *     the reason this product is worth USD 120 to a business whose customers
+ *     write in three languages.
+ *
+ * It is a replay, not a live chat, on purpose: a live demo needs the buyer to
+ * think of a question, and most do not. A film needs nothing from them. It
+ * plays when scrolled into view, loops with a pause, and under
  * prefers-reduced-motion renders the finished conversation at once.
- *
- * Scripts are keyed by the client's niche (CLIENT_REFS.niche) and the page
- * language. The VISITOR side of a study-abroad script is Arabic whatever the
- * page language, because that is who writes to a Moroccan agency at 2am; the
- * notification and the caption are in the OWNER's language, because that is
- * who is reading the page.
  */
 
-type Lang = "en" | "fr";
-type Step =
-  | { kind: "ai"; text: string; after: number }
-  | { kind: "user"; text: string; after: number }
-  | { kind: "toast"; after: number }
-  | { kind: "caption"; after: number }
-  | { kind: "hold"; after: number };
+/** Who is reading the page. */
+type OwnerLang = "en" | "fr";
+/** Who is writing in the demo. */
+type VisitorLang = "ar" | "fr" | "en";
 
-interface Script {
-  /** Direction of the visitor's side of the conversation. */
-  rtl: boolean;
-  clock: string;
-  visitorLang: string;
+type Turn = { role: "ai" | "user"; text: string };
+
+interface VisitorScript {
   online: string;
   placeholder: string;
-  steps: Step[];
-  toast: { title: string; body: string; time: string };
-  caption: string;
+  turns: Turn[];
 }
 
-const STUDY_ABROAD: Record<Lang, Script> = {
-  fr: {
-    rtl: true,
-    clock: "02:14",
-    visitorLang: "ar",
-    online: "متصل · يجيب فوراً",
-    placeholder: "اكتب رسالتك…",
-    steps: [
-      { kind: "ai", text: "مرحباً بك 👋 أنا هنا لأجيب عن أسئلتك حول الدراسة في الخارج. كيف يمكنني مساعدتك؟", after: 600 },
-      { kind: "user", text: "السلام عليكم، بغيت نقرا الطب فليتوانيا. واش ممكن؟ وشحال كيتكلف؟", after: 1400 },
-      { kind: "ai", text: "وعليكم السلام 😊 نعم، ليتوانيا من أكثر الوجهات طلباً لدراسة الطب، بجامعات معترف بها دولياً وتكلفة معقولة. التكلفة الدقيقة تعتمد على الجامعة — مستشارنا يعطيك تقديراً مجانياً خلال 24 ساعة. ممكن اسمك ورقم هاتفك؟", after: 1700 },
-      { kind: "user", text: "ياسين، 0661 23 45 67", after: 1500 },
-      { kind: "ai", text: "شكراً ياسين ✅ سجّلت طلبك: الطب في ليتوانيا. سيتصل بك مستشار متخصص خلال 24 ساعة على 0661 23 45 67. ليلة سعيدة!", after: 1500 },
-      { kind: "toast", after: 1300 },
-      { kind: "caption", after: 900 },
-      { kind: "hold", after: 6500 },
-    ],
-    toast: {
-      title: "🌙 Nouvelle demande captée pendant la fermeture",
-      body: "Yassine · 0661 23 45 67 · Médecine, Lituanie",
-      time: "02:15",
-    },
-    caption: "Un visiteur à 2h du matin. Une réponse en arabe, en trois secondes. Un dossier ouvert — pendant que vous dormiez.",
-  },
-  en: {
-    rtl: true,
-    clock: "02:14",
-    visitorLang: "ar",
-    online: "متصل · يجيب فوراً",
-    placeholder: "اكتب رسالتك…",
-    steps: [
-      { kind: "ai", text: "مرحباً بك 👋 أنا هنا لأجيب عن أسئلتك حول الدراسة في الخارج. كيف يمكنني مساعدتك؟", after: 600 },
-      { kind: "user", text: "السلام عليكم، بغيت نقرا الطب فليتوانيا. واش ممكن؟ وشحال كيتكلف؟", after: 1400 },
-      { kind: "ai", text: "وعليكم السلام 😊 نعم، ليتوانيا من أكثر الوجهات طلباً لدراسة الطب، بجامعات معترف بها دولياً وتكلفة معقولة. التكلفة الدقيقة تعتمد على الجامعة — مستشارنا يعطيك تقديراً مجانياً خلال 24 ساعة. ممكن اسمك ورقم هاتفك؟", after: 1700 },
-      { kind: "user", text: "ياسين، 0661 23 45 67", after: 1500 },
-      { kind: "ai", text: "شكراً ياسين ✅ سجّلت طلبك: الطب في ليتوانيا. سيتصل بك مستشار متخصص خلال 24 ساعة على 0661 23 45 67. ليلة سعيدة!", after: 1500 },
-      { kind: "toast", after: 1300 },
-      { kind: "caption", after: 900 },
-      { kind: "hold", after: 6500 },
-    ],
-    toast: {
-      title: "🌙 New enquiry caught while you were closed",
-      body: "Yassine · 0661 23 45 67 · Medicine, Lithuania",
-      time: "02:15",
-    },
-    caption: "A visitor at 2am. Answered in Arabic, in three seconds. A file opened — while you slept.",
+/** The example business. Never the buyer's own — see rule 1. */
+interface Example {
+  name: string;
+  domain: string;
+  clock: string;
+  /** The lead the conversation captures, as the owner's phone shows it. */
+  lead: { name: string; phone: string; want: Record<OwnerLang, string> };
+}
+
+const RTL: VisitorLang[] = ["ar"];
+
+/* ── study-abroad ─────────────────────────────────────────────────────────
+ * The same fictitious agency the try page uses, so a buyer who clicks
+ * through meets one example rather than two. The phone number is the
+ * documentation-style 06 12 34 56 78 on purpose: it reads as an example.   */
+
+const STUDY_EXAMPLE: Example = {
+  name: "Atlas Études",
+  domain: "atlas-etudes.ma",
+  clock: "02:14",
+  lead: {
+    name: "Yassine",
+    phone: "06 12 34 56 78",
+    want: { fr: "Médecine, Lituanie", en: "Medicine, Lithuania" },
   },
 };
 
-const GENERIC: Record<Lang, Script> = {
+const STUDY: Record<VisitorLang, VisitorScript> = {
   fr: {
-    rtl: false,
-    clock: "21:40",
-    visitorLang: "fr",
     online: "En ligne · répond instantanément",
     placeholder: "Écrivez votre message…",
-    steps: [
-      { kind: "ai", text: "Bienvenue 👋 Comment puis-je vous aider ?", after: 600 },
-      { kind: "user", text: "Bonsoir, vous faites des devis pour une rénovation de salle de bain ?", after: 1400 },
-      { kind: "ai", text: "Bonsoir ! Oui — un devis gratuit après une courte visite. Je peux vous proposer mardi 10h ou jeudi 14h. Votre nom et un numéro pour confirmer ?", after: 1700 },
-      { kind: "user", text: "Karim, 06 12 34 56 78 — mardi 10h", after: 1500 },
-      { kind: "ai", text: "Parfait Karim ✅ Mardi 10h est réservé. L'équipe vous confirme par SMS demain matin. Bonne soirée !", after: 1500 },
-      { kind: "toast", after: 1300 },
-      { kind: "caption", after: 900 },
-      { kind: "hold", after: 6500 },
+    turns: [
+      { role: "ai", text: "Bienvenue chez Atlas Études 👋 Je réponds à vos questions sur les études à l'étranger. Comment puis-je vous aider ?" },
+      { role: "user", text: "Bonsoir, je voudrais étudier la médecine en Lituanie. C'est possible ? Et quel budget ?" },
+      { role: "ai", text: "Bonsoir 😊 Oui — la Lituanie est notre destination la plus demandée en médecine : des universités reconnues, à un coût raisonnable. Le budget exact dépend de l'université ; un conseiller vous envoie une estimation gratuite sous 24h. Votre nom et un numéro ?" },
+      { role: "user", text: "Yassine, 06 12 34 56 78" },
+      { role: "ai", text: "Merci Yassine ✅ C'est noté : médecine en Lituanie. Un conseiller vous appelle sous 24h au 06 12 34 56 78. Bonne nuit !" },
     ],
-    toast: {
-      title: "🌙 Nouvelle demande captée pendant la fermeture",
-      body: "Karim · 06 12 34 56 78 · Devis salle de bain, mardi 10h",
-      time: "21:41",
-    },
-    caption: "Un dimanche soir, 21h40. Une réponse immédiate, un rendez-vous pris — sans que vous ayez levé les yeux de votre dîner.",
+  },
+  ar: {
+    online: "متصل · يجيب فوراً",
+    placeholder: "اكتب رسالتك…",
+    turns: [
+      { role: "ai", text: "مرحباً بك في Atlas Études 👋 أنا هنا لأجيب عن أسئلتك حول الدراسة في الخارج. كيف يمكنني مساعدتك؟" },
+      { role: "user", text: "السلام عليكم، بغيت نقرا الطب فليتوانيا. واش ممكن؟ وشحال كيتكلف؟" },
+      { role: "ai", text: "وعليكم السلام 😊 نعم، ليتوانيا من أكثر الوجهات طلباً لدراسة الطب، بجامعات معترف بها دولياً وتكلفة معقولة. التكلفة الدقيقة تعتمد على الجامعة — مستشارنا يعطيك تقديراً مجانياً خلال 24 ساعة. ممكن اسمك ورقم هاتفك؟" },
+      { role: "user", text: "ياسين، 06 12 34 56 78" },
+      { role: "ai", text: "شكراً ياسين ✅ سجّلت طلبك: الطب في ليتوانيا. سيتصل بك مستشار متخصص خلال 24 ساعة على 06 12 34 56 78. ليلة سعيدة!" },
+    ],
   },
   en: {
-    rtl: false,
-    clock: "21:40",
-    visitorLang: "en",
     online: "Online · replies instantly",
     placeholder: "Type a message…",
-    steps: [
-      { kind: "ai", text: "Welcome 👋 How can I help?", after: 600 },
-      { kind: "user", text: "Hi, do you quote for a full bathroom renovation?", after: 1400 },
-      { kind: "ai", text: "We do — a free quote after a short visit. I can offer Tuesday 10:00 or Thursday 14:00. Your name and a number to confirm?", after: 1700 },
-      { kind: "user", text: "Karim, 07700 900123 — Tuesday 10", after: 1500 },
-      { kind: "ai", text: "Perfect, Karim ✅ Tuesday 10:00 is booked. The team will confirm by text tomorrow morning. Have a good evening!", after: 1500 },
-      { kind: "toast", after: 1300 },
-      { kind: "caption", after: 900 },
-      { kind: "hold", after: 6500 },
+    turns: [
+      { role: "ai", text: "Welcome to Atlas Études 👋 I'm here to answer your questions about studying abroad. How can I help?" },
+      { role: "user", text: "Hi, I'd like to study medicine in Lithuania. Is that possible, and what does it cost?" },
+      { role: "ai", text: "Hello 😊 Yes — Lithuania is our most requested destination for medicine: internationally recognised universities at a reasonable cost. The exact cost depends on the university; an advisor sends you a free estimate within 24 hours. Your name and a number?" },
+      { role: "user", text: "Yassine, 06 12 34 56 78" },
+      { role: "ai", text: "Thank you Yassine ✅ Noted: medicine in Lithuania. An advisor will call you within 24 hours on 06 12 34 56 78. Good night!" },
     ],
-    toast: {
-      title: "🌙 New enquiry caught while you were closed",
-      body: "Karim · 07700 900123 · Bathroom quote, Tuesday 10:00",
-      time: "21:41",
-    },
-    caption: "Sunday, 9:40pm. An instant answer, a booking made — without you looking up from dinner.",
   },
 };
 
-function scriptFor(niche: string | undefined, lang: Lang): Script {
-  if (niche === "study-abroad") return STUDY_ABROAD[lang];
-  return GENERIC[lang];
-}
+/* ── everyone else ───────────────────────────────────────────────────────── */
 
-const UI = {
-  fr: { replay: "Rejouer", yourSite: "votre site", typing: "écrit…", label: "Démonstration" },
-  en: { replay: "Replay", yourSite: "your website", typing: "typing…", label: "Demo" },
+const GENERIC_EXAMPLE: Example = {
+  name: "Atelier Renov",
+  domain: "atelier-renov.ma",
+  clock: "21:40",
+  lead: {
+    name: "Karim",
+    phone: "06 12 34 56 78",
+    want: { fr: "Devis salle de bain, mardi 10h", en: "Bathroom quote, Tuesday 10:00" },
+  },
 };
+
+const GENERIC: Record<VisitorLang, VisitorScript> = {
+  fr: {
+    online: "En ligne · répond instantanément",
+    placeholder: "Écrivez votre message…",
+    turns: [
+      { role: "ai", text: "Bienvenue chez Atelier Renov 👋 Comment puis-je vous aider ?" },
+      { role: "user", text: "Bonsoir, vous faites des devis pour une rénovation de salle de bain ?" },
+      { role: "ai", text: "Bonsoir ! Oui — un devis gratuit après une courte visite. Je peux vous proposer mardi 10h ou jeudi 14h. Votre nom et un numéro pour confirmer ?" },
+      { role: "user", text: "Karim, 06 12 34 56 78 — mardi 10h" },
+      { role: "ai", text: "Parfait Karim ✅ Mardi 10h est réservé. L'équipe vous confirme par SMS demain matin. Bonne soirée !" },
+    ],
+  },
+  ar: {
+    online: "متصل · يجيب فوراً",
+    placeholder: "اكتب رسالتك…",
+    turns: [
+      { role: "ai", text: "مرحباً بك في Atelier Renov 👋 كيف يمكنني مساعدتك؟" },
+      { role: "user", text: "السلام عليكم، واش كتديرو تسعيرة لتجديد حمام؟" },
+      { role: "ai", text: "وعليكم السلام! نعم — تسعيرة مجانية بعد زيارة قصيرة. عندي الثلاثاء 10:00 أو الخميس 14:00. ممكن اسمك ورقم للتأكيد؟" },
+      { role: "user", text: "كريم، 06 12 34 56 78 — الثلاثاء 10:00" },
+      { role: "ai", text: "ممتاز كريم ✅ الثلاثاء 10:00 محجوز. الفريق سيؤكد لك برسالة غداً صباحاً. ليلة سعيدة!" },
+    ],
+  },
+  en: {
+    online: "Online · replies instantly",
+    placeholder: "Type a message…",
+    turns: [
+      { role: "ai", text: "Welcome to Atelier Renov 👋 How can I help?" },
+      { role: "user", text: "Hi, do you quote for a full bathroom renovation?" },
+      { role: "ai", text: "We do — a free quote after a short visit. I can offer Tuesday 10:00 or Thursday 14:00. Your name and a number to confirm?" },
+      { role: "user", text: "Karim, 06 12 34 56 78 — Tuesday 10:00" },
+      { role: "ai", text: "Perfect, Karim ✅ Tuesday 10:00 is booked. The team will confirm by text tomorrow morning. Have a good evening!" },
+    ],
+  },
+};
+
+/* ── what the OWNER reads: the alert, the caption, the chrome ───────────── */
+
+const OWNER = {
+  fr: {
+    example: "Exemple",
+    tabsHint: "Changez de langue — c'est la même conversation :",
+    toastTitle: "🌙 Nouvelle demande captée pendant la fermeture",
+    toastTime: (c: string) => c,
+    caption: "Un visiteur écrit la nuit, dans sa langue. Réponse en trois secondes, coordonnées prises, et votre téléphone sonne — pendant que vous dormiez.",
+    footnote: "Chez vous, l'assistant porte le nom, les couleurs et les informations de votre entreprise. Ceci est un exemple.",
+    replay: "Rejouer",
+    typing: "écrit…",
+    langs: { ar: "العربية", fr: "Français", en: "English" },
+  },
+  en: {
+    example: "Example",
+    tabsHint: "Switch language — it is the same conversation:",
+    toastTitle: "🌙 New enquiry caught while you were closed",
+    toastTime: (c: string) => c,
+    caption: "A visitor writes at night, in their own language. Answered in three seconds, details taken, and your phone rings — while you were asleep.",
+    footnote: "On your site the assistant carries your business name, your colours and your information. This is an example.",
+    replay: "Replay",
+    typing: "typing…",
+    langs: { ar: "العربية", fr: "Français", en: "English" },
+  },
+} as const;
+
+/** One minute past the last message — the alert arrives after the chat ends. */
+function plusOneMinute(clock: string): string {
+  const [h, m] = clock.split(":").map(Number);
+  const t = (h * 60 + m + 1) % (24 * 60);
+  return `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`;
+}
 
 type Msg = { role: "ai" | "user"; text: string };
 
 export default function AssistantDemo({
   lang = "en",
   niche,
-  siteLabel = "",
+  languages,
   accent = "#36671E",
 }: {
-  lang?: Lang;
+  /** The OWNER's language — the page is written to convince them. */
+  lang?: OwnerLang;
   niche?: string;
-  /** Shown in the frame's title bar so the buyer sees THEIR site running it. */
-  siteLabel?: string;
+  /** Which languages this assistant speaks, from the client's brief. */
+  languages?: VisitorLang[];
+  /** The client's brand colour, so the widget looks like theirs. */
   accent?: string;
 }) {
-  const script = scriptFor(niche, lang);
-  const ui = UI[lang];
+  const study = niche === "study-abroad";
+  const scripts = study ? STUDY : GENERIC;
+  const example = study ? STUDY_EXAMPLE : GENERIC_EXAMPLE;
+  const O = OWNER[lang];
   const reduced = useReducedMotion();
 
+  // The tabs: the languages actually sold, in a stable order, and always
+  // including the owner's own so the page opens in something they can read.
+  const order: VisitorLang[] = ["fr", "ar", "en"];
+  const offered = (languages?.length ? languages : (["ar", "fr", "en"] as VisitorLang[]))
+    .filter((l): l is VisitorLang => l === "ar" || l === "fr" || l === "en");
+  const tabs = order.filter((l) => offered.includes(l));
+  const opening: VisitorLang = tabs.includes(lang) ? lang : (tabs[0] ?? "fr");
+
+  const [tab, setTab] = useState<VisitorLang>(opening);
   const [messages, setMessages] = useState<Msg[]>([]);
   const [typing, setTyping] = useState(false);
   const [draft, setDraft] = useState("");
@@ -181,12 +237,15 @@ export default function AssistantDemo({
   const frameRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
+  const script = scripts[tab];
+  const rtl = RTL.includes(tab);
+
   // Start when it comes into view; the page is long and a film nobody sees
   // is a film that finished before they scrolled to it.
   useEffect(() => {
     const node = frameRef.current;
     if (!node || typeof IntersectionObserver === "undefined") { setVisible(true); return; }
-    const io = new IntersectionObserver(([e]) => setVisible(e.isIntersecting), { threshold: 0.35 });
+    const io = new IntersectionObserver(([e]) => setVisible(e.isIntersecting), { threshold: 0.3 });
     io.observe(node);
     return () => io.disconnect();
   }, []);
@@ -195,9 +254,10 @@ export default function AssistantDemo({
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, typing, draft]);
 
-  // The film. One timer chain per run; leaving the viewport or hitting
-  // Replay tears it down and starts clean, so timers never stack. Under
-  // reduced motion nothing runs: the finished state is derived at render.
+  // The film. One timer chain per run; leaving the viewport, switching
+  // language or hitting Replay tears it down and starts clean, so timers
+  // never stack. Under reduced motion nothing runs — the finished state is
+  // derived at render instead.
   useEffect(() => {
     if (!visible || reduced) return;
     let cancelled = false;
@@ -210,64 +270,110 @@ export default function AssistantDemo({
       if (cancelled) return;
       setMessages([]); setToast(false); setCaption(false); setTyping(false); setDraft("");
       await wait(400);
-      for (const step of script.steps) {
+      for (const turn of script.turns) {
         if (cancelled) return;
-        if (step.kind === "ai") {
+        if (turn.role === "ai") {
           setTyping(true);
-          await wait(Math.min(2200, 700 + step.text.length * 12));
+          await wait(Math.min(2200, 700 + turn.text.length * 11));
           if (cancelled) return;
           setTyping(false);
-          setMessages((m) => [...m, { role: "ai", text: step.text }]);
-        } else if (step.kind === "user") {
+          setMessages((m) => [...m, turn]);
+        } else {
           // Typed into the box, character by character, then sent.
-          for (let i = 1; i <= step.text.length; i++) {
+          for (let i = 1; i <= turn.text.length; i++) {
             if (cancelled) return;
-            setDraft(step.text.slice(0, i));
-            await wait(step.text.length > 40 ? 28 : 45);
+            setDraft(turn.text.slice(0, i));
+            await wait(turn.text.length > 40 ? 26 : 42);
           }
-          await wait(350);
+          await wait(340);
           if (cancelled) return;
           setDraft("");
-          setMessages((m) => [...m, { role: "user", text: step.text }]);
-        } else if (step.kind === "toast") {
-          setToast(true);
-        } else if (step.kind === "caption") {
-          setCaption(true);
+          setMessages((m) => [...m, turn]);
         }
-        await wait(step.after);
+        await wait(turn.role === "ai" ? 1500 : 1300);
       }
+      if (cancelled) return;
+      setToast(true);
+      await wait(900);
+      if (cancelled) return;
+      setCaption(true);
+      await wait(7000);
       if (!cancelled) setRun((r) => r + 1); // loop
     }
     play();
     return () => { cancelled = true; timers.forEach(clearTimeout); };
   }, [visible, run, reduced, script]);
 
-  const dir = script.rtl ? "rtl" : "ltr";
-  const site = siteLabel.trim() || ui.yourSite;
-
   // prefers-reduced-motion: the whole conversation, the notification and the
   // caption at once — the same information without the film.
-  const finished: Msg[] = script.steps
-    .filter((s): s is Extract<Step, { kind: "ai" | "user" }> => s.kind === "ai" || s.kind === "user")
-    .map((s) => ({ role: s.kind, text: s.text }));
-  const shownMessages = reduced ? finished : messages;
+  const shownMessages = reduced ? script.turns : messages;
   const shownToast = reduced || toast;
   const shownCaption = reduced || caption;
   const shownTyping = !reduced && typing;
   const shownDraft = reduced ? "" : draft;
+  const dir = rtl ? "rtl" : "ltr";
+
+  /** Wipe the screen NOW, then let the effect start the film again.
+   *
+   * The clear used to live inside the effect, one tick later. For that tick
+   * the previous language's bubbles sat under the newly-selected tab: you
+   * tapped العربية and read French for half a second, which on the one
+   * screen that has to look competent reads as a broken switch. A click
+   * handler is exactly where a synchronous reset belongs. */
+  function restart(next?: VisitorLang) {
+    setMessages([]);
+    setToast(false);
+    setCaption(false);
+    setTyping(false);
+    setDraft("");
+    if (next && next !== tab) setTab(next);
+    setRun((r) => r + 1);
+  }
 
   return (
-    <div className="w-full max-w-[420px] mx-auto">
-      {/* The frame: a dark "screen" holding the client's page with the
-          assistant open, so the eye reads it as a window into their site. */}
+    <div className="w-full max-w-[430px] mx-auto">
+      {/* The tabs. They are the product's main claim, so they sit above the
+          frame where they are read before the conversation starts. */}
+      {tabs.length > 1 ? (
+        <div className="mb-3">
+          <p className="text-[11.5px] text-[#8A8A80] mb-1.5">{O.tabsHint}</p>
+          <div className="flex items-center gap-1 p-1 rounded-xl bg-[#F0EFEA]" role="tablist" data-testid="demo-langs">
+            {tabs.map((l) => (
+              <button
+                key={l}
+                type="button"
+                role="tab"
+                aria-selected={tab === l}
+                onClick={() => { if (l !== tab) restart(l); }}
+                data-lang={l}
+                className={`flex-1 h-8 rounded-lg text-[13px] font-bold transition ${
+                  tab === l ? "bg-white text-[#18181B] shadow-sm" : "text-[#71717A] hover:text-[#18181B]"
+                }`}
+              >
+                {O.langs[l]}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {/* The frame: a dark "screen" holding an EXAMPLE business's page with
+          the assistant open. The badge and the other business's domain are
+          what stop the buyer reading invented leads as their own. */}
       <div
         ref={frameRef}
         data-testid="assistant-demo"
         className="relative rounded-[22px] bg-[#111713] p-3 shadow-[0_24px_60px_rgba(17,23,19,0.35)] ring-1 ring-white/10"
       >
-        <div className="flex items-center justify-between px-2 pb-2.5 text-[11px] font-semibold text-white/55">
-          <span className="truncate" data-testid="demo-site">{site}</span>
-          <span className="tabular-nums">{script.clock}</span>
+        <div className="flex items-center justify-between gap-2 px-2 pb-2.5 text-[11px] font-semibold text-white/55">
+          <span className="flex items-center gap-2 min-w-0">
+            <span className="shrink-0 rounded-md bg-white/15 px-1.5 py-0.5 text-[9.5px] font-black uppercase tracking-[0.12em] text-white/80"
+                  data-testid="demo-badge">
+              {O.example}
+            </span>
+            <span className="truncate" data-testid="demo-site">{example.domain}</span>
+          </span>
+          <span className="tabular-nums shrink-0">{example.clock}</span>
         </div>
 
         <div className="rounded-2xl overflow-hidden bg-[#FAFAF7] border border-black/10">
@@ -277,7 +383,7 @@ export default function AssistantDemo({
               <Bot className="w-4 h-4 text-white" />
             </div>
             <div className="min-w-0">
-              <p className="text-white text-[13.5px] font-bold leading-none truncate">{site}</p>
+              <p className="text-white text-[13.5px] font-bold leading-none truncate">{example.name}</p>
               <p className="text-white/85 text-[11px] mt-1 flex items-center gap-1.5" dir={dir}>
                 <span className="w-1.5 h-1.5 rounded-full bg-[#BEF264] animate-pulse" /> {script.online}
               </p>
@@ -285,10 +391,11 @@ export default function AssistantDemo({
           </div>
 
           {/* Conversation */}
-          <div ref={listRef} dir={dir} data-testid="demo-conversation" className="h-[300px] overflow-y-auto px-3.5 py-3.5 space-y-2.5" lang={script.visitorLang}>
+          <div ref={listRef} dir={dir} lang={tab} data-testid="demo-conversation"
+               className="h-[300px] overflow-y-auto px-3.5 py-3.5 space-y-2.5">
             {shownMessages.map((m, i) => (
               <div
-                key={`${run}-${i}`}
+                key={`${tab}-${run}-${i}`}
                 className={`max-w-[84%] px-3.5 py-2.5 text-[14px] leading-[1.5] rounded-2xl animate-[fadeUp_.25s_ease] ${
                   m.role === "user"
                     ? "ms-auto text-white rounded-ee-md"
@@ -304,7 +411,7 @@ export default function AssistantDemo({
                 {[0, 1, 2].map((d) => (
                   <span key={d} className="w-1.5 h-1.5 rounded-full bg-[#A1A1AA]" style={{ animation: `bounce 1.2s ${d * 0.15}s infinite ease-in-out` }} />
                 ))}
-                <span className="sr-only">{ui.typing}</span>
+                <span className="sr-only">{O.typing}</span>
               </div>
             ) : null}
           </div>
@@ -319,49 +426,56 @@ export default function AssistantDemo({
               )}
             </div>
             <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: accent }}>
-              <Send className={`w-4 h-4 text-white ${script.rtl ? "-scale-x-100" : ""}`} />
+              <Send className={`w-4 h-4 text-white ${rtl ? "-scale-x-100" : ""}`} />
             </div>
           </div>
         </div>
 
         {/* The owner's phone. It slides in over the frame so the eye lands on
-            it: the enquiry has left the website and reached a person. */}
+            it: the enquiry has left the website and reached a person. Always
+            in the OWNER's language — it is his phone, not the visitor's. */}
         <div
           aria-live="polite"
           data-testid="demo-toast"
           className={`absolute left-3 right-3 top-9 transition-all duration-500 ${shownToast ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-3 pointer-events-none"}`}
         >
-          <div className="mx-auto max-w-[360px] rounded-2xl bg-white/95 backdrop-blur border border-black/10 shadow-[0_12px_40px_rgba(0,0,0,0.28)] px-4 py-3 flex items-start gap-3">
+          <div className="mx-auto max-w-[380px] rounded-2xl bg-white/95 backdrop-blur border border-black/10 shadow-[0_12px_40px_rgba(0,0,0,0.28)] px-4 py-3 flex items-start gap-3" dir={lang === "fr" ? "ltr" : "ltr"}>
             <div className="w-9 h-9 rounded-xl shrink-0 flex items-center justify-center text-white" style={{ background: accent }}>
-              <Bot className="w-4.5 h-4.5" />
+              <Bot className="w-4 h-4" />
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-baseline justify-between gap-2">
-                <p className="text-[12.5px] font-bold text-[#18181B] truncate">{script.toast.title}</p>
-                <span className="text-[11px] text-[#71717A] tabular-nums shrink-0">{script.toast.time}</span>
+                <p className="text-[12.5px] font-bold text-[#18181B] truncate">{O.toastTitle}</p>
+                <span className="text-[11px] text-[#71717A] tabular-nums shrink-0">{O.toastTime(plusOneMinute(example.clock))}</span>
               </div>
-              <p className="text-[12.5px] text-[#3F3F46] leading-snug mt-0.5">{script.toast.body}</p>
+              <p className="text-[12.5px] text-[#3F3F46] leading-snug mt-0.5">
+                {example.lead.name} · {example.lead.phone} · {example.lead.want[lang]}
+              </p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* What just happened, in the owner's words */}
-      <div className="mt-4 min-h-[64px] flex items-start justify-between gap-3">
-        <p className={`text-[14px] leading-relaxed text-[#3F3F46] transition-opacity duration-500 ${shownCaption ? "opacity-100" : "opacity-0"}`}>
-          <span className="block text-[10px] font-black uppercase tracking-[0.18em] text-[#8A8A80] mb-1">{ui.label}</span>
-          {script.caption}
+      {/* What just happened, in the owner's words — then the one line that
+          says why the example is not his own business. */}
+      <div className="mt-4 flex items-start justify-between gap-3">
+        <p className={`text-[14px] leading-relaxed text-[#3F3F46] transition-opacity duration-500 ${shownCaption ? "opacity-100" : "opacity-0"}`}
+           data-testid="demo-caption">
+          {O.caption}
         </p>
         {!reduced ? (
           <button
             type="button"
-            onClick={() => setRun((r) => r + 1)}
-            className="shrink-0 inline-flex items-center gap-1.5 text-[12px] font-semibold text-[#71717A] hover:text-[#18181B] transition-colors mt-4"
+            onClick={() => restart()}
+            className="shrink-0 inline-flex items-center gap-1.5 text-[12px] font-semibold text-[#71717A] hover:text-[#18181B] transition-colors mt-0.5"
           >
-            <RotateCcw className="w-3.5 h-3.5" /> {ui.replay}
+            <RotateCcw className="w-3.5 h-3.5" /> {O.replay}
           </button>
         ) : null}
       </div>
+      <p className="mt-2.5 text-[12.5px] leading-relaxed text-[#8A8A80]" data-testid="demo-footnote">
+        {O.footnote}
+      </p>
 
       <style jsx global>{`
         @keyframes bounce { 0%, 60%, 100% { transform: translateY(0); opacity: .5 } 30% { transform: translateY(-4px); opacity: 1 } }

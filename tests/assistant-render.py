@@ -1,10 +1,19 @@
 """The assistant, end to end in a real browser against the dev server.
 
-What the API says is not what the buyer sees. This drives the pay page with
-its film, the self-serve page where a typed domain flows into the demo, the
-widget as a client's visitor meets it (RTL Arabic, the fallback form when
-the model is down), the CORS refusals, and the 404 that keeps an
+What the API says is not what the buyer sees. This drives the pay page's
+demo, the widget as a client's visitor meets it (RTL Arabic, the fallback
+form when the model is down), the CORS refusals, and the 404 that keeps an
 assistant-only brief from becoming a fake website.
+
+THE DEMO'S CONTRACT, asserted here because it is a judgement the buyer makes
+in two seconds and cannot be un-made:
+  - it says EXEMPLE and names an obviously-other business, so an invented
+    lead with an invented phone number can never read as the buyer's own
+    traffic (it used to show the client's real domain above exactly that);
+  - it opens in the language the BUYER reads, not the visitor's;
+  - the language tabs replay the same conversation, which is the multilingual
+    promise demonstrated rather than claimed;
+  - the owner's phone alert stays in the owner's language on every tab.
 
 Run with the dev server up:
   C:/Users/Elamr/AppData/Local/Programs/Python/Python313/python.exe tests/assistant-render.py
@@ -55,66 +64,122 @@ ck("  and leaks nothing private", "hostingEmail" not in j and "email" not in j a
 ck("  with CORS open", h.get("access-control-allow-origin") == "*")
 
 s, h, _ = http("OPTIONS", "/api/chat", headers={"Origin": "https://excellence-agency.org", "Access-Control-Request-Method": "POST"})
-ck("preflight is answered 204 for any origin", s == 204 and h.get("access-control-allow-origin") == "*", f"{s} {h.get('Access-Control-Allow-Origin')}")
+ck("preflight is answered 204 for any origin", s == 204 and h.get("access-control-allow-origin") == "*", str(s))
 
 msg = {"messages": [{"role": "user", "content": "hello"}], "sessionId": "t-1", "siteSlug": "demo-study-abroad"}
 s, h, j = http("POST", "/api/chat", msg, {"Origin": "https://evil.example"})
 ck("a foreign site may not use the assistant", s == 403 and "access-control-allow-origin" not in h, f"{s} {j}")
 s, h, j = http("POST", "/api/chat", msg, {"Origin": "http://localhost:3000"})
-ck("an allowed origin gets a reply with CORS echoed", s == 200 and h.get("access-control-allow-origin") == "http://localhost:3000", f"{s} {h.get('Access-Control-Allow-Origin')}")
+ck("an allowed origin gets a reply with CORS echoed", s == 200 and h.get("access-control-allow-origin") == "http://localhost:3000", str(s))
 ck("  (locally: the no-backend fallback, not an error)", isinstance(j, dict) and j.get("fallback") is True, str(j)[:100])
 s, h, j = http("POST", "/api/chat", {**msg, "siteSlug": "excellenceagency"}, {"Origin": "https://excellence-agency.org"})
 ck("an unpaid assistant refuses to answer, with CORS so the widget can read the refusal",
-   s == 403 and h.get("access-control-allow-origin") == "https://excellence-agency.org", f"{s} {h.get('Access-Control-Allow-Origin')}")
+   s == 403 and h.get("access-control-allow-origin") == "https://excellence-agency.org", str(s))
 s, h, j = http("POST", "/api/chat", {"messages": [], "siteSlug": "demo-study-abroad"})
 ck("an empty conversation is a 400", s == 400)
 
 s, h, j = http("GET", "/sites/excellenceagency")
 ck("no website is rendered for an assistant-only brief", s == 404, str(s))
 
+
+def first_bubble(pg):
+    return pg.locator('[data-testid="demo-conversation"] > div').first.inner_text()
+
+
+def wait_bubbles(pg, n=2, timeout=40000):
+    pg.wait_for_function(
+        'n => document.querySelectorAll(\'[data-testid="demo-conversation"] > div\').length >= n',
+        arg=n, timeout=timeout)
+
+
 with sync_playwright() as p:
     b = p.chromium.launch()
 
-    # ── 1. The pay page for a known client: the film in the client's colour ─
-    ctx = b.new_context(viewport={"width": 1280, "height": 900}, device_scale_factor=1)
+    # ── 1. The pay page for a known French client ─────────────────────────
+    ctx = b.new_context(viewport={"width": 1280, "height": 1000}, device_scale_factor=1)
     pg = ctx.new_page()
     errs = []
     pg.on("pageerror", lambda e: errs.append(str(e)))
     pg.on("console", lambda m: errs.append(m.text) if m.type == "error" else None)
     pg.goto(f"{BASE}/hosting?plan=chatbot&ref=excellenceagency", wait_until="load", timeout=90000)
     pg.wait_for_selector('[data-testid="assistant-demo"]', timeout=60000)
-    ck("pay page: the demo frame is on the page", True)
-    ck("pay page: the frame names the client's site", "excellence-agency.org" in pg.locator('[data-testid="demo-site"]').inner_text())
+
+    # IT IS AN EXAMPLE AND IT SAYS SO.
+    badge = pg.locator('[data-testid="demo-badge"]').inner_text().strip().lower()
+    ck("pay page: the frame carries an EXEMPLE badge, in the owner's language", badge == "exemple", badge)
+    site = pg.locator('[data-testid="demo-site"]').inner_text().strip()
+    ck("pay page: the frame names another business, never the client's own",
+       site == "atlas-etudes.ma" and "excellence" not in site.lower(), site)
+    page_text = pg.locator("body").inner_text()
+    ck("pay page: the client's own domain never appears beside the invented lead",
+       "excellence-agency.org" not in pg.locator('[data-testid="assistant-demo"]').inner_text())
+    ck("pay page: a footnote says the real one carries their name and colours",
+       "votre entreprise" in pg.locator('[data-testid="demo-footnote"]').inner_text().lower(),
+       pg.locator('[data-testid="demo-footnote"]').inner_text()[:70])
+
+    # IT OPENS IN THE LANGUAGE THE BUYER READS.
     conv = pg.locator('[data-testid="demo-conversation"]')
-    ck("pay page: a study-abroad visitor writes right-to-left", conv.get_attribute("dir") == "rtl")
-    pg.wait_for_function('document.querySelectorAll(\'[data-testid="demo-conversation"] > div\').length >= 2', timeout=30000)
-    first = conv.locator("> div").first.inner_text()
-    ck("pay page: the assistant greets in Arabic", "مرحباً" in first, first[:40])
-    pg.wait_for_function('getComputedStyle(document.querySelector(\'[data-testid="demo-toast"]\')).opacity === "1"', timeout=40000)
-    toast = pg.locator('[data-testid="demo-toast"]').inner_text()
-    ck("pay page: the owner's phone lights up, in the owner's French", "Nouvelle demande" in toast and "Yassine" in toast, toast[:60])
+    ck("pay page: three language tabs, matching the brief", pg.locator('[data-testid="demo-langs"] button').count() == 3,
+       str(pg.locator('[data-testid="demo-langs"] button').count()))
+    ck("pay page: it opens on Français for a French client",
+       pg.locator('[data-testid="demo-langs"] button[aria-selected="true"]').get_attribute("data-lang") == "fr",
+       str(pg.locator('[data-testid="demo-langs"] button[aria-selected="true"]').get_attribute("data-lang")))
+    ck("pay page: so the conversation reads left-to-right", conv.get_attribute("dir") == "ltr")
+    wait_bubbles(pg)
+    fr_first = first_bubble(pg)
+    ck("pay page: and the first thing he reads is French", "Bienvenue" in fr_first, fr_first[:44])
+
+    # The alert is HIS phone, so it is in HIS language on every tab.
+    pg.wait_for_function('getComputedStyle(document.querySelector(\'[data-testid="demo-toast"]\')).opacity === "1"', timeout=60000)
+    toast_fr = pg.locator('[data-testid="demo-toast"]').inner_text()
+    ck("pay page: his phone lights up in French, with an example number",
+       "Nouvelle demande" in toast_fr and "06 12 34 56 78" in toast_fr, toast_fr.replace("\n", " · ")[:80])
+    ck("pay page: the caption is French too", "visiteur" in pg.locator('[data-testid="demo-caption"]').inner_text().lower())
+    pg.screenshot(path=os.path.join(OUT, "pay-fr.png"), full_page=True)
+
+    # THE TABS REPLAY THE SAME CONVERSATION — the multilingual promise.
+    pg.click('[data-testid="demo-langs"] button[data-lang="ar"]')
+    pg.wait_for_function('document.querySelector(\'[data-testid="demo-conversation"]\').getAttribute("dir") === "rtl"', timeout=10000)
+    ck("pay page: tapping العربية flips the conversation right-to-left", True)
+    wait_bubbles(pg)
+    ar_first = first_bubble(pg)
+    ck("pay page: and the same conversation happens in Arabic", "مرحباً" in ar_first, ar_first[:40])
+    pg.wait_for_function('getComputedStyle(document.querySelector(\'[data-testid="demo-toast"]\')).opacity === "1"', timeout=60000)
+    ck("pay page: his alert is STILL French on the Arabic tab",
+       "Nouvelle demande" in pg.locator('[data-testid="demo-toast"]').inner_text())
+    pg.screenshot(path=os.path.join(OUT, "pay-ar.png"), full_page=True)
+
     head_bg = pg.evaluate('getComputedStyle(document.querySelector(\'[data-testid="assistant-demo"] .rounded-2xl > div\')).backgroundColor')
     ck("pay page: the widget wears the client's navy, not the house green", head_bg == "rgb(22, 37, 92)", head_bg)
-    ck("pay page: the price card still sells at $120/yr", "$120" in pg.locator("body").inner_text())
+    ck("pay page: the price card still sells at $120/yr", "$120" in page_text)
     ck("pay page: no console errors", not errs, "; ".join(errs[:2]))
-    pg.screenshot(path=os.path.join(OUT, "pay-excellence.png"), full_page=True)
     ctx.close()
 
-    # ── 2. The self-serve page: what they type becomes the demo's site ────
-    ctx = b.new_context(viewport={"width": 1280, "height": 900})
+    # ── 2. A stranger: English, generic example, still obviously an example ─
+    ctx = b.new_context(viewport={"width": 1280, "height": 1000})
     pg = ctx.new_page()
+    serrs = []
+    pg.on("pageerror", lambda e: serrs.append(str(e)))
     pg.goto(f"{BASE}/hosting?plan=chatbot", wait_until="load", timeout=90000)
     pg.wait_for_selector('[data-testid="assistant-demo"]', timeout=60000)
-    ck("self-serve: the demo starts on 'your website'", pg.locator('[data-testid="demo-site"]').inner_text().strip() == "your website",
+    ck("stranger: the badge reads Example", pg.locator('[data-testid="demo-badge"]').inner_text().strip().lower() == "example")
+    ck("stranger: a generic example business, not a study-abroad one",
+       pg.locator('[data-testid="demo-site"]').inner_text().strip() == "atelier-renov.ma",
        pg.locator('[data-testid="demo-site"]').inner_text())
-    ck("self-serve: the visitor writes left-to-right in English", pg.locator('[data-testid="demo-conversation"]').get_attribute("dir") == "ltr")
-    pg.fill('input[placeholder="yourdomain.com"]', "https://clinique-atlas.ma/contact")
-    pg.wait_for_timeout(200)
-    ck("self-serve: typing a domain puts it on the demo", pg.locator('[data-testid="demo-site"]').inner_text().strip() == "clinique-atlas.ma",
+    ck("stranger: it opens on English", pg.locator('[data-testid="demo-langs"] button[aria-selected="true"]').get_attribute("data-lang") == "en")
+    wait_bubbles(pg)
+    ck("stranger: and greets in English", "Welcome" in first_bubble(pg), first_bubble(pg)[:40])
+    # The typed-domain link into the frame was REMOVED: the buyer's own domain
+    # must never sit above an invented lead. Typing must not change the frame.
+    pg.fill('input[placeholder="yourdomain.com"]', "clinique-atlas.ma")
+    pg.wait_for_timeout(400)
+    ck("stranger: typing their domain does NOT put it on the example frame",
+       pg.locator('[data-testid="demo-site"]').inner_text().strip() == "atelier-renov.ma",
        pg.locator('[data-testid="demo-site"]').inner_text())
-    ck("self-serve: pay is disabled until they identify themselves", pg.locator("button:has-text('Enter your website')").count() == 1)
+    ck("stranger: pay is disabled until they identify themselves", pg.locator("button:has-text('Enter your website')").count() == 1)
     pg.fill('input[type="email"]', "owner@clinique-atlas.ma")
-    ck("self-serve: then the pay button is live", pg.locator("button:has-text('Pay $120')").count() == 1)
+    ck("stranger: then the pay button is live", pg.locator("button:has-text('Pay $120')").count() == 1)
+    ck("stranger: no console errors", not serrs, "; ".join(serrs[:2]))
     ctx.close()
 
     # ── 3. The widget, as a visitor meets it (Arabic) ─────────────────────
@@ -143,10 +208,10 @@ with sync_playwright() as p:
     ck("widget: the fallback form sends and confirms", "✓" in pg.locator(".sva-note").inner_text())
     ck("widget: no page errors on the host page", not werrs, "; ".join(werrs[:2]))
     pg.screenshot(path=os.path.join(OUT, "widget-ar.png"))
-    # Language follows the page: flip <html lang> live.
     pg.evaluate('document.documentElement.setAttribute("lang", "fr")')
     pg.wait_for_timeout(300)
-    ck("widget: follows a live language switch on the page", pg.locator(".sva-panel").get_attribute("dir") == "ltr" and "Écrivez" in pg.locator(".sva-input textarea").get_attribute("placeholder"))
+    ck("widget: follows a live language switch on the page",
+       pg.locator(".sva-panel").get_attribute("dir") == "ltr" and "Écrivez" in pg.locator(".sva-input textarea").get_attribute("placeholder"))
     ctx.close()
 
     # ── 4. The widget draws NOTHING for an unpaid slug ────────────────────
@@ -166,13 +231,15 @@ with sync_playwright() as p:
     ck("thanks (self-serve): says two steps remain, never 'nothing to install'",
        "Two short steps" in pg.locator("body").inner_text() and "Nothing to install" not in pg.locator("body").inner_text())
 
-    # ── 6. Phone width: no sideways scroll on the pay page ────────────────
+    # ── 6. Phone width: no sideways scroll, tabs still reachable ──────────
     pg.goto(f"{BASE}/hosting?plan=chatbot&ref=excellenceagency&lang=fr", wait_until="load", timeout=90000)
     pg.wait_for_selector('[data-testid="assistant-demo"]', timeout=60000)
     sw = pg.evaluate("document.documentElement.scrollWidth")
     ck("pay page at 430px: no sideways scroll", sw <= 431, str(sw))
+    ck("pay page at 430px: the language tabs are still on screen",
+       pg.locator('[data-testid="demo-langs"]').bounding_box()["width"] <= 430)
     pg.wait_for_timeout(9000)
-    pg.screenshot(path=os.path.join(OUT, "pay-excellence-mobile.png"), full_page=True)
+    pg.screenshot(path=os.path.join(OUT, "pay-mobile.png"), full_page=True)
     ctx.close()
     b.close()
 

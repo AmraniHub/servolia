@@ -1,18 +1,17 @@
-"use client";
-
-import { useState } from "react";
 import AssistantDemo from "./AssistantDemo";
 import ProductCheckout from "./ProductCheckout";
 
 /**
  * The AI-assistant pay page's body: the film on one side, the price on the
- * other, sharing one piece of state — the website the buyer types in.
+ * other.
  *
- * That link is the point of the component. A visitor who arrives with no
- * ref sees "your website" in the demo's title bar; the moment they type
- * "clinique-atlas.ma" into the checkout, the demo is running on
- * clinique-atlas.ma. The product stops being generic at the exact moment
- * they start to imagine owning it.
+ * It used to share state — the website typed into the checkout appeared in
+ * the demo's title bar, so the product "ran on their site" before they paid.
+ * That was removed 2026-09-17: putting the buyer's real domain above an
+ * invented lead with an invented phone number made the example read as their
+ * own traffic, and a buyer who doubts one number doubts the product. The
+ * demo now names an obviously-other business and says so on the frame. No
+ * shared state, so this is a plain server component.
  */
 export default function AssistantOffer({
   planKey,
@@ -25,6 +24,7 @@ export default function AssistantOffer({
   defaultBilling,
   lang,
   niche,
+  languages,
   accent,
 }: {
   planKey: string;
@@ -37,15 +37,14 @@ export default function AssistantOffer({
   defaultBilling?: "annual" | "monthly";
   lang?: "en" | "fr";
   niche?: string;
+  /** The languages this client's assistant speaks — the demo's tabs. */
+  languages?: ("ar" | "fr" | "en")[];
   accent?: string;
 }) {
-  const [typedSite, setTypedSite] = useState("");
-  const shown = siteLabel || typedSite.trim().replace(/^https?:\/\//, "").replace(/\/.*$/, "");
-
   return (
     <div className="max-w-5xl mx-auto grid gap-10 lg:gap-14 lg:grid-cols-[minmax(0,1fr)_420px] items-start">
       <div className="order-1">
-        <AssistantDemo lang={lang} niche={niche} siteLabel={shown} accent={accent} />
+        <AssistantDemo lang={lang} niche={niche} languages={languages} accent={accent} />
       </div>
       <div className="order-2 w-full">
         <ProductCheckout
@@ -58,7 +57,6 @@ export default function AssistantOffer({
           maskedEmail={maskedEmail}
           defaultBilling={defaultBilling}
           lang={lang}
-          onSiteChange={setTypedSite}
         />
       </div>
     </div>

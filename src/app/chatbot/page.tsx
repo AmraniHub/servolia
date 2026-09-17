@@ -39,6 +39,7 @@ export default async function ChatbotPage({
       defaultBilling={billing === "monthly" ? "monthly" : "annual"}
       lang={langFor(ref, lang)}
       niche={client?.niche}
+      languages={brief?.languages}
       accent={brief?.accent}
     />
   );
