@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import ClientProductPage from "@/components/ClientProductPage";
 import PlanChooser, { type Tier, type Feature } from "@/components/PlanChooser";
-import { CLIENT_PRODUCTS, productCopy, resolveHostingPlan, isAddOn } from "@/lib/hosting";
+import { CLIENT_PRODUCTS, HOSTING_TIERS, productCopy, resolveHostingPlan, isAddOn } from "@/lib/hosting";
+import { hasAssistantSubscription } from "@/lib/assistantAccess";
 import { siteLabelFor, langFor, clientRefFor, maskEmail } from "@/lib/clientRefs";
 import { ASSISTANT_SITES } from "@/lib/assistantSites";
 import { probeBrand } from "@/lib/brandProbe";
@@ -156,6 +157,16 @@ export default async function HostingPage({
 
     if (live) {
       const fr = l === "fr";
+      /* SERVOLIA RECOMMENDS ITS OWN PRODUCT, ITSELF. A hosting client's
+       * active page is the one Servolia page they revisit, so the company —
+       * not their developer — offers the assistant here, exactly as any real
+       * host upsells its own add-ons. Only to a client on a hosting TIER,
+       * and only until they own it: recommending what someone already pays
+       * for reads as a company that does not know its own customers. */
+      const recommendAssistant =
+        HOSTING_TIERS.includes(String(live.plan ?? "").toLowerCase()) &&
+        !(await hasAssistantSubscription(client.email));
+      const assistant = CLIENT_PRODUCTS.chatbot;
       const livePlan = resolveHostingPlan(live.plan) ?? CLIENT_PRODUCTS.hosting;
       const liveCopy = productCopy(livePlan, l);
       const period: "monthly" | "annual" = live.billing_period === "annual" ? "annual" : "monthly";
@@ -206,6 +217,34 @@ export default async function HostingPage({
                 </p>
                 <AlreadyActive refCode={ref} maskedEmail={maskEmail(client.email)} lang={l} />
               </div>
+
+              {recommendAssistant ? (
+                <div className="mt-5 rounded-2xl border border-[#CBE3BC] bg-[#F7FBF4] p-6">
+                  <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#36671E] mb-2">
+                    {fr ? "Recommandé par Servolia" : "Recommended by Servolia"}
+                  </p>
+                  <p className="text-[15px] font-bold text-[#18181B] mb-1.5">
+                    {fr ? "L'assistant IA, à vos couleurs" : "The AI assistant, in your colours"}
+                  </p>
+                  <p className="text-[14px] text-[#3F3F46] leading-relaxed mb-4">
+                    {fr
+                      ? `Conçu pour ${client.label || "votre site"} : il porte votre nom et vos couleurs, il est formé sur vos pages et vos consignes, et chaque demande arrive sur votre téléphone — en arabe, en français et en anglais, jour et nuit. Nous l'installons pour vous.`
+                      : `Built for ${client.label || "your site"}: it carries your name and your colours, it is trained on your pages and your instructions, and every enquiry reaches your phone — in Arabic, French and English, day and night. We install it for you.`}
+                  </p>
+                  <Link
+                    href={`/hosting?plan=chatbot&ref=${encodeURIComponent(ref)}`}
+                    className="inline-flex items-center justify-center h-11 px-6 rounded-xl bg-gradient-to-r from-[#36671E] to-[#295115] text-[#FAFAF7] text-[14px] font-bold hover:opacity-90 transition"
+                  >
+                    {fr ? "Le voir sur votre site →" : "See it on your site →"}
+                  </Link>
+                  <p className="mt-3 text-[12.5px] text-[#71717A]">
+                    {fr
+                      ? `${assistant.monthlyUsd} $/mois ou ${assistant.annualUsd} $/an · résiliable à tout moment`
+                      : `$${assistant.monthlyUsd}/month or $${assistant.annualUsd}/year · cancel anytime`}
+                  </p>
+                </div>
+              ) : null}
+
               <p className="mt-8 text-center text-[13px] text-[#8A8A80]">
                 <Link href="/hosting/terms" className="text-[#36671E] hover:underline">
                   {fr ? "Le détail de la prestation" : "What you get, in full"}

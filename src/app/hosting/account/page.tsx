@@ -2,9 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Check, ExternalLink, FileText, ArrowUpRight } from "lucide-react";
 import { readUpgradeToken, subscriptionContext } from "@/lib/upgrade";
-import { productCopy, CLIENT_PRODUCTS, usd } from "@/lib/hosting";
+import { productCopy, CLIENT_PRODUCTS, HOSTING_TIERS, usd } from "@/lib/hosting";
 import { supabaseAdmin } from "@/lib/supabase";
 import { readDomainRecord, type DomainRecord } from "@/lib/domainSales";
+import { clientRefFor } from "@/lib/clientRefs";
+import { hasAssistantSubscription } from "@/lib/assistantAccess";
 
 export const metadata: Metadata = {
   title: "Your service",
@@ -187,6 +189,15 @@ export default async function AccountPage({
   const fr = ctx.lang === "fr";
   const copy = productCopy(ctx.plan, ctx.lang);
 
+  /* Servolia's own recommendation, on the page the client owns. Hosting-tier
+   * clients only, and only until the assistant is theirs — the same rule as
+   * the /hosting?ref= page, kept by the same helper. */
+  const recommendAssistant =
+    !isDemo &&
+    HOSTING_TIERS.includes(ctx.plan.key) &&
+    Boolean(ctx.ref) &&
+    !(await hasAssistantSubscription(clientRefFor(ctx.ref)?.email));
+
   const money = (n: number) => (fr ? `${usd(n)} $` : `$${usd(n)}`);
   // Cents to dollars WITHOUT rounding: a 5.39 plan must not read "$5".
   const amount = ctx.amountCents !== null ? ctx.amountCents / 100 : null;
@@ -281,6 +292,32 @@ export default async function AccountPage({
             </span>
           </span>
           <ArrowUpRight className="w-4 h-4 text-[#36671E] shrink-0" />
+        </Link>
+      ) : null}
+
+      {recommendAssistant ? (
+        <Link
+          href={`/hosting?plan=chatbot&ref=${encodeURIComponent(ctx.ref)}`}
+          className="block rounded-2xl border border-[#CBE3BC] bg-[#F7FBF4] px-6 py-5 mb-5 hover:bg-[#F3F9EE] transition"
+        >
+          <span className="block text-[10px] font-black uppercase tracking-[0.16em] text-[#36671E] mb-1.5">
+            {fr ? "Recommandé par Servolia" : "Recommended by Servolia"}
+          </span>
+          <span className="flex items-center justify-between gap-3">
+            <span>
+              <span className="block font-bold text-[#18181B]">
+                {fr ? "Ajouter l'assistant IA" : "Add the AI assistant"}
+                {" · "}
+                {fr ? `${CLIENT_PRODUCTS.chatbot.monthlyUsd} $/mois` : `$${CLIENT_PRODUCTS.chatbot.monthlyUsd}/month`}
+              </span>
+              <span className="block text-[13px] text-[#71717A] mt-0.5">
+                {fr
+                  ? "À vos couleurs, formé sur vos pages et vos consignes — chaque demande sur votre téléphone, 24h/24."
+                  : "In your colours, trained on your pages and your instructions — every enquiry on your phone, 24/7."}
+              </span>
+            </span>
+            <ArrowUpRight className="w-4 h-4 text-[#36671E] shrink-0" />
+          </span>
         </Link>
       ) : null}
 

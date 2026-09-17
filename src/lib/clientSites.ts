@@ -201,6 +201,10 @@ export interface ClientSiteConfig {
   greetings?: Partial<Record<"ar" | "fr" | "en", string>>;
   quickReplies?: Partial<Record<"ar" | "fr" | "en", string[]>>;
   widgetPosition?: "left" | "right";
+  /** The owner's free-text standing orders — "always offer WhatsApp",
+   *  "mention free parking", "never quote implant prices". Written on
+   *  /hosting/assistant, spoken by buildReceptionistPrompt. */
+  ownerInstructions?: string;
   /** IANA zone for the after-hours badge on lead alerts. Default Europe/Paris. */
   timezone?: string;
 

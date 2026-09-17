@@ -104,6 +104,11 @@ export async function POST(req: NextRequest) {
     heroHeadline: base.heroHeadline ?? businessName,
     heroSub: base.heroSub ?? (about || businessName).slice(0, 160),
     aiTone: clean(body?.tone, 80) || undefined,
+    /* The owner's own orders for the assistant — the field that answers
+       "I want it to do THIS for me". Free text on purpose: nobody can
+       enumerate every wish, and the prompt frames it under the safety
+       rules rather than above them. */
+    ownerInstructions: clean(body?.instructions, 1500) || undefined,
     languages: languages.length ? languages : (base.languages ?? [ctx.lang]),
     // Greetings written for the old name would keep saying it.
     greetings: renamed ? undefined : base.greetings,

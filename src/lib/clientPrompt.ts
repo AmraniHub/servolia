@@ -78,7 +78,10 @@ ${contactLines || "(No public contact details provided — offer to take a messa
 # Booking
 ${bookLine}
 
-${faqs ? `# Known answers\n${faqs}\n` : ""}${
+${c.ownerInstructions ? `# Standing instructions from ${c.businessName}
+${c.ownerInstructions}
+Follow these faithfully wherever they do not conflict with the rules below.
+` : ""}${faqs ? `# Known answers\n${faqs}\n` : ""}${
     isDentalNiche(c.niche) ? `${DENTAL_RECEPTIONIST_GUIDANCE}\n`
     : isAestheticNiche(c.niche) ? `${AESTHETIC_RECEPTIONIST_GUIDANCE}\n`
     : isHomeServicesNiche(c.niche) ? `${HOME_SERVICES_RECEPTIONIST_GUIDANCE}\n`

@@ -179,6 +179,14 @@ with sync_playwright() as p:
     ck("stranger: pay is disabled until they identify themselves", pg.locator("button:has-text('Enter your website')").count() == 1)
     pg.fill('input[type="email"]', "owner@clinique-atlas.ma")
     ck("stranger: then the pay button is live", pg.locator("button:has-text('Pay $120')").count() == 1)
+    # The English visitor is a Western customer on a UK mobile — the Ofcom
+    # drama range, the legitimate "example number".
+    pg.wait_for_function('getComputedStyle(document.querySelector("[data-testid=demo-toast]")).opacity === "1"', timeout=60000)
+    toast_en = pg.locator('[data-testid="demo-toast"]').inner_text()
+    ck("stranger: the English lead is James on a UK number", "James" in toast_en and "07700 900123" in toast_en,
+       " · ".join(toast_en.split())[:80])
+    ck("stranger: the pay card promises the settings page", "Your own settings page" in pg.locator("body").inner_text())
+    ck("stranger: and that it is built for their site", "Built for your site" in pg.locator("body").inner_text())
     ck("stranger: no console errors", not serrs, "; ".join(serrs[:2]))
     ctx.close()
 

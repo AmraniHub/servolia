@@ -54,6 +54,30 @@ export function isAssistantPlan(plan: string | null | undefined): boolean {
 }
 
 /**
+ * Does this billing address already pay for an assistant?
+ *
+ * The question behind Servolia's own upsell: a hosting client's active page
+ * and service page recommend the assistant UNTIL this says yes, and must
+ * fall silent the moment it does — recommending a thing someone already
+ * pays for reads as a company that does not know its own customers.
+ */
+export async function hasAssistantSubscription(email?: string | null): Promise<boolean> {
+  const e = (email ?? "").trim().toLowerCase();
+  if (!e) return false;
+  const db = supabaseAdmin();
+  if (!db) return false;
+  const { data } = await db
+    .from("hosting_clients")
+    .select("id")
+    .eq("plan", "chatbot")
+    .ilike("email", e)
+    .in("status", ["active", "past_due"])
+    .limit(1)
+    .maybeSingle();
+  return Boolean(data);
+}
+
+/**
  * How many conversations a slug had in the last N days. Lives here rather
  * than in the admin page because reading the clock inside a component's
  * render is impure, and the lint rule that says so is right.

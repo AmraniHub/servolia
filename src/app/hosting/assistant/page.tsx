@@ -69,6 +69,7 @@ export default async function AssistantPage({
         languages: config?.languages ?? [ctx.lang],
         services: (config?.services ?? []).map((s) => `${s.name}${s.description ? ` — ${s.description}` : ""}`).join("\n"),
         faqs: (config?.faqs ?? []).map((f) => `${f.q}\n${f.a}`).join("\n\n"),
+        instructions: config?.ownerInstructions ?? "",
         tone: config?.aiTone ?? "",
         accent: config?.accent ?? "#36671E",
         position,

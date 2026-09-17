@@ -47,6 +47,15 @@ type Turn = { role: "ai" | "user"; text: string };
 interface VisitorScript {
   online: string;
   placeholder: string;
+  /**
+   * Who this conversation captures. PER LANGUAGE, because the name and the
+   * number are what make a bubble feel real: the English visitor is James
+   * on a UK mobile (07700 900123 — Ofcom's reserved drama range, the
+   * legitimate "example number"), the French and Arabic visitors carry an
+   * 06 in the documentation style. One lead across three languages read
+   * as a template; three leads read as three customers.
+   */
+  lead: { name: string; phone: string };
   turns: Turn[];
 }
 
@@ -55,8 +64,8 @@ interface Example {
   name: string;
   domain: string;
   clock: string;
-  /** The lead the conversation captures, as the owner's phone shows it. */
-  lead: { name: string; phone: string; want: Record<OwnerLang, string> };
+  /** What the captured lead wanted, as the OWNER's phone words it. */
+  want: Record<OwnerLang, string>;
 }
 
 const RTL: VisitorLang[] = ["ar"];
@@ -70,17 +79,14 @@ const STUDY_EXAMPLE: Example = {
   name: "Atlas Études",
   domain: "atlas-etudes.ma",
   clock: "02:14",
-  lead: {
-    name: "Yassine",
-    phone: "06 12 34 56 78",
-    want: { fr: "Médecine, Lituanie", en: "Medicine, Lithuania" },
-  },
+  want: { fr: "Médecine, Lituanie", en: "Medicine, Lithuania" },
 };
 
 const STUDY: Record<VisitorLang, VisitorScript> = {
   fr: {
     online: "En ligne · répond instantanément",
     placeholder: "Écrivez votre message…",
+    lead: { name: "Yassine", phone: "06 12 34 56 78" },
     turns: [
       { role: "ai", text: "Bienvenue chez {NAME} 👋 Je réponds à vos questions sur les études à l'étranger. Comment puis-je vous aider ?" },
       { role: "user", text: "Bonsoir, je voudrais étudier la médecine en Lituanie. C'est possible ? Et quel budget ?" },
@@ -92,6 +98,7 @@ const STUDY: Record<VisitorLang, VisitorScript> = {
   ar: {
     online: "متصل · يجيب فوراً",
     placeholder: "اكتب رسالتك…",
+    lead: { name: "ياسين", phone: "06 12 34 56 78" },
     turns: [
       { role: "ai", text: "مرحباً بك في {NAME} 👋 أنا هنا لأجيب عن أسئلتك حول الدراسة في الخارج. كيف يمكنني مساعدتك؟" },
       { role: "user", text: "السلام عليكم، بغيت نقرا الطب فليتوانيا. واش ممكن؟ وشحال كيتكلف؟" },
@@ -103,12 +110,13 @@ const STUDY: Record<VisitorLang, VisitorScript> = {
   en: {
     online: "Online · replies instantly",
     placeholder: "Type a message…",
+    lead: { name: "Emma", phone: "07700 900123" },
     turns: [
       { role: "ai", text: "Welcome to {NAME} 👋 I'm here to answer your questions about studying abroad. How can I help?" },
       { role: "user", text: "Hi, I'd like to study medicine in Lithuania. Is that possible, and what does it cost?" },
       { role: "ai", text: "Hello 😊 Yes — Lithuania is our most requested destination for medicine: internationally recognised universities at a reasonable cost. The exact cost depends on the university; an advisor sends you a free estimate within 24 hours. Your name and a number?" },
-      { role: "user", text: "Yassine, 06 12 34 56 78" },
-      { role: "ai", text: "Thank you Yassine ✅ Noted: medicine in Lithuania. An advisor will call you within 24 hours on 06 12 34 56 78. Good night!" },
+      { role: "user", text: "Emma, 07700 900123" },
+      { role: "ai", text: "Thank you Emma ✅ Noted: medicine in Lithuania. An advisor will call you within 24 hours on 07700 900123. Good night!" },
     ],
   },
 };
@@ -119,17 +127,14 @@ const GENERIC_EXAMPLE: Example = {
   name: "Atelier Renov",
   domain: "atelier-renov.ma",
   clock: "21:40",
-  lead: {
-    name: "Karim",
-    phone: "06 12 34 56 78",
-    want: { fr: "Devis salle de bain, mardi 10h", en: "Bathroom quote, Tuesday 10:00" },
-  },
+  want: { fr: "Devis salle de bain, mardi 10h", en: "Bathroom quote, Tuesday 10:00" },
 };
 
 const GENERIC: Record<VisitorLang, VisitorScript> = {
   fr: {
     online: "En ligne · répond instantanément",
     placeholder: "Écrivez votre message…",
+    lead: { name: "Karim", phone: "06 12 34 56 78" },
     turns: [
       { role: "ai", text: "Bienvenue chez {NAME} 👋 Comment puis-je vous aider ?" },
       { role: "user", text: "Bonsoir, vous faites des devis pour une rénovation de salle de bain ?" },
@@ -141,6 +146,7 @@ const GENERIC: Record<VisitorLang, VisitorScript> = {
   ar: {
     online: "متصل · يجيب فوراً",
     placeholder: "اكتب رسالتك…",
+    lead: { name: "كريم", phone: "06 12 34 56 78" },
     turns: [
       { role: "ai", text: "مرحباً بك في {NAME} 👋 كيف يمكنني مساعدتك؟" },
       { role: "user", text: "السلام عليكم، واش كتديرو تسعيرة لتجديد حمام؟" },
@@ -152,12 +158,13 @@ const GENERIC: Record<VisitorLang, VisitorScript> = {
   en: {
     online: "Online · replies instantly",
     placeholder: "Type a message…",
+    lead: { name: "James", phone: "07700 900123" },
     turns: [
       { role: "ai", text: "Welcome to {NAME} 👋 How can I help?" },
       { role: "user", text: "Hi, do you quote for a full bathroom renovation?" },
       { role: "ai", text: "We do — a free quote after a short visit. I can offer Tuesday 10:00 or Thursday 14:00. Your name and a number to confirm?" },
-      { role: "user", text: "Karim, 06 12 34 56 78 — Tuesday 10:00" },
-      { role: "ai", text: "Perfect, Karim ✅ Tuesday 10:00 is booked. The team will confirm by text tomorrow morning. Have a good evening!" },
+      { role: "user", text: "James, 07700 900123 — Tuesday 10:00" },
+      { role: "ai", text: "Perfect, James ✅ Tuesday 10:00 is booked. The team will confirm by text tomorrow morning. Have a good evening!" },
     ],
   },
 };
@@ -168,16 +175,16 @@ const GENERIC: Record<VisitorLang, VisitorScript> = {
  * appointment fits a clinic, an agency and a workshop alike; a bathroom
  * quote on a dentist's demo would cost the sale in one line. */
 
-const NEUTRAL_LEAD = {
-  name: "Yassine",
-  phone: "06 12 34 56 78",
-  want: { fr: "Demande de rendez-vous, jeudi", en: "Appointment request, Thursday" } as Record<OwnerLang, string>,
+const NEUTRAL_WANT: Record<OwnerLang, string> = {
+  fr: "Demande de rendez-vous, jeudi",
+  en: "Appointment request, Thursday",
 };
 
 const NEUTRAL: Record<VisitorLang, VisitorScript> = {
   fr: {
     online: "En ligne · répond instantanément",
     placeholder: "Écrivez votre message…",
+    lead: { name: "Yassine", phone: "06 12 34 56 78" },
     turns: [
       { role: "ai", text: "Bienvenue chez {NAME} 👋 Comment puis-je vous aider ?" },
       { role: "user", text: "Bonjour, est-ce que vous prenez de nouveaux clients ? J'aimerais un rendez-vous cette semaine." },
@@ -189,6 +196,7 @@ const NEUTRAL: Record<VisitorLang, VisitorScript> = {
   ar: {
     online: "متصل · يجيب فوراً",
     placeholder: "اكتب رسالتك…",
+    lead: { name: "ياسين", phone: "06 12 34 56 78" },
     turns: [
       { role: "ai", text: "مرحباً بك في {NAME} 👋 كيف يمكنني مساعدتك؟" },
       { role: "user", text: "السلام عليكم، واش كتقبلو عملاء جدد؟ بغيت موعد هاد السيمانة." },
@@ -200,12 +208,13 @@ const NEUTRAL: Record<VisitorLang, VisitorScript> = {
   en: {
     online: "Online · replies instantly",
     placeholder: "Type a message…",
+    lead: { name: "James", phone: "07700 900123" },
     turns: [
       { role: "ai", text: "Welcome to {NAME} 👋 How can I help?" },
       { role: "user", text: "Hi, are you taking new clients? I'd like an appointment this week." },
       { role: "ai", text: "Hello 😊 Gladly. Tell me what you need and I'll suggest a slot — or someone from the team calls you back. Your name and a number?" },
-      { role: "user", text: "Yassine, 06 12 34 56 78 — Thursday if possible" },
-      { role: "ai", text: "Thank you Yassine ✅ Noted for Thursday. {NAME} will confirm the time shortly on 06 12 34 56 78. Have a good day!" },
+      { role: "user", text: "James, 07700 900123 — Thursday if possible" },
+      { role: "ai", text: "Thank you James ✅ Noted for Thursday. {NAME} will confirm the time shortly on 07700 900123. Have a good day!" },
     ],
   },
 };
@@ -277,7 +286,7 @@ export default function AssistantDemo({
         name: business.name,
         domain: business.domain,
         clock: study ? STUDY_EXAMPLE.clock : "21:40",
-        lead: study ? STUDY_EXAMPLE.lead : NEUTRAL_LEAD,
+        want: study ? STUDY_EXAMPLE.want : NEUTRAL_WANT,
       }
     : fixed;
   const O = OWNER[lang];
@@ -521,7 +530,7 @@ export default function AssistantDemo({
                 <span className="text-[11px] text-[#71717A] tabular-nums shrink-0">{O.toastTime(plusOneMinute(example.clock))}</span>
               </div>
               <p className="text-[12.5px] text-[#3F3F46] leading-snug mt-0.5">
-                {example.lead.name} · {example.lead.phone} · {example.lead.want[lang]}
+                {script.lead.name} · {script.lead.phone} · {example.want[lang]}
               </p>
             </div>
           </div>

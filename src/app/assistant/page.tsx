@@ -62,8 +62,13 @@ export default async function AssistantPage({
           </h1>
           <p className="text-[#52525B] leading-relaxed max-w-xl mx-auto">
             {fr
-              ? "Il répond à vos visiteurs dans leur langue — arabe, français, anglais — prend leurs coordonnées, et vous envoie chaque demande sur votre téléphone. Une ligne à ajouter à votre site ; nous l'installons pour vous."
-              : "It answers your visitors in their language — Arabic, French, English — takes their details, and sends every enquiry to your phone. One line added to your site; we install it for you."}
+              ? "Il répond à vos visiteurs dans leur langue — arabe, français, anglais — prend leurs coordonnées, et vous envoie chaque demande sur votre téléphone. Conçu pour votre site et formé sur lui ; nous l'installons pour vous."
+              : "It answers your visitors in their language — Arabic, French, English — takes their details, and sends every enquiry to your phone. Built for your site and trained on it; we install it for you."}
+          </p>
+          <p className="mt-3 text-[13.5px] text-[#71717A] leading-relaxed max-w-xl mx-auto">
+            {fr
+              ? "Et il reste le vôtre : depuis votre page de réglages, dites-lui quoi proposer, quoi éviter et comment répondre — vos consignes s'appliquent dès la conversation suivante."
+              : "And it stays yours: from your own settings page, tell it what to offer, what to avoid and how to answer — your instructions apply from the very next conversation."}
           </p>
         </div>
 

@@ -27,6 +27,8 @@ export interface BriefInitial {
   languages: ("ar" | "fr" | "en")[];
   services: string;
   faqs: string;
+  /** The owner's standing orders — the "make it do what I want" field. */
+  instructions: string;
   tone: string;
   accent: string;
   position: "left" | "right";
@@ -64,6 +66,9 @@ const T = {
     faqs: "Questions it should answer, with your answers",
     faqsHelp: "A question, then its answer on the next line. Leave an empty line between pairs.",
     faqsPh: "Do you take new patients?\nYes — first consultation within the week.\n\nDo you accept card payments?\nCard, cash and bank transfer.",
+    instructions: "Your instructions — what it should do, offer or avoid",
+    instructionsHelp: "Anything specific you want from it. It follows these in every conversation.",
+    instructionsPh: "Always offer WhatsApp for urgent requests.\nMention the free first consultation.\nNever give implant prices — take their number instead.",
     tone: "Tone",
     tones: [["", "Warm and professional"], ["friendly and upbeat", "Friendly and upbeat"], ["calm and precise", "Calm and precise"], ["direct and efficient", "Direct and efficient"]],
     accent: "Widget colour",
@@ -110,6 +115,9 @@ const T = {
     faqs: "Questions auxquelles il doit répondre, avec vos réponses",
     faqsHelp: "Une question, puis sa réponse à la ligne suivante. Une ligne vide entre chaque paire.",
     faqsPh: "Acceptez-vous de nouveaux patients ?\nOui — première consultation dans la semaine.\n\nAcceptez-vous la carte ?\nCarte, espèces et virement.",
+    instructions: "Vos consignes — ce qu'il doit faire, proposer ou éviter",
+    instructionsHelp: "Tout ce que vous attendez de lui, en particulier. Il les suit dans chaque conversation.",
+    instructionsPh: "Toujours proposer WhatsApp pour les demandes urgentes.\nMentionner la première consultation gratuite.\nNe jamais donner le prix des implants — prendre le numéro à la place.",
     tone: "Ton",
     tones: [["", "Chaleureux et professionnel"], ["friendly and upbeat", "Amical et enjoué"], ["calm and precise", "Calme et précis"], ["direct and efficient", "Direct et efficace"]],
     accent: "Couleur du widget",
@@ -291,6 +299,10 @@ export default function AssistantBriefForm({
         <label htmlFor="b-faqs" className={label}>{t.faqs}</label>
         <textarea id="b-faqs" value={f.faqs} onChange={(e) => set("faqs", e.target.value)} rows={8} placeholder={t.faqsPh} className={area} />
         <p className={help}>{t.faqsHelp}</p>
+
+        <label htmlFor="b-instructions" className={label}>{t.instructions}</label>
+        <textarea id="b-instructions" value={f.instructions} onChange={(e) => set("instructions", e.target.value)} rows={4} placeholder={t.instructionsPh} className={area} />
+        <p className={help}>{t.instructionsHelp}</p>
 
         <div className="grid sm:grid-cols-3 gap-x-4">
           <div>

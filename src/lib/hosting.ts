@@ -317,34 +317,46 @@ export const CLIENT_PRODUCTS: Record<string, ClientProduct> = {
     heading: "AI assistant",
     sentenceName: "AI assistant",
     blurb:
-      "Answers your customers day and night, in their language, so an enquiry at 2am is still an enquiry you win.",
+      "Built for your website and trained on it — it answers your customers day and night, in their language, so an enquiry at 2am is still an enquiry you win.",
     monthlyUsd: 12,
     annualUsd: 120,
+    /* SIX LINES, AND EACH ONE IS KEPT BY CODE. "Built for your site" is the
+       accent + name the widget pulls from the brief; "trained on" is the
+       brief built from their own pages; "your instructions" is the free-text
+       field on /hosting/assistant; the settings page is that page itself.
+       This list renders on the pay card, in the receipt and on the service
+       page, so a line nothing performs would be read three times. */
     includes: [
       "Replies instantly, 24 hours a day",
       "Answers in Arabic, French and English",
-      "Trained on your products and policies",
-      "Hands over to you when a human is needed",
-      "Kept updated as your catalogue changes",
+      "Built for your site — your name, your colours, your pages",
+      "Trained on your services, your policies and your instructions",
+      "Every enquiry sent to you, with a one-tap WhatsApp reply",
+      "Your own settings page — change what it says, anytime",
     ],
     description:
-      "An AI assistant on your site that answers customer questions around the " +
-      "clock and passes real enquiries to you.",
+      "An AI assistant built for your website — your name, your colours, " +
+      "trained on your services — answering customers around the clock and " +
+      "passing every enquiry to you. Refine what it says anytime from your " +
+      "own settings page.",
     fr: {
       heading: "Assistant IA",
       sentenceName: "assistant IA",
       blurb:
-        "Répond à vos clients jour et nuit, dans leur langue — une question à 2h du matin reste une vente que vous gagnez.",
+        "Conçu pour votre site et formé sur lui — il répond à vos clients jour et nuit, dans leur langue : une question à 2h du matin reste une vente que vous gagnez.",
       includes: [
         "Répond instantanément, 24h/24",
         "Répond en arabe, en français et en anglais",
-        "Formé sur vos produits et vos conditions",
-        "Vous passe le relais quand un humain est nécessaire",
-        "Mis à jour au fil de votre catalogue",
+        "Conçu pour votre site — votre nom, vos couleurs, vos pages",
+        "Formé sur vos services, vos conditions et vos consignes",
+        "Chaque demande vous parvient, avec réponse WhatsApp en un clic",
+        "Votre page de réglages — modifiez ses réponses à tout moment",
       ],
       description:
-        "Un assistant IA sur votre site qui répond aux questions de vos clients " +
-        "24h/24 et vous transmet les vraies demandes.",
+        "Un assistant IA conçu pour votre site — votre nom, vos couleurs, " +
+        "formé sur vos services — qui répond à vos clients 24h/24 et vous " +
+        "transmet chaque demande. Ajustez ses réponses à tout moment depuis " +
+        "votre page de réglages.",
     },
   },
 
