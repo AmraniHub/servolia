@@ -230,6 +230,8 @@ with sync_playwright() as p:
     # it always did.
     s, h, j = http("GET", "/api/assistant?site=excellenceagency&preview=1", headers={"Origin": "https://evil.example"})
     ck("preview: refused from a foreign origin", s == 200 and j.get("enabled") is False, str(j)[:60])
+    ck("  and the REFUSAL is no-store too — a cached refusal poisoned the showroom's URL on the first deploy",
+       "no-store" in h.get("cache-control", ""), h.get("cache-control"))
     s, h, j = http("GET", "/api/assistant?site=excellenceagency&preview=1", headers={"Referer": "https://excellence-agency.org/"})
     ck("preview: refused from the client's OWN site (unpaid there means unpaid)", s == 200 and j.get("enabled") is False, str(j)[:60])
     s, h, j = http("GET", "/api/assistant?site=excellenceagency", headers={"Referer": f"{BASE}/hosting/assistant/try"})
@@ -240,6 +242,15 @@ with sync_playwright() as p:
     ck("  never cached — a CDN must not hand it to the client's visitors", "no-store" in h.get("cache-control", ""), h.get("cache-control"))
     s, h, j = http("GET", "/api/assistant?site=demo-study-abroad&preview=1", headers={"Referer": f"{BASE}/x"})
     ck("preview: a demo is simply enabled, never flagged preview", j.get("enabled") is True and j.get("preview") is None)
+    # What a REAL browser sends from our own page: no Origin (same-origin GET),
+    # no Referer (the site's Referrer-Policy strips it), only Sec-Fetch-Site.
+    # The first production deploy refused exactly this request.
+    s, h, j = http("GET", "/api/assistant?site=excellenceagency&preview=1", headers={"Sec-Fetch-Site": "same-origin"})
+    ck("preview: GRANTED on Sec-Fetch-Site same-origin alone (the browser's own word)", j.get("enabled") is True and j.get("preview") is True, str(j)[:60])
+    s, h, j = http("GET", "/api/assistant?site=excellenceagency&preview=1", headers={"Sec-Fetch-Site": "cross-site"})
+    ck("preview: refused on cross-site with nothing else", j.get("enabled") is False, str(j)[:60])
+    s, h, j = http("GET", "/api/assistant?site=excellenceagency&preview=1")
+    ck("preview: refused with no headers at all", j.get("enabled") is False, str(j)[:60])
 
     msg = {"messages": [{"role": "user", "content": "hello"}], "sessionId": "t-preview", "siteSlug": "excellenceagency", "preview": True}
     s, h, j = http("POST", "/api/chat", msg, {"Origin": "https://evil.example"})

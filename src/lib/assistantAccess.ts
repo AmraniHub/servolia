@@ -93,12 +93,28 @@ function hostOf(url: string | null | undefined): string {
   try { return new URL(url).hostname.toLowerCase(); } catch { return ""; }
 }
 
-/** Is the page making this request one of ours? */
+/**
+ * Is the page making this request one of ours?
+ *
+ * Three signals, any one enough:
+ *   - `Sec-Fetch-Site: same-origin` — set by the browser itself on a fetch
+ *     from a page on this very origin, and a forbidden header no page script
+ *     can forge. THE ONE THAT WORKS IN PRODUCTION: the site's Referrer-Policy
+ *     strips the Referer from the widget's same-origin GET, and browsers send
+ *     no Origin on same-origin GETs, so the first deploy of the showroom
+ *     answered `enabled:false` to the very page it was built for while every
+ *     curl with a typed Referer passed. A client's website embedding the same
+ *     script sends `cross-site`, which is exactly what must be refused.
+ *   - an Origin or Referer on our hosts — POSTs carry Origin; older browsers
+ *     and the local dev server carry Referer.
+ *   - the host serving this request — a Vercel preview deployment trying
+ *     itself.
+ */
 export function previewOrigin(headers: { get(name: string): string | null }): boolean {
+  if ((headers.get("sec-fetch-site") ?? "").toLowerCase() === "same-origin") return true;
   const from = hostOf(headers.get("origin")) || hostOf(headers.get("referer"));
   if (!from) return false;
   if (OUR_HOSTS.has(from) || from.endsWith(".servolia.com")) return true;
-  // The host serving this request: a Vercel preview deployment trying itself.
   const self = (headers.get("x-forwarded-host") ?? headers.get("host") ?? "").split(":")[0].toLowerCase();
   return Boolean(self) && from === self;
 }

@@ -22,11 +22,19 @@ export const runtime = "nodejs";
  */
 export async function GET(req: NextRequest) {
   const slug = slugify(req.nextUrl.searchParams.get("site") ?? "");
+  const askedPreview = req.nextUrl.searchParams.get("preview") === "1";
   const headers = {
     ...corsHeaders("*"),
-    // Short enough that switching an assistant off is felt within minutes;
-    // long enough that a busy site does not hit the database per page view.
-    "Cache-Control": "public, max-age=120, s-maxage=300, stale-while-revalidate=600",
+    /* Short enough that switching an assistant off is felt within minutes;
+       long enough that a busy site does not hit the database per page view.
+       NEVER for a preview URL, in either direction: the answer there depends
+       on WHO asked (our page, or not), and the CDN keys on the URL. The first
+       production deploy proved it — one refused probe from a foreign origin
+       was cached for five minutes under the very URL the showroom fetches,
+       and every real browser after it was handed `enabled:false`. */
+    "Cache-Control": askedPreview
+      ? "private, no-store"
+      : "public, max-age=120, s-maxage=300, stale-while-revalidate=600",
   };
   const config = slug ? await getClientSite(slug) : undefined;
   if (!config) return NextResponse.json({ enabled: false }, { headers });
@@ -35,14 +43,9 @@ export async function GET(req: NextRequest) {
   }
 
   /* THE SHOWROOM. Unpaid, but asked for as a preview from one of our own
-     pages: draw it. Never cached — this answer must not be the one a CDN
-     hands to the client's website (a different URL, and no-store, so it
-     cannot be). See previewOrigin() for the rule. */
-  if (req.nextUrl.searchParams.get("preview") === "1" && previewable(config) && previewOrigin(req.headers)) {
-    return NextResponse.json(
-      { ...publicAssistantConfig(config), preview: true },
-      { headers: { ...corsHeaders("*"), "Cache-Control": "private, no-store" } },
-    );
+     pages: draw it. See previewOrigin() for the rule. */
+  if (askedPreview && previewable(config) && previewOrigin(req.headers)) {
+    return NextResponse.json({ ...publicAssistantConfig(config), preview: true }, { headers });
   }
   return NextResponse.json({ enabled: false }, { headers });
 }
