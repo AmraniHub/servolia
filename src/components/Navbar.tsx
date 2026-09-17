@@ -10,6 +10,9 @@ const links = [
   { label: "Case Studies", href: "/case-studies" },
   { label: "Pricing", href: "/pricing" },
   { label: "Hosting", href: "/hosting" },
+  // The self-serve demo: any visitor types their domain and sees the
+  // assistant as their own business — the menu's only "try it" link.
+  { label: "AI Assistant", href: "/assistant" },
   { label: "Insights", href: "/blog" },
   { label: "About", href: "/about" },
 ];
@@ -51,7 +54,7 @@ export default function Navbar({ heroDark = false }: { heroDark?: boolean }) {
           </Link>
 
           {/* Desktop links */}
-          <div className="hidden md:flex items-center gap-7">
+          <div className="hidden xl:flex items-center gap-7">
             {links.map((l) => (
               <Link
                 key={l.label}
@@ -66,7 +69,7 @@ export default function Navbar({ heroDark = false }: { heroDark?: boolean }) {
           </div>
 
           {/* Desktop CTA */}
-          <div className="hidden md:flex items-center gap-3">
+          <div className="hidden xl:flex items-center gap-3">
             <Link
               href="/fr"
               className={`text-xs font-bold transition-colors border rounded-lg px-2.5 py-1.5 ${
@@ -96,7 +99,7 @@ export default function Navbar({ heroDark = false }: { heroDark?: boolean }) {
 
           {/* Mobile toggle */}
           <button
-            className={`md:hidden p-2 transition-colors ${light ? "text-[#18181B]" : "text-[#FAFAF7]"}`}
+            className={`xl:hidden p-2 transition-colors ${light ? "text-[#18181B]" : "text-[#FAFAF7]"}`}
             onClick={() => setOpen(!open)}
             aria-label="Toggle menu"
           >
@@ -107,7 +110,7 @@ export default function Navbar({ heroDark = false }: { heroDark?: boolean }) {
 
       {/* Mobile menu */}
       {open && (
-        <div className="md:hidden bg-[#FAFAF7]/95 backdrop-blur-xl border-t border-[#E8E6E0] px-4 py-4 flex flex-col gap-3">
+        <div className="xl:hidden bg-[#FAFAF7]/95 backdrop-blur-xl border-t border-[#E8E6E0] px-4 py-4 flex flex-col gap-3">
           {links.map((l) => (
             <Link
               key={l.label}

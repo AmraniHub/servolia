@@ -119,7 +119,7 @@ export default function FrenchHome() {
             initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.65, delay: 0.25 }}
             className="text-[#ABDF90]/80 text-lg sm:text-xl max-w-2xl mx-auto mb-3 leading-relaxed"
           >
-            Chaque demande traitée en quelques secondes, jour et nuit, et le rendez-vous posé directement dans votre agenda. Servolia crée le site IA, le réceptionniste et le système de réservation qui s&apos;en chargent — pour <a href="/fr/dentistes" className="underline decoration-[#BEF264]/50 underline-offset-2 hover:decoration-[#BEF264]">cabinets dentaires</a>, <a href="/fr/esthetique" className="underline decoration-[#BEF264]/50 underline-offset-2 hover:decoration-[#BEF264]">cliniques esthétiques</a> et entreprises de services en Europe.
+            Chaque demande traitée en quelques secondes, jour et nuit, et le rendez-vous posé directement dans votre agenda. Servolia crée le site IA, le réceptionniste et le système de réservation qui s&apos;en chargent — pour <Link href="/fr/dentistes" className="underline decoration-[#BEF264]/50 underline-offset-2 hover:decoration-[#BEF264]">cabinets dentaires</Link>, <Link href="/fr/esthetique" className="underline decoration-[#BEF264]/50 underline-offset-2 hover:decoration-[#BEF264]">cliniques esthétiques</Link> et entreprises de services en Europe.
           </motion.p>
           <motion.p
             initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.35 }}
@@ -204,6 +204,14 @@ export default function FrenchHome() {
               <Link href="/fr/audit" className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl bg-[#36671E] text-[#FAFAF7] font-bold text-sm hover:bg-[#295115] transition-colors">
                 L&apos;installer sur votre site <ArrowRight className="w-4 h-4" />
               </Link>
+              {/* La deuxième porte : /assistant habille cette démo au nom de
+                  n'importe quel domaine tapé — « montrez-le sur MON site »
+                  coûte un clic, pas un formulaire d'audit. */}
+              <p className="mt-4 text-sm">
+                <Link href="/assistant?lang=fr" className="text-[#36671E] font-semibold hover:underline">
+                  Vous avez déjà un site ? Tapez votre domaine et voyez-le répondre au nom de votre entreprise →
+                </Link>
+              </p>
             </FadeUp>
             <FadeUp delay={0.15}><AIReceptionistDemo lang="fr" /></FadeUp>
           </div>

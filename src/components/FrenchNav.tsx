@@ -10,6 +10,7 @@ const links = [
   { label: "Cas clients", href: "/fr/cas-clients" },
   { label: "Tarifs", href: "/fr/tarifs" },
   { label: "Hébergement", href: "/hosting?lang=fr" },
+  { label: "Assistant IA", href: "/assistant?lang=fr" },
   { label: "À propos", href: "/fr/a-propos" },
 ];
 
@@ -51,7 +52,7 @@ export default function FrenchNav({ heroDark = false, enHref = "/" }: { heroDark
           </Link>
 
           {/* Desktop links */}
-          <div className="hidden md:flex items-center gap-6">
+          <div className="hidden xl:flex items-center gap-6">
             {links.map((l) => (
               <Link
                 key={l.label}
@@ -66,7 +67,7 @@ export default function FrenchNav({ heroDark = false, enHref = "/" }: { heroDark
           </div>
 
           {/* Desktop CTA */}
-          <div className="hidden md:flex items-center gap-3">
+          <div className="hidden xl:flex items-center gap-3">
             <Link
               href={enHref}
               className={`text-xs font-bold transition-colors border rounded-lg px-2.5 py-1.5 ${
@@ -104,7 +105,7 @@ export default function FrenchNav({ heroDark = false, enHref = "/" }: { heroDark
 
           {/* Mobile toggle */}
           <button
-            className={`md:hidden p-2 transition-colors ${light ? "text-[#18181B]" : "text-[#FAFAF7]"}`}
+            className={`xl:hidden p-2 transition-colors ${light ? "text-[#18181B]" : "text-[#FAFAF7]"}`}
             onClick={() => setOpen(!open)}
             aria-label="Ouvrir le menu"
           >
@@ -115,7 +116,7 @@ export default function FrenchNav({ heroDark = false, enHref = "/" }: { heroDark
 
       {/* Mobile menu */}
       {open && (
-        <div className="md:hidden bg-[#FAFAF7]/95 backdrop-blur-xl border-t border-[#E8E6E0] px-4 py-4 flex flex-col gap-3">
+        <div className="xl:hidden bg-[#FAFAF7]/95 backdrop-blur-xl border-t border-[#E8E6E0] px-4 py-4 flex flex-col gap-3">
           {links.map((l) => (
             <Link
               key={l.label}

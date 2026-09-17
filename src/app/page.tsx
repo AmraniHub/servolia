@@ -258,6 +258,14 @@ export default function HomePage() {
                 className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl bg-[#36671E] text-[#FAFAF7] font-bold text-sm hover:bg-[#295115] transition-colors">
                 Get this on your site <ArrowRight className="w-4 h-4" />
               </Link>
+              {/* The quiet second door: /assistant personalises this demo to
+                  any typed domain, so "show me on MY site" costs one click
+                  instead of an audit form. */}
+              <p className="mt-4 text-sm">
+                <Link href="/assistant" className="text-[#36671E] font-semibold hover:underline">
+                  Already have a website? Type your domain and watch it answer as your business →
+                </Link>
+              </p>
             </FadeUp>
 
             <FadeUp delay={0.15}>
