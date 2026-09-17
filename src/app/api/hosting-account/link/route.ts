@@ -17,9 +17,22 @@ export const runtime = "nodejs";
  * a stranger which businesses are clients.
  */
 export async function POST(req: NextRequest) {
+  /* `?ref=` as well as a JSON body, and a request naming nobody is a 400
+     rather than a quiet ok — see the same note in /api/assistant-invite.
+     A bash-quoted `-d '{"ref":"x"}'` pasted into cmd.exe reaches the server
+     as the literal `'{ref:x}'`, and answering ok to that told an operator
+     two emails had gone out when none had. */
   const body = await req.json().catch(() => ({}));
-  const ref = typeof body?.ref === "string" ? body.ref.trim().toLowerCase() : "";
+  const fromBody = typeof body?.ref === "string" ? body.ref : "";
+  const ref = (req.nextUrl.searchParams.get("ref") || fromBody).trim().toLowerCase();
   const same = NextResponse.json({ ok: true });
+
+  if (!ref) {
+    return NextResponse.json(
+      { ok: false, error: "no-ref", hint: "POST /api/hosting-account/link?ref=<client>" },
+      { status: 400 },
+    );
+  }
 
   const client = clientRefFor(ref);
   if (!client?.email) return same;
