@@ -7,7 +7,10 @@ import { resolveHostingPlan } from "@/lib/hosting";
 import HostingSetupForm from "@/components/admin/HostingSetupForm";
 import DomainActions from "@/components/admin/DomainActions";
 import { readDomainRecord } from "@/lib/domainSales";
-import { isAssistantPlan, conversationCount } from "@/lib/assistantAccess";
+import { isAssistantPlan, conversationCount, hasAssistantSubscription } from "@/lib/assistantAccess";
+import { ASSISTANT_SITES } from "@/lib/assistantSites";
+import { HOSTING_TIERS } from "@/lib/hosting";
+import AssistantInvite from "@/components/admin/AssistantInvite";
 import { assistantSlugFor } from "@/lib/assistant";
 import { assistantInstalled } from "@/lib/assistantInstall";
 import { getClientSite } from "@/lib/clientSites";
@@ -55,6 +58,27 @@ export default async function HostingClientPage({ params }: { params: Promise<{ 
       conversations: await conversationCount(slug),
     };
   }
+  /* THE INVITE, for a hosting-tier client whose assistant we have written a
+     brief for and who does not pay for one yet. `servolia-invited:` in the
+     row's notes is the record that it has already gone — the route writes it
+     only after Resend accepts. */
+  let invite: { refKey: string; business: string; email: string; brief: string; invitedAt: string | null } | null = null;
+  if (HOSTING_TIERS.includes(String(c.plan ?? "").toLowerCase()) && c.email) {
+    const refKey = refKeyForEmail(c.email);
+    const brief = refKey ? ASSISTANT_SITES[refKey] : undefined;
+    const paysForOne = await hasAssistantSubscription(c.email);
+    if (refKey && brief && !paysForOne) {
+      const line = String(c.notes ?? "").split("\n").find((l) => l.startsWith("servolia-invited:"));
+      invite = {
+        refKey,
+        business: brief.businessName,
+        email: c.email,
+        brief: `${brief.businessName} — ${brief.services.length} services, ${brief.faqs.length} Q&A, ${(brief.languages ?? [brief.language]).join("/")}`,
+        invitedAt: line ? line.slice("servolia-invited:".length).trim() : null,
+      };
+    }
+  }
+
   const period = c.billing_period === "annual" ? "yearly" : "monthly";
   const usd = (n: number) => `$${Number(n).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
 
@@ -130,6 +154,29 @@ export default async function HostingClientPage({ params }: { params: Promise<{ 
             hasOrder={Boolean(domainRec.orderId)}
             attached={domainRec.attached ?? null}
             vercelProject={c.vercel_project ?? null}
+          />
+        </div>
+      ) : null}
+
+      {/* A HOSTING client whose assistant is built but not yet offered. This
+          is the one place the invite can be sent from: the route is admin-only
+          (it emails a real client in Servolia's name), so there is no curl
+          command for it — and the address it would reach is printed before
+          the click that sends it. */}
+      {invite ? (
+        <div className="rounded-2xl border border-[#CBE3BC] bg-[#F7FBF4] p-6 mb-6">
+          <h2 className="text-base font-black text-[#18181B] mb-1">Their assistant is built — not yet offered</h2>
+          <p className="text-sm text-[#52525B] leading-relaxed">
+            {invite.brief} · showroom{" "}
+            <a href={`/hosting/assistant/try?site=${encodeURIComponent(invite.refKey)}`} target="_blank" rel="noreferrer" className="font-bold text-[#36671E] hover:underline">
+              open it
+            </a>
+          </p>
+          <AssistantInvite
+            refKey={invite.refKey}
+            business={invite.business}
+            email={invite.email}
+            invitedAt={invite.invitedAt}
           />
         </div>
       ) : null}
