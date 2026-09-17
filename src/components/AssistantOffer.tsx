@@ -26,6 +26,8 @@ export default function AssistantOffer({
   niche,
   languages,
   accent,
+  business,
+  initialSite,
 }: {
   planKey: string;
   monthlyUsd: number;
@@ -40,11 +42,15 @@ export default function AssistantOffer({
   /** The languages this client's assistant speaks — the demo's tabs. */
   languages?: ("ar" | "fr" | "en")[];
   accent?: string;
+  /** A probed prospect: the demo wears their name and domain. */
+  business?: { name: string; domain: string };
+  /** Pre-fills the checkout's site field for that same prospect. */
+  initialSite?: string;
 }) {
   return (
     <div className="max-w-5xl mx-auto grid gap-10 lg:gap-14 lg:grid-cols-[minmax(0,1fr)_420px] items-start">
       <div className="order-1">
-        <AssistantDemo lang={lang} niche={niche} languages={languages} accent={accent} />
+        <AssistantDemo lang={lang} niche={niche} languages={languages} accent={accent} business={business} />
       </div>
       <div className="order-2 w-full">
         <ProductCheckout
@@ -57,6 +63,7 @@ export default function AssistantOffer({
           maskedEmail={maskedEmail}
           defaultBilling={defaultBilling}
           lang={lang}
+          initialSite={initialSite}
         />
       </div>
     </div>

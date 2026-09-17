@@ -31,6 +31,8 @@ export default function ClientProductPage({
   niche,
   languages,
   accent,
+  business,
+  initialSite,
 }: {
   product: ClientProduct;
   refCode: string;
@@ -44,6 +46,10 @@ export default function ClientProductPage({
   languages?: ("ar" | "fr" | "en")[];
   /** The client's brand colour, so the demo looks like THEIR widget. */
   accent?: string;
+  /** A probed prospect (?site=): the demo wears their name and domain. */
+  business?: { name: string; domain: string };
+  /** Pre-fills the checkout's identify-yourself field for that prospect. */
+  initialSite?: string;
 }) {
   const copy = productCopy(product, lang);
   const fr = lang === "fr";
@@ -86,6 +92,8 @@ export default function ClientProductPage({
             niche={niche}
             languages={languages}
             accent={accent}
+            business={business}
+            initialSite={initialSite}
           />
         ) : (
           <ProductCheckout

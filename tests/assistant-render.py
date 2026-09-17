@@ -230,8 +230,72 @@ with sync_playwright() as p:
     pg.goto(f"{BASE}/hosting/thanks?product=chatbot&lang=en&brief=1&session_id=cs_test_x", wait_until="load", timeout=90000)
     ck("thanks (self-serve): says two steps remain, never 'nothing to install'",
        "Two short steps" in pg.locator("body").inner_text() and "Nothing to install" not in pg.locator("body").inner_text())
+    ctx.close()
 
-    # ── 6. Phone width: no sideways scroll, tabs still reachable ──────────
+    # ── 7. /assistant: Servolia's own page — any domain, their brand ──────
+    ctx = b.new_context(viewport={"width": 1280, "height": 1100})
+    pg = ctx.new_page()
+    aerrs = []
+    pg.on("pageerror", lambda e: aerrs.append(str(e)))
+    pg.goto(f"{BASE}/assistant?lang=fr", wait_until="load", timeout=90000)
+    pg.wait_for_selector('[data-testid="assistant-demo"]', timeout=60000)
+    ck("/assistant: opens on the fictitious example", pg.locator('[data-testid="demo-site"]').inner_text().strip() == "atelier-renov.ma")
+    ck("/assistant: with the Exemple badge", pg.locator('[data-testid="demo-badge"]').inner_text().strip().lower() == "exemple")
+
+    # An impossible domain is refused politely, not probed.
+    pg.fill("#try-domain", "nodots")
+    pg.click("button:has-text('Voir')")
+    pg.wait_for_function('document.querySelector("[data-testid=try-note]").textContent.includes("domaine")', timeout=15000)
+    ck("/assistant: a non-domain gets the gentle error", True)
+
+    # His real client's domain, probed over the network. The probe may fail
+    # on this 4G link — that is the designed fallback, and the name must
+    # still be theirs either way.
+    pg.fill("#try-domain", "excellence-agency.org")
+    pg.click("button:has-text('Voir')")
+    pg.wait_for_selector('[data-testid="try-showing"]', timeout=90000)
+    ck("/assistant: the page says whose example it now is",
+       "excellence-agency.org" in pg.locator('[data-testid="try-showing"]').inner_text())
+    ck("/assistant: the frame carries their domain", pg.locator('[data-testid="demo-site"]').inner_text().strip() == "excellence-agency.org")
+    widget_name = pg.locator('[data-testid="assistant-demo"] .rounded-2xl p').first.inner_text()
+    ck("/assistant: the widget is headed with their business name", widget_name == "Excellence Agency", widget_name)
+    # Waiting on child count catches the typing indicator; wait for the words.
+    pg.wait_for_function('document.querySelector("[data-testid=demo-conversation]").innerText.includes("Excellence Agency")', timeout=40000)
+    ck("/assistant: the assistant greets AS their business", True)
+    fell_back = "injoignable" in pg.locator('[data-testid="try-note"]').inner_text()
+    if not fell_back:
+        head_bg = pg.evaluate('getComputedStyle(document.querySelector("[data-testid=assistant-demo] .rounded-2xl > div")).backgroundColor')
+        ck("/assistant: probed live — it wears their navy", head_bg == "rgb(22, 37, 92)", head_bg)
+        ck("/assistant: and offers their three languages", pg.locator('[data-testid="demo-langs"] button').count() == 3)
+    else:
+        print("NOTE  probe fell back (site unreachable from here) — brand colour not asserted")
+    ck("/assistant: the badge never leaves", pg.locator('[data-testid="demo-badge"]').inner_text().strip().lower() == "exemple")
+    ck("/assistant: the footnote names their domain",
+       "excellence-agency.org" in pg.locator('[data-testid="demo-footnote"]').inner_text())
+    cta = pg.locator('[data-testid="try-cta"]').get_attribute("href") or ""
+    ck("/assistant: the CTA carries the domain into the pay page",
+       "plan=chatbot" in cta and "site=excellence-agency.org" in cta, cta)
+    ck("/assistant: no console errors", not aerrs, "; ".join(aerrs[:2]))
+    pg.screenshot(path=os.path.join(OUT, "assistant-page.png"), full_page=True)
+    ctx.close()
+
+    # ── 8. The pay page follows: ?site= dresses the demo AND the checkout ─
+    ctx = b.new_context(viewport={"width": 1280, "height": 1000})
+    pg = ctx.new_page()
+    pg.goto(f"{BASE}/hosting?plan=chatbot&site=excellence-agency.org&lang=fr", wait_until="load", timeout=120000)
+    pg.wait_for_selector('[data-testid="assistant-demo"]', timeout=60000)
+    ck("pay?site=: the frame carries the typed domain", pg.locator('[data-testid="demo-site"]').inner_text().strip() == "excellence-agency.org")
+    ck("pay?site=: the widget is headed with their name",
+       pg.locator('[data-testid="assistant-demo"] .rounded-2xl p').first.inner_text() == "Excellence Agency")
+    ck("pay?site=: the checkout site field is already filled",
+       pg.locator('input[placeholder="votredomaine.com"]').input_value() == "excellence-agency.org",
+       pg.locator('input[placeholder="votredomaine.com"]').input_value())
+    ck("pay?site=: still badged as an example", pg.locator('[data-testid="demo-badge"]').inner_text().strip().lower() == "exemple")
+    ctx.close()
+
+    # ── 9. Phone width: no sideways scroll, tabs still reachable ──────────
+    ctx = b.new_context(viewport={"width": 430, "height": 900})
+    pg = ctx.new_page()
     pg.goto(f"{BASE}/hosting?plan=chatbot&ref=excellenceagency&lang=fr", wait_until="load", timeout=90000)
     pg.wait_for_selector('[data-testid="assistant-demo"]', timeout=60000)
     sw = pg.evaluate("document.documentElement.scrollWidth")

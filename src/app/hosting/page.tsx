@@ -5,6 +5,7 @@ import PlanChooser, { type Tier, type Feature } from "@/components/PlanChooser";
 import { CLIENT_PRODUCTS, productCopy, resolveHostingPlan, isAddOn } from "@/lib/hosting";
 import { siteLabelFor, langFor, clientRefFor, maskEmail } from "@/lib/clientRefs";
 import { ASSISTANT_SITES } from "@/lib/assistantSites";
+import { probeBrand } from "@/lib/brandProbe";
 import { isDomainSalesConfigured } from "@/lib/domainSales";
 import { supabaseAdmin } from "@/lib/supabase";
 import { nextChargeDate } from "@/lib/hosting";
@@ -83,10 +84,10 @@ export async function generateMetadata({
 export default async function HostingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ ref?: string; billing?: string; lang?: string; plan?: string }>;
+  searchParams: Promise<{ ref?: string; billing?: string; lang?: string; plan?: string; site?: string }>;
 }) {
   // Next 16: searchParams is a promise and must be awaited.
-  const { ref = "", billing = "", lang = "", plan = "" } = await searchParams;
+  const { ref = "", billing = "", lang = "", plan = "", site = "" } = await searchParams;
   const l = langFor(ref, lang);
   const client = clientRefFor(ref);
 
@@ -103,11 +104,16 @@ export default async function HostingPage({
    * An add-on is by definition not a tier, so this cannot sell hosting twice. */
   const addOn = resolveHostingPlan(plan);
   if (addOn && isAddOn(addOn.key)) {
-    /* The assistant's demo runs in the client's own colour and tells the
-       client's own kind of story. Both come from the assistant brief kept
-       in code for a known client; a stranger gets the house green and the
-       generic script. */
+    /* The assistant's demo runs in the buyer's own colour and tells the
+       buyer's own kind of story. For a known client both come from the
+       brief kept in code. For anyone else, `?site=` — the link /assistant
+       hands out — makes the SAME thing true without a brief: the brand
+       probe reads their homepage for the name, the colour and the
+       languages, so the product is Servolia's for every domain, not a
+       favour hand-built for one. A stranger with neither gets the house
+       green and the fictitious example. */
     const brief = client ? ASSISTANT_SITES[ref.toLowerCase()] : undefined;
+    const probed = !client && addOn.key === "chatbot" && site ? await probeBrand(site) : null;
     return (
       <ClientProductPage
         product={addOn}
@@ -116,9 +122,11 @@ export default async function HostingPage({
         maskedEmail={client?.email ? maskEmail(client.email) : ""}
         defaultBilling={billing === "monthly" ? "monthly" : "annual"}
         lang={l}
-        niche={client?.niche}
-        languages={brief?.languages}
-        accent={brief?.accent}
+        niche={client?.niche ?? probed?.niche ?? undefined}
+        languages={brief?.languages ?? probed?.languages}
+        accent={brief?.accent ?? probed?.accent}
+        business={probed ? { name: probed.name, domain: probed.domain } : undefined}
+        initialSite={probed?.domain}
       />
     );
   }
@@ -308,6 +316,16 @@ export default async function HostingPage({
             : "These plans host and look after a website you already have. Need a new site, with an AI receptionist? "}
           <Link href={fr ? "/fr/tarifs" : "/pricing"} className="text-[#36671E] hover:underline">
             {fr ? "Voir les offres Servolia" : "See Servolia plans"}
+          </Link>
+        </p>
+
+        {/* The assistant is the add-on every hosted site can carry, and
+            /assistant is where any owner can see it wearing their own
+            brand before paying a cent. */}
+        <p className="mt-3 text-center text-[13px] text-[#8A8A80] max-w-xl mx-auto leading-relaxed">
+          {fr ? "Ou voyez l'assistant IA sur votre propre site : " : "Or see the AI assistant on your own website: "}
+          <Link href={fr ? "/assistant?lang=fr" : "/assistant"} className="text-[#36671E] hover:underline">
+            {fr ? "essayer avec votre domaine" : "try it with your domain"}
           </Link>
         </p>
       </div>

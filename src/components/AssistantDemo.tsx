@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useReducedMotion } from "framer-motion";
 import { Bot, RotateCcw, Send } from "lucide-react";
 
@@ -82,7 +82,7 @@ const STUDY: Record<VisitorLang, VisitorScript> = {
     online: "En ligne · répond instantanément",
     placeholder: "Écrivez votre message…",
     turns: [
-      { role: "ai", text: "Bienvenue chez Atlas Études 👋 Je réponds à vos questions sur les études à l'étranger. Comment puis-je vous aider ?" },
+      { role: "ai", text: "Bienvenue chez {NAME} 👋 Je réponds à vos questions sur les études à l'étranger. Comment puis-je vous aider ?" },
       { role: "user", text: "Bonsoir, je voudrais étudier la médecine en Lituanie. C'est possible ? Et quel budget ?" },
       { role: "ai", text: "Bonsoir 😊 Oui — la Lituanie est notre destination la plus demandée en médecine : des universités reconnues, à un coût raisonnable. Le budget exact dépend de l'université ; un conseiller vous envoie une estimation gratuite sous 24h. Votre nom et un numéro ?" },
       { role: "user", text: "Yassine, 06 12 34 56 78" },
@@ -93,7 +93,7 @@ const STUDY: Record<VisitorLang, VisitorScript> = {
     online: "متصل · يجيب فوراً",
     placeholder: "اكتب رسالتك…",
     turns: [
-      { role: "ai", text: "مرحباً بك في Atlas Études 👋 أنا هنا لأجيب عن أسئلتك حول الدراسة في الخارج. كيف يمكنني مساعدتك؟" },
+      { role: "ai", text: "مرحباً بك في {NAME} 👋 أنا هنا لأجيب عن أسئلتك حول الدراسة في الخارج. كيف يمكنني مساعدتك؟" },
       { role: "user", text: "السلام عليكم، بغيت نقرا الطب فليتوانيا. واش ممكن؟ وشحال كيتكلف؟" },
       { role: "ai", text: "وعليكم السلام 😊 نعم، ليتوانيا من أكثر الوجهات طلباً لدراسة الطب، بجامعات معترف بها دولياً وتكلفة معقولة. التكلفة الدقيقة تعتمد على الجامعة — مستشارنا يعطيك تقديراً مجانياً خلال 24 ساعة. ممكن اسمك ورقم هاتفك؟" },
       { role: "user", text: "ياسين، 06 12 34 56 78" },
@@ -104,7 +104,7 @@ const STUDY: Record<VisitorLang, VisitorScript> = {
     online: "Online · replies instantly",
     placeholder: "Type a message…",
     turns: [
-      { role: "ai", text: "Welcome to Atlas Études 👋 I'm here to answer your questions about studying abroad. How can I help?" },
+      { role: "ai", text: "Welcome to {NAME} 👋 I'm here to answer your questions about studying abroad. How can I help?" },
       { role: "user", text: "Hi, I'd like to study medicine in Lithuania. Is that possible, and what does it cost?" },
       { role: "ai", text: "Hello 😊 Yes — Lithuania is our most requested destination for medicine: internationally recognised universities at a reasonable cost. The exact cost depends on the university; an advisor sends you a free estimate within 24 hours. Your name and a number?" },
       { role: "user", text: "Yassine, 06 12 34 56 78" },
@@ -131,7 +131,7 @@ const GENERIC: Record<VisitorLang, VisitorScript> = {
     online: "En ligne · répond instantanément",
     placeholder: "Écrivez votre message…",
     turns: [
-      { role: "ai", text: "Bienvenue chez Atelier Renov 👋 Comment puis-je vous aider ?" },
+      { role: "ai", text: "Bienvenue chez {NAME} 👋 Comment puis-je vous aider ?" },
       { role: "user", text: "Bonsoir, vous faites des devis pour une rénovation de salle de bain ?" },
       { role: "ai", text: "Bonsoir ! Oui — un devis gratuit après une courte visite. Je peux vous proposer mardi 10h ou jeudi 14h. Votre nom et un numéro pour confirmer ?" },
       { role: "user", text: "Karim, 06 12 34 56 78 — mardi 10h" },
@@ -142,7 +142,7 @@ const GENERIC: Record<VisitorLang, VisitorScript> = {
     online: "متصل · يجيب فوراً",
     placeholder: "اكتب رسالتك…",
     turns: [
-      { role: "ai", text: "مرحباً بك في Atelier Renov 👋 كيف يمكنني مساعدتك؟" },
+      { role: "ai", text: "مرحباً بك في {NAME} 👋 كيف يمكنني مساعدتك؟" },
       { role: "user", text: "السلام عليكم، واش كتديرو تسعيرة لتجديد حمام؟" },
       { role: "ai", text: "وعليكم السلام! نعم — تسعيرة مجانية بعد زيارة قصيرة. عندي الثلاثاء 10:00 أو الخميس 14:00. ممكن اسمك ورقم للتأكيد؟" },
       { role: "user", text: "كريم، 06 12 34 56 78 — الثلاثاء 10:00" },
@@ -153,11 +153,59 @@ const GENERIC: Record<VisitorLang, VisitorScript> = {
     online: "Online · replies instantly",
     placeholder: "Type a message…",
     turns: [
-      { role: "ai", text: "Welcome to Atelier Renov 👋 How can I help?" },
+      { role: "ai", text: "Welcome to {NAME} 👋 How can I help?" },
       { role: "user", text: "Hi, do you quote for a full bathroom renovation?" },
       { role: "ai", text: "We do — a free quote after a short visit. I can offer Tuesday 10:00 or Thursday 14:00. Your name and a number to confirm?" },
       { role: "user", text: "Karim, 06 12 34 56 78 — Tuesday 10:00" },
       { role: "ai", text: "Perfect, Karim ✅ Tuesday 10:00 is booked. The team will confirm by text tomorrow morning. Have a good evening!" },
+    ],
+  },
+};
+
+/* ── any real business, unknown trade ────────────────────────────────────
+ * Shown when a prospect typed THEIR domain: the demo then wears their name,
+ * so the topic must fit whoever they are. A visitor asking for an
+ * appointment fits a clinic, an agency and a workshop alike; a bathroom
+ * quote on a dentist's demo would cost the sale in one line. */
+
+const NEUTRAL_LEAD = {
+  name: "Yassine",
+  phone: "06 12 34 56 78",
+  want: { fr: "Demande de rendez-vous, jeudi", en: "Appointment request, Thursday" } as Record<OwnerLang, string>,
+};
+
+const NEUTRAL: Record<VisitorLang, VisitorScript> = {
+  fr: {
+    online: "En ligne · répond instantanément",
+    placeholder: "Écrivez votre message…",
+    turns: [
+      { role: "ai", text: "Bienvenue chez {NAME} 👋 Comment puis-je vous aider ?" },
+      { role: "user", text: "Bonjour, est-ce que vous prenez de nouveaux clients ? J'aimerais un rendez-vous cette semaine." },
+      { role: "ai", text: "Bonjour 😊 Oui, avec plaisir. Dites-moi ce dont vous avez besoin et je vous propose un créneau — ou quelqu'un de l'équipe vous rappelle. Votre nom et un numéro ?" },
+      { role: "user", text: "Yassine, 06 12 34 56 78 — jeudi si possible" },
+      { role: "ai", text: "Merci Yassine ✅ C'est noté pour jeudi. {NAME} vous confirme l'horaire très vite au 06 12 34 56 78. Bonne journée !" },
+    ],
+  },
+  ar: {
+    online: "متصل · يجيب فوراً",
+    placeholder: "اكتب رسالتك…",
+    turns: [
+      { role: "ai", text: "مرحباً بك في {NAME} 👋 كيف يمكنني مساعدتك؟" },
+      { role: "user", text: "السلام عليكم، واش كتقبلو عملاء جدد؟ بغيت موعد هاد السيمانة." },
+      { role: "ai", text: "وعليكم السلام 😊 مرحباً بك. قل لي ما تحتاجه وسأقترح عليك موعداً — أو يتصل بك أحد من الفريق. ممكن اسمك ورقم هاتفك؟" },
+      { role: "user", text: "ياسين، 06 12 34 56 78 — الخميس إن أمكن" },
+      { role: "ai", text: "شكراً ياسين ✅ سجّلت طلبك ليوم الخميس. {NAME} سيؤكد لك الموعد قريباً على 06 12 34 56 78. نهار سعيد!" },
+    ],
+  },
+  en: {
+    online: "Online · replies instantly",
+    placeholder: "Type a message…",
+    turns: [
+      { role: "ai", text: "Welcome to {NAME} 👋 How can I help?" },
+      { role: "user", text: "Hi, are you taking new clients? I'd like an appointment this week." },
+      { role: "ai", text: "Hello 😊 Gladly. Tell me what you need and I'll suggest a slot — or someone from the team calls you back. Your name and a number?" },
+      { role: "user", text: "Yassine, 06 12 34 56 78 — Thursday if possible" },
+      { role: "ai", text: "Thank you Yassine ✅ Noted for Thursday. {NAME} will confirm the time shortly on 06 12 34 56 78. Have a good day!" },
     ],
   },
 };
@@ -203,6 +251,7 @@ export default function AssistantDemo({
   niche,
   languages,
   accent = "#36671E",
+  business,
 }: {
   /** The OWNER's language — the page is written to convince them. */
   lang?: OwnerLang;
@@ -211,10 +260,26 @@ export default function AssistantDemo({
   languages?: VisitorLang[];
   /** The client's brand colour, so the widget looks like theirs. */
   accent?: string;
+  /**
+   * A REAL business that asked to see itself — from the brand probe, or a
+   * known client's brief. The frame then carries their name and domain (the
+   * EXEMPLE badge and the invented lead stay, so it still reads as an
+   * example), and the script switches to one that fits any trade unless the
+   * niche says otherwise. Absent → the fixed fictitious examples.
+   */
+  business?: { name: string; domain: string };
 }) {
   const study = niche === "study-abroad";
-  const scripts = study ? STUDY : GENERIC;
-  const example = study ? STUDY_EXAMPLE : GENERIC_EXAMPLE;
+  const scripts = business ? (study ? STUDY : NEUTRAL) : (study ? STUDY : GENERIC);
+  const fixed = study ? STUDY_EXAMPLE : GENERIC_EXAMPLE;
+  const example: Example = business
+    ? {
+        name: business.name,
+        domain: business.domain,
+        clock: study ? STUDY_EXAMPLE.clock : "21:40",
+        lead: study ? STUDY_EXAMPLE.lead : NEUTRAL_LEAD,
+      }
+    : fixed;
   const O = OWNER[lang];
   const reduced = useReducedMotion();
 
@@ -238,6 +303,13 @@ export default function AssistantDemo({
   const listRef = useRef<HTMLDivElement>(null);
 
   const script = scripts[tab];
+  // The name is written into the turns ONCE per (script, name): the effect
+  // and the reduced-motion render must play identical text, and a fresh
+  // fresh array per render would re-trigger the film for ever.
+  const turns = useMemo(
+    () => script.turns.map((t) => ({ ...t, text: t.text.split("{NAME}").join(example.name) })),
+    [script, example.name],
+  );
   const rtl = RTL.includes(tab);
 
   // Start when it comes into view; the page is long and a film nobody sees
@@ -270,7 +342,7 @@ export default function AssistantDemo({
       if (cancelled) return;
       setMessages([]); setToast(false); setCaption(false); setTyping(false); setDraft("");
       await wait(400);
-      for (const turn of script.turns) {
+      for (const turn of turns) {
         if (cancelled) return;
         if (turn.role === "ai") {
           setTyping(true);
@@ -302,11 +374,11 @@ export default function AssistantDemo({
     }
     play();
     return () => { cancelled = true; timers.forEach(clearTimeout); };
-  }, [visible, run, reduced, script]);
+  }, [visible, run, reduced, turns]);
 
   // prefers-reduced-motion: the whole conversation, the notification and the
   // caption at once — the same information without the film.
-  const shownMessages = reduced ? script.turns : messages;
+  const shownMessages = reduced ? turns : messages;
   const shownToast = reduced || toast;
   const shownCaption = reduced || caption;
   const shownTyping = !reduced && typing;
@@ -474,7 +546,11 @@ export default function AssistantDemo({
         ) : null}
       </div>
       <p className="mt-2.5 text-[12.5px] leading-relaxed text-[#8A8A80]" data-testid="demo-footnote">
-        {O.footnote}
+        {business
+          ? (lang === "fr"
+              ? `Ceci est un exemple de conversation pour ${business.domain}. Le vrai assistant est formé sur vos services et vos informations — il n'invente jamais un prix ni une promesse.`
+              : `This is an example conversation for ${business.domain}. The real assistant is trained on your services and your information — it never invents a price or a promise.`)
+          : O.footnote}
       </p>
 
       <style jsx global>{`
