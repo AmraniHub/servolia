@@ -334,7 +334,7 @@ export default async function AccountPage({
                link is minted from THIS hosting token, the same key that
                opened this page. */
             <span className="flex flex-wrap gap-x-5 gap-y-1 mt-3 text-[13.5px] font-bold text-[#36671E]">
-              <a href={`/hosting/assistant/try?site=${encodeURIComponent(ctx.ref)}${fr ? "&lang=fr" : ""}`} target="_blank" rel="noreferrer" className="hover:underline">
+              <a href={`/hosting/assistant/try?site=${encodeURIComponent(ctx.ref)}${fr ? "&lang=fr" : ""}${token ? `&t=${encodeURIComponent(token)}` : ""}`} target="_blank" rel="noreferrer" className="hover:underline">
                 {fr ? "L'essayer maintenant →" : "Try it now →"}
               </a>
               {settingsUrl ? (

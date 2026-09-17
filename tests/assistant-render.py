@@ -260,6 +260,19 @@ with sync_playwright() as p:
     s, h, j = http("POST", "/api/chat", msg, {"Origin": BASE})
     ck("preview chat: our page with the flag answers", s == 200, f"{s} {str(j)[:60]}")
     ck("  (locally: the no-backend fallback, not an error)", isinstance(j, dict) and j.get("fallback") is True, str(j)[:80])
+    # The fallback form does work (captures a lead, notifies the client), so
+    # it must answer to the same gate as the chat. It checked only the origin
+    # until 2026-09-17: /api/assistant is CDN-cached for five minutes, so for
+    # minutes after a trial ends the widget still drew, its first message
+    # 403ed, it degraded to this form, and the enquiry was captured free.
+    s, h, j = http("POST", "/api/chat-fallback",
+                   {"name": "Test", "contact": "t@example.com", "siteSlug": "excellenceagency"},
+                   {"Origin": "https://excellence-agency.org"})
+    ck("fallback form: refused for an unpaid assistant, like the chat", s == 403, f"{s} {str(j)[:60]}")
+    s, h, j = http("POST", "/api/chat-fallback",
+                   {"name": "Test", "contact": "t@example.com", "siteSlug": "demo-study-abroad"},
+                   {"Origin": BASE})
+    ck("fallback form: still works for an enabled assistant", s == 200, f"{s} {str(j)[:60]}")
 
     # ── 5. Thank-you page: the two truths ─────────────────────────────────
     ctx = b.new_context(viewport={"width": 430, "height": 900})

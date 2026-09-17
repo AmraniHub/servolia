@@ -4,8 +4,11 @@ import { headers } from "next/headers";
 import { getClientSite, slugify } from "@/lib/clientSites";
 import { assistantEnabled, previewable } from "@/lib/assistantAccess";
 import { clientRefFor } from "@/lib/clientRefs";
-import { CLIENT_PRODUCTS } from "@/lib/hosting";
+import { CLIENT_PRODUCTS, HOSTING_TIERS } from "@/lib/hosting";
+import { readUpgradeToken, subscriptionContext } from "@/lib/upgrade";
+import { trialStateFor, TRIAL_DAYS } from "@/lib/assistantTrial";
 import PageLang from "@/components/PageLang";
+import StartTrialButton from "@/components/StartTrialButton";
 
 export const metadata: Metadata = {
   title: "Try your assistant",
@@ -38,9 +41,9 @@ export const metadata: Metadata = {
 export default async function TryAssistantPage({
   searchParams,
 }: {
-  searchParams: Promise<{ site?: string; lang?: string }>;
+  searchParams: Promise<{ site?: string; lang?: string; t?: string }>;
 }) {
-  const { site = "", lang: rawLang = "" } = await searchParams;
+  const { site = "", lang: rawLang = "", t: token = "" } = await searchParams;
   // Only the three literals: this value is written into an inline script.
   const lang = rawLang === "ar" || rawLang === "fr" || rawLang === "en" ? rawLang : "";
   const slug = slugify(site);
@@ -59,6 +62,19 @@ export default async function TryAssistantPage({
   const ref = config && !live ? clientRefFor(slug) : undefined;
   const payUrl = ref ? `/hosting?plan=chatbot&ref=${encodeURIComponent(slug)}` : null;
   const price = CLIENT_PRODUCTS.chatbot;
+
+  /* THE TRIAL, OFFERED WHERE THEY ARE CONVINCED. The trial needs a signed
+     token (it changes their live site), and this page is public by slug — so
+     it can only offer the trial to a visitor who arrived WITH their token,
+     from the invite email or their service page. Without one, the page still
+     shows the assistant and the price; it simply cannot offer the week.
+     The token's own ref decides what a click starts, never the URL's ?site=,
+     so pointing it at someone else's slug does nothing but confuse the
+     visitor — hence the match check before anything is offered. */
+  const ctx = token ? await subscriptionContext((await readUpgradeToken(token)) ?? "") : null;
+  const canOfferTrial =
+    Boolean(ctx && HOSTING_TIERS.includes(ctx.plan.key) && ctx.ref.toLowerCase() === slug && preview);
+  const trial = canOfferTrial ? await trialStateFor(slug) : { state: "none" as const };
 
   return (
     <main className="min-h-screen bg-[#FAFAF7] flex flex-col" lang={lang || config?.language || "en"}>
@@ -106,7 +122,33 @@ export default async function TryAssistantPage({
                       ? "Vous voulez qu'il dise, propose ou évite quelque chose ? Le lien vers sa page de réglages est dans votre email de Servolia et sur votre page de service."
                       : "Want it to say, offer or avoid something? The link to its settings page is in your email from Servolia and on your service page."}
                   </p>
-                  {payUrl ? (
+                  {/* The free week first when we can offer it: a client who
+                      has just been convinced should not have to go back to
+                      an email to act on it. Paying stays available beside it. */}
+                  {trial.state === "none" && canOfferTrial ? (
+                    <div className="mt-4" data-testid="try-trial">
+                      <StartTrialButton token={token} lang={ctx!.lang} siteLabel={ref?.label ?? slug} />
+                      <p className="mt-3 text-[13px] text-[#71717A]">
+                        {fr
+                          ? `${TRIAL_DAYS} jours, sans carte. Ensuite il se retire tout seul — ou vous le gardez pour ${price.monthlyUsd} $/mois.`
+                          : `${TRIAL_DAYS} days, no card. After that it steps back on its own — or you keep it for $${price.monthlyUsd}/month.`}
+                        {payUrl ? (
+                          <>
+                            {" "}
+                            <Link href={payUrl} className="font-bold text-[#36671E] hover:underline">
+                              {fr ? "L'activer tout de suite →" : "Turn it on now →"}
+                            </Link>
+                          </>
+                        ) : null}
+                      </p>
+                    </div>
+                  ) : trial.state === "running" ? (
+                    <p className="mt-4 text-[13.5px] font-bold text-[#36671E]" data-testid="try-trial-running">
+                      {fr
+                        ? `Votre essai est en cours — il est en ligne sur votre site jusqu'au ${new Date(trial.until).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}.`
+                        : `Your trial is running — it is live on your site until ${new Date(trial.until).toLocaleDateString("en-GB", { day: "numeric", month: "long" })}.`}
+                    </p>
+                  ) : payUrl ? (
                     <div className="mt-4 flex flex-wrap items-center gap-3">
                       <Link
                         href={payUrl}

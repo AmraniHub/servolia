@@ -51,7 +51,10 @@ export async function POST(req: NextRequest) {
   const tpl = assistantBuiltEmail({
     business: brief.businessName,
     siteLabel: client.label,
-    tryUrl: `${origin}/hosting/assistant/try?site=${encodeURIComponent(ref)}${lang === "fr" ? "&lang=fr" : ""}`,
+    /* The showroom carries their token too, so the free week can be started
+       from the page where they were convinced rather than by going back to
+       this email. The token decides what a click starts, never the ?site=. */
+    tryUrl: `${origin}/hosting/assistant/try?site=${encodeURIComponent(ref)}${lang === "fr" ? "&lang=fr" : ""}&t=${encodeURIComponent(token)}`,
     settingsUrl: `${origin}/hosting/assistant?t=${encodeURIComponent(token)}`,
     trialUrl: `${origin}/hosting/assistant/trial?t=${encodeURIComponent(token)}`,
     payUrl: `${origin}/hosting?plan=chatbot&ref=${encodeURIComponent(ref)}`,

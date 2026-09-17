@@ -4,6 +4,7 @@ import { sendTelegramMessage } from "@/lib/telegram";
 import { getClientSite } from "@/lib/clientSites";
 import { notifyClientOfLead } from "@/lib/clientNotify";
 import { originAllowed, corsHeaders } from "@/lib/assistant";
+import { assistantEnabled } from "@/lib/assistantAccess";
 
 /**
  * Chat graceful-degradation endpoint. When the AI backend is down, the widget
@@ -14,6 +15,16 @@ import { originAllowed, corsHeaders } from "@/lib/assistant";
  * the form exists is that their assistant could not answer, and an enquiry
  * that only reaches the operator's Telegram is an enquiry the business never
  * hears about until somebody forwards it.
+ *
+ * IT CHECKS THE SUBSCRIPTION, exactly as /api/chat does. It used to check
+ * only the origin, which left a real hole once trials existed: /api/assistant
+ * is CDN-cached for five minutes, so for a few minutes after a trial ends the
+ * widget still draws for new visitors, their first message gets a 403, the
+ * widget degrades to this form — and the enquiry was captured and the client
+ * notified, free, past the boundary they had just declined to pay for. Small
+ * window, but "paid = on" has to be true on every route that does work, or it
+ * is not a rule. A preview conversation is refused here too: the showroom
+ * promises that nothing is saved and nobody is alerted.
  */
 export function OPTIONS() {
   return new NextResponse(null, { status: 204, headers: corsHeaders("*") });
@@ -37,6 +48,9 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "Not allowed" }, { status: 403 });
       }
       cors = corsHeaders(origin);
+      if (!config || !(await assistantEnabled(config))) {
+        return NextResponse.json({ error: "Chat is not enabled for this site." }, { status: 403, headers: cors });
+      }
     }
 
     const cleanContact = (contact ?? "").trim().slice(0, 200);
