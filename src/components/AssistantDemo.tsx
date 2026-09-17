@@ -96,15 +96,15 @@ const STUDY: Record<VisitorLang, VisitorScript> = {
     ],
   },
   ar: {
-    online: "متصل · يجيب فوراً",
+    online: "متصل · يرد فوراً",
     placeholder: "اكتب رسالتك…",
     lead: { name: "ياسين", phone: "06 12 34 56 78" },
     turns: [
-      { role: "ai", text: "مرحباً بك في {NAME} 👋 أنا هنا لأجيب عن أسئلتك حول الدراسة في الخارج. كيف يمكنني مساعدتك؟" },
-      { role: "user", text: "السلام عليكم، بغيت نقرا الطب فليتوانيا. واش ممكن؟ وشحال كيتكلف؟" },
-      { role: "ai", text: "وعليكم السلام 😊 نعم، ليتوانيا من أكثر الوجهات طلباً لدراسة الطب، بجامعات معترف بها دولياً وتكلفة معقولة. التكلفة الدقيقة تعتمد على الجامعة — مستشارنا يعطيك تقديراً مجانياً خلال 24 ساعة. ممكن اسمك ورقم هاتفك؟" },
-      { role: "user", text: "ياسين، 06 12 34 56 78" },
-      { role: "ai", text: "شكراً ياسين ✅ سجّلت طلبك: الطب في ليتوانيا. سيتصل بك مستشار متخصص خلال 24 ساعة على 06 12 34 56 78. ليلة سعيدة!" },
+      { role: "ai", text: "مرحباً بك في {NAME} 👋 أنا هنا للإجابة عن أسئلتك حول الدراسة في الخارج. كيف يمكنني مساعدتك؟" },
+      { role: "user", text: "السلام عليكم، أرغب في دراسة الطب في ليتوانيا. هل هذا ممكن؟ وما هي التكاليف؟" },
+      { role: "ai", text: "وعليكم السلام 😊 نعم، ليتوانيا من أكثر الوجهات طلباً لدراسة الطب، بجامعات معترف بها دولياً وتكاليف معقولة. التكلفة الدقيقة تعتمد على الجامعة، وسيوافيك أحد مستشارينا بتقدير مجاني خلال 24 ساعة. هل يمكنك تزويدي باسمك ورقم هاتفك؟" },
+      { role: "user", text: "ياسين، ⁦06 12 34 56 78⁩" },
+      { role: "ai", text: "شكراً لك ياسين ✅ سجّلت طلبك: دراسة الطب في ليتوانيا. سيتصل بك مستشار متخصص خلال 24 ساعة على الرقم ⁦06 12 34 56 78⁩. طابت ليلتك!" },
     ],
   },
   en: {
@@ -144,15 +144,15 @@ const GENERIC: Record<VisitorLang, VisitorScript> = {
     ],
   },
   ar: {
-    online: "متصل · يجيب فوراً",
+    online: "متصل · يرد فوراً",
     placeholder: "اكتب رسالتك…",
     lead: { name: "كريم", phone: "06 12 34 56 78" },
     turns: [
       { role: "ai", text: "مرحباً بك في {NAME} 👋 كيف يمكنني مساعدتك؟" },
-      { role: "user", text: "السلام عليكم، واش كتديرو تسعيرة لتجديد حمام؟" },
-      { role: "ai", text: "وعليكم السلام! نعم — تسعيرة مجانية بعد زيارة قصيرة. عندي الثلاثاء 10:00 أو الخميس 14:00. ممكن اسمك ورقم للتأكيد؟" },
-      { role: "user", text: "كريم، 06 12 34 56 78 — الثلاثاء 10:00" },
-      { role: "ai", text: "ممتاز كريم ✅ الثلاثاء 10:00 محجوز. الفريق سيؤكد لك برسالة غداً صباحاً. ليلة سعيدة!" },
+      { role: "user", text: "مساء الخير، هل تقدمون عروض أسعار لتجديد الحمّام بالكامل؟" },
+      { role: "ai", text: "مساء النور! نعم، نقدم عرض سعر مجانياً بعد زيارة قصيرة للمعاينة. لدينا موعد متاح الثلاثاء في الساعة 10:00 أو الخميس في الساعة 14:00. هل يمكنك تزويدي باسمك ورقم هاتفك للتأكيد؟" },
+      { role: "user", text: "كريم، ⁦06 12 34 56 78⁩ — الثلاثاء في الساعة 10:00" },
+      { role: "ai", text: "ممتاز يا كريم ✅ تم حجز موعد الثلاثاء في الساعة 10:00. سيؤكد لك الفريق الموعد برسالة نصية صباح الغد. طابت ليلتك!" },
     ],
   },
   en: {
@@ -194,15 +194,15 @@ const NEUTRAL: Record<VisitorLang, VisitorScript> = {
     ],
   },
   ar: {
-    online: "متصل · يجيب فوراً",
+    online: "متصل · يرد فوراً",
     placeholder: "اكتب رسالتك…",
     lead: { name: "ياسين", phone: "06 12 34 56 78" },
     turns: [
       { role: "ai", text: "مرحباً بك في {NAME} 👋 كيف يمكنني مساعدتك؟" },
-      { role: "user", text: "السلام عليكم، واش كتقبلو عملاء جدد؟ بغيت موعد هاد السيمانة." },
-      { role: "ai", text: "وعليكم السلام 😊 مرحباً بك. قل لي ما تحتاجه وسأقترح عليك موعداً — أو يتصل بك أحد من الفريق. ممكن اسمك ورقم هاتفك؟" },
-      { role: "user", text: "ياسين، 06 12 34 56 78 — الخميس إن أمكن" },
-      { role: "ai", text: "شكراً ياسين ✅ سجّلت طلبك ليوم الخميس. {NAME} سيؤكد لك الموعد قريباً على 06 12 34 56 78. نهار سعيد!" },
+      { role: "user", text: "السلام عليكم، هل تقبلون عملاء جدداً؟ أرغب في حجز موعد هذا الأسبوع." },
+      { role: "ai", text: "وعليكم السلام 😊 مرحباً بك. أخبرني بما تحتاجه وسأقترح عليك موعداً مناسباً، أو يمكن لأحد أفراد الفريق الاتصال بك. هل يمكنك تزويدي باسمك ورقم هاتفك؟" },
+      { role: "user", text: "ياسين، ⁦06 12 34 56 78⁩ — يوم الخميس إن أمكن" },
+      { role: "ai", text: "شكراً لك ياسين ✅ سجّلت طلبك ليوم الخميس. سيؤكد لك {NAME} الموعد قريباً على الرقم ⁦06 12 34 56 78⁩. طاب يومك!" },
     ],
   },
   en: {
@@ -520,7 +520,7 @@ export default function AssistantDemo({
           data-testid="demo-toast"
           className={`absolute left-3 right-3 top-9 transition-all duration-500 ${shownToast ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-3 pointer-events-none"}`}
         >
-          <div className="mx-auto max-w-[380px] rounded-2xl bg-white/95 backdrop-blur border border-black/10 shadow-[0_12px_40px_rgba(0,0,0,0.28)] px-4 py-3 flex items-start gap-3" dir={lang === "fr" ? "ltr" : "ltr"}>
+          <div className="mx-auto max-w-[380px] rounded-2xl bg-white/95 backdrop-blur border border-black/10 shadow-[0_12px_40px_rgba(0,0,0,0.28)] px-4 py-3 flex items-start gap-3" dir="ltr">
             <div className="w-9 h-9 rounded-xl shrink-0 flex items-center justify-center text-white" style={{ background: accent }}>
               <Bot className="w-4 h-4" />
             </div>
@@ -529,8 +529,16 @@ export default function AssistantDemo({
                 <p className="text-[12.5px] font-bold text-[#18181B] truncate">{O.toastTitle}</p>
                 <span className="text-[11px] text-[#71717A] tabular-nums shrink-0">{O.toastTime(plusOneMinute(example.clock))}</span>
               </div>
+              {/* Each field is its own bidi island. An Arabic name beside a
+                  space-separated number pulls the digits into the RTL run and
+                  the alert shows "78 56 34 12 06" — a number the owner would
+                  not recognise as their lead's. <bdi> is exactly this job. */}
               <p className="text-[12.5px] text-[#3F3F46] leading-snug mt-0.5">
-                {script.lead.name} · {script.lead.phone} · {example.want[lang]}
+                <bdi>{script.lead.name}</bdi>
+                {" · "}
+                <bdi dir="ltr">{script.lead.phone}</bdi>
+                {" · "}
+                <bdi>{example.want[lang]}</bdi>
               </p>
             </div>
           </div>

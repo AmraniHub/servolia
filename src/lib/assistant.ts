@@ -128,7 +128,7 @@ export function defaultQuickReplies(lang: AssistantLang): string[] {
 export function widgetStrings(lang: AssistantLang) {
   switch (lang) {
     case "ar": return {
-      online: "متصل · يجيب فوراً",
+      online: "متصل · يرد فوراً",
       placeholder: "اكتب رسالتك…",
       send: "إرسال",
       nudge: "💬 هل لديك سؤال؟",

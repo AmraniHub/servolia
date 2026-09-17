@@ -14,9 +14,16 @@ const LANG_NAMES = { ar: "Arabic", fr: "French", en: "English" } as const;
 /**
  * The language rule. A single-language site keeps the original line. A site
  * that lists several answers in whichever one the visitor writes — including
- * Moroccan Darija, which is answered in Arabic — and never asks them to
- * switch. The list is the business's promise ("Arabic, French and English" on
- * the pay page), so it is stated to the model as a rule, not a hint.
+ * Moroccan Darija, which is answered in MODERN STANDARD ARABIC — and never
+ * asks them to switch. The list is the business's promise ("Arabic, French
+ * and English" on the pay page), so it is stated to the model as a rule,
+ * not a hint.
+ *
+ * FUSHA, NOT DIALECT, AND THE ASYMMETRY IS THE POINT. A Moroccan customer
+ * writes Darija; a business replying in Darija reads as a mate rather than a
+ * company, and is unreadable to the Gulf, Egyptian or Levantine customer who
+ * arrives on the same page. Understanding the dialect is expected of the
+ * assistant; writing it back is not.
  */
 function languageRule(c: ClientSiteConfig): string {
   const spoken = (c.languages ?? []).filter((l): l is "ar" | "fr" | "en" => l === "ar" || l === "fr" || l === "en");
@@ -25,7 +32,8 @@ function languageRule(c: ClientSiteConfig): string {
     const first = names[0];
     return [
       `- The business serves visitors in ${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}.`,
-      `- ALWAYS reply in the language the visitor writes in. Arabic or Moroccan Darija → reply in clear Arabic. French → French. English → English.`,
+      `- ALWAYS reply in the language the visitor writes in. French → French. English → English.`,
+      `- Arabic OR Moroccan Darija → always reply in MODERN STANDARD ARABIC (الفصحى): clear, correct and professional. Understand the dialect, never write it back — no واش، بغيت، دابا، ديال، شحال. Write هل، أرغب، الآن، الخاص بـ، كم instead.`,
       `- If you cannot tell, use ${first}. Never ask the visitor to change language.`,
     ].join("\n");
   }
