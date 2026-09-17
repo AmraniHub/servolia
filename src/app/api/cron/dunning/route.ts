@@ -7,9 +7,10 @@ import { billingPortalUrl } from "@/lib/clientPortal";
 import { resolveHostingPlan, productCopy, HOSTING_TIERS } from "@/lib/hosting";
 import { applyGate } from "@/lib/hostingGate";
 import { clientRefFor } from "@/lib/clientRefs";
-import { expireAssistantTrials } from "@/lib/assistantTrial";
-import { assistantTrialEndedEmail } from "@/lib/email";
+import { expireAssistantTrials, nudgeAssistantTrials } from "@/lib/assistantTrial";
+import { assistantTrialEndedEmail, assistantTrialNudgeEmail } from "@/lib/email";
 import { CLIENT_PRODUCTS } from "@/lib/hosting";
+import { assistantLinkFor } from "@/lib/upgrade";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -45,6 +46,29 @@ export const maxDuration = 60;
  *
  * Scheduled in vercel.json. Auth: Bearer CRON_SECRET.
  */
+
+/**
+ * The settings link for a trialling client, minted from their HOSTING
+ * subscription — the same key that opens their service page. Returns the
+ * plain showroom path when we cannot mint one, so an email never carries a
+ * link that goes nowhere.
+ */
+async function assistantSettingsUrl(
+  db: ReturnType<typeof supabaseAdmin>,
+  email: string,
+): Promise<string> {
+  if (!db || !email) return "https://servolia.com/hosting";
+  const { data } = await db
+    .from("hosting_clients")
+    .select("subscription_id, plan")
+    .ilike("email", email)
+    .in("status", ["active", "past_due"]);
+  const hosting = (data ?? []).find(
+    (r) => HOSTING_TIERS.includes(String(r.plan).toLowerCase()) && r.subscription_id,
+  );
+  if (!hosting?.subscription_id) return "https://servolia.com/hosting";
+  return assistantLinkFor(hosting.subscription_id);
+}
 
 const NUDGE_AFTER_DAYS = 7;
 const GRACE_DAYS = 14;
@@ -220,6 +244,38 @@ export async function GET(req: NextRequest) {
       `They are past the deadline and still being served. This needs you.\n\n` +
       blocked.map((b) => `- ${b}`).join("\n"),
     ).catch(() => {});
+  }
+
+  /* ── ASSISTANT TRIALS WITH TWO DAYS LEFT ──────────────────────────────
+   * Day 5 of 7. The row is marked before the email goes, so this can run
+   * twice in a day without the client hearing twice. What it says depends
+   * on whether the assistant has actually done anything — see
+   * assistantTrialNudgeEmail; a "nobody wrote to it" week gets a check-your-
+   * site email, not a sales pitch, and that is also how a silently failed
+   * install surfaces. */
+  const nudges = await nudgeAssistantTrials(now);
+  for (const t of nudges.nudged) {
+    const tpl = assistantTrialNudgeEmail({
+      business: t.business,
+      siteLabel: t.siteLabel,
+      conversations: t.conversations,
+      untilIso: t.until,
+      tryUrl: `https://servolia.com/hosting/assistant/try?site=${encodeURIComponent(t.ref)}${t.lang === "fr" ? "&lang=fr" : ""}`,
+      settingsUrl: await assistantSettingsUrl(db, t.email),
+      payUrl: `https://servolia.com/hosting?plan=chatbot&ref=${encodeURIComponent(t.ref)}`,
+      monthlyUsd: CLIENT_PRODUCTS.chatbot.monthlyUsd,
+      lang: t.lang,
+    });
+    if (t.email) sendEmail(t.email, tpl.subject, tpl.html).catch(() => {});
+  }
+  if (nudges.nudged.length) {
+    await sendTelegramMessage(
+      `⏳ *Assistant trial${nudges.nudged.length === 1 ? "" : "s"} — two days left: ${nudges.nudged.length}*\n` +
+      nudges.nudged.map((t) => `- ${t.business}: ${t.conversations} so far${t.quiet ? " — QUIET, sent the check-your-site email (an install may have failed)" : ""}`).join("\n"),
+    ).catch(() => {});
+  }
+  if (nudges.errors.length) {
+    await sendTelegramMessage(`*Trial nudge hit errors*\n` + nudges.errors.map((e) => `- ${e}`).join("\n")).catch(() => {});
   }
 
   /* ── ASSISTANT TRIALS WHOSE WEEK IS OVER ──────────────────────────────

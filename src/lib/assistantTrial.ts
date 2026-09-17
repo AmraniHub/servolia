@@ -43,12 +43,25 @@ import { HOSTING_TIERS } from "@/lib/hosting";
 
 export const TRIAL_DAYS = 7;
 
+/**
+ * How many days before the end the nudge goes out — day 5 of 7.
+ *
+ * It was deliberately absent at first: a deadline warning invites an early
+ * no, while feeling the assistant go quiet makes the case by itself. He
+ * asked for it on 2026-09-17, and the way to have both is to make the nudge
+ * about what it DID rather than about the date — and to say something else
+ * entirely when it has done nothing (see assistantTrialNudgeEmail).
+ */
+export const NUDGE_BEFORE_DAYS = 2;
+
 const MARKER = "servolia-trial:";
 
 export interface TrialRecord {
   /** ISO — when the assistant goes quiet again unless paid for. */
   until: string;
   started: string;
+  /** ISO of the day-5 nudge, once it has gone. Absent means not yet. */
+  nudged?: string;
 }
 
 export function readTrial(notes: string | null | undefined): TrialRecord | null {
@@ -59,12 +72,30 @@ export function readTrial(notes: string | null | undefined): TrialRecord | null 
     const i = p.indexOf(":");
     if (i > 0) kv[p.slice(0, i).trim()] = p.slice(i + 1).trim();
   }
-  return kv.until ? { until: kv.until, started: kv.started ?? "" } : null;
+  if (!kv.until) return null;
+  return { until: kv.until, started: kv.started ?? "", ...(kv.nudged ? { nudged: kv.nudged } : {}) };
 }
 
 export function writeTrial(notes: string | null | undefined, rec: TrialRecord): string {
   const kept = (notes ?? "").split("\n").filter((l) => !l.startsWith(MARKER) && l.trim() !== "");
-  return [...kept, `${MARKER} until: ${rec.until} | started: ${rec.started}`].join("\n");
+  /* `until` stays FIRST: assistantAccess.ts carries a two-line copy of this
+     parse (it cannot import this module, which imports it) and reads the end
+     date with a regex. Appending fields is safe; reordering is not. */
+  const line = `${MARKER} until: ${rec.until} | started: ${rec.started}${rec.nudged ? ` | nudged: ${rec.nudged}` : ""}`;
+  return [...kept, line].join("\n");
+}
+
+/**
+ * Is this trial in its nudge window — inside the last two days, not over,
+ * and not nudged already? Pure, so the decision can be tested without a
+ * database; the cron does the sending.
+ */
+export function trialNudgeDue(notes: string | null | undefined, now: number): boolean {
+  const rec = readTrial(notes);
+  if (!rec || rec.nudged) return false;
+  const until = Date.parse(rec.until);
+  if (!Number.isFinite(until) || now >= until) return false;      // over: the expiry pass owns it
+  return now >= until - NUDGE_BEFORE_DAYS * 86_400_000;
 }
 
 /** A trial row that is still inside its window. */
@@ -188,6 +219,61 @@ export interface TrialEnded {
   email: string;
   lang: "en" | "fr";
   conversations: number;
+}
+
+/** The client reference behind a billing address, for a client we build for. */
+function refForEmail(email: string | null | undefined): string {
+  const e = String(email ?? "").toLowerCase();
+  if (!e) return "";
+  return Object.keys(ASSISTANT_SITES).find((k) => clientRefFor(k)?.email?.toLowerCase() === e) ?? "";
+}
+
+export interface TrialNudge extends TrialEnded {
+  until: string;
+  siteLabel: string;
+  /** Nobody has written to it yet — a different email entirely. */
+  quiet: boolean;
+}
+
+/**
+ * Two days before the end, tell them what it has done so far. Marks the row
+ * BEFORE the caller sends, so a crash mid-send costs one email rather than
+ * risking a second one — the same trade the dunning cron makes with
+ * `past_due_final`.
+ */
+export async function nudgeAssistantTrials(now = Date.now()): Promise<{ nudged: TrialNudge[]; errors: string[] }> {
+  const db = supabaseAdmin();
+  const nudged: TrialNudge[] = [];
+  const errors: string[] = [];
+  if (!db) return { nudged, errors: ["no-db"] };
+
+  const { data: rows } = await db
+    .from("hosting_clients")
+    .select("id, business, email, notes")
+    .eq("plan", "chatbot")
+    .eq("status", "trial");
+
+  for (const r of rows ?? []) {
+    if (!trialNudgeDue(r.notes, now)) continue;
+    const rec = readTrial(r.notes)!;
+    const marked = writeTrial(r.notes, { ...rec, nudged: new Date(now).toISOString() });
+    const { error } = await db.from("hosting_clients").update({ notes: marked }).eq("id", r.id);
+    if (error) { errors.push(`${r.business}: ${error.message}`); continue; }
+
+    const ref = refForEmail(r.email);
+    const conversations = ref ? await conversationCount(ref, TRIAL_DAYS) : 0;
+    nudged.push({
+      ref,
+      business: r.business,
+      email: r.email ?? "",
+      lang: clientRefFor(ref)?.lang ?? "en",
+      conversations,
+      until: rec.until,
+      siteLabel: clientRefFor(ref)?.label ?? r.business,
+      quiet: conversations === 0,
+    });
+  }
+  return { nudged, errors };
 }
 
 /**

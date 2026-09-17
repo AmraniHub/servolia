@@ -1534,6 +1534,108 @@ export const assistantTrialStartedEmail = (input: {
   };
 };
 
+/**
+ * Two days left. Two quite different emails, because one of them would be
+ * insulting in the other's situation:
+ *
+ *  - IT HAS WORKED. Lead with what it did for them; the date is a footnote.
+ *    A deadline-first email invites an early no, which is the reason there
+ *    was no nudge at all until he asked for one.
+ *  - IT HAS BEEN QUIET. Then "N = 0 visitors, two days left, pay $12" is a
+ *    terrible email. It becomes a HELPFUL one instead: nobody has written
+ *    yet, here is the link to check it is really showing on your site —
+ *    which is also how we find out an install silently failed. No price, no
+ *    ask. The day-7 email can do the closing honestly either way.
+ */
+export const assistantTrialNudgeEmail = (input: {
+  business: string;
+  siteLabel: string;
+  conversations: number;
+  untilIso: string;
+  tryUrl: string;
+  settingsUrl: string;
+  payUrl: string;
+  monthlyUsd: number;
+  lang?: "en" | "fr";
+}) => {
+  const { business, siteLabel, conversations: n, untilIso, tryUrl, settingsUrl, payUrl, monthlyUsd, lang = "en" } = input;
+  const fr = lang === "fr";
+  const until = new Date(untilIso).toLocaleDateString(fr ? "fr-FR" : "en-GB", { day: "numeric", month: "long" });
+  const link = (href: string, label: string) =>
+    `<a href="${href}" style="font-weight:700;color:${GREEN};text-decoration:none;">${label}</a>`;
+
+  if (n === 0) {
+    const L = fr
+      ? {
+          subject: `Votre assistant attend encore son premier visiteur`,
+          preheader: `Personne ne lui a écrit pour l'instant — vérifions qu'il s'affiche bien.`,
+          headline: `Personne ne lui a encore écrit`,
+          p1: `L'assistant de <strong>${business}</strong> est en ligne sur ${siteLabel} depuis cinq jours, et aucun visiteur ne lui a encore écrit. C'est parfois normal — et parfois le signe qu'il ne s'affiche pas là où il devrait.`,
+          p2: `Vérifiez en trente secondes : ouvrez votre site et cherchez la bulle en bas de page. S'il n'y est pas, répondez à cet email et nous nous en occupons aujourd'hui.`,
+          cta: "Voir mon assistant",
+          p3: `Vous pouvez aussi ajuster ce qu'il dit, ou ce qu'il propose en premier :`,
+          settings: "Lui dire quoi dire →",
+          close: `Votre essai se termine le ${until}. Il n'y a rien à payer et rien à annuler.`,
+        }
+      : {
+          subject: `Your assistant is still waiting for its first visitor`,
+          preheader: `Nobody has written to it yet — let's check it is showing.`,
+          headline: `Nobody has written to it yet`,
+          p1: `<strong>${business}</strong>'s assistant has been live on ${siteLabel} for five days, and no visitor has written to it yet. Sometimes that is simply a quiet week — and sometimes it means it is not showing where it should.`,
+          p2: `Thirty seconds to check: open your site and look for the bubble at the bottom. If it is not there, reply to this email and we will sort it today.`,
+          cta: "See my assistant",
+          p3: `You can also adjust what it says, or what it offers first:`,
+          settings: "Tell it what to say →",
+          close: `Your trial ends on ${until}. There is nothing to pay and nothing to cancel.`,
+        };
+    return {
+      subject: L.subject,
+      html: wrapper(`
+        <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">${L.headline}</h1>
+        <p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:${BODY};">${L.p1}</p>
+        <p style="margin:0 0 4px;font-size:15px;line-height:1.6;color:${BODY};">${L.p2}</p>
+        ${btn(tryUrl, L.cta)}
+        <p style="margin:24px 0 6px;font-size:15px;line-height:1.6;color:${BODY};">${L.p3}</p>
+        <p style="margin:0 0 20px;font-size:15px;line-height:1.6;">${link(settingsUrl, L.settings)}</p>
+        <p style="margin:0;font-size:13px;line-height:1.6;color:${MUTED};">${L.close}</p>
+        `, { preheader: L.preheader, lang }),
+    };
+  }
+
+  const L = fr
+    ? {
+        subject: `${n} personne${n > 1 ? "s ont" : " a"} écrit à votre assistant`,
+        preheader: `Voici ce qu'il a fait pendant que vous étiez occupé. Il reste deux jours.`,
+        headline: n > 1 ? `${n} conversations, jusqu'ici` : `Une première conversation`,
+        p1: `Depuis qu'il est en ligne sur ${siteLabel}, l'assistant de <strong>${business}</strong> a tenu ${n} conversation${n > 1 ? "s" : ""} avec vos visiteurs — y compris en dehors de vos horaires.`,
+        p2: `Votre essai se termine le <strong>${until}</strong>. Ce jour-là il se retire de lui-même : il n'y a rien à annuler et rien à payer si vous préférez vous arrêter là.`,
+        p3: `Si vous voulez le garder — mêmes réglages, rien à réinstaller : ${money(monthlyUsd, fr)}/mois, résiliable à tout moment.`,
+        cta: "Le garder",
+        settings: "Ajuster ce qu'il dit →",
+      }
+    : {
+        subject: `${n} ${n > 1 ? "people have" : "person has"} written to your assistant`,
+        preheader: `Here is what it did while you were busy. Two days left.`,
+        headline: n > 1 ? `${n} conversations so far` : `A first conversation`,
+        p1: `Since it went live on ${siteLabel}, <strong>${business}</strong>'s assistant has held ${n} conversation${n > 1 ? "s" : ""} with your visitors — including outside your hours.`,
+        p2: `Your trial ends on <strong>${until}</strong>. That day it steps back on its own: there is nothing to cancel and nothing to pay if you would rather stop there.`,
+        p3: `If you want to keep it — same settings, nothing to reinstall: ${money(monthlyUsd, fr)}/month, cancel anytime.`,
+        cta: "Keep it",
+        settings: "Adjust what it says →",
+      };
+  return {
+    subject: L.subject,
+    html: wrapper(`
+      <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">${L.headline}</h1>
+      <p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:${BODY};">${L.p1}</p>
+      <p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:${BODY};">${L.p2}</p>
+      <p style="margin:0 0 4px;font-size:15px;line-height:1.6;color:${BODY};">${L.p3}</p>
+      ${btn(payUrl, L.cta)}
+      <p style="margin:20px 0 0;font-size:15px;line-height:1.6;">${link(settingsUrl, L.settings)}</p>
+      `, { preheader: L.preheader, lang }),
+  };
+};
+
 /** The week is over: what it did, and the one line to keep it. */
 export const assistantTrialEndedEmail = (input: {
   business: string;
