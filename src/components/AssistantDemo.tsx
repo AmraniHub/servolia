@@ -3,6 +3,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useReducedMotion } from "framer-motion";
 import { Bot, RotateCcw, Send } from "lucide-react";
+import {
+  type Example, type OwnerLang, type VisitorLang,
+  RTL, NEUTRAL, NEUTRAL_WANT, TRADES, tradeOf,
+} from "@/lib/demoScripts";
 
 /**
  * THE DEMO ON THE PAY PAGE — a conversation that plays itself.
@@ -35,191 +39,11 @@ import { Bot, RotateCcw, Send } from "lucide-react";
  * think of a question, and most do not. A film needs nothing from them. It
  * plays when scrolled into view, loops with a pause, and under
  * prefers-reduced-motion renders the finished conversation at once.
+ *
+ * The conversations themselves live in src/lib/demoScripts.ts — this file is
+ * the projector, that one is the film, so adding a client's trade is a data
+ * entry rather than surgery here.
  */
-
-/** Who is reading the page. */
-type OwnerLang = "en" | "fr";
-/** Who is writing in the demo. */
-type VisitorLang = "ar" | "fr" | "en";
-
-type Turn = { role: "ai" | "user"; text: string };
-
-interface VisitorScript {
-  online: string;
-  placeholder: string;
-  /**
-   * Who this conversation captures. PER LANGUAGE, because the name and the
-   * number are what make a bubble feel real: the English visitor is James
-   * on a UK mobile (07700 900123 — Ofcom's reserved drama range, the
-   * legitimate "example number"), the French and Arabic visitors carry an
-   * 06 in the documentation style. One lead across three languages read
-   * as a template; three leads read as three customers.
-   */
-  lead: { name: string; phone: string };
-  turns: Turn[];
-}
-
-/** The example business. Never the buyer's own — see rule 1. */
-interface Example {
-  name: string;
-  domain: string;
-  clock: string;
-  /** What the captured lead wanted, as the OWNER's phone words it. */
-  want: Record<OwnerLang, string>;
-}
-
-const RTL: VisitorLang[] = ["ar"];
-
-/* ── study-abroad ─────────────────────────────────────────────────────────
- * The same fictitious agency the try page uses, so a buyer who clicks
- * through meets one example rather than two. The phone number is the
- * documentation-style 06 12 34 56 78 on purpose: it reads as an example.   */
-
-const STUDY_EXAMPLE: Example = {
-  name: "Atlas Études",
-  domain: "atlas-etudes.ma",
-  clock: "02:14",
-  want: { fr: "Médecine, Lituanie", en: "Medicine, Lithuania" },
-};
-
-const STUDY: Record<VisitorLang, VisitorScript> = {
-  fr: {
-    online: "En ligne · répond instantanément",
-    placeholder: "Écrivez votre message…",
-    lead: { name: "Yassine", phone: "06 12 34 56 78" },
-    turns: [
-      { role: "ai", text: "Bienvenue chez {NAME} 👋 Je réponds à vos questions sur les études à l'étranger. Comment puis-je vous aider ?" },
-      { role: "user", text: "Bonsoir, je voudrais étudier la médecine en Lituanie. C'est possible ? Et quel budget ?" },
-      { role: "ai", text: "Bonsoir 😊 Oui — la Lituanie est notre destination la plus demandée en médecine : des universités reconnues, à un coût raisonnable. Le budget exact dépend de l'université ; un conseiller vous envoie une estimation gratuite sous 24h. Votre nom et un numéro ?" },
-      { role: "user", text: "Yassine, 06 12 34 56 78" },
-      { role: "ai", text: "Merci Yassine ✅ C'est noté : médecine en Lituanie. Un conseiller vous appelle sous 24h au 06 12 34 56 78. Bonne nuit !" },
-    ],
-  },
-  ar: {
-    online: "متصل · يرد فوراً",
-    placeholder: "اكتب رسالتك…",
-    lead: { name: "ياسين", phone: "06 12 34 56 78" },
-    turns: [
-      { role: "ai", text: "مرحباً بك في {NAME} 👋 أنا هنا للإجابة عن أسئلتك حول الدراسة في الخارج. كيف يمكنني مساعدتك؟" },
-      { role: "user", text: "السلام عليكم، أرغب في دراسة الطب في ليتوانيا. هل هذا ممكن؟ وما هي التكاليف؟" },
-      { role: "ai", text: "وعليكم السلام 😊 نعم، ليتوانيا من أكثر الوجهات طلباً لدراسة الطب، بجامعات معترف بها دولياً وتكاليف معقولة. التكلفة الدقيقة تعتمد على الجامعة، وسيوافيك أحد مستشارينا بتقدير مجاني خلال 24 ساعة. هل يمكنك تزويدي باسمك ورقم هاتفك؟" },
-      { role: "user", text: "ياسين، ⁦06 12 34 56 78⁩" },
-      { role: "ai", text: "شكراً لك ياسين ✅ سجّلت طلبك: دراسة الطب في ليتوانيا. سيتصل بك مستشار متخصص خلال 24 ساعة على الرقم ⁦06 12 34 56 78⁩. طابت ليلتك!" },
-    ],
-  },
-  en: {
-    online: "Online · replies instantly",
-    placeholder: "Type a message…",
-    lead: { name: "Emma", phone: "07700 900123" },
-    turns: [
-      { role: "ai", text: "Welcome to {NAME} 👋 I'm here to answer your questions about studying abroad. How can I help?" },
-      { role: "user", text: "Hi, I'd like to study medicine in Lithuania. Is that possible, and what does it cost?" },
-      { role: "ai", text: "Hello 😊 Yes — Lithuania is our most requested destination for medicine: internationally recognised universities at a reasonable cost. The exact cost depends on the university; an advisor sends you a free estimate within 24 hours. Your name and a number?" },
-      { role: "user", text: "Emma, 07700 900123" },
-      { role: "ai", text: "Thank you Emma ✅ Noted: medicine in Lithuania. An advisor will call you within 24 hours on 07700 900123. Good night!" },
-    ],
-  },
-};
-
-/* ── everyone else ───────────────────────────────────────────────────────── */
-
-const GENERIC_EXAMPLE: Example = {
-  name: "Atelier Renov",
-  domain: "atelier-renov.ma",
-  clock: "21:40",
-  want: { fr: "Devis salle de bain, mardi 10h", en: "Bathroom quote, Tuesday 10:00" },
-};
-
-const GENERIC: Record<VisitorLang, VisitorScript> = {
-  fr: {
-    online: "En ligne · répond instantanément",
-    placeholder: "Écrivez votre message…",
-    lead: { name: "Karim", phone: "06 12 34 56 78" },
-    turns: [
-      { role: "ai", text: "Bienvenue chez {NAME} 👋 Comment puis-je vous aider ?" },
-      { role: "user", text: "Bonsoir, vous faites des devis pour une rénovation de salle de bain ?" },
-      { role: "ai", text: "Bonsoir ! Oui — un devis gratuit après une courte visite. Je peux vous proposer mardi 10h ou jeudi 14h. Votre nom et un numéro pour confirmer ?" },
-      { role: "user", text: "Karim, 06 12 34 56 78 — mardi 10h" },
-      { role: "ai", text: "Parfait Karim ✅ Mardi 10h est réservé. L'équipe vous confirme par SMS demain matin. Bonne soirée !" },
-    ],
-  },
-  ar: {
-    online: "متصل · يرد فوراً",
-    placeholder: "اكتب رسالتك…",
-    lead: { name: "كريم", phone: "06 12 34 56 78" },
-    turns: [
-      { role: "ai", text: "مرحباً بك في {NAME} 👋 كيف يمكنني مساعدتك؟" },
-      { role: "user", text: "مساء الخير، هل تقدمون عروض أسعار لتجديد الحمّام بالكامل؟" },
-      { role: "ai", text: "مساء النور! نعم، نقدم عرض سعر مجانياً بعد زيارة قصيرة للمعاينة. لدينا موعد متاح الثلاثاء في الساعة 10:00 أو الخميس في الساعة 14:00. هل يمكنك تزويدي باسمك ورقم هاتفك للتأكيد؟" },
-      { role: "user", text: "كريم، ⁦06 12 34 56 78⁩ — الثلاثاء في الساعة 10:00" },
-      { role: "ai", text: "ممتاز يا كريم ✅ تم حجز موعد الثلاثاء في الساعة 10:00. سيؤكد لك الفريق الموعد برسالة نصية صباح الغد. طابت ليلتك!" },
-    ],
-  },
-  en: {
-    online: "Online · replies instantly",
-    placeholder: "Type a message…",
-    lead: { name: "James", phone: "07700 900123" },
-    turns: [
-      { role: "ai", text: "Welcome to {NAME} 👋 How can I help?" },
-      { role: "user", text: "Hi, do you quote for a full bathroom renovation?" },
-      { role: "ai", text: "We do — a free quote after a short visit. I can offer Tuesday 10:00 or Thursday 14:00. Your name and a number to confirm?" },
-      { role: "user", text: "James, 07700 900123 — Tuesday 10:00" },
-      { role: "ai", text: "Perfect, James ✅ Tuesday 10:00 is booked. The team will confirm by text tomorrow morning. Have a good evening!" },
-    ],
-  },
-};
-
-/* ── any real business, unknown trade ────────────────────────────────────
- * Shown when a prospect typed THEIR domain: the demo then wears their name,
- * so the topic must fit whoever they are. A visitor asking for an
- * appointment fits a clinic, an agency and a workshop alike; a bathroom
- * quote on a dentist's demo would cost the sale in one line. */
-
-const NEUTRAL_WANT: Record<OwnerLang, string> = {
-  fr: "Demande de rendez-vous, jeudi",
-  en: "Appointment request, Thursday",
-};
-
-const NEUTRAL: Record<VisitorLang, VisitorScript> = {
-  fr: {
-    online: "En ligne · répond instantanément",
-    placeholder: "Écrivez votre message…",
-    lead: { name: "Yassine", phone: "06 12 34 56 78" },
-    turns: [
-      { role: "ai", text: "Bienvenue chez {NAME} 👋 Comment puis-je vous aider ?" },
-      { role: "user", text: "Bonjour, est-ce que vous prenez de nouveaux clients ? J'aimerais un rendez-vous cette semaine." },
-      { role: "ai", text: "Bonjour 😊 Oui, avec plaisir. Dites-moi ce dont vous avez besoin et je vous propose un créneau — ou quelqu'un de l'équipe vous rappelle. Votre nom et un numéro ?" },
-      { role: "user", text: "Yassine, 06 12 34 56 78 — jeudi si possible" },
-      { role: "ai", text: "Merci Yassine ✅ C'est noté pour jeudi. {NAME} vous confirme l'horaire très vite au 06 12 34 56 78. Bonne journée !" },
-    ],
-  },
-  ar: {
-    online: "متصل · يرد فوراً",
-    placeholder: "اكتب رسالتك…",
-    lead: { name: "ياسين", phone: "06 12 34 56 78" },
-    turns: [
-      { role: "ai", text: "مرحباً بك في {NAME} 👋 كيف يمكنني مساعدتك؟" },
-      { role: "user", text: "السلام عليكم، هل تقبلون عملاء جدداً؟ أرغب في حجز موعد هذا الأسبوع." },
-      { role: "ai", text: "وعليكم السلام 😊 مرحباً بك. أخبرني بما تحتاجه وسأقترح عليك موعداً مناسباً، أو يمكن لأحد أفراد الفريق الاتصال بك. هل يمكنك تزويدي باسمك ورقم هاتفك؟" },
-      { role: "user", text: "ياسين، ⁦06 12 34 56 78⁩ — يوم الخميس إن أمكن" },
-      { role: "ai", text: "شكراً لك ياسين ✅ سجّلت طلبك ليوم الخميس. سيؤكد لك {NAME} الموعد قريباً على الرقم ⁦06 12 34 56 78⁩. طاب يومك!" },
-    ],
-  },
-  en: {
-    online: "Online · replies instantly",
-    placeholder: "Type a message…",
-    lead: { name: "James", phone: "07700 900123" },
-    turns: [
-      { role: "ai", text: "Welcome to {NAME} 👋 How can I help?" },
-      { role: "user", text: "Hi, are you taking new clients? I'd like an appointment this week." },
-      { role: "ai", text: "Hello 😊 Gladly. Tell me what you need and I'll suggest a slot — or someone from the team calls you back. Your name and a number?" },
-      { role: "user", text: "James, 07700 900123 — Thursday if possible" },
-      { role: "ai", text: "Thank you James ✅ Noted for Thursday. {NAME} will confirm the time shortly on 07700 900123. Have a good day!" },
-    ],
-  },
-};
-
-/* ── what the OWNER reads: the alert, the caption, the chrome ───────────── */
 
 const OWNER = {
   fr: {
@@ -278,15 +102,20 @@ export default function AssistantDemo({
    */
   business?: { name: string; domain: string };
 }) {
-  const study = niche === "study-abroad";
-  const scripts = business ? (study ? STUDY : NEUTRAL) : (study ? STUDY : GENERIC);
-  const fixed = study ? STUDY_EXAMPLE : GENERIC_EXAMPLE;
+  /* WHICH CONVERSATION. A known trade gets its own script whether or not a
+     real business is named; a named business with an UNKNOWN trade gets
+     NEUTRAL, because the demo then wears their name and a bathroom quote on
+     a dentist's page is a sale lost in one line. See src/lib/demoScripts.ts. */
+  const trade = tradeOf(niche);
+  const known = trade !== "generic";
+  const scripts = business && !known ? NEUTRAL : TRADES[trade].scripts;
+  const fixed = TRADES[trade].example;
   const example: Example = business
     ? {
         name: business.name,
         domain: business.domain,
-        clock: study ? STUDY_EXAMPLE.clock : "21:40",
-        want: study ? STUDY_EXAMPLE.want : NEUTRAL_WANT,
+        clock: known ? fixed.clock : "21:40",
+        want: known ? fixed.want : NEUTRAL_WANT,
       }
     : fixed;
   const O = OWNER[lang];
@@ -314,7 +143,7 @@ export default function AssistantDemo({
   const script = scripts[tab];
   // The name is written into the turns ONCE per (script, name): the effect
   // and the reduced-motion render must play identical text, and a fresh
-  // fresh array per render would re-trigger the film for ever.
+  // array per render would re-trigger the film for ever.
   const turns = useMemo(
     () => script.turns.map((t) => ({ ...t, text: t.text.split("{NAME}").join(example.name) })),
     [script, example.name],

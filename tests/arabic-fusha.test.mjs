@@ -24,11 +24,17 @@ import path from "node:path";
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 const FILES = [
-  "src/components/AssistantDemo.tsx",   // the pay-page film
+  "src/lib/demoScripts.ts",             // the pay-page film's conversations
+  "src/components/AssistantDemo.tsx",   // the player (kept listed: it held the
+                                        // scripts until 2026-09-17 and must
+                                        // never take Arabic back silently)
   "src/lib/assistant.ts",               // the widget's own UI copy
   "src/lib/assistantSites.ts",          // client briefs: greetings, quick replies
   "src/lib/clientPrompt.ts",            // the rule given to the model
 ];
+
+/** Where the demo's Arabic actually lives — the positive-form test reads it. */
+const SCRIPTS = "src/lib/demoScripts.ts";
 
 /**
  * Unambiguous Darija. Every entry is a word that does not exist in Fusha
@@ -91,7 +97,7 @@ for (const rel of FILES) {
 }
 
 test("the demo's Arabic is real Fusha, not just Darija-free", () => {
-  const src = readFileSync(path.join(ROOT, "src/components/AssistantDemo.tsx"), "utf8");
+  const src = readFileSync(path.join(ROOT, SCRIPTS), "utf8");
   // Positive markers: the Fusha forms that replaced the dialect.
   for (const [marker, meaning] of [
     ["هل ", "هل — the Fusha interrogative"],
@@ -102,6 +108,12 @@ test("the demo's Arabic is real Fusha, not just Darija-free", () => {
   ]) {
     assert.ok(src.includes(marker), `missing Fusha form: ${meaning}`);
   }
+});
+
+test("the scripts file really does carry Arabic (the scan is not vacuous)", () => {
+  const src = readFileSync(path.join(ROOT, SCRIPTS), "utf8");
+  const runs = arabicRuns(src);
+  assert.ok(runs.length >= 12, `expected the Arabic conversations, found ${runs.length} runs`);
 });
 
 test("the model is told to answer Darija in Fusha", () => {

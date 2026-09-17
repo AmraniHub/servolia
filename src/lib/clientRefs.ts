@@ -88,6 +88,7 @@ export const CLIENT_REFS: Record<string, ClientRef> = {
     siteRoot: "web",
     // No gateWidget: this is a whole Vercel site, not a Shopify add-on, so it
     // gates through site-status.js + middleware rather than a snippet swap.
+    niche: "sourcing",
   },
   excellenceagency: {
     // The .ma domain was suspended at the registry; the site moved here.

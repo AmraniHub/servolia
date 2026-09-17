@@ -144,7 +144,120 @@ const DEMO_STUDY_ABROAD: ClientSiteConfig = {
   status: "published",
 };
 
+/**
+ * GoodsCoChina — Yiwu sourcing agent, buyers worldwide, English.
+ *
+ * SHE IS A SERVOLIA HOSTING CLIENT (Website hosting · Complete, since
+ * 2026-09-11), which is what makes a Servolia assistant coherent on her
+ * site: the servolia.com script tag in her page source belongs to the
+ * company that already hosts and bills her.
+ *
+ * WHY THE ASSISTANT NEVER QUOTES A PRICE OR AN MOQ. Her whole offer is
+ * "tell us what you need and we come back with verified factory options,
+ * pricing and a timeline — free". The number depends on the factory, the
+ * quantity and the destination. An assistant that guessed one would lose
+ * her a deal and lose us the client, so it captures the enquiry and
+ * promises exactly what her own page promises: options within 24 hours,
+ * every factory audited on site before any deposit.
+ */
+const GOODSCOCHINA: ClientSiteConfig = {
+  slug: "goodscochina",
+  businessName: "GoodsCoChina",
+  niche: "sourcing",
+  language: "en",
+  // Her buyers are importers and retailers worldwide and her site is
+  // English-only; a French or Arabic tab would promise a language she
+  // cannot follow up in.
+  languages: ["en"],
+  // The navy her own stylesheet leads with — the brand probe reads the same.
+  accent: "#111c74",
+  city: "Yiwu",
+  country: "China",
+  address: "Yiwu, Zhejiang, China",
+  phone: "+86 147 0589 7898",
+  whatsapp: "8614705897898",
+  email: "info@goodscochina.com",
+  hours: "Replies within 24 hours, Monday to Saturday (China time)",
+  timezone: "Asia/Shanghai",
+  bookingUrl: "https://goodscochina.com/sourcing.html",
+
+  assistantOnly: true,
+  hostingEmail: "samiramousa77@hotmail.com",
+  domains: ["goodscochina.com"],
+  widgetPosition: "right",
+
+  heroHeadline: "Your trusted sourcing partner in China",
+  heroSub: "Source quality products, verify reliable factories and deliver with confidence, from China to the world.",
+  about:
+    "GoodsCoChina (Yiwu GoodsCo International Trade Co., Ltd.) is a sourcing partner based in Yiwu, " +
+    "Zhejiang. It helps importers, retailers and e-commerce brands find and verify Chinese factories, " +
+    "control quality at every stage and ship worldwide — over 10 years of experience, 1000+ verified " +
+    "factories and buyers in 80+ countries.",
+  services: [
+    { name: "Product sourcing", description: "Tell us the product and we come back with verified factory options, pricing and a timeline — free." },
+    { name: "Factory verification and audit", description: "Every factory is audited on site before you pay any deposit." },
+    { name: "Quality control", description: "Strict inspection at every stage, with photo and video inspection before anything ships." },
+    { name: "Low MOQ orders", description: "Flexible order quantities, so a smaller business can still buy well." },
+    { name: "Worldwide delivery", description: "On-time delivery to 80+ countries, shipping arranged end to end." },
+    { name: "Ongoing support", description: "Responsive help throughout the order, not only before it." },
+  ],
+  whyUs: [
+    "Over 10 years sourcing from China, 1000+ verified factories",
+    "Verified factory options within 48 hours, free of charge",
+    "Every factory audited on site before you pay a deposit",
+    "Photo and video inspection before anything ships",
+    "Buyers served in 80+ countries",
+  ],
+  faqs: [
+    {
+      q: "How does sourcing with you work?",
+      a: "Four steps: you send the enquiry with your product and requirements, we find and shortlist the best factories, " +
+         "we audit the factory before production, and we handle quality control and delivery to your door.",
+    },
+    {
+      q: "How much does it cost?",
+      a: "It depends on the product, the quantity and where it ships, so we do not quote a standard price. " +
+         "Tell us what you need and the team sends verified factory options with pricing and a timeline within 24 hours — free, with no obligation.",
+    },
+    {
+      q: "What is the minimum order quantity?",
+      a: "It varies by factory and product. We work with flexible quantities and will tell you the realistic minimum for your specific item — just ask.",
+    },
+    {
+      q: "How do I know the factory is genuine?",
+      a: "Every factory is audited on site before you pay a deposit, and you get photo and video inspection of the goods before anything ships.",
+    },
+    {
+      q: "Which countries do you ship to?",
+      a: "Buyers in more than 80 countries. Tell us the destination and we include shipping in the plan we send you.",
+    },
+    {
+      q: "How quickly do you reply?",
+      a: "Within 24 hours, and usually sooner. Verified factory options normally come back within 48 hours.",
+    },
+    {
+      q: "Where are you based?",
+      a: "Yiwu, Zhejiang, China — the world's largest small-commodities market, which is why we can compare factories quickly.",
+    },
+  ],
+  aiTone: "warm, direct and businesslike — like a trusted sourcing agent who answers plainly",
+  ownerInstructions:
+    "Always ask what product, roughly what quantity, and which country it ships to — those three answers are what the team needs " +
+    "to build a sourcing plan. Never give a unit price, a total, or a minimum order quantity: say it depends on the factory and " +
+    "the quantity, and that the team will send verified options with pricing within 24 hours, free. Offer WhatsApp " +
+    "(+86 147 0589 7898) for anything urgent. Mention that every factory is audited on site before any deposit — it is the main " +
+    "reason buyers choose us.",
+  greetings: {
+    en: "Welcome to GoodsCoChina 👋 Tell me what you are looking to source and I'll get you verified factory options. How can I help?",
+  },
+  quickReplies: {
+    en: ["I need a sourcing quote", "Can you verify a factory?", "Do you ship to my country?"],
+  },
+  status: "draft",
+};
+
 export const ASSISTANT_SITES: Record<string, ClientSiteConfig> = {
   [EXCELLENCE_AGENCY.slug]: EXCELLENCE_AGENCY,
+  [GOODSCOCHINA.slug]: GOODSCOCHINA,
   [DEMO_STUDY_ABROAD.slug]: DEMO_STUDY_ABROAD,
 };
