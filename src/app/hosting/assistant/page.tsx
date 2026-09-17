@@ -7,6 +7,8 @@ import { getClientSite } from "@/lib/clientSites";
 import { clientRefFor } from "@/lib/clientRefs";
 import { assistantSlugFor, installSnippet } from "@/lib/assistant";
 import { assistantInstalled } from "@/lib/assistantInstall";
+import { ASSISTANT_SITES } from "@/lib/assistantSites";
+import { HOSTING_TIERS } from "@/lib/hosting";
 
 export const metadata: Metadata = {
   title: "Your AI assistant",
@@ -45,9 +47,16 @@ export default async function AssistantPage({
     ? await db.from("hosting_clients").select("email, business, repo, branch, site_root, site_url, status").eq("subscription_id", subscriptionId).maybeSingle()
     : { data: null };
 
-  const isAssistant = ctx?.plan.key === "chatbot";
   const slug = ctx ? assistantSlugFor(ctx.ref, ctx.siteLabel || row?.business) : "";
   const config = slug ? await getClientSite(slug) : undefined;
+  /* The assistant's subscriber edits it. So does a HOSTING client whose
+     assistant Servolia already built (a brief in code under their reference):
+     they tried it in the showroom, and this is where they tell it what to
+     say before they pay. Same token as their service page — nothing new to
+     send them. See the same rule in /api/assistant-brief. */
+  const paidAssistant = ctx?.plan.key === "chatbot";
+  const builtForHosting = Boolean(ctx) && HOSTING_TIERS.includes(ctx!.plan.key) && Boolean(ASSISTANT_SITES[slug]);
+  const isAssistant = paidAssistant || builtForHosting;
   const ref = clientRefFor(ctx?.ref);
   const hosted = Boolean(ref?.repo && !ref.gateWidget);
   const installed = hosted && ref?.repo
@@ -127,6 +136,27 @@ export default async function AssistantPage({
                 <span className="font-bold text-[#5E6659] tabular-nums">{referenceFor(subscriptionId)}</span>
                 {ctx.siteLabel ? <> · {ctx.siteLabel}</> : null}
               </p>
+
+              {builtForHosting ? (
+                <div className="rounded-2xl border border-[#CBE3BC] bg-[#F7FBF4] p-5 mb-6" data-testid="brief-not-active">
+                  <p className="font-bold text-[#161A15]">
+                    {fr ? "Construit pour vous — pas encore actif sur votre site" : "Built for you — not yet active on your site"}
+                  </p>
+                  <p className="text-[14px] text-[#3F3F46] leading-relaxed mt-1">
+                    {fr
+                      ? "Ce que vous écrivez ici s'applique tout de suite à l'aperçu, et sur votre site dès que vous l'activez."
+                      : "What you write here applies to the preview right away, and to your site the moment you turn it on."}
+                  </p>
+                  <div className="flex flex-wrap gap-3 mt-3">
+                    <a href={`/hosting/assistant/try?site=${encodeURIComponent(slug)}`} target="_blank" rel="noreferrer" className="text-[14px] font-bold text-[#36671E] hover:underline">
+                      {fr ? "L'essayer →" : "Try it →"}
+                    </a>
+                    <Link href={`/hosting?plan=chatbot&ref=${encodeURIComponent(ctx.ref)}`} className="text-[14px] font-bold text-[#36671E] hover:underline">
+                      {fr ? "L'activer sur mon site →" : "Turn it on for my site →"}
+                    </Link>
+                  </div>
+                </div>
+              ) : null}
 
               <AssistantBriefForm
                 token={token}

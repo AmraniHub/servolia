@@ -4,6 +4,8 @@ import { sendTelegramMessage } from "@/lib/telegram";
 import { readUpgradeToken, subscriptionContext, referenceFor } from "@/lib/upgrade";
 import { getClientSite, type ClientSiteConfig, type ClientService, type ClientFaq } from "@/lib/clientSites";
 import { assistantSlugFor, hostnameOf, installSnippet, isAssistantLang, type AssistantLang } from "@/lib/assistant";
+import { ASSISTANT_SITES } from "@/lib/assistantSites";
+import { HOSTING_TIERS } from "@/lib/hosting";
 
 export const runtime = "nodejs";
 
@@ -51,7 +53,17 @@ export async function POST(req: NextRequest) {
   if (!subscriptionId) return NextResponse.json({ error: "invalid-link" }, { status: 400 });
 
   const ctx = await subscriptionContext(subscriptionId);
-  if (!ctx || ctx.plan.key !== "chatbot") {
+  /* WHO MAY WRITE A BRIEF: the assistant's own subscriber — or a HOSTING
+     client whose assistant Servolia has already built (a brief in code under
+     their reference). The second is the showroom's other half: they tried
+     it, now they tell it what to say before they pay. It cannot switch
+     anything on — assistantEnabled() keys on a chatbot row that does not
+     exist yet — and it can only ever write the config under THEIR slug. */
+  const hostingWithBrief =
+    Boolean(ctx) &&
+    HOSTING_TIERS.includes(ctx!.plan.key) &&
+    Boolean(ASSISTANT_SITES[assistantSlugFor(ctx!.ref, ctx!.siteLabel)]);
+  if (!ctx || !(ctx.plan.key === "chatbot" || hostingWithBrief)) {
     return NextResponse.json({ error: "not-assistant" }, { status: 400 });
   }
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getClientSite, slugify } from "@/lib/clientSites";
-import { assistantEnabled } from "@/lib/assistantAccess";
+import { assistantEnabled, previewOrigin, previewable } from "@/lib/assistantAccess";
 import { publicAssistantConfig, corsHeaders } from "@/lib/assistant";
 
 export const runtime = "nodejs";
@@ -29,10 +29,22 @@ export async function GET(req: NextRequest) {
     "Cache-Control": "public, max-age=120, s-maxage=300, stale-while-revalidate=600",
   };
   const config = slug ? await getClientSite(slug) : undefined;
-  if (!config || !(await assistantEnabled(config))) {
-    return NextResponse.json({ enabled: false }, { headers });
+  if (!config) return NextResponse.json({ enabled: false }, { headers });
+  if (await assistantEnabled(config)) {
+    return NextResponse.json(publicAssistantConfig(config), { headers });
   }
-  return NextResponse.json(publicAssistantConfig(config), { headers });
+
+  /* THE SHOWROOM. Unpaid, but asked for as a preview from one of our own
+     pages: draw it. Never cached — this answer must not be the one a CDN
+     hands to the client's website (a different URL, and no-store, so it
+     cannot be). See previewOrigin() for the rule. */
+  if (req.nextUrl.searchParams.get("preview") === "1" && previewable(config) && previewOrigin(req.headers)) {
+    return NextResponse.json(
+      { ...publicAssistantConfig(config), preview: true },
+      { headers: { ...corsHeaders("*"), "Cache-Control": "private, no-store" } },
+    );
+  }
+  return NextResponse.json({ enabled: false }, { headers });
 }
 
 export function OPTIONS() {

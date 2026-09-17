@@ -1402,6 +1402,190 @@ export const accountLinkEmail = (input: { url: string; siteLabel: string; lang?:
   };
 };
 
+/* ── THE ASSISTANT, FROM SERVOLIA TO ITS OWN HOSTING CLIENT ─────────────────
+ *
+ * Three moments, one voice: the company that hosts the client's site telling
+ * them what it built, what it did, and what it costs to keep. Every claim in
+ * these is one the code performs — the try page answers, the settings page
+ * saves, the trial row switches the widget on and off — and the price is the
+ * live one from CLIENT_PRODUCTS, never typed in.
+ *
+ * Marketing mail from the brand to a paying customer about the brand's own
+ * product; sent by hand, one client at a time, never on a schedule.
+ */
+
+const money = (usd: number, fr: boolean) => (fr ? `${usd}&nbsp;$` : `$${usd}`);
+
+/** "We built your assistant" — the invitation to the showroom. */
+export const assistantBuiltEmail = (input: {
+  business: string;
+  siteLabel: string;
+  tryUrl: string;
+  settingsUrl: string;
+  trialUrl: string;
+  payUrl: string;
+  monthlyUsd: number;
+  annualUsd: number;
+  lang?: "en" | "fr";
+}) => {
+  const { business, siteLabel, tryUrl, settingsUrl, trialUrl, payUrl, monthlyUsd, annualUsd, lang = "en" } = input;
+  const fr = lang === "fr";
+  const L = fr
+    ? {
+        subject: `Nous avons construit l'assistant de ${business} — essayez-le`,
+        preheader: `Votre assistant IA est prêt : à votre nom, à vos couleurs, formé sur ${siteLabel}. Sans carte.`,
+        headline: `Votre assistant est prêt`,
+        p1: `Nous avons construit un assistant IA pour <strong>${business}</strong>, à partir de votre site ${siteLabel} : il porte votre nom et vos couleurs, il connaît vos services et il répond à vos visiteurs dans leur langue, jour et nuit.`,
+        p2: `Il n'est pas encore sur votre site. Vous pouvez d'abord lui parler ici, comme le ferait un client :`,
+        cta: "Essayer mon assistant",
+        p3: `Vous voulez qu'il dise, propose ou évite quelque chose ? Dites-le-lui — cela s'applique dès la conversation suivante :`,
+        settings: "Lui dire quoi dire →",
+        p4: `Et si vous préférez le voir travailler pour de vrai : une semaine d'essai sur votre site, gratuite, sans carte. Chaque demande qu'il prend arrive sur votre téléphone. Au bout de sept jours il se retire de lui-même, sauf si vous le gardez.`,
+        trial: "Lancer 7 jours d'essai sur mon site →",
+        p5: `Pour le garder : ${money(monthlyUsd, fr)}/mois ou ${money(annualUsd, fr)}/an, résiliable à tout moment. Nous l'installons pour vous.`,
+        pay: "L'activer →",
+        close: `Rien ne change sur votre site tant que vous ne le décidez pas.`,
+      }
+    : {
+        subject: `We built ${business}'s assistant — try it`,
+        preheader: `Your AI assistant is ready: your name, your colours, trained on ${siteLabel}. No card.`,
+        headline: `Your assistant is ready`,
+        p1: `We built an AI assistant for <strong>${business}</strong> from your website ${siteLabel}: it carries your name and your colours, it knows your services, and it answers your visitors in their language, day and night.`,
+        p2: `It is not on your site yet. First, talk to it here the way a customer would:`,
+        cta: "Try my assistant",
+        p3: `Want it to say, offer or avoid something? Tell it — it applies from the next conversation:`,
+        settings: "Tell it what to say →",
+        p4: `And if you would rather see it work for real: one week on your site, free, no card. Every enquiry it takes reaches your phone. After seven days it steps back on its own unless you keep it.`,
+        trial: "Start a 7-day trial on my site →",
+        p5: `To keep it: ${money(monthlyUsd, fr)}/month or ${money(annualUsd, fr)}/year, cancel anytime. We install it for you.`,
+        pay: "Turn it on →",
+        close: `Nothing changes on your site until you decide.`,
+      };
+  const link = (href: string, label: string) =>
+    `<a href="${href}" style="font-weight:700;color:${GREEN};text-decoration:none;">${label}</a>`;
+  return {
+    subject: L.subject,
+    html: wrapper(`
+      <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">${L.headline}</h1>
+      <p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:${BODY};">${L.p1}</p>
+      <p style="margin:0 0 4px;font-size:15px;line-height:1.6;color:${BODY};">${L.p2}</p>
+      ${btn(tryUrl, L.cta)}
+      <p style="margin:24px 0 6px;font-size:15px;line-height:1.6;color:${BODY};">${L.p3}</p>
+      <p style="margin:0 0 20px;font-size:15px;line-height:1.6;">${link(settingsUrl, L.settings)}</p>
+      <p style="margin:0 0 6px;font-size:15px;line-height:1.6;color:${BODY};">${L.p4}</p>
+      <p style="margin:0 0 20px;font-size:15px;line-height:1.6;">${link(trialUrl, L.trial)}</p>
+      <p style="margin:0 0 6px;font-size:15px;line-height:1.6;color:${BODY};">${L.p5}</p>
+      <p style="margin:0 0 20px;font-size:15px;line-height:1.6;">${link(payUrl, L.pay)}</p>
+      <p style="margin:0;font-size:13px;line-height:1.6;color:${MUTED};">${L.close}</p>
+      `, { preheader: L.preheader, lang }),
+  };
+};
+
+/** The trial began: it is on their site, and here is when it ends. */
+export const assistantTrialStartedEmail = (input: {
+  business: string;
+  siteUrl: string;
+  untilIso: string;
+  settingsUrl: string;
+  payUrl: string;
+  monthlyUsd: number;
+  installed: boolean | null;
+  lang?: "en" | "fr";
+}) => {
+  const { business, siteUrl, untilIso, settingsUrl, payUrl, monthlyUsd, installed, lang = "en" } = input;
+  const fr = lang === "fr";
+  const until = new Date(untilIso).toLocaleDateString(fr ? "fr-FR" : "en-GB", { day: "numeric", month: "long", year: "numeric" });
+  const site = siteUrl.replace(/^https?:\/\//, "");
+  const L = fr
+    ? {
+        subject: `Votre assistant est en ligne sur ${site} — jusqu'au ${until}`,
+        preheader: `Sept jours d'essai ont commencé. Chaque demande arrive sur votre téléphone.`,
+        headline: `Il est en ligne sur votre site`,
+        p1: installed === false
+          ? `Votre essai a commencé, mais nous n'avons pas pu ajouter la ligne à vos pages automatiquement. Elle est sur votre page de réglages ci-dessous, prête à coller — ou répondez à cet email et nous le faisons.`
+          : `L'assistant de <strong>${business}</strong> répond maintenant aux visiteurs de ${site}, dans leur langue, jour et nuit. Chaque demande qu'il prend arrive sur votre téléphone.`,
+        p2: `L'essai se termine le <strong>${until}</strong>. Ce jour-là il se retire de lui-même — rien à faire, rien à payer — sauf si vous le gardez.`,
+        settings: "Ajuster ce qu'il dit →",
+        p3: `Pour le garder après l'essai : ${money(monthlyUsd, fr)}/mois, résiliable à tout moment.`,
+        pay: "Le garder →",
+      }
+    : {
+        subject: `Your assistant is live on ${site} — until ${until}`,
+        preheader: `Your seven-day trial has started. Every enquiry reaches your phone.`,
+        headline: `It is live on your site`,
+        p1: installed === false
+          ? `Your trial has started, but we could not add the line to your pages automatically. It is on your settings page below, ready to paste — or reply to this email and we will do it.`
+          : `<strong>${business}</strong>'s assistant is now answering visitors on ${site}, in their language, day and night. Every enquiry it takes reaches your phone.`,
+        p2: `The trial ends on <strong>${until}</strong>. That day it steps back on its own — nothing to do, nothing to pay — unless you keep it.`,
+        settings: "Adjust what it says →",
+        p3: `To keep it after the trial: ${money(monthlyUsd, fr)}/month, cancel anytime.`,
+        pay: "Keep it →",
+      };
+  return {
+    subject: L.subject,
+    html: wrapper(`
+      <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">${L.headline}</h1>
+      <p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:${BODY};">${L.p1}</p>
+      <p style="margin:0 0 20px;font-size:15px;line-height:1.6;color:${BODY};">${L.p2}</p>
+      <p style="margin:0 0 20px;font-size:15px;line-height:1.6;"><a href="${settingsUrl}" style="font-weight:700;color:${GREEN};text-decoration:none;">${L.settings}</a></p>
+      <p style="margin:0 0 4px;font-size:15px;line-height:1.6;color:${BODY};">${L.p3}</p>
+      ${btn(payUrl, L.pay)}
+      `, { preheader: L.preheader, lang }),
+  };
+};
+
+/** The week is over: what it did, and the one line to keep it. */
+export const assistantTrialEndedEmail = (input: {
+  business: string;
+  siteLabel: string;
+  conversations: number;
+  payUrl: string;
+  monthlyUsd: number;
+  annualUsd: number;
+  lang?: "en" | "fr";
+}) => {
+  const { business, siteLabel, conversations, payUrl, monthlyUsd, annualUsd, lang = "en" } = input;
+  const fr = lang === "fr";
+  const n = conversations;
+  const L = fr
+    ? {
+        subject: n > 0
+          ? `Votre assistant a répondu à ${n} visiteur${n > 1 ? "s" : ""} cette semaine`
+          : `Votre semaine d'essai est terminée`,
+        preheader: `L'essai sur ${siteLabel} est terminé. Le garder prend une minute.`,
+        headline: n > 0 ? `${n} conversation${n > 1 ? "s" : ""} en sept jours` : `La semaine est passée`,
+        p1: n > 0
+          ? `Pendant son essai sur ${siteLabel}, l'assistant de <strong>${business}</strong> a tenu ${n} conversation${n > 1 ? "s" : ""} avec vos visiteurs — y compris quand vous n'étiez pas là. Il est maintenant en pause.`
+          : `L'assistant de <strong>${business}</strong> a veillé sur ${siteLabel} pendant sept jours. Peu de visiteurs lui ont écrit cette semaine ; il est maintenant en pause.`,
+        p2: `Pour le remettre en ligne — même réglages, mêmes couleurs, rien à réinstaller : ${money(monthlyUsd, fr)}/mois ou ${money(annualUsd, fr)}/an, résiliable à tout moment.`,
+        cta: "Le remettre en ligne",
+        close: `Si vous préférez vous en passer, il n'y a rien à faire.`,
+      }
+    : {
+        subject: n > 0
+          ? `Your assistant answered ${n} visitor${n > 1 ? "s" : ""} this week`
+          : `Your trial week is over`,
+        preheader: `The trial on ${siteLabel} has ended. Keeping it takes a minute.`,
+        headline: n > 0 ? `${n} conversation${n > 1 ? "s" : ""} in seven days` : `The week has passed`,
+        p1: n > 0
+          ? `During its trial on ${siteLabel}, <strong>${business}</strong>'s assistant held ${n} conversation${n > 1 ? "s" : ""} with your visitors — including while you were away. It is now paused.`
+          : `<strong>${business}</strong>'s assistant kept watch on ${siteLabel} for seven days. Few visitors wrote to it this week; it is now paused.`,
+        p2: `To put it back — same settings, same colours, nothing to reinstall: ${money(monthlyUsd, fr)}/month or ${money(annualUsd, fr)}/year, cancel anytime.`,
+        cta: "Put it back",
+        close: `If you would rather do without it, there is nothing to do.`,
+      };
+  return {
+    subject: L.subject,
+    html: wrapper(`
+      <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">${L.headline}</h1>
+      <p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:${BODY};">${L.p1}</p>
+      <p style="margin:0 0 4px;font-size:15px;line-height:1.6;color:${BODY};">${L.p2}</p>
+      ${btn(payUrl, L.cta)}
+      <p style="margin:20px 0 0;font-size:13px;line-height:1.6;color:${MUTED};">${L.close}</p>
+      `, { preheader: L.preheader, lang }),
+  };
+};
+
 export const reactivateEmail = (input: {
   /** Mid-sentence form only -- this template never uses the headline form. */
   productNoun: string;

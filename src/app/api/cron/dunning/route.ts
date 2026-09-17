@@ -7,6 +7,9 @@ import { billingPortalUrl } from "@/lib/clientPortal";
 import { resolveHostingPlan, productCopy, HOSTING_TIERS } from "@/lib/hosting";
 import { applyGate } from "@/lib/hostingGate";
 import { clientRefFor } from "@/lib/clientRefs";
+import { expireAssistantTrials } from "@/lib/assistantTrial";
+import { assistantTrialEndedEmail } from "@/lib/email";
+import { CLIENT_PRODUCTS } from "@/lib/hosting";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -219,7 +222,39 @@ export async function GET(req: NextRequest) {
     ).catch(() => {});
   }
 
+  /* ── ASSISTANT TRIALS WHOSE WEEK IS OVER ──────────────────────────────
+   * Same daily pass, same idempotence: a trial row past its date becomes
+   * trial_ended once, the widget on their site goes quiet by itself (it
+   * reads the row), and the client hears what it did — the count of real
+   * conversations it held for them — with the one line to keep it. No gate,
+   * no uninstall: the tag stays, drawing nothing, ready for the day they pay.
+   * See src/lib/assistantTrial.ts. */
+  const trials = await expireAssistantTrials(now);
+  for (const t of trials.ended) {
+    const tpl = assistantTrialEndedEmail({
+      business: t.business,
+      siteLabel: clientRefFor(t.ref)?.label ?? t.business,
+      conversations: t.conversations,
+      payUrl: `https://servolia.com/hosting?plan=chatbot&ref=${encodeURIComponent(t.ref)}`,
+      monthlyUsd: CLIENT_PRODUCTS.chatbot.monthlyUsd,
+      annualUsd: CLIENT_PRODUCTS.chatbot.annualUsd,
+      lang: t.lang,
+    });
+    if (t.email) sendEmail(t.email, tpl.subject, tpl.html).catch(() => {});
+  }
+  if (trials.ended.length) {
+    await sendTelegramMessage(
+      `🧪 *Assistant trial${trials.ended.length === 1 ? "" : "s"} ended — ${trials.ended.length}*\n` +
+      trials.ended.map((t) => `- ${t.business}: ${t.conversations} conversation${t.conversations === 1 ? "" : "s"} in the week`).join("\n") +
+      `\n\nThe widget is quiet on their site now; the "keep it" email is on its way.`,
+    ).catch(() => {});
+  }
+  if (trials.errors.length) {
+    await sendTelegramMessage(`*Trial expiry hit errors*\n` + trials.errors.map((e) => `- ${e}`).join("\n")).catch(() => {});
+  }
+
   return NextResponse.json({
     ok: true, checked: overdue.length, nudged: sent, suspended, blocked: blocked.length,
+    trialsEnded: trials.ended.length,
   });
 }

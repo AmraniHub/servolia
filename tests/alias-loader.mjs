@@ -13,14 +13,26 @@ import path from "node:path";
 
 const SRC = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "src");
 
+function withExtension(base) {
+  for (const candidate of [base, `${base}.ts`, `${base}.tsx`, path.join(base, "index.ts")]) {
+    if (existsSync(candidate) && !candidate.endsWith(path.sep)) return candidate;
+  }
+  return null;
+}
+
 export async function resolve(specifier, context, next) {
   if (specifier.startsWith("@/")) {
-    const base = path.join(SRC, specifier.slice(2));
-    for (const candidate of [base, `${base}.ts`, `${base}.tsx`, path.join(base, "index.ts")]) {
-      if (existsSync(candidate) && !candidate.endsWith(path.sep)) {
-        return next(pathToFileURL(candidate).href, context);
-      }
-    }
+    const hit = withExtension(path.join(SRC, specifier.slice(2)));
+    if (hit) return next(pathToFileURL(hit).href, context);
+  }
+  // A RELATIVE import inside src/ without its extension (`./whatsapp` from
+  // email.ts) is the same problem in a different coat: the app's bundler
+  // guesses `.ts`, Node will not. Only for files under src/, so a test's own
+  // relative imports are left to Node's normal rules.
+  if ((specifier.startsWith("./") || specifier.startsWith("../")) && context.parentURL?.startsWith(pathToFileURL(SRC).href)) {
+    const from = path.dirname(fileURLToPath(context.parentURL));
+    const hit = withExtension(path.resolve(from, specifier));
+    if (hit && hit !== path.resolve(from, specifier)) return next(pathToFileURL(hit).href, context);
   }
   return next(specifier, context);
 }

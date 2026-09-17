@@ -34,6 +34,10 @@
   if (!SLUG) return;
   var ORIGIN = (script.getAttribute("data-origin") || "https://servolia.com").replace(/\/+$/, "");
   var POSITION = script.getAttribute("data-position") === "left" ? "left" : "right";
+  // Servolia's own try page sets this so an UNPAID assistant can be tried
+  // there. On a client's site the attribute does nothing: the server only
+  // honours it from servolia.com's own pages, so pasting it changes nothing.
+  var PREVIEW = script.getAttribute("data-preview") === "1";
   var MAX_TURNS = 12;
 
   // One widget per page, however many times the tag was pasted.
@@ -45,7 +49,7 @@
     else fn();
   }
 
-  fetch(ORIGIN + "/api/assistant?site=" + encodeURIComponent(SLUG), { credentials: "omit" })
+  fetch(ORIGIN + "/api/assistant?site=" + encodeURIComponent(SLUG) + (PREVIEW ? "&preview=1" : ""), { credentials: "omit" })
     .then(function (r) { return r.json(); })
     .then(function (cfg) {
       if (!cfg || !cfg.enabled) return;
@@ -309,6 +313,7 @@
           sessionId: sid,
           pageUrl: location.href,
           siteSlug: SLUG,
+          preview: PREVIEW,
         }),
       })
         .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, status: r.status, body: j }; }); })

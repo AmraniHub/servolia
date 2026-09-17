@@ -7,6 +7,8 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { readDomainRecord, type DomainRecord } from "@/lib/domainSales";
 import { clientRefFor } from "@/lib/clientRefs";
 import { hasAssistantSubscription } from "@/lib/assistantAccess";
+import { ASSISTANT_SITES } from "@/lib/assistantSites";
+import { assistantLinkFor } from "@/lib/upgrade";
 
 export const metadata: Metadata = {
   title: "Your service",
@@ -197,6 +199,10 @@ export default async function AccountPage({
     HOSTING_TIERS.includes(ctx.plan.key) &&
     Boolean(ctx.ref) &&
     !(await hasAssistantSubscription(clientRefFor(ctx.ref)?.email));
+  /* Already built for them (a brief in code under their reference): the
+     card then opens the showroom and the settings page, not just the price. */
+  const builtAssistant = recommendAssistant && Boolean(ASSISTANT_SITES[ctx.ref.toLowerCase()]);
+  const settingsUrl = builtAssistant && subId ? await assistantLinkFor(subId) : null;
 
   const money = (n: number) => (fr ? `${usd(n)} $` : `$${usd(n)}`);
   // Cents to dollars WITHOUT rounding: a 5.39 plan must not read "$5".
@@ -296,17 +302,21 @@ export default async function AccountPage({
       ) : null}
 
       {recommendAssistant ? (
-        <Link
-          href={`/hosting?plan=chatbot&ref=${encodeURIComponent(ctx.ref)}`}
-          className="block rounded-2xl border border-[#CBE3BC] bg-[#F7FBF4] px-6 py-5 mb-5 hover:bg-[#F3F9EE] transition"
-        >
+        <div className="rounded-2xl border border-[#CBE3BC] bg-[#F7FBF4] px-6 py-5 mb-5" data-testid="account-assistant-card">
           <span className="block text-[10px] font-black uppercase tracking-[0.16em] text-[#36671E] mb-1.5">
-            {fr ? "Recommandé par Servolia" : "Recommended by Servolia"}
+            {builtAssistant
+              ? (fr ? "Construit par Servolia pour vous" : "Built by Servolia for you")
+              : (fr ? "Recommandé par Servolia" : "Recommended by Servolia")}
           </span>
-          <span className="flex items-center justify-between gap-3">
+          <Link
+            href={`/hosting?plan=chatbot&ref=${encodeURIComponent(ctx.ref)}`}
+            className="flex items-center justify-between gap-3 hover:opacity-90"
+          >
             <span>
               <span className="block font-bold text-[#18181B]">
-                {fr ? "Ajouter l'assistant IA" : "Add the AI assistant"}
+                {builtAssistant
+                  ? (fr ? "Votre assistant IA est prêt" : "Your AI assistant is ready")
+                  : (fr ? "Ajouter l'assistant IA" : "Add the AI assistant")}
                 {" · "}
                 {fr ? `${CLIENT_PRODUCTS.chatbot.monthlyUsd} $/mois` : `$${CLIENT_PRODUCTS.chatbot.monthlyUsd}/month`}
               </span>
@@ -317,8 +327,29 @@ export default async function AccountPage({
               </span>
             </span>
             <ArrowUpRight className="w-4 h-4 text-[#36671E] shrink-0" />
-          </span>
-        </Link>
+          </Link>
+          {builtAssistant ? (
+            /* The showroom and the settings page: try the real one, then
+               tell it what to say — both before paying a cent. The settings
+               link is minted from THIS hosting token, the same key that
+               opened this page. */
+            <span className="flex flex-wrap gap-x-5 gap-y-1 mt-3 text-[13.5px] font-bold text-[#36671E]">
+              <a href={`/hosting/assistant/try?site=${encodeURIComponent(ctx.ref)}${fr ? "&lang=fr" : ""}`} target="_blank" rel="noreferrer" className="hover:underline">
+                {fr ? "L'essayer maintenant →" : "Try it now →"}
+              </a>
+              {settingsUrl ? (
+                <a href={settingsUrl} className="hover:underline">
+                  {fr ? "Lui dire quoi dire →" : "Tell it what to say →"}
+                </a>
+              ) : null}
+              {token ? (
+                <Link href={`/hosting/assistant/trial?t=${encodeURIComponent(token)}`} className="hover:underline">
+                  {fr ? "7 jours d'essai sur mon site →" : "7-day trial on my site →"}
+                </Link>
+              ) : null}
+            </span>
+          ) : null}
+        </div>
       ) : null}
 
       {domainRec ? (

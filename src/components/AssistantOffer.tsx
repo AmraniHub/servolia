@@ -28,6 +28,7 @@ export default function AssistantOffer({
   accent,
   business,
   initialSite,
+  tryUrl,
 }: {
   planKey: string;
   monthlyUsd: number;
@@ -46,10 +47,39 @@ export default function AssistantOffer({
   business?: { name: string; domain: string };
   /** Pre-fills the checkout's site field for that same prospect. */
   initialSite?: string;
+  /**
+   * The showroom: a known client whose assistant Servolia has ALREADY built.
+   * The film below stays an honest example; this card is the door to the
+   * real one, live, in their name — the strongest demo there is, and the
+   * one the film exists to stand in for when there is no brief yet.
+   */
+  tryUrl?: string;
 }) {
+  const fr = lang === "fr";
   return (
     <div className="max-w-5xl mx-auto grid gap-10 lg:gap-14 lg:grid-cols-[minmax(0,1fr)_420px] items-start">
       <div className="order-1">
+        {tryUrl ? (
+          <a
+            href={tryUrl}
+            data-testid="already-built"
+            className="mb-6 block rounded-2xl border border-[#CBE3BC] bg-[#F7FBF4] px-5 py-4 hover:bg-[#F3F9EE] transition"
+          >
+            <span className="block text-[10px] font-black uppercase tracking-[0.16em] text-[#36671E] mb-1">
+              {fr ? "Déjà construit pour vous" : "Already built for you"}
+            </span>
+            <span className="block text-[15px] font-bold text-[#18181B]">
+              {fr
+                ? `Servolia a construit l'assistant de ${siteLabel} à partir de votre site — essayez le vrai avant de décider →`
+                : `Servolia built ${siteLabel}'s assistant from your website — try the real one before you decide →`}
+            </span>
+            <span className="block text-[13px] text-[#71717A] mt-1">
+              {fr
+                ? "À votre nom, à vos couleurs, formé sur vos pages. Aucune carte, rien n'est enregistré."
+                : "In your name, your colours, trained on your pages. No card, nothing is saved."}
+            </span>
+          </a>
+        ) : null}
         <AssistantDemo lang={lang} niche={niche} languages={languages} accent={accent} business={business} />
       </div>
       <div className="order-2 w-full">

@@ -29,19 +29,105 @@ export async function assistantEnabled(config: ClientSiteConfig): Promise<boolea
   if (config.isDemo) return true;
   if (!config.assistantOnly) return true;
 
-  const email = (config.hostingEmail ?? "").trim().toLowerCase();
-  if (!email) return false;
+  return hasAssistantSubscription(config.hostingEmail);
+}
+
+/**
+ * A chatbot row that switches the assistant on: paid (active, or past_due
+ * inside the dunning grace), or a TRIAL still inside its seven days — the
+ * trial's end date lives in the row's notes (see assistantTrial.ts), so an
+ * ended trial that the cron has not yet marked is already off here.
+ */
+async function switchedOn(email?: string | null): Promise<boolean> {
+  const e = (email ?? "").trim().toLowerCase();
+  if (!e) return false;
   const db = supabaseAdmin();
   if (!db) return false;
   const { data } = await db
     .from("hosting_clients")
-    .select("id")
+    .select("status, notes")
     .eq("plan", "chatbot")
-    .ilike("email", email)
-    .in("status", ["active", "past_due"])
-    .limit(1)
-    .maybeSingle();
-  return Boolean(data);
+    .ilike("email", e)
+    .in("status", ["active", "past_due", "trial"]);
+  const now = Date.now();
+  return (data ?? []).some((r) => r.status !== "trial" || trialStillRunning(r.notes, now));
+}
+
+/* Inlined rather than imported from assistantTrial.ts, which imports this
+   module: the marker format is the one place both must agree. */
+function trialStillRunning(notes: string | null | undefined, now: number): boolean {
+  const line = (notes ?? "").split("\n").find((l) => l.startsWith("servolia-trial:"));
+  const until = line?.match(/until:\s*(\S+)/)?.[1];
+  return Boolean(until && Date.parse(until) > now);
+}
+
+/* ── THE SHOWROOM: an unpaid assistant may be tried, on our own pages only ──
+ *
+ * Servolia builds a hosting client's assistant BEFORE they buy it (the briefs
+ * in assistantSites.ts), and a thing that is built should be tried, not
+ * described. So the widget and the chat answer for an unpaid brief when, and
+ * only when, the page asking is Servolia's own — the try page, the pay page.
+ * On the client's website the same slug stays dark until it is paid for,
+ * which is the whole "paid = on" contract.
+ *
+ * Three things keep it from becoming an open faucet on the model bill:
+ *   - the page must be ours: origin, or the referer when a same-origin GET
+ *     omits the origin header, must resolve to servolia.com, localhost or the
+ *     host serving this very request (preview deployments);
+ *   - the caller must ASK for a preview (?preview=1 / preview:true), so the
+ *     preview answer lives under a different URL from the cached
+ *     `{enabled:false}` the client's site sees — a CDN keyed by URL could
+ *     otherwise hand a preview payload to the client's own visitors;
+ *   - a soft daily budget per slug, on top of the per-IP limit: a shared try
+ *     link is a public link.
+ *
+ * Preview conversations are NOT the product: nothing is persisted and nobody
+ * is notified. The person typing is the owner, or a stranger with the link,
+ * and neither should light up the client's phone.
+ */
+
+const OUR_HOSTS = new Set(["servolia.com", "www.servolia.com", "localhost", "127.0.0.1"]);
+
+function hostOf(url: string | null | undefined): string {
+  if (!url) return "";
+  try { return new URL(url).hostname.toLowerCase(); } catch { return ""; }
+}
+
+/** Is the page making this request one of ours? */
+export function previewOrigin(headers: { get(name: string): string | null }): boolean {
+  const from = hostOf(headers.get("origin")) || hostOf(headers.get("referer"));
+  if (!from) return false;
+  if (OUR_HOSTS.has(from) || from.endsWith(".servolia.com")) return true;
+  // The host serving this request: a Vercel preview deployment trying itself.
+  const self = (headers.get("x-forwarded-host") ?? headers.get("host") ?? "").split(":")[0].toLowerCase();
+  return Boolean(self) && from === self;
+}
+
+/**
+ * Per-slug daily preview budget. In-memory, so per serverless instance and
+ * reset on cold start — a SOFT cap that turns a runaway link into a small
+ * bill rather than a large one, not an accounting system. 80 messages a day
+ * is forty short conversations; a genuine owner trying their assistant uses
+ * five.
+ */
+const PREVIEW_DAILY = 80;
+const previewCounts = new Map<string, { day: string; n: number }>();
+
+export function previewBudgetOk(slug: string): boolean {
+  const day = new Date().toISOString().slice(0, 10);
+  const cur = previewCounts.get(slug);
+  if (!cur || cur.day !== day) {
+    previewCounts.set(slug, { day, n: 1 });
+    return true;
+  }
+  if (cur.n >= PREVIEW_DAILY) return false;
+  cur.n += 1;
+  return true;
+}
+
+/** A config that has something to preview: a real brief, not a demo, not switched off. */
+export function previewable(config: ClientSiteConfig): boolean {
+  return !config.isDemo && config.features?.chat !== false;
 }
 
 /**
@@ -62,19 +148,7 @@ export function isAssistantPlan(plan: string | null | undefined): boolean {
  * pays for reads as a company that does not know its own customers.
  */
 export async function hasAssistantSubscription(email?: string | null): Promise<boolean> {
-  const e = (email ?? "").trim().toLowerCase();
-  if (!e) return false;
-  const db = supabaseAdmin();
-  if (!db) return false;
-  const { data } = await db
-    .from("hosting_clients")
-    .select("id")
-    .eq("plan", "chatbot")
-    .ilike("email", e)
-    .in("status", ["active", "past_due"])
-    .limit(1)
-    .maybeSingle();
-  return Boolean(data);
+  return switchedOn(email);
 }
 
 /**

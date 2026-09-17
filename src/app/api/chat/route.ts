@@ -6,7 +6,7 @@ import { notifyClientOfLead } from "@/lib/clientNotify";
 import { buildReceptionistPrompt } from "@/lib/clientPrompt";
 import { sendMetaCapiEvent } from "@/lib/metaCapi";
 import { pricingPromptLines } from "@/lib/pricing";
-import { assistantEnabled } from "@/lib/assistantAccess";
+import { assistantEnabled, previewOrigin, previewable, previewBudgetOk } from "@/lib/assistantAccess";
 import { originAllowed, corsHeaders, sanitizeMessages } from "@/lib/assistant";
 
 export const runtime = "nodejs";
@@ -208,9 +208,14 @@ export async function POST(req: NextRequest) {
       sessionId?: string;
       pageUrl?: string;
       siteSlug?: string;
+      preview?: unknown;
     };
     const { sessionId, pageUrl } = body;
     const siteSlug = typeof body.siteSlug === "string" ? body.siteSlug.trim().slice(0, 64) : undefined;
+    /* True only once the showroom rule below has accepted it. Read as "this
+       conversation is nobody's customer": the model answers, nothing is
+       stored, nobody is notified. */
+    let preview = false;
     // Last twelve turns, each trimmed. A 200 KB "question" is a bill, not a customer.
     const messages: ChatMessage[] = sanitizeMessages(body.messages);
     if (!messages.length) {
@@ -239,8 +244,17 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "This site may not use that assistant." }, { status: 403 });
       }
       cors = corsHeaders(origin);
-      if (!config || !(await assistantEnabled(config))) {
+      if (!config) {
         return NextResponse.json({ error: "Chat is not enabled for this site." }, { status: 403, headers: cors });
+      }
+      if (!(await assistantEnabled(config))) {
+        /* THE SHOWROOM: an unpaid brief answers from our own pages only, when
+           asked for as a preview, inside a daily budget. Anywhere else, and
+           in particular on the client's own website, unpaid stays 403. */
+        preview = body.preview === true && previewable(config) && previewOrigin(req.headers) && previewBudgetOk(siteSlug);
+        if (!preview) {
+          return NextResponse.json({ error: "Chat is not enabled for this site." }, { status: 403, headers: cors });
+        }
       }
       const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "?";
       if (rateLimited(`${siteSlug}:${ip}`)) {
@@ -271,7 +285,11 @@ export async function POST(req: NextRequest) {
       const reply = rawReply.replace(/\[BOOKING\]/gi, "").trim();
 
       // Best-effort persistence tagged to the client (never blocks the reply).
-      if (db && sessionId) {
+      // A PREVIEW is persisted nowhere and alerts nobody: the person typing
+      // is the owner trying their own assistant, or a stranger with the link,
+      // and neither is a lead — a "new enquiry" WhatsApp for the owner's own
+      // test would be the first thing to make the product feel fake.
+      if (db && sessionId && !preview) {
         try {
           const replyMs = Date.now() - replyClockStart;
           const fullMessages = [

@@ -33,6 +33,7 @@ export default function ClientProductPage({
   accent,
   business,
   initialSite,
+  tryUrl,
 }: {
   product: ClientProduct;
   refCode: string;
@@ -50,6 +51,8 @@ export default function ClientProductPage({
   business?: { name: string; domain: string };
   /** Pre-fills the checkout's identify-yourself field for that prospect. */
   initialSite?: string;
+  /** A known client's showroom: their real assistant, already built, live. */
+  tryUrl?: string;
 }) {
   const copy = productCopy(product, lang);
   const fr = lang === "fr";
@@ -94,6 +97,7 @@ export default function ClientProductPage({
             accent={accent}
             business={business}
             initialSite={initialSite}
+            tryUrl={tryUrl}
           />
         ) : (
           <ProductCheckout

@@ -128,6 +128,9 @@ export default async function HostingPage({
         accent={brief?.accent ?? probed?.accent}
         business={probed ? { name: probed.name, domain: probed.domain } : undefined}
         initialSite={probed?.domain}
+        // The showroom: a client whose assistant is already built meets the
+        // real one, live, one click from the price. Strangers keep the film.
+        tryUrl={brief ? `/hosting/assistant/try?site=${encodeURIComponent(brief.slug)}${l === "fr" ? "&lang=fr" : ""}` : undefined}
       />
     );
   }

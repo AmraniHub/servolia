@@ -222,13 +222,33 @@ with sync_playwright() as p:
        pg.locator(".sva-panel").get_attribute("dir") == "ltr" and "Écrivez" in pg.locator(".sva-input textarea").get_attribute("placeholder"))
     ctx.close()
 
-    # ── 4. The widget draws NOTHING for an unpaid slug ────────────────────
-    ctx = b.new_context(viewport={"width": 1280, "height": 900})
-    pg = ctx.new_page()
-    pg.goto(f"{BASE}/hosting/assistant/try?site=excellenceagency", wait_until="load", timeout=90000)
-    pg.wait_for_timeout(2500)
-    ck("widget: an unpaid assistant renders nothing at all", pg.locator(".sva-root").count() == 0)
-    ctx.close()
+    # ── 4. Unpaid stays dark everywhere that is not ours; ours is the showroom ─
+    # The old assertion here — "the try page renders nothing for an unpaid
+    # slug" — was the behaviour the showroom exists to replace. What still
+    # must hold: a preview is refused from a foreign page, and refused when
+    # not asked for, so the client's own website sees the same dark widget
+    # it always did.
+    s, h, j = http("GET", "/api/assistant?site=excellenceagency&preview=1", headers={"Origin": "https://evil.example"})
+    ck("preview: refused from a foreign origin", s == 200 and j.get("enabled") is False, str(j)[:60])
+    s, h, j = http("GET", "/api/assistant?site=excellenceagency&preview=1", headers={"Referer": "https://excellence-agency.org/"})
+    ck("preview: refused from the client's OWN site (unpaid there means unpaid)", s == 200 and j.get("enabled") is False, str(j)[:60])
+    s, h, j = http("GET", "/api/assistant?site=excellenceagency", headers={"Referer": f"{BASE}/hosting/assistant/try"})
+    ck("preview: not granted unless asked for, even from our page", s == 200 and j.get("enabled") is False, str(j)[:60])
+    s, h, j = http("GET", "/api/assistant?site=excellenceagency&preview=1", headers={"Referer": f"{BASE}/hosting/assistant/try"})
+    ck("preview: GRANTED from our own page when asked for", s == 200 and j.get("enabled") is True and j.get("preview") is True, str(j)[:80])
+    ck("  and it is the client's real brief", j.get("name") == "Excellence Agency" and j.get("accent") == "#16255c", f"{j.get('name')} {j.get('accent')}")
+    ck("  never cached — a CDN must not hand it to the client's visitors", "no-store" in h.get("cache-control", ""), h.get("cache-control"))
+    s, h, j = http("GET", "/api/assistant?site=demo-study-abroad&preview=1", headers={"Referer": f"{BASE}/x"})
+    ck("preview: a demo is simply enabled, never flagged preview", j.get("enabled") is True and j.get("preview") is None)
+
+    msg = {"messages": [{"role": "user", "content": "hello"}], "sessionId": "t-preview", "siteSlug": "excellenceagency", "preview": True}
+    s, h, j = http("POST", "/api/chat", msg, {"Origin": "https://evil.example"})
+    ck("preview chat: a foreign page is still 403", s == 403, str(s))
+    s, h, j = http("POST", "/api/chat", {**msg, "preview": False}, {"Origin": BASE})
+    ck("preview chat: our page WITHOUT the flag is still 403 (unpaid)", s == 403, str(s))
+    s, h, j = http("POST", "/api/chat", msg, {"Origin": BASE})
+    ck("preview chat: our page with the flag answers", s == 200, f"{s} {str(j)[:60]}")
+    ck("  (locally: the no-backend fallback, not an error)", isinstance(j, dict) and j.get("fallback") is True, str(j)[:80])
 
     # ── 5. Thank-you page: the two truths ─────────────────────────────────
     ctx = b.new_context(viewport={"width": 430, "height": 900})
@@ -312,6 +332,49 @@ with sync_playwright() as p:
        pg.locator('[data-testid="demo-langs"]').bounding_box()["width"] <= 430)
     pg.wait_for_timeout(9000)
     pg.screenshot(path=os.path.join(OUT, "pay-mobile.png"), full_page=True)
+    ctx.close()
+
+    # ── 10. THE SHOWROOM: the client's real assistant, live, before paying ─
+    # Samira's, in English: the eyebrow says who built it, the widget boots
+    # in preview, the launcher opens on HER greeting in HER navy, and the
+    # page says plainly that nothing is saved. Then the pay page's door.
+    ctx = b.new_context(viewport={"width": 1280, "height": 900})
+    pg = ctx.new_page()
+    werrs = []
+    pg.on("pageerror", lambda e: werrs.append(str(e)))
+    pg.goto(f"{BASE}/hosting/assistant/try?site=goodscochina", wait_until="load", timeout=90000)
+    ck("showroom: the eyebrow says Servolia built it", "built by servolia" in pg.locator('[data-testid="try-eyebrow"]').inner_text().lower(),
+       pg.locator('[data-testid="try-eyebrow"]').inner_text())
+    ck("showroom: the lede calls it hers — the real one", "your assistant" in pg.locator('[data-testid="try-lede"]').inner_text().lower())
+    ck("showroom: says nothing is saved and nobody alerted", "nothing is saved" in pg.locator('[data-testid="try-preview-note"]').inner_text().lower())
+    ck("showroom: the door to the price is her pay page",
+       pg.locator('[data-testid="try-activate"]').get_attribute("href") == "/hosting?plan=chatbot&ref=goodscochina",
+       str(pg.locator('[data-testid="try-activate"]').get_attribute("href")))
+    pg.wait_for_selector(".sva-root", timeout=20000)
+    ck("showroom: the REAL widget boots for an unpaid client", pg.locator(".sva-root").count() == 1)
+    pg.click(".sva-launch")
+    pg.wait_for_selector(".sva-m", timeout=10000)
+    greet = pg.locator(".sva-m").first.inner_text()
+    ck("showroom: it greets as GoodsCoChina, from her brief", "goodscochina" in greet.lower(), greet[:70])
+    head_bg = pg.evaluate("getComputedStyle(document.querySelector('.sva-head')).backgroundColor")
+    ck("showroom: in her navy", head_bg == "rgb(17, 28, 116)", head_bg)
+    ck("showroom: no page errors", not werrs, "; ".join(werrs[:2]))
+
+    # The same slug on a foreign page: nothing. The showroom did not open the
+    # client's site — this is the same script tag, told by the server no.
+    s, h, j = http("GET", "/api/assistant?site=goodscochina", headers={"Origin": "https://goodscochina.com"})
+    ck("showroom: on her own site the widget is still told enabled:false", j.get("enabled") is False)
+
+    # The pay page for a known client carries the door to the showroom;
+    # a stranger's does not (there is nothing built to show them).
+    pg.goto(f"{BASE}/hosting?plan=chatbot&ref=excellenceagency", wait_until="load", timeout=90000)
+    pg.wait_for_selector('[data-testid="already-built"]', timeout=30000)
+    card = pg.locator('[data-testid="already-built"]')
+    ck("pay page (client): 'already built for you' card, in French", "déjà construit" in card.inner_text().lower(), card.inner_text()[:60])
+    ck("  linking to their showroom", card.get_attribute("href") == "/hosting/assistant/try?site=excellenceagency&lang=fr", str(card.get_attribute("href")))
+    pg.goto(f"{BASE}/hosting?plan=chatbot", wait_until="load", timeout=90000)
+    pg.wait_for_selector('[data-testid="assistant-demo"]', timeout=30000)
+    ck("pay page (stranger): no such card — nothing built to show", pg.locator('[data-testid="already-built"]').count() == 0)
     ctx.close()
     b.close()
 
