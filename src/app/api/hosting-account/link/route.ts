@@ -3,6 +3,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { clientRefFor } from "@/lib/clientRefs";
 import { accountLinkFor } from "@/lib/upgrade";
 import { sendEmail, accountLinkEmail } from "@/lib/email";
+import { sendTelegramMessage } from "@/lib/telegram";
 
 export const runtime = "nodejs";
 
@@ -51,6 +52,17 @@ export async function POST(req: NextRequest) {
 
   const url = await accountLinkFor(row.subscription_id, req.nextUrl.origin);
   const tpl = accountLinkEmail({ url, siteLabel: client.label, lang: client.lang ?? "en" });
-  sendEmail(client.email, tpl.subject, tpl.html).catch(() => {});
+
+  /* THE ANSWER TO THE BROWSER CANNOT SAY WHETHER THIS SENT — it is the same
+     "ok" for every ref, so a stranger cannot learn which businesses are
+     clients — so it has to be said somewhere. Telegram is that somewhere.
+     Without this line an operator triggering it had no way at all to tell a
+     delivered email from a silent Resend failure, which is exactly how two
+     invites that never left were read as two successes. */
+  const sent = await sendEmail(client.email, tpl.subject, tpl.html).catch(() => false);
+  sendTelegramMessage(
+    `🔗 *Service-page link ${sent ? "sent" : "FAILED"}* — ${client.label}` +
+    (sent ? `\nTo ${client.email} · ${(client.lang ?? "en").toUpperCase()}` : "\nResend refused it — try again."),
+  ).catch(() => {});
   return same;
 }
