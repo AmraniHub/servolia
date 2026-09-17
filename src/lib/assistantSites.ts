@@ -104,6 +104,20 @@ const EXCELLENCE_AGENCY: ClientSiteConfig = {
     },
   ],
   aiTone: "warm, encouraging and professional — like a caring advisor who has helped hundreds of students",
+  /* In French, like the rest of this brief: the owner reads French, edits
+     this field on his own settings page, and the model follows an
+     instruction in any language. Mirrors GoodsCoChina's — ask the three
+     things the advisor needs, and never name a figure the agency has not
+     agreed to. Tuition is the trap here: the site quotes none, and an
+     assistant that invented one would cost him a family. */
+  ownerInstructions:
+    "Demandez toujours trois choses : la filière souhaitée, le pays visé, et le niveau actuel de l'étudiant " +
+    "(année de bac, bachelier, licence ou master). Ce sont les trois réponses dont le conseiller a besoin pour " +
+    "évaluer le dossier. Ne donnez JAMAIS de montant : ni frais de scolarité, ni budget total, ni prix de service. " +
+    "Dites que cela dépend de l'université, de la filière et du pays, et qu'un conseiller envoie une estimation " +
+    "précise et gratuite sous 24 heures après l'inscription. Proposez WhatsApp (+212 660 095 616) pour toute " +
+    "question urgente. Quand le budget inquiète l'étudiant, mentionnez que l'agence aide à obtenir des bourses " +
+    "complètes ou partielles, notamment en Chine. Rappelez que l'inscription est gratuite et sans engagement.",
   greetings: {
     ar: "مرحباً بك في Excellence Agency 👋 أنا هنا لأجيب عن أسئلتك حول الدراسة في الخارج. كيف يمكنني مساعدتك؟",
     fr: "Bienvenue chez Excellence Agency 👋 Je réponds à vos questions sur les études à l'étranger. Comment puis-je vous aider ?",
