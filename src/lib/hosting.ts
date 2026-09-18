@@ -421,8 +421,11 @@ export const CLIENT_PRODUCTS: Record<string, ClientProduct> = {
       "Each language declared to Google (hreflang), so versions stop competing",
       "A sitemap per language, and a robots file that lets them be found",
       "Your company described in the format search engines read",
-      "Google Search Console set up and watched for every language",
-      "Checked every month, and fixed when a new page breaks it",
+      "Google Search Console set up, with every language submitted to it",
+      /* NOT "checked every month". This is one payment (oneOffUsd above), and a
+         bullet promising ongoing monthly work for it is a commitment with no
+         revenue behind it that a client can hold us to for years. */
+      "Verified once it is live, so you can see each language being indexed",
     ],
     explain: {
       "Each language declared to Google (hreflang), so versions stop competing":
@@ -431,7 +434,7 @@ export const CLIENT_PRODUCTS: Record<string, ClientProduct> = {
     description:
       "Multilingual search setup: hreflang, per-language sitemaps, robots and " +
       "structured data, with Search Console configured for each language and " +
-      "checked monthly.",
+      "verified once it is live.",
     fr: {
       tier: "Recherche",
       bestFor: "Un site en plusieurs langues que Google indexe comme s'il n'en avait qu'une.",
@@ -443,8 +446,8 @@ export const CLIENT_PRODUCTS: Record<string, ClientProduct> = {
         "Chaque langue déclarée à Google (hreflang), pour qu'elles cessent de se concurrencer",
         "Un sitemap par langue, et un fichier robots qui les rend trouvables",
         "Votre entreprise décrite dans le format que lisent les moteurs de recherche",
-        "Google Search Console configuré et surveillé pour chaque langue",
-        "Vérifié chaque mois, et corrigé quand une nouvelle page casse l'ensemble",
+        "Google Search Console configuré, avec chaque langue soumise",
+        "Vérifié une fois en ligne, pour voir chaque langue s'indexer",
       ],
       explain: {
         "Chaque langue déclarée à Google (hreflang), pour qu'elles cessent de se concurrencer":
@@ -453,7 +456,7 @@ export const CLIENT_PRODUCTS: Record<string, ClientProduct> = {
       description:
         "Mise en place de la recherche multilingue : hreflang, sitemaps par " +
         "langue, robots et données structurées, avec Search Console configuré " +
-        "pour chaque langue et vérifié chaque mois.",
+        "pour chaque langue et vérifié une fois en ligne.",
     },
   },
 };
