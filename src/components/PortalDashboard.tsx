@@ -15,7 +15,7 @@ import {
   LogOut, Send, MessageSquare, Clock, CreditCard, CheckCircle2, Users, CalendarCheck,
   Megaphone, ExternalLink, Sun, Moon, LayoutDashboard, KeyRound, Loader2, ShieldCheck, Trash2,
   Image as ImageIcon, X, Globe, BarChart3, Search, Download, HelpCircle, FileText, Sparkles, ArrowRight, Languages, UserCircle,
-  Eye, Monitor, Link2, TrendingUp, AlertTriangle, Zap, Phone,
+  Eye, Monitor, Link2, TrendingUp, AlertTriangle, Zap, Phone, FolderOpen,
 } from "lucide-react";
 import type { PaymentAlert } from "@/lib/clientBilling";
 import { T, locale, formatDate, formatPeriod, type Lang, type Dict } from "@/components/portal/portalDict";
@@ -23,6 +23,7 @@ import ZeroMissPanel from "@/components/portal/ZeroMissPanel";
 import PortalChatDock from "@/components/portal/PortalChatDock";
 import type { ComplianceReport } from "@/lib/zeroMiss";
 import DomainPanel from "@/components/portal/DomainPanel";
+import PortalFiles from "@/components/portal/PortalFiles";
 import type { DomainRow } from "@/lib/domains";
 import { PStat, PPanel, PBars, PChart } from "@/components/portal/TrafficWidgets";
 
@@ -59,7 +60,7 @@ function statusMeta(status: Build["status"], t: Dict): { label: string; color: s
 }
 
 
-type Tab = "overview" | "leads" | "traffic" | "reports" | "messages" | "account";
+type Tab = "overview" | "leads" | "traffic" | "reports" | "messages" | "files" | "account";
 
 /** Mirrors TrafficSummary in src/lib/traffic.ts — only the fields the portal renders. */
 interface PortalTraffic {
@@ -498,6 +499,7 @@ export default function PortalDashboard({
             { key: "traffic", label: t.tabs.traffic, icon: Eye },
             { key: "reports", label: t.tabs.reports, icon: BarChart3 },
             { key: "messages", label: t.tabs.messages, icon: MessageSquare },
+            { key: "files", label: t.tabs.files, icon: FolderOpen },
             { key: "account", label: t.tabs.account, icon: KeyRound },
           ] as const).map((it) => (
             <button key={it.key} onClick={() => setTab(it.key)}
@@ -1030,6 +1032,8 @@ export default function PortalDashboard({
         )}
 
         {/* ── ACCOUNT ── */}
+        {tab === "files" && <PortalFiles email={email} t={t} />}
+
         {tab === "account" && <AccountTab email={email} onLogout={handleLogout} t={t} />}
       </div>
 

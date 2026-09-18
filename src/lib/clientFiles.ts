@@ -118,17 +118,40 @@ export function humanSize(bytes: number): string {
 const MAX_FILES = 300;
 const MAX_BYTES = 40 * 1024 * 1024;
 
-async function ghJson<T>(path: string, token: string): Promise<T> {
-  const r = await fetch(`https://api.github.com${path}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      Accept: "application/vnd.github+json",
-      "User-Agent": "servolia-client-area",
-    },
-    cache: "no-store",
-  });
-  if (!r.ok) throw new Error(`GitHub ${r.status} on ${path}`);
-  return (await r.json()) as T;
+/**
+ * One GitHub read, retried.
+ *
+ * An archive is dozens of calls and ALL of them have to land — one dropped
+ * connection two thirds of the way through is not a slow download, it is a
+ * failed one, and the client sees an error on a button they were told to press.
+ * Building this from a 4G line made that obvious: the same code fetched 46
+ * files for one client and timed out on the seventh for the other, twice.
+ *
+ * Only the connection is retried, never a refusal. A 404 or a 403 means the
+ * answer is no, and asking again three times does not change it.
+ */
+async function ghJson<T>(path: string, token: string, tries = 3): Promise<T> {
+  let last: unknown;
+  for (let attempt = 0; attempt < tries; attempt += 1) {
+    try {
+      const r = await fetch(`https://api.github.com${path}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/vnd.github+json",
+          "User-Agent": "servolia-client-area",
+        },
+        cache: "no-store",
+      });
+      if (r.status >= 400 && r.status < 500) throw new Error(`GitHub ${r.status} on ${path}`);
+      if (!r.ok) { last = new Error(`GitHub ${r.status} on ${path}`); }
+      else return (await r.json()) as T;
+    } catch (err) {
+      if (err instanceof Error && /GitHub 4\d\d/.test(err.message)) throw err;
+      last = err;
+    }
+    await new Promise((r) => setTimeout(r, 400 * (attempt + 1)));
+  }
+  throw last instanceof Error ? last : new Error(`GitHub unreachable for ${path}`);
 }
 
 /**
@@ -149,6 +172,20 @@ async function ghJson<T>(path: string, token: string): Promise<T> {
  */
 const NOT_THEIRS = new Set(["site-status.js", "middleware.js", "promo.js", "promo-config.json", "build.py"]);
 
+/**
+ * Markdown and build scripts go too.
+ *
+ * `web/README.md` on her site is OUR notes about her site: it names build.py,
+ * calls the home page "built from the CMS template", and describes the landing
+ * page as built on the Hormozi Value Equation. None of that is secret and none
+ * of it is hers — it is the working notes of the person who built it, and it
+ * does not belong in a file called "your website".
+ */
+function isOurs(rel: string): boolean {
+  const name = rel.split("/").pop() ?? "";
+  return NOT_THEIRS.has(name) || /\.(md|py)$/i.test(name);
+}
+
 export async function collectSiteFiles(ref: string): Promise<{ path: string; data: Buffer }[]> {
   const src = siteSourceFor(ref);
   const token = process.env.GH_TOKEN;
@@ -168,7 +205,7 @@ export async function collectSiteFiles(ref: string): Promise<{ path: string; dat
     const rel = root ? e.path.slice(root.length) : e.path;
     if (!rel || rel.split("/").some((p) => p.startsWith("."))) return false;
     if (rel.split("/").some((p) => HIDDEN.has(p))) return false;
-    return !NOT_THEIRS.has(rel.split("/").pop() ?? "");
+    return !isOurs(rel);
   });
 
   if (wanted.length > MAX_FILES) throw new Error(`${wanted.length} files is more than this was built for`);
