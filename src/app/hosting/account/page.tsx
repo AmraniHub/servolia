@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Check, ExternalLink, FileText, ArrowUpRight, PencilLine } from "lucide-react";
 import { editableSite } from "@/lib/siteEditor";
 import { listSiteFiles, humanSize } from "@/lib/clientFiles";
+import { mailSettingsFor } from "@/lib/mailSettings";
 import EditorPassword from "@/components/client/EditorPassword";
 import RequestCopy, { type CopyView } from "@/components/client/RequestCopy";
 import { readCopyRequest, copyState } from "@/lib/clientCopy";
@@ -74,6 +75,17 @@ const T = {
     filesBody: (n: number, size: string) =>
       `${n} ${n === 1 ? "file" : "files"}, ${size} in all. This is what your website is made of, and it is yours — ask any time and we will send you a copy.`,
     filesUnavailable: "We cannot list your files at this moment. Ask us and we will send them.",
+    mailTitle: "Your email on your phone",
+    mailIntro: (addr: string) => `Add ${addr} to the Mail app on your phone with exactly these settings.`,
+    mailWebmail: "Or read it in a browser",
+    mailUser: "Username",
+    mailUserValue: "your full email address",
+    mailIn: "Incoming (IMAP)",
+    mailOut: "Outgoing (SMTP)",
+    mailWhy:
+      "These must match exactly. Your mailbox lives in one specific data centre, and a phone pointed at the wrong one reaches a working server that does not know your account — so it reports a wrong password when the password is fine.",
+    mailApp:
+      "If you have two-step login turned on, your phone needs an app password, not your normal one. Ask us and we will make you one.",
     problem: {
       title: "This link has expired",
       body: "Service links do not last forever. Reply to any email from us and we will send a fresh one.",
@@ -110,6 +122,17 @@ const T = {
     filesBody: (n: number, size: string) =>
       `${n} ${n === 1 ? "fichier" : "fichiers"}, ${size} au total. Voilà de quoi votre site est fait, et il vous appartient — demandez-nous une copie quand vous voulez.`,
     filesUnavailable: "Nous ne pouvons pas lister vos fichiers pour l'instant. Demandez-nous et nous vous les envoyons.",
+    mailTitle: "Votre email sur votre téléphone",
+    mailIntro: (addr: string) => `Ajoutez ${addr} à l'application Mail de votre téléphone avec exactement ces réglages.`,
+    mailWebmail: "Ou lisez-le dans un navigateur",
+    mailUser: "Identifiant",
+    mailUserValue: "votre adresse email complète",
+    mailIn: "Réception (IMAP)",
+    mailOut: "Envoi (SMTP)",
+    mailWhy:
+      "Ces réglages doivent être exacts. Votre boîte se trouve dans un centre de données précis, et un téléphone dirigé vers le mauvais atteint un serveur qui fonctionne mais ne connaît pas votre compte — il annonce alors un mot de passe incorrect alors qu'il est bon.",
+    mailApp:
+      "Si la connexion en deux étapes est activée, votre téléphone a besoin d'un mot de passe d'application, pas de votre mot de passe habituel. Demandez-nous et nous vous en créons un.",
     problem: {
       title: "Ce lien a expiré",
       body: "Les liens de service ne durent pas indéfiniment. Répondez à l'un de nos emails et nous vous en envoyons un nouveau.",
@@ -242,6 +265,13 @@ export default async function AccountPage({
       }
     : await listSiteFiles(ctx.ref);
 
+  /* Their mailbox settings, worked out from their own domain's MX record.
+     Only for a client who HAS a mailbox on their domain — see the `mailbox`
+     note in clientRefs: a client whose published address has no MX behind it
+     must not be handed confident settings for a box that does not exist. */
+  const mailbox = isDemo ? "info@goodscochina.com" : clientRefFor(ctx.ref)?.mailbox;
+  const mail = mailbox ? await mailSettingsFor(mailbox.split("@")[1] ?? "") : null;
+
   /* Servolia's own recommendation, on the page the client owns. Hosting-tier
    * clients only, and only until the assistant is theirs — the same rule as
    * the /hosting?ref= page, kept by the same helper. */
@@ -358,6 +388,53 @@ export default async function AccountPage({
           the moment someone realises they do not know it. Only where there is
           an editor to let them into. */}
       {editorUrl ? <EditorPassword token={token} lang={ctx.lang} sample={isDemo} /> : null}
+
+      {/* HER EMAIL ON HER PHONE. The settings are derived from her domain's
+          own MX record, so the region can never be stale — and the region is
+          the whole bug: a phone on the wrong data centre reaches a healthy
+          server and reports a wrong password. */}
+      {mail && mailbox ? (
+        <div className="rounded-2xl border border-[#E8E6E0] bg-white p-7 mb-5" data-testid="account-mail-card">
+          <p className="text-[10px] font-black text-[#8A8A80] uppercase tracking-widest mb-3">{t.mailTitle}</p>
+          <p className="text-[14px] text-[#52525B] leading-relaxed mb-4">{t.mailIntro(mailbox)}</p>
+
+          <dl className="text-[14px] space-y-3">
+            <div className="flex items-baseline justify-between gap-4">
+              <dt className="text-[#71717A]">{t.mailUser}</dt>
+              <dd className="font-bold text-[#18181B] text-right break-all">{mailbox}</dd>
+            </div>
+            {([
+              [t.mailIn, mail.incoming],
+              [t.mailOut, mail.outgoing],
+            ] as const).map(([label, h]) => (
+              <div key={label} className="flex items-baseline justify-between gap-4">
+                <dt className="text-[#71717A] shrink-0">{label}</dt>
+                <dd className="font-bold text-[#18181B] text-right">
+                  {/* The host is the part that must be typed exactly, so it is
+                      the part set in a monospace face. */}
+                  <span className="font-mono text-[13.5px] break-all">{h.host}</span>
+                  <span className="block text-[13px] font-normal text-[#71717A] mt-0.5">
+                    {h.port} · {h.security}
+                  </span>
+                </dd>
+              </div>
+            ))}
+          </dl>
+
+          <p className="mt-4 text-[12.5px] text-[#8A8A80] leading-relaxed">{t.mailWhy}</p>
+          {mail.appPasswordIfTwoFactor ? (
+            <p className="mt-2 text-[12.5px] text-[#8A8A80] leading-relaxed">{t.mailApp}</p>
+          ) : null}
+          <a
+            href={mail.webmail}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1.5 mt-4 text-[13.5px] font-bold text-[#36671E] hover:underline"
+          >
+            {t.mailWebmail} <ExternalLink className="w-3.5 h-3.5" />
+          </a>
+        </div>
+      ) : null}
 
       {/* THE FILES. A client asking for the admin of their site is usually
           asking something underneath it — is this actually mine? A list of

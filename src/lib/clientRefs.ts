@@ -71,6 +71,21 @@ export interface ClientRef {
    * in Lithuania at 2am, not a dental patient. Unset = the generic script.
    */
   niche?: string;
+  /**
+   * The mailbox we set up ON THEIR DOMAIN, where one exists.
+   *
+   * Not the same thing as `email` above, which is the person we bill and is
+   * usually a Gmail or Hotmail address. This is the business address printed
+   * on their own website, and it lives here so their service page can show
+   * them the settings their phone needs.
+   *
+   * ONLY set this once mail to it actually arrives. Excellence Agency's site
+   * prints Contact@excellencestudyagency.com on every page and NEITHER of
+   * their domains has an MX record, so every enquiry sent to it has bounced —
+   * an address in this field would put confident settings in front of a client
+   * for a mailbox that does not exist.
+   */
+  mailbox?: string;
 }
 
 export const CLIENT_REFS: Record<string, ClientRef> = {
@@ -89,6 +104,12 @@ export const CLIENT_REFS: Record<string, ClientRef> = {
     // No gateWidget: this is a whole Vercel site, not a Shopify add-on, so it
     // gates through site-status.js + middleware rather than a snippet swap.
     niche: "sourcing",
+    /* Zoho, and the account is in the JAPAN data centre — mx.zoho.jp, with
+       include:zohomail.jp in the SPF. Her phone must use the .jp hostnames;
+       pointed at imap.zoho.com it reaches a perfectly healthy server that has
+       never heard of her account and reports a wrong password. The settings
+       card derives the region from this domain's live MX so it cannot drift. */
+    mailbox: "info@goodscochina.com",
   },
   excellenceagency: {
     // The .ma domain was suspended at the registry; the site moved here.
