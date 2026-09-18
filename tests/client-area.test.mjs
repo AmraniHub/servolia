@@ -10,6 +10,9 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readStoredHash, writeStoredHash, hashPassword, hashMatches } from "../src/lib/siteEditorPassword.ts";
 import { passwordProblem } from "../src/lib/siteEditorPassword.ts";
+import { refForEmail } from "../src/lib/hostingRow.ts";
+import { CLIENT_REFS } from "../src/lib/clientRefs.ts";
+import { EDITABLE_SITES as EDITABLE_SITES_FOR_LOOKUP } from "../src/lib/siteEditor.ts";
 import {
   staffEnvName, staffSecretValue, staffPasswordOk, readStaffSecret,
 } from "../src/lib/siteEditorPassword.ts";
@@ -105,4 +108,31 @@ test("a value with no expiry is refused outright", () => {
   assert.equal(readStaffSecret("short|2026-12-01T00:00:00.000Z"), null);
   assert.equal(readStaffSecret(null), null);
   assert.equal(readStaffSecret(""), null);
+});
+
+test("the client reference and the billing row are bridged by email", () => {
+  /* THE BUG THIS PINS. hosting_clients has no `client_ref` column — the
+     reference lives in clientRefs.ts and the email joins the two. A query on
+     a column that does not exist does not throw: PostgREST returns an error
+     object and supabase-js hands back `data: null`, which reads exactly like
+     "no such client". So a password change did nothing, a copy request did
+     nothing, and a correct password was refused, all silently. */
+  for (const ref of ["goodscochina", "excellenceagency"]) {
+    const client = CLIENT_REFS[ref];
+    assert.ok(client, `${ref} must be in CLIENT_REFS or nothing can find its row`);
+    assert.ok(client.email, `${ref} needs an email — it is the only key into hosting_clients`);
+    assert.equal(refForEmail(client.email), ref, `${ref}: the email must map back to it`);
+    assert.equal(refForEmail(client.email.toUpperCase()), ref, "and case must not matter");
+  }
+  assert.equal(refForEmail("nobody@example.com"), null);
+  assert.equal(refForEmail(null), null);
+  assert.equal(refForEmail(""), null);
+});
+
+test("every editable site can actually be found in the billing table", () => {
+  // An editor with no route to a row cannot store a password, so its client
+  // could never change one — the feature would be a button that does nothing.
+  for (const ref of Object.keys(EDITABLE_SITES_FOR_LOOKUP)) {
+    assert.ok(CLIENT_REFS[ref]?.email, `${ref} is editable but has no email to find its row by`);
+  }
 });

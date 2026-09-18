@@ -99,28 +99,20 @@ export async function POST(req: NextRequest) {
  * by itself rather than standing open for a year.
  */
 async function handleCopyCallback(what: "approve" | "refuse", ref: string): Promise<string> {
-  const { supabaseAdmin } = await import("@/lib/supabase");
   const { readCopyRequest, writeCopyRequest, approvedNow, COPY_WINDOW_DAYS } = await import("@/lib/clientCopy");
-  const db = supabaseAdmin();
-  if (!db) return "No database configured, so nothing changed.";
+  const { rowForRef, saveNotes } = await import("@/lib/hostingRow");
 
-  const { data } = await db
-    .from("hosting_clients")
-    .select("notes")
-    .eq("client_ref", ref)
-    .maybeSingle();
-  const notes = (data as { notes?: string | null } | null)?.notes ?? null;
+  const row = await rowForRef(ref);
+  if (!row) return `No billing row found for ${ref}, so nothing changed.`;
+  const notes = row.notes;
   const current = readCopyRequest(notes);
 
   const next = what === "approve"
     ? approvedNow(current)
     : { ...(current?.requested ? { requested: current.requested } : {}), refused: new Date().toISOString() };
 
-  const { error } = await db
-    .from("hosting_clients")
-    .update({ notes: writeCopyRequest(notes, next) })
-    .eq("client_ref", ref);
-  if (error) return `Could not save that: ${error.message}`;
+  const error = await saveNotes(row, writeCopyRequest(notes, next));
+  if (error) return `Could not save that: ${error}`;
 
   return what === "approve"
     ? `✅ ${ref} can download their website from their own page for the next ${COPY_WINDOW_DAYS} days.`

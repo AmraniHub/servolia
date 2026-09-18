@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { readUpgradeToken } from "@/lib/upgrade";
-import { supabaseAdmin } from "@/lib/supabase";
+import { rowForSubscription, refForEmail, saveNotes } from "@/lib/hostingRow";
 import { editableSite } from "@/lib/siteEditor";
 import { hashPassword, writeStoredHash, passwordProblem } from "@/lib/siteEditorPassword";
 import { sendTelegramMessage } from "@/lib/telegram";
@@ -45,16 +45,13 @@ export const maxDuration = 60;
 async function rowFor(token: string) {
   const subId = (await readUpgradeToken(token)) || (await clientSession());
   if (!subId) return null;
-  const db = supabaseAdmin();
-  if (!db) return null;
-  const { data } = await db
-    .from("hosting_clients")
-    .select("client_ref, email, notes")
-    .eq("subscription_id", subId)
-    .maybeSingle();
-  const row = data as { client_ref?: string; email?: string; notes?: string | null } | null;
-  if (!row?.client_ref) return null;
-  return { ...row, client_ref: row.client_ref.toLowerCase(), subId, db };
+  const row = await rowForSubscription(subId);
+  /* The reference comes from the email, not from a column: hosting_clients has
+     no client_ref. Without a reference there is no site to edit and no
+     password to set, so there is nothing this request can mean. */
+  const ref = refForEmail(row?.email);
+  if (!row || !ref) return null;
+  return { row, ref, email: row.email, notes: row.notes, subId };
 }
 
 export async function POST(req: NextRequest) {
@@ -93,7 +90,7 @@ export async function POST(req: NextRequest) {
       { status: 401 },
     );
   }
-  const { client_ref: ref, email, notes, db } = found;
+  const { row, ref, email, notes } = found;
 
   if (doing === "set-password") {
     const site = editableSite(ref);
@@ -104,12 +101,9 @@ export async function POST(req: NextRequest) {
     const problem = passwordProblem(password);
     if (problem) return NextResponse.json({ ok: false, error: problem }, { status: 400 });
 
-    const { error } = await db
-      .from("hosting_clients")
-      .update({ notes: writeStoredHash(notes, hashPassword(ref, password), new Date().toISOString()) })
-      .eq("client_ref", ref);
+    const error = await saveNotes(row, writeStoredHash(notes, hashPassword(ref, password), new Date().toISOString()));
     if (error) {
-      console.error("[client-area] password not saved:", error.message);
+      console.error("[client-area] password not saved:", error);
       return NextResponse.json(
         { ok: false, error: "That could not be saved just now. Your old password still works — please try again." },
         { status: 502 },
@@ -132,12 +126,9 @@ export async function POST(req: NextRequest) {
        second alert — a client who sees no instant answer presses again. */
     if (state === "ready" || state === "waiting") return NextResponse.json({ ok: true, state });
 
-    const { error } = await db
-      .from("hosting_clients")
-      .update({ notes: writeCopyRequest(notes, { requested: new Date().toISOString() }) })
-      .eq("client_ref", ref);
+    const error = await saveNotes(row, writeCopyRequest(notes, { requested: new Date().toISOString() }));
     if (error) {
-      console.error("[client-area] copy request not saved:", error.message);
+      console.error("[client-area] copy request not saved:", error);
       return NextResponse.json({ ok: false, error: "That did not go through. Please try again." }, { status: 502 });
     }
 
@@ -181,13 +172,13 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const files = await collectSiteFiles(found.client_ref);
+    const files = await collectSiteFiles(found.ref);
     if (!files.length) throw new Error("no files");
     const zip = makeZip(files);
     return new NextResponse(new Uint8Array(zip), {
       headers: {
         "Content-Type": "application/zip",
-        "Content-Disposition": `attachment; filename="${found.client_ref}-website.zip"`,
+        "Content-Disposition": `attachment; filename="${found.ref}-website.zip"`,
         "Content-Length": String(zip.length),
         // Their own site, behind an approval: nothing caches this anywhere.
         "Cache-Control": "private, no-store",

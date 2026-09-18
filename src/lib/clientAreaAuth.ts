@@ -1,8 +1,8 @@
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
-import { supabaseAdmin } from "@/lib/supabase";
 import { passwordMatchesFor } from "@/lib/siteEditorAuth";
 import { CLIENT_REFS } from "@/lib/clientRefs";
+import { rowForRef, refForEmail } from "@/lib/hostingRow";
 
 /**
  * A HOSTING CLIENT SIGNING IN TO THEIR OWN SERVICE PAGE.
@@ -68,47 +68,19 @@ function refForSiteAddress(input: string): string | null {
  * same answer for all three. Anything else turns this form into a way to ask
  * whether a given business is one of ours.
  */
-export async function identify(email: string, password: string): Promise<ClientIdentity | null> {
-  const db = supabaseAdmin();
-  if (!db || !email || !password) return null;
+export async function identify(identifier: string, password: string): Promise<ClientIdentity | null> {
+  if (!identifier || !password) return null;
 
-  const byDomain = refForSiteAddress(email);
-  if (byDomain) {
-    const { data } = await db
-      .from("hosting_clients")
-      .select("client_ref, email, subscription_id")
-      .eq("client_ref", byDomain)
-      .maybeSingle();
-    const row = data as { client_ref?: string; email?: string; subscription_id?: string } | null;
-    if (!row?.client_ref || !row.subscription_id) return null;
-    const ref = row.client_ref.toLowerCase();
-    if (!(await passwordMatchesFor(ref, password))) return null;
-    return { subscriptionId: row.subscription_id, ref, email: row.email ?? null };
-  }
+  /* Their website address or their email, resolved to one of our references
+     either way. The row itself is keyed on email — see hostingRow. */
+  const ref = refForSiteAddress(identifier) ?? refForEmail(identifier);
+  if (!ref) return null;
 
-  const wanted = email.trim().toLowerCase();
-  const { data } = await db
-    .from("hosting_clients")
-    .select("client_ref, email, subscription_id")
-    .ilike("email", wanted)
-    .limit(5);
-  /* ilike is a PATTERN match: `_` matches any character and `%` matches any
-     run of them, and both are legal in an email address. So `a_b@x.com` would
-     otherwise match `axb@x.com` — a different client, with a different
-     invoice. The rows it returns are re-checked here as plain strings. */
-  const rows = ((data ?? []) as { client_ref?: string; email?: string; subscription_id?: string }[])
-    .filter((r) => (r.email ?? "").trim().toLowerCase() === wanted);
-
-  /* Two rows for one address is a data problem, not a login: signing them into
-     whichever came back first would show one client another's invoice. */
-  if (rows.length !== 1) return null;
-
-  const row = rows[0];
-  if (!row.client_ref || !row.subscription_id) return null;
-  const ref = row.client_ref.toLowerCase();
+  const row = await rowForRef(ref);
+  if (!row?.subscription_id) return null;
   if (!(await passwordMatchesFor(ref, password))) return null;
 
-  return { subscriptionId: row.subscription_id, ref, email: row.email ?? null };
+  return { subscriptionId: row.subscription_id, ref, email: row.email };
 }
 
 export async function createClientSession(id: ClientIdentity): Promise<string> {

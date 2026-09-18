@@ -81,15 +81,11 @@ export async function editorConfiguredFor(ref: string): Promise<boolean> {
 }
 
 async function storedHashFor(ref: string): Promise<string | null> {
-  const { supabaseAdmin } = await import("@/lib/supabase");
-  const db = supabaseAdmin();
-  if (!db) return null;
-  const { data } = await db
-    .from("hosting_clients")
-    .select("notes")
-    .eq("client_ref", ref)
-    .maybeSingle();
-  return readStoredHash((data as { notes?: string | null } | null)?.notes);
+  /* Keyed through the email, because hosting_clients has no client_ref column.
+     The first version of this queried one, got `data: null` rather than an
+     exception, and read as "this client has never set a password" forever. */
+  const { rowForRef } = await import("@/lib/hostingRow");
+  return readStoredHash((await rowForRef(ref))?.notes);
 }
 
 export async function createEditorSession(ref: string): Promise<string> {
