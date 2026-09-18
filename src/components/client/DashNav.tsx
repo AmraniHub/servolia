@@ -17,9 +17,9 @@ import Link from "next/link";
  * why it is appended only when it exists.
  */
 
-export type DashPage = "overview" | "website" | "files" | "domains" | "services" | "billing";
+export type DashPage = "overview" | "website" | "files" | "domains" | "services" | "billing" | "help";
 
-export const DASH_PAGES: DashPage[] = ["overview", "website", "files", "domains", "services", "billing"];
+export const DASH_PAGES: DashPage[] = ["overview", "website", "files", "domains", "services", "billing", "help"];
 
 const LABELS: Record<DashPage, { en: string; fr: string }> = {
   overview: { en: "Overview", fr: "Vue d'ensemble" },
@@ -28,6 +28,7 @@ const LABELS: Record<DashPage, { en: string; fr: string }> = {
   domains: { en: "Domains", fr: "Domaines" },
   services: { en: "Services", fr: "Services" },
   billing: { en: "Billing", fr: "Facturation" },
+  help: { en: "Help", fr: "Aide" },
 };
 
 /** Small glyphs, drawn rather than imported, so the nav costs no extra bytes. */
@@ -39,6 +40,7 @@ function Glyph({ page }: { page: DashPage }) {
     domains: "M12 3a9 9 0 100 18 9 9 0 000-18zM3 12h18M12 3c2.5 3 2.5 15 0 18M12 3c-2.5 3-2.5 15 0 18",
     services: "M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8L3.5 9.2l5.9-.9z",
     billing: "M3 6h18v12H3zM3 10h18",
+    help: "M12 3a9 9 0 100 18 9 9 0 000-18zM9.5 9a2.5 2.5 0 114 2c-.9.7-1.5 1.2-1.5 2.4M12 17h.01",
   };
   return (
     <svg viewBox="0 0 24 24" className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.7"

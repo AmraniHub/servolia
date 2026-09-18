@@ -191,6 +191,32 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, url });
   }
 
+  if (doing === "support") {
+    const text = String(body.message ?? "").trim();
+    if (text.length < 10) {
+      return NextResponse.json({ ok: false, error: "Tell us a little more so we can actually help." }, { status: 400 });
+    }
+    /* Trimmed, not truncated silently: a client who writes an essay should be
+       told it was long, and Telegram refuses a message over ~4096 characters
+       outright — which would look to them like nothing sent. */
+    const clipped = text.length > 1500 ? `${text.slice(0, 1500)}\n\n[…trimmed, ${text.length} characters in all]` : text;
+
+    const sent = await sendTelegramMessage(
+      `💬 *${ref}* wrote from their panel:\n\n${clipped}\n\n— ${email ?? "(no email on the row)"}`,
+      undefined,
+      // Plain: a client's own words must not be re-interpreted as Markdown,
+      // where a stray underscore or asterisk silently eats half the message.
+      { plain: true },
+    );
+    if (!sent) {
+      return NextResponse.json(
+        { ok: false, error: "That did not send. Email hello@servolia.com and we will pick it up there." },
+        { status: 502 },
+      );
+    }
+    return NextResponse.json({ ok: true });
+  }
+
   if (doing === "cancel-copy") {
     /* Their own request, so they can withdraw it. Without this a client who
        pressed the button once is told "we will confirm shortly" forever, with

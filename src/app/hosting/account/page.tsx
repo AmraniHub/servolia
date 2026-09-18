@@ -10,6 +10,7 @@ import DomainSearch from "@/components/client/DomainSearch";
 import DashNav, { dashPageFrom, dashLabel } from "@/components/client/DashNav";
 import StatTiles from "@/components/client/StatTiles";
 import ServiceCards, { type ServiceCard } from "@/components/client/ServiceCards";
+import SupportBox from "@/components/client/SupportBox";
 import FileManager from "@/components/client/FileManager";
 import { acceptAttribute, acceptedList } from "@/lib/siteUpload";
 import RenewalBar from "@/components/client/RenewalBar";
@@ -18,6 +19,7 @@ import ClientSignOut from "@/components/client/ClientSignOut";
 import { clientSession } from "@/lib/clientAreaAuth";
 import { readCopyRequest, copyState } from "@/lib/clientCopy";
 import { readExtraDomains } from "@/lib/extraDomains";
+import { siteHealth } from "@/lib/siteHealth";
 import { readUpgradeToken, subscriptionContext, mintUpgradeToken } from "@/lib/upgrade";
 import { productCopy, CLIENT_PRODUCTS, HOSTING_TIERS, usd } from "@/lib/hosting";
 import { supabaseAdmin } from "@/lib/supabase";
@@ -92,6 +94,13 @@ const T = {
     secServices: "Your plan and services",
     secAccount: "Your account",
     secFiles: "Your files",
+    secHelp: "Help",
+    tileSite: "Your site",
+    siteUp: "Online",
+    siteDown: "Not responding",
+    siteUnknown: "Checking",
+    tileChanged: "Last change",
+    changesIn30: (n: number) => `${n} in the last 30 days`,
     boughtTitle: (d: string) => `${d} is yours.`,
     boughtBody: "We are pointing it at your website now. It can take a few minutes to start working, and we will email you when it is live.",
     alsoYours: "Also yours",
@@ -155,6 +164,13 @@ const T = {
     secServices: "Votre formule et vos services",
     secAccount: "Votre compte",
     secFiles: "Vos fichiers",
+    secHelp: "Aide",
+    tileSite: "Votre site",
+    siteUp: "En ligne",
+    siteDown: "Ne répond pas",
+    siteUnknown: "Vérification",
+    tileChanged: "Dernier changement",
+    changesIn30: (n: number) => `${n} sur les 30 derniers jours`,
     boughtTitle: (d: string) => `${d} est à vous.`,
     boughtBody: "Nous le dirigeons vers votre site. Cela peut prendre quelques minutes, et nous vous écrivons dès qu'il est actif.",
     alsoYours: "Également à vous",
@@ -390,6 +406,14 @@ export default async function AccountPage({
      GitHub and every other page would pay for it without using it. */
   if (isDemo) extraDomains = [{ domain: "yiwu-goods.com", nextChargeAt: "2027-09-18" }];
 
+  /* Measured, not asserted. Only on the page that shows it: a fetch of their
+     site and a read of their repository is not worth doing on Billing. */
+  const health = isDemo
+    ? { up: true, status: 200, lastChange: "2026-09-18T04:00:00.000Z", recentChanges: 7 }
+    : dashPage === "overview"
+      ? await siteHealth(ctx.ref, ctx.siteLabel ? `https://${ctx.siteLabel.replace(/^https?:\/\//, "")}` : null)
+      : { up: null, status: null, lastChange: null, recentChanges: 0 };
+
   const siteFolders = isDemo
     ? ["", "css", "img", "js"]
     : dashPage === "files"
@@ -515,10 +539,27 @@ export default async function AccountPage({
       {dashPage === "overview" ? (
         <StatTiles
           tiles={[
-            { label: t.tileStatus, value: label, live: active && !ending, hint: ctx.siteLabel || undefined },
+            {
+              label: t.tileSite,
+              /* What a fetch of their site just returned, not what our row
+                 believes. A panel that reports "Active" from a database while
+                 the site is down is the one thing that destroys a status
+                 page. */
+              value: health.up === null ? t.siteUnknown : health.up ? t.siteUp : t.siteDown,
+              live: health.up === true,
+              hint: ctx.siteLabel || undefined,
+            },
             { label: t.tilePlan, value: copy.heading, hint: amount !== null ? `${money(amount)} / ${per}` : undefined },
             { label: ending ? t.endsOn : t.renews, value: date ?? t.renewsNever },
-            { label: t.tileFiles, value: String(siteFiles.files.length), hint: humanSize(siteFiles.bytes) },
+            {
+              label: t.tileChanged,
+              value: health.lastChange
+                ? new Date(health.lastChange).toLocaleDateString(fr ? "fr-FR" : "en-GB", {
+                    day: "numeric", month: "short", timeZone: "UTC",
+                  })
+                : "—",
+              hint: health.recentChanges ? t.changesIn30(health.recentChanges) : undefined,
+            },
           ]}
         />
       ) : null}
@@ -816,6 +857,10 @@ export default async function AccountPage({
         </div>
       ) : null}
 
+      </Section>
+
+      <Section title={t.secHelp} when={dashPage === "help"}>
+        <SupportBox token={linkToken} lang={ctx.lang} sample={isDemo} />
       </Section>
 
       <Section title={t.secAccount} when={dashPage === "billing"}>
