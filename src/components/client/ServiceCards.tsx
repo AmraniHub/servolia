@@ -31,6 +31,10 @@ export interface ServiceCard {
   owned?: boolean;
   /** Two or three lines of what it includes. */
   includes?: string[];
+  /** What it changes for them, in one sentence. The reason to read on. */
+  value?: string | null;
+  /** Who it suits, where the catalogue says so. */
+  bestFor?: string | null;
   /** Built for them and waiting — the strongest thing we can say. */
   ready?: boolean;
 }
@@ -68,6 +72,15 @@ export default function ServiceCards({ cards, lang }: { cards: ServiceCard[]; la
 
           <p className="text-[13.5px] text-[#52525B] leading-relaxed">{c.blurb}</p>
 
+          {/* The outcome, set apart and heavier than the feature list. A
+              client reading a list of features still has to translate it into
+              their own business, and most will not bother. */}
+          {c.value ? (
+            <p className="mt-3 pl-3 border-l-2 border-[#CBE3BC] text-[13.5px] text-[#18181B] leading-relaxed">
+              {c.value}
+            </p>
+          ) : null}
+
           {c.includes?.length ? (
             <ul className="mt-3 space-y-1">
               {c.includes.slice(0, 3).map((line) => (
@@ -77,6 +90,10 @@ export default function ServiceCards({ cards, lang }: { cards: ServiceCard[]; la
                 </li>
               ))}
             </ul>
+          ) : null}
+
+          {c.bestFor ? (
+            <p className="mt-3 text-[12.5px] text-[#8A8A80] leading-relaxed">{c.bestFor}</p>
           ) : null}
 
           <div className="mt-4 pt-3 border-t border-black/[0.06] flex items-center justify-between gap-3">

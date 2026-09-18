@@ -11,6 +11,11 @@ import DashNav, { dashPageFrom, dashLabel } from "@/components/client/DashNav";
 import StatTiles from "@/components/client/StatTiles";
 import ServiceCards, { type ServiceCard } from "@/components/client/ServiceCards";
 import SupportBox from "@/components/client/SupportBox";
+import Recommendations from "@/components/client/Recommendations";
+import { recommendationsFor, recommendationCopy } from "@/lib/recommendations";
+import { valueFor, featureIntro } from "@/lib/serviceValue";
+import NoticeBell from "@/components/client/NoticeBell";
+import { noticesFor } from "@/lib/clientNotices";
 import FileManager from "@/components/client/FileManager";
 import { acceptAttribute, acceptedList } from "@/lib/siteUpload";
 import RenewalBar from "@/components/client/RenewalBar";
@@ -239,13 +244,14 @@ function Section({ title, children, when = true }: { title: string; children: Re
  * and whether it is up.
  */
 function Shell({
-  lang, children, nav, siteLabel, status,
+  lang, children, nav, siteLabel, status, bell,
 }: {
   lang: "en" | "fr";
   children: React.ReactNode;
   nav?: React.ReactNode;
   siteLabel?: string;
   status?: { label: string; tone: string };
+  bell?: React.ReactNode;
 }) {
   const t = T[lang];
   return (
@@ -270,6 +276,7 @@ function Shell({
               </span>
             </>
           ) : null}
+          {bell ? <div className="ml-auto">{bell}</div> : null}
         </div>
       </header>
       <div className="flex-1 px-5 py-8">
@@ -338,6 +345,9 @@ export default async function AccountPage({
   /* Where their request for a copy of the site stands. Read from the same row
      as the domain rather than with a second query — one read, two answers. */
   let copyView: CopyView = "none";
+  /* The row's notes, kept so the notice list can read what has been
+     dismissed without a second query. */
+  let rowNotes: string | null = null;
   /* Domains bought from this panel after the plan. Their own records, so the
      one that came with the plan is untouched. */
   let extraDomains: { domain: string; nextChargeAt?: string; failed?: string }[] = [];
@@ -346,6 +356,7 @@ export default async function AccountPage({
     const { data: row } = db
       ? await db.from("hosting_clients").select("notes").eq("subscription_id", subId).maybeSingle()
       : { data: null };
+    rowNotes = (row as { notes?: string | null } | null)?.notes ?? null;
     domainRec = readDomainRecord(row?.notes);
     const state = copyState(readCopyRequest((row as { notes?: string | null } | null)?.notes));
     /* "Refused" and "expired" both show as nothing asked yet. A page that
@@ -451,6 +462,24 @@ export default async function AccountPage({
    * What they already pay for comes first and is marked. A client who cannot
    * see their own plan on the page listing what they could buy reads the whole
    * page as a sales pitch, and is right to. */
+  /* Findings about THEIR site, each carrying the number that produced it.
+     Only on the two pages that show them — every rule reads data already
+     fetched for those pages, so it costs nothing extra. */
+  const dashHref = (page: string) =>
+    `/hosting/account?page=${page}${linkToken ? `&t=${encodeURIComponent(linkToken)}` : ""}`;
+  const recs = dashPage === "overview" || dashPage === "services"
+    ? recommendationsFor({
+        ref: ctx.ref,
+        lang: ctx.lang,
+        files: siteFiles,
+        health,
+        hasAssistant: ctx.plan.key === "chatbot" || !recommendAssistant,
+        linkFor: dashHref,
+      })
+    : [];
+  const recCopy = recommendationCopy(ctx.lang);
+
+
   const serviceCards: ServiceCard[] = Object.values(CLIENT_PRODUCTS)
     .filter((prod) => !("retired" in prod && prod.retired))
     /* THEIR OWN TIER, AND THINGS THAT ADD TO IT — never the other tiers.
@@ -474,6 +503,8 @@ export default async function AccountPage({
         blurb: c.blurb,
         price,
         includes: c.includes,
+        value: valueFor(prod.key, ctx.lang),
+        bestFor: c.bestFor ?? null,
         owned,
         ready: !owned && prod.key === "chatbot" && builtAssistant,
         href: `/hosting?plan=${prod.key}${ctx.ref ? `&ref=${encodeURIComponent(ctx.ref)}` : ""}`,
@@ -496,6 +527,26 @@ export default async function AccountPage({
   const ending = ctx.cancelAtPeriodEnd;
   const active = ctx.status === "active" || ctx.status === "trialing";
   const pastDue = ctx.status === "past_due" || ctx.status === "unpaid";
+
+  /* What the client should see the moment they open the panel. Derived from
+     state we already hold, so nothing here can be stale — and the assistant
+     trial is the one that earns its place: it is built, it is theirs to try,
+     and nothing tells them unless this does. */
+  const notices = isDemo
+    ? []
+    : noticesFor({
+        notes: rowNotes,
+        lang: ctx.lang,
+        assistantWaiting: builtAssistant,
+        copyReady: copyView === "ready",
+        paymentDue: pastDue,
+        siteUp: health.up,
+        newDomain: null,
+        linkFor: dashHref,
+        assistantTrialHref: linkToken ? `/hosting/assistant/trial?t=${encodeURIComponent(linkToken)}` : null,
+        billingHref: linkToken ? `/api/billing-portal?t=${encodeURIComponent(linkToken)}` : null,
+      });
+
   const label = ending ? t.statusEnding : pastDue ? t.statusPastDue : active ? t.statusActive : t.statusOther;
   const tone = ending
     ? "bg-[#FEF7E7] text-[#92700E] border-[#F5E3B3]"
@@ -514,6 +565,7 @@ export default async function AccountPage({
       lang={ctx.lang}
       siteLabel={ctx.siteLabel || undefined}
       status={{ label, tone }}
+      bell={<NoticeBell notices={notices} lang={ctx.lang} token={linkToken} />}
       nav={
         <DashNav
           active={dashPage}
@@ -528,13 +580,19 @@ export default async function AccountPage({
           <strong className="font-bold">Example page.</strong> Sample figures, not a real account.
         </div>
       ) : null}
-      <div className="flex items-baseline justify-between gap-4 mb-6">
+      <div className="flex items-baseline justify-between gap-4 mb-1">
         <h1 className="text-[26px] font-black text-[#18181B] tracking-tight">{dashLabel(dashPage, ctx.lang)}</h1>
         {/* Only for a password session. Someone on an emailed link has nothing
             to sign out of, and a button that does nothing visible is worse
             than no button. */}
         {!isDemo && !token ? <ClientSignOut lang={ctx.lang} /> : null}
       </div>
+      {/* One line under every page title saying what this page is for. A
+          client who has to work out what a section does reads it once and
+          never comes back. */}
+      {featureIntro(dashPage, ctx.lang) ? (
+        <p className="text-[14px] text-[#71717A] leading-relaxed mb-6 max-w-2xl">{featureIntro(dashPage, ctx.lang)}</p>
+      ) : <div className="mb-6" />}
 
       {dashPage === "overview" ? (
         <StatTiles
@@ -562,6 +620,12 @@ export default async function AccountPage({
             },
           ]}
         />
+      ) : null}
+
+      {dashPage === "overview" ? (
+        <div className="mb-6">
+          <Recommendations items={recs} heading={recCopy.heading} sub={recCopy.sub} quiet={recCopy.quiet} />
+        </div>
       ) : null}
 
       <div className={`rounded-2xl border border-[#E8E6E0] bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden mb-5 ${dashPage === "overview" ? "" : "hidden"}`}>
@@ -760,6 +824,10 @@ export default async function AccountPage({
       </Section>
 
       <Section title={t.secServices} when={dashPage === "services"}>
+        {recs.length ? (
+          <Recommendations items={recs} heading={recCopy.heading} sub={recCopy.sub} quiet={recCopy.quiet} />
+        ) : null}
+
         <ServiceCards cards={serviceCards} lang={ctx.lang} />
 
       <div className="rounded-2xl border border-[#E8E6E0] bg-white p-7 mb-5">

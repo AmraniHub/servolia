@@ -11,6 +11,7 @@ import { readCopyRequest, writeCopyRequest, copyState, COPY_WINDOW_DAYS } from "
 import { readDomainRequest, writeDomainRequest, domainRequestState } from "@/lib/domainRequest";
 import { domainQuote, isDomainSalesConfigured, normalizeDomain, canBuyDomains } from "@/lib/domainSales";
 import { hasExtraDomain } from "@/lib/extraDomains";
+import { readDismissed, writeDismissed } from "@/lib/clientNotices";
 import { domainCheckoutUrl } from "@/lib/domainCheckout";
 import { identify, createClientSession, clientSession, CLIENT_COOKIE, CLIENT_SESSION_SECONDS } from "@/lib/clientAreaAuth";
 
@@ -213,6 +214,22 @@ export async function POST(req: NextRequest) {
         { ok: false, error: "That did not send. Email hello@servolia.com and we will pick it up there." },
         { status: 502 },
       );
+    }
+    return NextResponse.json({ ok: true });
+  }
+
+  if (doing === "dismiss-notice") {
+    const id = String(body.id ?? "").trim().slice(0, 80);
+    if (!id) return NextResponse.json({ ok: false, error: "no id" }, { status: 400 });
+    /* Read, add, write. The set is re-read here rather than trusted from the
+       browser, so two tabs dismissing different notices cannot erase each
+       other's. */
+    const ids = readDismissed(notes);
+    ids.add(id);
+    const error = await saveNotes(row, writeDismissed(notes, ids));
+    if (error) {
+      console.error("[client-area] notice not dismissed:", error);
+      return NextResponse.json({ ok: false, error: "not-saved" }, { status: 502 });
     }
     return NextResponse.json({ ok: true });
   }
