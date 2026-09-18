@@ -1,11 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import CookieBanner from "@/components/CookieBanner";
-import Analytics from "@/components/Analytics";
-import PageTracker from "@/components/PageTracker";
-import ScrollToTop from "@/components/ScrollToTop";
 import { OrgSchema, WebSiteSchema } from "@/components/StructuredData";
+import SiteChrome from "@/components/SiteChrome";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
@@ -63,10 +60,10 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       </head>
       <body className="min-h-full flex flex-col">
         {children}
-        <CookieBanner />
-        <ScrollToTop />
-        <Analytics />
-        <PageTracker />
+        {/* Not rendered on a page served at a client's own domain — see
+            SiteChrome. A consent banner over the Save button of a tool the
+            client was given a password for is the wrong furniture entirely. */}
+        <SiteChrome />
       </body>
     </html>
   );
