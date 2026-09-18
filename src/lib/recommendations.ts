@@ -131,6 +131,12 @@ export function recommendationsFor(input: RecommendInput): Recommendation[] {
   const t = COPY[lang];
   const money = (n: number) => (lang === "fr" ? `${usd(n)} $` : `$${usd(n)}`);
   const per = lang === "fr" ? "mois" : "month";
+  /* Read from the product, so a price changed once is changed here too — and
+     a one-off is never rendered as a monthly charge. */
+  const seo = CLIENT_PRODUCTS.seo_multilingual;
+  const multilingualPrice = seo.oneOffUsd
+    ? `${money(seo.oneOffUsd)} ${lang === "fr" ? "une seule fois" : "once"}`
+    : `${money(seo.monthlyUsd)} / ${per}`;
   const out: Recommendation[] = [];
 
   /* 1. A home page heavy enough to cost a visitor real seconds. Measured from
@@ -170,7 +176,7 @@ export function recommendationsFor(input: RecommendInput): Recommendation[] {
       id: "multilingual",
       finding: t.multilingual(langs),
       action: t.multilingualAction,
-      price: `${money(CLIENT_PRODUCTS.seo_multilingual.monthlyUsd)} / ${per}`,
+      price: multilingualPrice,
       href: linkFor("services"),
       cta: t.multilingualCta,
       weight: 3,

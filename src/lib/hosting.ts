@@ -120,6 +120,20 @@ export interface ClientProduct extends ClientProductCopy {
    * twelve months to recover without this line.
    */
   setupUsd?: number;
+  /**
+   * Bought ONCE, not subscribed to.
+   *
+   * Multilingual search is the first of these: the work is declaring each
+   * language to search engines, writing a sitemap per language and the
+   * structured data. It is done, and then it is done — a monthly charge for it
+   * would be rent on a finished job, and the first client to ask what this
+   * month's payment bought would be right to.
+   *
+   * Where this is set it is the ONLY price. monthlyUsd and annualUsd are not
+   * read for such a product, and the checkout takes a payment rather than
+   * opening a subscription.
+   */
+  oneOffUsd?: number;
 }
 
 /**
@@ -387,6 +401,12 @@ export const CLIENT_PRODUCTS: Record<string, ClientProduct> = {
    * that product. Selling retainer money would mean promising retainer work. */
   seo_multilingual: {
     key: "seo_multilingual",
+    /* ONE PAYMENT, NOT A SUBSCRIPTION (2026-09-18). The work is finite —
+       hreflang declared, a sitemap per language, the structured data written —
+       so it is charged once. The $345 setup and $45/month it replaces are
+       left in the fields below unread rather than deleted, because they are
+       what earlier quotes were built on. */
+    oneOffUsd: 145,
     name: "Multilingual search",
     tier: "Search",
     bestFor: "A site in more than one language that Google indexes as though it were one.",
@@ -485,6 +505,8 @@ export function hostingAmountCents(
   plan: ClientProduct,
   period: "monthly" | "annual",
 ): number {
+  // A one-off costs the same whichever period the page happened to be showing.
+  if (plan.oneOffUsd) return Math.round(plan.oneOffUsd * 100);
   const usd = period === "annual" ? plan.annualUsd : plan.monthlyUsd;
   return Math.round(usd * 100);
 }

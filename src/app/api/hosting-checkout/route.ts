@@ -189,8 +189,16 @@ export async function POST(req: NextRequest) {
      * headed "Website hosting — temghid.ma" on the one screen where the buyer
      * is deciding whether to trust the charge. */
     const copy = productCopy(hostingPlan, lang);
+    /* A ONE-OFF PRODUCT TAKES A PAYMENT, NOT A SUBSCRIPTION.
+     *
+     * Stripe refuses a `recurring` price in payment mode and a non-recurring
+     * one in subscription mode, so this cannot be papered over with a flag —
+     * the shape of the line item has to follow the shape of the sale. Getting
+     * it wrong bills a finished job every month, which a client notices on the
+     * second invoice and does not forget. */
+    const oneOff = Boolean(hostingPlan.oneOffUsd);
     const session = await stripe.checkout.sessions.create({
-      mode: "subscription",
+      mode: oneOff ? "payment" : "subscription",
       // Renders Stripe's whole checkout page in the client's language.
       locale: lang,
       /* An agreed address wins over anything the browser sent. Setting
@@ -210,7 +218,7 @@ export async function POST(req: NextRequest) {
               description: copy.description,
             },
             unit_amount: hostingAmountCents(hostingPlan, period),
-            recurring: { interval: period === "annual" ? "year" : "month" },
+            ...(oneOff ? {} : { recurring: { interval: (period === "annual" ? "year" : "month") as "year" | "month" } }),
           },
           quantity: 1,
         },
@@ -239,17 +247,24 @@ export async function POST(req: NextRequest) {
        * one moment: everything afterwards — the upgrade to yearly, a support
        * question about which product a charge is for — starts from the
        * subscription, which without this knows nothing about the client. */
-      subscription_data: {
-        metadata: {
-          kind: HOSTING_METADATA_KIND,
-          plan: hostingPlan.key,
-          period,
-          business: business || ref || "",
-          ref,
-          lang,
-          ...domainMeta,
-        },
-      },
+      /* Omitted entirely for a one-off: there is no subscription to carry it,
+         and Stripe rejects the field in payment mode. The session's own
+         metadata above still identifies the sale for the webhook. */
+      ...(oneOff
+        ? {}
+        : {
+            subscription_data: {
+              metadata: {
+                kind: HOSTING_METADATA_KIND,
+                plan: hostingPlan.key,
+                period,
+                business: business || ref || "",
+                ref,
+                lang,
+                ...domainMeta,
+              },
+            },
+          }),
       allow_promotion_codes: true,
       /* The thank-you page is shared by every client product, so it is told
        * which one this was. Display only — it decides wording, never money.

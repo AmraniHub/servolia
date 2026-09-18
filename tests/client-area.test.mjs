@@ -12,6 +12,7 @@ import { readStoredHash, writeStoredHash, hashPassword, hashMatches } from "../s
 import { passwordProblem } from "../src/lib/siteEditorPassword.ts";
 import { refForEmail } from "../src/lib/hostingRow.ts";
 import { CLIENT_REFS } from "../src/lib/clientRefs.ts";
+import { CLIENT_PRODUCTS as PRODUCTS, hostingAmountCents as amountCents } from "../src/lib/hosting.ts";
 import { EDITABLE_SITES as EDITABLE_SITES_FOR_LOOKUP } from "../src/lib/siteEditor.ts";
 import {
   staffEnvName, staffSecretValue, staffPasswordOk, readStaffSecret,
@@ -135,4 +136,27 @@ test("every editable site can actually be found in the billing table", () => {
   for (const ref of Object.keys(EDITABLE_SITES_FOR_LOOKUP)) {
     assert.ok(CLIENT_REFS[ref]?.email, `${ref} is editable but has no email to find its row by`);
   }
+});
+
+/* ── a product sold once, not rented ─────────────────────────────────────── */
+
+test("multilingual search is charged once, and says so", () => {
+  /* It was $45/month with a $345 setup. The work is finite — hreflang, a
+     sitemap per language, the structured data — so a monthly charge for it is
+     rent on a finished job, and the client who asks what this month's payment
+     bought would be right to. */
+  const seo = PRODUCTS.seo_multilingual;
+  assert.equal(seo.oneOffUsd, 145);
+  // The same price whichever period the page was showing, because there is
+  // no period: a one-off cannot be cheaper by the year.
+  assert.equal(amountCents(seo, "monthly"), 14500);
+  assert.equal(amountCents(seo, "annual"), 14500);
+});
+
+test("the recurring products are untouched by that", () => {
+  assert.equal(PRODUCTS.hosting.oneOffUsd, undefined);
+  assert.equal(amountCents(PRODUCTS.hosting, "monthly"), 800);
+  assert.equal(amountCents(PRODUCTS.hosting, "annual"), 8800);
+  assert.equal(amountCents(PRODUCTS.chatbot, "monthly"), 1200);
+  assert.equal(amountCents(PRODUCTS.chatbot, "annual"), 12000);
 });

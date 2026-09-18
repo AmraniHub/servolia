@@ -493,9 +493,13 @@ export default async function AccountPage({
     .map((prod) => {
       const c = productCopy(prod, ctx.lang);
       const yearly = HOSTING_TIERS.includes(prod.key);
-      const price = yearly
-        ? `${money(prod.annualUsd)} / ${fr ? "an" : "year"}`
-        : `${money(prod.monthlyUsd)} / ${fr ? "mois" : "month"}`;
+      /* A one-off says so. "$145 / month" for finished work is the kind of
+         mistake a client only has to see once. */
+      const price = prod.oneOffUsd
+        ? `${money(prod.oneOffUsd)} ${fr ? "une seule fois" : "once"}`
+        : yearly
+          ? `${money(prod.annualUsd)} / ${fr ? "an" : "year"}`
+          : `${money(prod.monthlyUsd)} / ${fr ? "mois" : "month"}`;
       const owned = prod.key === ctx.plan.key;
       return {
         key: prod.key,

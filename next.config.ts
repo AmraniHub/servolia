@@ -1,6 +1,24 @@
 import type { NextConfig } from "next";
+import path from "node:path";
 
+/**
+ * WHY THE TURBOPACK ROOT IS PINNED.
+ *
+ * Turbopack infers the workspace root from the outermost lockfile it can find,
+ * and this machine has a stray `package.json` + `package-lock.json` sitting in
+ * the home directory from May. So it chose `C:\Users\Elamr`, resolved the app
+ * from there, and `next dev` answered 404 to EVERY route — including pages
+ * nobody had touched, which is what made it look like a code fault rather than
+ * a resolution one. Production was unaffected throughout, because Vercel builds
+ * with the repository as the root.
+ *
+ * Pinning it here fixes it for anyone who clones this, rather than depending on
+ * one machine's home directory being tidy.
+ */
 const nextConfig: NextConfig = {
+  turbopack: {
+    root: path.join(__dirname),
+  },
   async headers() {
     return [
       {
