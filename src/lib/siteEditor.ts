@@ -50,8 +50,24 @@ export interface EditableSite {
    *  software it really is on the one screen that should feel like theirs. */
   accent: string;
   /** The page behind it. Servolia's warm cream is as much a signature as the
-   *  green, so it is set per client too — a faint tint of their own colour. */
+   *  green, so it is set per client too. */
   surface: string;
+  /** Box and card borders. Servolia's are sage-tinted; a client's are not. */
+  line: string;
+  /**
+   * Where the editor actually answers on their own domain, once their host is
+   * rewriting /admin to it. UNSET UNTIL THAT IS DEPLOYED, and deliberately not
+   * derived from the domain: the client's own page links here, and a link to a
+   * rewrite that does not exist yet is a 404 with our name on it, sent to the
+   * one person we are trying to convince this is a real service.
+   */
+  adminUrl?: string;
+  /**
+   * A second language served by swapping recognised English strings, and the
+   * file holding that dictionary. Where this is set, a save reports which
+   * edited lines that language can no longer render — see siteEditorI18n.
+   */
+  translations?: { file: string; language: string };
   /** What the pages are called, for the page picker. */
   pages: { file: string; label: string }[];
   fields: EditableField[];
@@ -168,9 +184,16 @@ export const EDITABLE_SITES: Record<string, EditableSite> = {
     repo: "AmraniHub/yiwugoodsco-com",
     branch: "main",
     siteRoot: "web",
-    // The navy her own stylesheet leads with; the brand probe reads the same.
+    /* Copied out of her own web/css/yg.css :root, not matched by eye —
+       --yg-navy, --yg-soft and --yg-line. The editor is then built from the
+       same three tokens her website is, so it looks like part of it. */
     accent: "#111C74",
-    surface: "#F6F7FC", // that navy at a few per cent — hers, not our cream
+    surface: "#F7F9FC",
+    line: "#E7EAF1",
+    /* Her site is bilingual, and the Arabic is keyed on the English wording
+       rather than on markers — so editing an English line un-translates it.
+       She is told which ones, every time. */
+    translations: { file: "js/i18n.js", language: "Arabic" },
 
     pages: [
       { file: "index.html", label: "Home page" },

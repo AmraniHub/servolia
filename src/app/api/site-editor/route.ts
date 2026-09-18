@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { editableSite, fieldsFor, validate } from "@/lib/siteEditor";
-import { readCurrent, saveEdits } from "@/lib/siteEditorRepo";
+import { readCurrent, readSiteFile, saveEdits } from "@/lib/siteEditorRepo";
+import { untranslatedAfterEdit, translationNote } from "@/lib/siteEditorI18n";
 import {
   passwordMatches, createEditorSession, editorSession,
   editorConfigured, EDITOR_COOKIE, EDITOR_SESSION_SECONDS,
@@ -98,11 +99,26 @@ export async function POST(req: NextRequest) {
         { status: 502 },
       );
     }
+    /* Her site's other language is swapped in by matching English strings, so
+       a line she has just reworded is a line that language can no longer
+       render. Checked after the save, never before it: this is something to
+       tell her about work that succeeded, not a reason to refuse it. A
+       dictionary we cannot read costs the note, not the save. */
+    let note: string | null = null;
+    if (out.changed.length && site.translations) {
+      const dict = await readSiteFile(site, site.translations.file);
+      if (dict) {
+        const saved = out.changed.map((k) => values[k]).filter(Boolean);
+        note = translationNote(untranslatedAfterEdit(dict, saved).length, site.translations.language);
+      }
+    }
+
     return NextResponse.json({
       ok: true,
       changed: out.changed.length,
       nothingToDo: out.changed.length === 0,
       skipped: out.skipped,
+      note,
     });
   }
 

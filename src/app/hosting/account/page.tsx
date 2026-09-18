@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Check, ExternalLink, FileText, ArrowUpRight } from "lucide-react";
+import { Check, ExternalLink, FileText, ArrowUpRight, PencilLine } from "lucide-react";
+import { editableSite } from "@/lib/siteEditor";
 import { readUpgradeToken, subscriptionContext } from "@/lib/upgrade";
 import { productCopy, CLIENT_PRODUCTS, HOSTING_TIERS, usd } from "@/lib/hosting";
 import { supabaseAdmin } from "@/lib/supabase";
@@ -62,6 +63,9 @@ const T = {
     domainRenewsInvoice: (d: string) => `renewed each year on your invoice — next on ${d}`,
     domainPending: "Being registered — we will confirm by email.",
     domainYours: "It is yours: on request we transfer it to any registrar account you name.",
+    editorTitle: "Edit your website",
+    editorBody: "Change the words on your pages yourself, whenever you like. Your design stays exactly as it is, and the site updates in about a minute.",
+    editorNote: "Opens on your own website. Use the password we sent you — it is not the same as any other password you have.",
     problem: {
       title: "This link has expired",
       body: "Service links do not last forever. Reply to any email from us and we will send a fresh one.",
@@ -91,6 +95,9 @@ const T = {
     domainRenewsInvoice: (d: string) => `renouvelé chaque année sur votre facture — prochaine fois le ${d}`,
     domainPending: "En cours d'enregistrement — nous vous confirmons par email.",
     domainYours: "Il vous appartient : sur simple demande, nous le transférons vers le compte registrar de votre choix.",
+    editorTitle: "Modifier votre site",
+    editorBody: "Changez vous-même les textes de vos pages, quand vous voulez. Votre design ne bouge pas, et le site se met à jour en une minute environ.",
+    editorNote: "S'ouvre sur votre propre site. Utilisez le mot de passe que nous vous avons envoyé — il n'est identique à aucun autre.",
     problem: {
       title: "Ce lien a expiré",
       body: "Les liens de service ne durent pas indéfiniment. Répondez à l'un de nos emails et nous vous en envoyons un nouveau.",
@@ -191,6 +198,12 @@ export default async function AccountPage({
   const fr = ctx.lang === "fr";
   const copy = productCopy(ctx.plan, ctx.lang);
 
+  /* The page editor, for a client who has one mounted on their own domain.
+     `adminUrl` is set only once their host is actually rewriting /admin, so
+     this card cannot advertise a link that 404s. */
+  const editor = editableSite(ctx.ref);
+  const editorUrl = editor?.adminUrl ?? null;
+
   /* Servolia's own recommendation, on the page the client owns. Hosting-tier
    * clients only, and only until the assistant is theirs — the same rule as
    * the /hosting?ref= page, kept by the same helper. */
@@ -277,6 +290,31 @@ export default async function AccountPage({
           ))}
         </ul>
       </div>
+
+      {/* THE THING SHE ASKED FOR, ABOVE THE THINGS WE WANT TO SELL HER.
+          A client who asked for control of her own pages should find that
+          control first on the page that represents her service, not below two
+          upsells. The password is not printed here — this page is opened by a
+          link from an email, and a page that hands out a password is a page
+          that hands it to whoever forwarded the link. */}
+      {editorUrl ? (
+        <a
+          href={editorUrl}
+          target="_blank"
+          rel="noreferrer"
+          data-testid="account-editor-card"
+          className="block rounded-2xl border border-[#E8E6E0] bg-white px-6 py-5 mb-5 hover:border-[#CBC9C2] transition"
+        >
+          <span className="flex items-start justify-between gap-3">
+            <span>
+              <span className="block font-bold text-[#18181B]">{t.editorTitle}</span>
+              <span className="block text-[13px] text-[#71717A] mt-0.5 leading-relaxed">{t.editorBody}</span>
+            </span>
+            <PencilLine className="w-4 h-4 text-[#36671E] shrink-0 mt-1" />
+          </span>
+          <span className="block text-[12.5px] text-[#8A8A80] mt-3 leading-relaxed">{t.editorNote}</span>
+        </a>
+      ) : null}
 
       {/* The assistant's own page: its brief, its languages, where its leads
           go, and the install line for a site we do not host. The one thing

@@ -10,6 +10,7 @@
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { translatedStrings, untranslatedAfterEdit, translationNote } from "../src/lib/siteEditorI18n.ts";
 import {
   readRegion, writeRegion, validate, escapeHtml, decodeEntities,
   editableSite, fieldsFor, EDITABLE_SITES, MAX_FIELD,
@@ -137,9 +138,9 @@ test("every field belongs to a page the client can actually pick", () => {
 test("the editor wears the client's colours, never Servolia's", () => {
   // The screen lives at the client's own /admin. Servolia green there would
   // say, on the one page that should feel like theirs, whose software it is.
-  const HOUSE = ["#36671E", "#295115", "#FAFAF7", "#E2E6DD", "#EEF5EA"];
+  const HOUSE = ["#36671E", "#295115", "#FAFAF7", "#E2E6DD", "#EEF5EA", "#E8E6E0"];
   for (const site of Object.values(EDITABLE_SITES)) {
-    for (const [name, value] of [["accent", site.accent], ["surface", site.surface]]) {
+    for (const [name, value] of [["accent", site.accent], ["surface", site.surface], ["line", site.line]]) {
       assert.ok(value, `${site.ref}: ${name} is missing — it would fall back to nothing`);
       assert.match(value, /^#[0-9A-Fa-f]{6}$/, `${site.ref}: ${name} must be a six-digit hex colour`);
       assert.ok(
@@ -153,4 +154,45 @@ test("the editor wears the client's colours, never Servolia's", () => {
 
 test("goodscochina gets the navy her own site leads with", () => {
   assert.equal(editableSite("goodscochina")?.accent, "#111C74");
+});
+
+/* ── the other language ──────────────────────────────────────────────────── */
+
+const DICT = `
+  var AR = {
+    "GoodsCoChina | China Sourcing Partner":
+      "GoodsCoChina | Arabic title",
+    "Verified Factories": "AR verified",
+    "We audit and verify trusted factories.": "AR audit",
+    "A \\"quoted\\" line": "AR quoted",
+  };
+`;
+
+test("the dictionary is read without executing a client's file", () => {
+  const keys = translatedStrings(DICT);
+  assert.ok(keys.has("Verified Factories"));
+  // The wrapped-value shape her file actually uses.
+  assert.ok(keys.has("GoodsCoChina | China Sourcing Partner"), "a key whose value is on the next line");
+  assert.ok(keys.has('A "quoted" line'), "escapes are unescaped, so the key matches the page text");
+  assert.equal(keys.size, 4);
+});
+
+test("a reworded line is reported as losing its translation", () => {
+  assert.deepEqual(untranslatedAfterEdit(DICT, ["Verified Factories"]), [], "unchanged text keeps its Arabic");
+  assert.deepEqual(untranslatedAfterEdit(DICT, ["Audited Factories"]), ["Audited Factories"]);
+  // Retyped with different spacing is the same line to a reader.
+  assert.deepEqual(untranslatedAfterEdit(DICT, ["Verified   Factories"]), []);
+  assert.deepEqual(untranslatedAfterEdit(DICT, ["  Verified Factories  "]), []);
+});
+
+test("the note only appears when there is something to say", () => {
+  assert.equal(translationNote(0, "Arabic"), null, "an every-time warning is a warning nobody reads");
+  assert.match(translationNote(1, "Arabic"), /One line .* Arabic/);
+  assert.match(translationNote(3, "Arabic"), /^3 lines/);
+});
+
+test("a bilingual site says which file holds its other language", () => {
+  const s = editableSite("goodscochina");
+  assert.equal(s.translations?.file, "js/i18n.js");
+  assert.equal(s.translations?.language, "Arabic");
 });

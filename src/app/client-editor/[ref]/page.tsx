@@ -6,6 +6,11 @@ import { editableSite } from "@/lib/siteEditor";
 export const metadata: Metadata = {
   title: "Edit your website",
   robots: { index: false, follow: false, nocache: true },
+  /* Their favicon, not ours. Left to itself Next asks for /icon and
+     /apple-icon, which are Servolia's — and on the client's domain those
+     either 404 or, worse, put our mark on their browser tab. Naming
+     /favicon.ico instead resolves to the one their own site already serves. */
+  icons: { icon: "/favicon.ico" },
 };
 
 /**
@@ -53,7 +58,10 @@ export default async function ClientEditorPage({
   return (
     <main className="min-h-screen" style={{ background: surface }}>
       <style>{`body{background:${surface}}`}</style>
-      <SiteEditor siteRef={site.ref} accent={site.accent} surface={surface} />
+      <SiteEditor
+        siteRef={site.ref}
+        theme={{ accent: site.accent, surface, line: site.line }}
+      />
     </main>
   );
 }

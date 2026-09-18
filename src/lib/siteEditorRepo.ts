@@ -46,6 +46,21 @@ async function readFile(site: EditableSite, file: string): Promise<string> {
   return Buffer.from(r.content, (r.encoding as BufferEncoding) || "base64").toString("utf8");
 }
 
+/**
+ * Any one file from the client's site, by its path under the site root.
+ *
+ * Used for files the editor reads but never writes — the translation
+ * dictionary, so a save can say which lines lost their Arabic.
+ */
+export async function readSiteFile(site: EditableSite, file: string): Promise<string | null> {
+  try {
+    return await readFile(site, file);
+  } catch {
+    // A missing or unreadable dictionary must never fail a save that worked.
+    return null;
+  }
+}
+
 export interface CurrentValue {
   key: string;
   value: string;

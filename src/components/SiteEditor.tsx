@@ -29,19 +29,22 @@ interface Field {
 interface Page { file: string; label: string }
 
 /**
- * The client's own brand colour, as a CSS variable the buttons, the active page
- * tab and the success line all follow.
+ * The client's own three colours, as CSS variables everything here follows.
  *
- * Passed in rather than read from a theme: this component is served at several
- * clients' own domains, and each one should see their colour, not ours. Servolia
- * green on a screen at goodscochina.com/admin announces whose software it really
- * is on the one page that should feel like hers.
+ * Handed in per client rather than taken from Servolia's stylesheet: this
+ * component is served at several clients' own domains, and each should see
+ * their colours, not ours. Servolia green on a screen at goodscochina.com/admin
+ * announces whose software it really is, on the one page that should feel like
+ * hers. The values are lifted from the client's own :root, so the editor is
+ * built out of the same tokens their website is.
  */
-function accentVars(accent: string, surface: string): React.CSSProperties {
-  return { "--ed-accent": accent, "--ed-surface": surface } as React.CSSProperties;
+export interface Theme { accent: string; surface: string; line: string }
+
+function accentVars(t: Theme): React.CSSProperties {
+  return { "--ed-accent": t.accent, "--ed-surface": t.surface, "--ed-line": t.line } as React.CSSProperties;
 }
 
-export default function SiteEditor({ siteRef, accent, surface }: { siteRef: string; accent: string; surface: string }) {
+export default function SiteEditor({ siteRef, theme }: { siteRef: string; theme: Theme }) {
   const [ready, setReady] = useState(false);
   const [signedIn, setSignedIn] = useState(false);
   const [business, setBusiness] = useState("");
@@ -127,7 +130,12 @@ export default function SiteEditor({ siteRef, accent, surface }: { siteRef: stri
       if (d.nothingToDo) { setMsg({ good: true, text: "Nothing had changed, so nothing was saved." }); return; }
       setMsg({
         good: true,
-        text: `Saved ${d.changed} change${d.changed === 1 ? "" : "s"}. Your website is updating now — give it about a minute, then refresh your site to see it.`,
+        text: `Saved ${d.changed} change${d.changed === 1 ? "" : "s"}. Your website is updating now — give it about a minute, then refresh your site to see it.`
+          // Her site is bilingual and the other language follows the English
+          // wording, so a reworded line stops being translated. Said here
+          // rather than in a footnote: it is a consequence of what she just
+          // did, and she is the only person who can decide it matters.
+          + (d.note ? ` ${d.note}` : ""),
       });
       await load(file);
     } catch {
@@ -141,14 +149,14 @@ export default function SiteEditor({ siteRef, accent, surface }: { siteRef: stri
 
   if (!signedIn) {
     return (
-      <div className="max-w-sm mx-auto px-5 py-20" style={accentVars(accent, surface)}>
+      <div className="max-w-sm mx-auto px-5 py-20" style={accentVars(theme)}>
         <h1 className="text-2xl font-black text-[var(--ed-accent)] mb-1">Edit your website</h1>
         <p className="text-[14px] text-[#52525B] mb-6">Enter the password you were given.</p>
         <form onSubmit={signIn}>
           <input
             type="password" value={password} onChange={(e) => setPassword(e.target.value)}
             placeholder="Password" autoComplete="current-password" autoFocus
-            className="w-full h-11 px-3 rounded-lg border border-[#DEE0EA] bg-white text-[15px] mb-3"
+            className="w-full h-11 px-3 rounded-lg border border-[var(--ed-line)] bg-white text-[15px] mb-3"
           />
           <button type="submit" disabled={busy || !password}
             style={{ background: "var(--ed-accent)" }}
@@ -162,7 +170,7 @@ export default function SiteEditor({ siteRef, accent, surface }: { siteRef: stri
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-5 py-12" style={accentVars(accent, surface)}>
+    <div className="max-w-2xl mx-auto px-5 py-12" style={accentVars(theme)}>
       <div className="flex items-baseline justify-between gap-3 mb-1">
         <h1 className="text-2xl font-black text-[var(--ed-accent)]">{business}</h1>
         <button
@@ -178,7 +186,7 @@ export default function SiteEditor({ siteRef, accent, surface }: { siteRef: stri
           {pages.map((p) => (
             <button key={p.file} onClick={() => load(p.file)} disabled={busy}
               className={`h-9 px-4 rounded-lg text-[13.5px] font-bold border ${
-                p.file === file ? "text-white" : "bg-white text-[#3F3F46] border-[#DEE0EA]"
+                p.file === file ? "text-white" : "bg-white text-[#3F3F46] border-[var(--ed-line)]"
               }`}
               style={p.file === file ? { background: "var(--ed-accent)", borderColor: "var(--ed-accent)" } : undefined}>{p.label}</button>
           ))}
@@ -205,11 +213,11 @@ export default function SiteEditor({ siteRef, accent, surface }: { siteRef: stri
               {f.multiline ? (
                 <textarea id={f.key} rows={3} value={value} maxLength={f.max}
                   onChange={(e) => setEdited({ ...edited, [f.key]: e.target.value })}
-                  className={`w-full px-3 py-2 rounded-lg border bg-white text-[15px] leading-relaxed ${bad ? "border-[#B45309]" : "border-[#DEE0EA]"}`} />
+                  className={`w-full px-3 py-2 rounded-lg border bg-white text-[15px] leading-relaxed ${bad ? "border-[#B45309]" : "border-[var(--ed-line)]"}`} />
               ) : (
                 <input id={f.key} type="text" value={value} maxLength={f.max}
                   onChange={(e) => setEdited({ ...edited, [f.key]: e.target.value })}
-                  className={`w-full h-11 px-3 rounded-lg border bg-white text-[15px] ${bad ? "border-[#B45309]" : "border-[#DEE0EA]"}`} />
+                  className={`w-full h-11 px-3 rounded-lg border bg-white text-[15px] ${bad ? "border-[#B45309]" : "border-[var(--ed-line)]"}`} />
               )}
               {bad ? <p className="mt-1 text-[12.5px] text-[#B45309]">{bad}</p> : null}
             </div>
