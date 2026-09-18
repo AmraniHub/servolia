@@ -100,3 +100,58 @@ export function passwordProblem(pw: string): string | null {
   if (/^(.)\1+$/.test(p)) return "That is the same character repeated — please choose another.";
   return null;
 }
+
+/* ── a temporary way in, for us ─────────────────────────────────────────── */
+
+/**
+ * OUR OWN PASSWORD FOR A CLIENT'S EDITOR, FOR AS LONG AS WE NEED IT.
+ *
+ * Separate from the client's on purpose. Looking at what a client sees should
+ * not mean holding, reusing, or asking for the password they use — and once
+ * they change theirs, ours must not quietly keep working.
+ *
+ * `EDITOR_STAFF_<REF>` holds `<sha256>|<ISO expiry>`. The expiry is inside the
+ * value rather than in a calendar reminder because the failure mode here is
+ * not misuse, it is forgetting: a second working password on a live client's
+ * website, left behind after the afternoon it was needed for, is exactly the
+ * kind of thing nobody notices for a year. This one stops working by itself.
+ *
+ * Revoking early is still one command — remove the variable and redeploy — and
+ * that is the right move the moment it is no longer wanted.
+ */
+export function staffEnvName(ref: string): string {
+  return `EDITOR_STAFF_${ref.replace(/[^a-zA-Z0-9]/g, "_").toUpperCase()}`;
+}
+
+export interface StaffSecret {
+  hash: string;
+  /** Epoch ms. */
+  until: number;
+}
+
+export function readStaffSecret(raw: string | null | undefined): StaffSecret | null {
+  if (!raw) return null;
+  const [hash, until] = raw.trim().split("|").map((s) => s.trim());
+  if (!/^[0-9a-f]{64}$/i.test(hash ?? "")) return null;
+  const at = Date.parse(until ?? "");
+  // No expiry, or one we cannot read, is not a valid secret. A permanent
+  // staff password is the thing this format exists to make impossible.
+  if (!Number.isFinite(at)) return null;
+  return { hash: hash.toLowerCase(), until: at };
+}
+
+export function staffPasswordOk(
+  ref: string,
+  password: string,
+  raw: string | null | undefined,
+  now = Date.now(),
+): boolean {
+  const secret = readStaffSecret(raw);
+  if (!secret || secret.until <= now) return false;
+  return hashMatches(ref, password, secret.hash);
+}
+
+/** The value to put in the variable, for a password we are about to use. */
+export function staffSecretValue(ref: string, password: string, until: Date): string {
+  return `${hashPassword(ref, password)}|${until.toISOString()}`;
+}

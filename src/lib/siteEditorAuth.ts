@@ -1,6 +1,6 @@
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
-import { hashMatches, envPasswordHash, readStoredHash } from "@/lib/siteEditorPassword";
+import { hashMatches, envPasswordHash, readStoredHash, staffEnvName, staffPasswordOk } from "@/lib/siteEditorPassword";
 
 /**
  * The page editor's own login — a password, per client site.
@@ -50,6 +50,7 @@ function secret(): Uint8Array {
 export {
   passwordEnvName, hashPassword, hashMatches, envPasswordHash,
   readStoredHash, writeStoredHash, passwordProblem,
+  staffEnvName, staffSecretValue, staffPasswordOk,
 } from "@/lib/siteEditorPassword";
 
 
@@ -62,6 +63,13 @@ export {
  * it through.
  */
 export async function passwordMatchesFor(ref: string, password: string): Promise<boolean> {
+  /* Ours is checked first and separately, so it keeps working after a client
+     has set their own — and, more importantly, so it stops working on its own
+     expiry whatever they do. It is an addition, never a replacement. */
+  if (staffPasswordOk(ref, password, process.env[staffEnvName(ref)])) {
+    console.warn(`[site-editor] ${ref} opened with the temporary Servolia password`);
+    return true;
+  }
   const stored = await storedHashFor(ref);
   if (stored) return hashMatches(ref, password, stored);
   return hashMatches(ref, password, envPasswordHash(ref));
@@ -69,7 +77,7 @@ export async function passwordMatchesFor(ref: string, password: string): Promise
 
 /** True when a site has a password at all — nothing to log into otherwise. */
 export async function editorConfiguredFor(ref: string): Promise<boolean> {
-  return Boolean((await storedHashFor(ref)) || envPasswordHash(ref));
+  return Boolean((await storedHashFor(ref)) || envPasswordHash(ref) || process.env[staffEnvName(ref)]);
 }
 
 async function storedHashFor(ref: string): Promise<string | null> {

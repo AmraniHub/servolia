@@ -10,6 +10,9 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readStoredHash, writeStoredHash, hashPassword, hashMatches } from "../src/lib/siteEditorPassword.ts";
 import { passwordProblem } from "../src/lib/siteEditorPassword.ts";
+import {
+  staffEnvName, staffSecretValue, staffPasswordOk, readStaffSecret,
+} from "../src/lib/siteEditorPassword.ts";
 
 const HASH = "a".repeat(64);
 const OTHER = "b".repeat(64);
@@ -67,4 +70,39 @@ test("a password guarding a live business site has a floor", () => {
   assert.equal(passwordProblem("the blue kettle in yiwu"), null);
   assert.equal(passwordProblem("k7m2-pq4x-r9tf"), null);
   assert.match(passwordProblem("x".repeat(201)), /longer than/);
+});
+
+/* ── our own temporary password ─────────────────────────────────────────── */
+
+const DAY = 86_400_000;
+const NOW = Date.parse("2026-09-18T12:00:00.000Z");
+
+test("our password is separate from the client's and salted the same way", () => {
+  assert.equal(staffEnvName("goodscochina"), "EDITOR_STAFF_GOODSCOCHINA");
+  assert.equal(staffEnvName("excellence-agency"), "EDITOR_STAFF_EXCELLENCE_AGENCY");
+  const v = staffSecretValue("goodscochina", "look-around-please", new Date(NOW + DAY));
+  assert.ok(staffPasswordOk("goodscochina", "look-around-please", v, NOW));
+  // Salted per site: the same password must not open another client's editor.
+  assert.ok(!staffPasswordOk("excellenceagency", "look-around-please", v, NOW));
+  assert.ok(!staffPasswordOk("goodscochina", "wrong", v, NOW));
+});
+
+test("it stops working on its own, without anyone acting", () => {
+  const v = staffSecretValue("goodscochina", "look-around-please", new Date(NOW + DAY));
+  assert.ok(staffPasswordOk("goodscochina", "look-around-please", v, NOW + DAY - 1000));
+  assert.ok(!staffPasswordOk("goodscochina", "look-around-please", v, NOW + DAY + 1000));
+  assert.ok(!staffPasswordOk("goodscochina", "look-around-please", v, NOW + 400 * DAY));
+});
+
+test("a value with no expiry is refused outright", () => {
+  /* The whole point of the format. A bare hash would be a permanent second
+     password on a live client's website, left behind after the afternoon it
+     was needed — the thing nobody notices for a year. */
+  const bare = "a".repeat(64);
+  assert.equal(readStaffSecret(bare), null);
+  assert.ok(!staffPasswordOk("goodscochina", "x", bare, NOW));
+  assert.equal(readStaffSecret(`${bare}|not-a-date`), null);
+  assert.equal(readStaffSecret("short|2026-12-01T00:00:00.000Z"), null);
+  assert.equal(readStaffSecret(null), null);
+  assert.equal(readStaffSecret(""), null);
 });
