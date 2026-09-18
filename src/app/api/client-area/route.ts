@@ -7,6 +7,7 @@ import { sendTelegramMessage } from "@/lib/telegram";
 import { collectSiteFiles } from "@/lib/clientFiles";
 import { makeZip } from "@/lib/zip";
 import { readCopyRequest, writeCopyRequest, copyState, COPY_WINDOW_DAYS } from "@/lib/clientCopy";
+import { identify, createClientSession, clientSession, CLIENT_COOKIE, CLIENT_SESSION_SECONDS } from "@/lib/clientAreaAuth";
 
 export const runtime = "nodejs";
 /* Fetching a few hundred blobs and zipping them is slower than a page render
@@ -33,8 +34,16 @@ export const maxDuration = 60;
  * money, cancel anything, or reach another client's site.
  */
 
+/**
+ * Whose page this request is about.
+ *
+ * Either credential is enough and neither is preferred: the emailed link for
+ * a client who still has the email, the signed-in session for one who does
+ * not. Both resolve to a subscription id and nothing downstream can tell
+ * which was used, so there is one path to get wrong instead of two.
+ */
 async function rowFor(token: string) {
-  const subId = await readUpgradeToken(token);
+  const subId = (await readUpgradeToken(token)) || (await clientSession());
   if (!subId) return null;
   const db = supabaseAdmin();
   if (!db) return null;
@@ -52,6 +61,30 @@ export async function POST(req: NextRequest) {
   const doing = req.nextUrl.searchParams.get("do");
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const token = String(body.t ?? "");
+
+  if (doing === "signin") {
+    const who = await identify(String(body.email ?? ""), String(body.password ?? ""));
+    if (!who) {
+      /* One message for a wrong password, an unknown address and a client with
+         no password yet. Anything more specific turns this form into a way to
+         ask whether a business is one of ours. */
+      return NextResponse.json(
+        { ok: false, error: "That email and password do not match an account." },
+        { status: 401 },
+      );
+    }
+    const res = NextResponse.json({ ok: true });
+    res.cookies.set(CLIENT_COOKIE, await createClientSession(who), {
+      httpOnly: true, sameSite: "lax", secure: true, path: "/", maxAge: CLIENT_SESSION_SECONDS,
+    });
+    return res;
+  }
+
+  if (doing === "signout") {
+    const res = NextResponse.json({ ok: true });
+    res.cookies.set(CLIENT_COOKIE, "", { path: "/", maxAge: 0 });
+    return res;
+  }
 
   const found = await rowFor(token);
   if (!found) {

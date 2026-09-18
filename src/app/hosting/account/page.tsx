@@ -6,8 +6,11 @@ import { listSiteFiles, humanSize } from "@/lib/clientFiles";
 import { mailSettingsFor } from "@/lib/mailSettings";
 import EditorPassword from "@/components/client/EditorPassword";
 import RequestCopy, { type CopyView } from "@/components/client/RequestCopy";
+import ClientSignIn from "@/components/client/ClientSignIn";
+import ClientSignOut from "@/components/client/ClientSignOut";
+import { clientSession } from "@/lib/clientAreaAuth";
 import { readCopyRequest, copyState } from "@/lib/clientCopy";
-import { readUpgradeToken, subscriptionContext } from "@/lib/upgrade";
+import { readUpgradeToken, subscriptionContext, mintUpgradeToken } from "@/lib/upgrade";
 import { productCopy, CLIENT_PRODUCTS, HOSTING_TIERS, usd } from "@/lib/hosting";
 import { supabaseAdmin } from "@/lib/supabase";
 import { readDomainRecord, type DomainRecord } from "@/lib/domainSales";
@@ -184,7 +187,10 @@ export default async function AccountPage({
   const isDemo = demo === "1";
   // Resolved once, because two things hang off it: Stripe's view of the
   // subscription, and our own row (where a domain bought with the plan lives).
-  const subId = !isDemo && token ? await readUpgradeToken(token) : null;
+  /* Either credential opens this page. The emailed link is what every receipt
+     and reminder already carries; the signed-in session is for the client who
+     comes back four months later with no idea which email it was in. */
+  const subId = isDemo ? null : (token ? await readUpgradeToken(token) : null) || (await clientSession());
   const ctx = isDemo
     ? {
         plan: CLIENT_PRODUCTS.hosting,
@@ -225,17 +231,23 @@ export default async function AccountPage({
     copyView = state === "ready" ? "ready" : state === "waiting" ? "waiting" : "none";
   }
 
+  /* No credential, or one that no longer works: offer the way in rather than
+     the dead end. "This link has expired" was the whole page for a client who
+     simply opened an old email — true, and no help at all. */
   if (!ctx) {
-    const t = T.en;
     return (
       <Shell lang="en">
-        <div className="rounded-2xl border border-[#E8E6E0] bg-white p-7 text-center">
-          <h1 className="text-xl font-black text-[#18181B] mb-2">{t.problem.title}</h1>
-          <p className="text-sm text-[#52525B] leading-relaxed">{t.problem.body}</p>
-        </div>
+        <ClientSignIn lang="en" hadToken={Boolean(token)} />
       </Shell>
     );
   }
+
+  /* Every link on this page carries a signed token: the billing portal, the
+     assistant pages, the upgrade page. A client who signed in with a password
+     has no token, so one is minted here — otherwise those links would all
+     lead to "this link has expired" for exactly the people who just proved
+     who they are. */
+  const linkToken = token || (subId ? await mintUpgradeToken(subId) : "");
 
   const t = T[ctx.lang];
   const fr = ctx.lang === "fr";
@@ -321,7 +333,13 @@ export default async function AccountPage({
           <strong className="font-bold">Example page.</strong> Sample figures, not a real account.
         </div>
       ) : null}
-      <h1 className="text-3xl font-black text-[#18181B] tracking-tight mb-7">{t.heading}</h1>
+      <div className="flex items-baseline justify-between gap-4 mb-7">
+        <h1 className="text-3xl font-black text-[#18181B] tracking-tight">{t.heading}</h1>
+        {/* Only for a password session. Someone on an emailed link has nothing
+            to sign out of, and a button that does nothing visible is worse
+            than no button. */}
+        {!isDemo && !token ? <ClientSignOut lang={ctx.lang} /> : null}
+      </div>
 
       <div className="rounded-2xl border border-[#E8E6E0] bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden mb-5">
         <div className="px-7 py-6 border-b border-[#F0EFEA] bg-[#FAFAF7] flex items-start justify-between gap-4">
@@ -387,7 +405,7 @@ export default async function AccountPage({
       {/* The password sits directly under the link it opens, because that is
           the moment someone realises they do not know it. Only where there is
           an editor to let them into. */}
-      {editorUrl ? <EditorPassword token={token} lang={ctx.lang} sample={isDemo} /> : null}
+      {editorUrl ? <EditorPassword token={linkToken} lang={ctx.lang} sample={isDemo} /> : null}
 
       {/* HER EMAIL ON HER PHONE. The settings are derived from her domain's
           own MX record, so the region can never be stale — and the region is
@@ -458,7 +476,7 @@ export default async function AccountPage({
           <p className="text-[13.5px] text-[#52525B] leading-relaxed">
             {t.filesBody(siteFiles.files.length, humanSize(siteFiles.bytes))}
           </p>
-          <RequestCopy token={token} lang={ctx.lang} initial={copyView} sample={isDemo} />
+          <RequestCopy token={linkToken} lang={ctx.lang} initial={copyView} sample={isDemo} />
         </div>
       )}
 
@@ -468,7 +486,7 @@ export default async function AccountPage({
           footnote. */}
       {!isDemo && ctx.plan.key === "chatbot" ? (
         <Link
-          href={`/hosting/assistant?t=${encodeURIComponent(token)}`}
+          href={`/hosting/assistant?t=${encodeURIComponent(linkToken)}`}
           className="flex items-center justify-between gap-3 rounded-2xl border border-[#CBE3BC] bg-[#F7FBF4] px-6 py-5 mb-5 hover:bg-[#F3F9EE] transition"
         >
           <span>
@@ -518,7 +536,7 @@ export default async function AccountPage({
                link is minted from THIS hosting token, the same key that
                opened this page. */
             <span className="flex flex-wrap gap-x-5 gap-y-1 mt-3 text-[13.5px] font-bold text-[#36671E]">
-              <a href={`/hosting/assistant/try?site=${encodeURIComponent(ctx.ref)}${fr ? "&lang=fr" : ""}${token ? `&t=${encodeURIComponent(token)}` : ""}`} target="_blank" rel="noreferrer" className="hover:underline">
+              <a href={`/hosting/assistant/try?site=${encodeURIComponent(ctx.ref)}${fr ? "&lang=fr" : ""}${linkToken ? `&t=${encodeURIComponent(linkToken)}` : ""}`} target="_blank" rel="noreferrer" className="hover:underline">
                 {fr ? "L'essayer maintenant →" : "Try it now →"}
               </a>
               {settingsUrl ? (
@@ -526,8 +544,8 @@ export default async function AccountPage({
                   {fr ? "Lui dire quoi dire →" : "Tell it what to say →"}
                 </a>
               ) : null}
-              {token ? (
-                <Link href={`/hosting/assistant/trial?t=${encodeURIComponent(token)}`} className="hover:underline">
+              {linkToken ? (
+                <Link href={`/hosting/assistant/trial?t=${encodeURIComponent(linkToken)}`} className="hover:underline">
                   {fr ? "7 jours d'essai sur mon site →" : "7-day trial on my site →"}
                 </Link>
               ) : null}
@@ -559,7 +577,7 @@ export default async function AccountPage({
 
       {showUpgrade ? (
         <Link
-          href={`/hosting/upgrade?t=${encodeURIComponent(token)}`}
+          href={`/hosting/upgrade?t=${encodeURIComponent(linkToken)}`}
           className="flex items-center justify-between gap-3 rounded-2xl border border-dashed border-[#CBE3BC] bg-[#F7FBF4] px-6 py-5 mb-5 hover:bg-[#F3F9EE] transition"
         >
           <span className="font-bold text-[#18181B]">{t.upgrade} {money(saving)}</span>
@@ -568,7 +586,7 @@ export default async function AccountPage({
       ) : null}
 
       <a
-        href={`/api/billing-portal?t=${encodeURIComponent(token)}`}
+        href={`/api/billing-portal?t=${encodeURIComponent(linkToken)}`}
         className="flex items-center justify-between gap-3 rounded-2xl border border-[#E8E6E0] bg-white px-6 py-5 mb-3 hover:border-[#CBC9C2] transition"
       >
         <span>
