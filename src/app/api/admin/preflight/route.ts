@@ -334,7 +334,23 @@ async function checkResend(): Promise<Check> {
       };
     }
     const json = (await res.json()) as { data?: { name: string; status: string }[] };
-    const domains = json.data ?? [];
+    const all = json.data ?? [];
+
+    /* ONLY SERVOLIA'S OWN DOMAIN IS EVER NAMED HERE.
+     *
+     * This one Resend account carries the sending domains of several unrelated
+     * ventures, and this check used to print every verified domain — so the
+     * other brands appeared, by name, on Servolia's admin page. It is behind a
+     * password and 2FA, and it still breaks the rule that a client of one
+     * venture must never be able to connect it to another.
+     *
+     * Nothing diagnostic is lost. What matters is whether OUR domain is
+     * verified; a count of the rest is enough to tell "the key works, this
+     * domain was never added" from "this key sees nothing at all". */
+    const ours = (process.env.EMAIL_FROM?.match(/<([^>]+)>/)?.[1] ?? process.env.EMAIL_FROM ?? "")
+      .trim().split("@")[1]?.toLowerCase() || "servolia.com";
+    const domains = all.filter((d) => d.name.toLowerCase() === ours);
+    const otherCount = all.length - domains.length;
     const verified = domains.filter((d) => d.status === "verified");
     // A previously-verified domain whose DNS record has gone missing. Mail
     // still sends today; Resend rechecks for 72h and then fails it outright.
@@ -351,13 +367,13 @@ async function checkResend(): Promise<Check> {
         : verified.length
         ? `Verified sending domain(s): ${verified.map((d) => d.name).join(", ")}.`
         : domains.length
-          ? `No VERIFIED domain. Found: ${domains.map((d) => `${d.name} (${d.status})`).join(", ")}. Mail will bounce or land in spam.`
-          : "No sending domain configured — a new client's first impression would be silence.",
+          ? `${ours} is ${domains.map((d) => d.status).join(", ")}, not verified. Mail will bounce or land in spam.`
+          : `${ours} is not on this Resend key's account${otherCount ? ` — the key does see ${otherCount} other domain(s), so it works and this one was never added` : ", and the key sees nothing else either"}. A new client's first impression would be silence.`,
       fix: decaying.length
         ? "Re-add the missing DNS record at your registrar before the 72h window closes."
         : verified.length
           ? undefined
-          : "resend.com → Domains → add servolia.com and complete the DNS records.",
+          : `resend.com → Domains → add ${ours} and complete the DNS records.`,
       blocksAds: !verified.length,
     };
   } catch (err) {
