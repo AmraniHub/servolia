@@ -55,14 +55,25 @@ export default function DashNav({
   lang,
   token,
   counts,
+  demo = false,
 }: {
   active: DashPage;
   lang: "en" | "fr";
   token: string;
   counts?: Partial<Record<DashPage, number>>;
+  /** True on the ?demo=1 sample page. See the note on href below. */
+  demo?: boolean;
 }) {
+  /* THE SAMPLE PAGE HAS NO TOKEN, SO IT MUST CARRY ITS OWN FLAG.
+     A real client arrives with `t=` (or a cookie) and every link below keeps
+     working. The ?demo=1 page has neither: it is invented data, so there is
+     nothing to authenticate. Without re-appending the flag, the first tab a
+     visitor clicks drops them on the sign-in screen -- and this is the page
+     shown to a prospect to demonstrate that the panel exists. The language is
+     carried with it because on the sample it is read from the query too. */
+  const sample = demo ? `&demo=1${lang === "fr" ? "&lang=fr" : ""}` : "";
   const href = (p: DashPage) =>
-    `/hosting/account?page=${p}${token ? `&t=${encodeURIComponent(token)}` : ""}`;
+    `/hosting/account?page=${p}${token ? `&t=${encodeURIComponent(token)}` : ""}${sample}`;
 
   return (
     <nav aria-label={lang === "fr" ? "Sections" : "Sections"} className="lg:w-56 shrink-0">

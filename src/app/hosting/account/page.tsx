@@ -576,6 +576,7 @@ export default async function AccountPage({
           lang={ctx.lang}
           token={token}
           counts={{ files: siteFiles.files.length }}
+          demo={isDemo}
         />
       }
     >
