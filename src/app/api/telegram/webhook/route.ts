@@ -54,6 +54,8 @@ export async function POST(req: NextRequest) {
     else if (action === "blog_skip") resultText = await handleBlogCallback("skip", entityId);
     else if (action === "linkedin_post") resultText = await handleLinkedInCallback("post", entityId);
     else if (action === "linkedin_skip") resultText = await handleLinkedInCallback("skip", entityId);
+    else if (action === "copy_ok") resultText = await handleCopyCallback("approve", entityId);
+    else if (action === "copy_no") resultText = await handleCopyCallback("refuse", entityId);
 
     await answerCallbackQuery(callbackId, "Done");
     if (message) {
@@ -86,4 +88,41 @@ export async function POST(req: NextRequest) {
   }
 
   return NextResponse.json({ ok: true });
+}
+
+/**
+ * A client asked for a copy of their website; this is the answer.
+ *
+ * Approving does not send anything. It puts a download button on the client's
+ * own service page for a week, which means the file is fetched by the person
+ * who asked, from the page only their link opens, and the permission runs out
+ * by itself rather than standing open for a year.
+ */
+async function handleCopyCallback(what: "approve" | "refuse", ref: string): Promise<string> {
+  const { supabaseAdmin } = await import("@/lib/supabase");
+  const { readCopyRequest, writeCopyRequest, approvedNow, COPY_WINDOW_DAYS } = await import("@/lib/clientCopy");
+  const db = supabaseAdmin();
+  if (!db) return "No database configured, so nothing changed.";
+
+  const { data } = await db
+    .from("hosting_clients")
+    .select("notes")
+    .eq("client_ref", ref)
+    .maybeSingle();
+  const notes = (data as { notes?: string | null } | null)?.notes ?? null;
+  const current = readCopyRequest(notes);
+
+  const next = what === "approve"
+    ? approvedNow(current)
+    : { ...(current?.requested ? { requested: current.requested } : {}), refused: new Date().toISOString() };
+
+  const { error } = await db
+    .from("hosting_clients")
+    .update({ notes: writeCopyRequest(notes, next) })
+    .eq("client_ref", ref);
+  if (error) return `Could not save that: ${error.message}`;
+
+  return what === "approve"
+    ? `✅ ${ref} can download their website from their own page for the next ${COPY_WINDOW_DAYS} days.`
+    : `✖ ${ref} was not approved. Their page shows nothing about it — tell them yourself.`;
 }

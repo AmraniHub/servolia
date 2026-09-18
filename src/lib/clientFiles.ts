@@ -111,3 +111,83 @@ export function humanSize(bytes: number): string {
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
+
+/* ── the whole site, for a client who asked for a copy ──────────────────── */
+
+/** Caps. A client's site is a few megabytes; anything past this is a bug. */
+const MAX_FILES = 300;
+const MAX_BYTES = 40 * 1024 * 1024;
+
+async function ghJson<T>(path: string, token: string): Promise<T> {
+  const r = await fetch(`https://api.github.com${path}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/vnd.github+json",
+      "User-Agent": "servolia-client-area",
+    },
+    cache: "no-store",
+  });
+  if (!r.ok) throw new Error(`GitHub ${r.status} on ${path}`);
+  return (await r.json()) as T;
+}
+
+/**
+ * Every file of a client's site, ready to be zipped.
+ *
+ * Read from the git tree rather than by walking the contents endpoint folder
+ * by folder: one call gives the whole shape, and the paths come back already
+ * relative to the repository root so the site folder can be stripped off and
+ * the archive opens as the website rather than as a folder inside a folder.
+ *
+ * WHAT IS LEFT OUT, AND WHY IT MATTERS MORE HERE THAN IN THE LISTING. This
+ * archive leaves our hands. `site-status.js` and `middleware.js` are the
+ * hosting gate — the mechanism that takes a site down when an invoice goes
+ * unpaid — and handing a client the switch, unasked, inside a file they
+ * requested for another reason entirely, is not something to do by accident.
+ * Dotfiles go for the same reason a client should never have to wonder what
+ * secret of theirs is in `.env.example`.
+ */
+const NOT_THEIRS = new Set(["site-status.js", "middleware.js", "promo.js", "promo-config.json", "build.py"]);
+
+export async function collectSiteFiles(ref: string): Promise<{ path: string; data: Buffer }[]> {
+  const src = siteSourceFor(ref);
+  const token = process.env.GH_TOKEN;
+  if (!src || !token) throw new Error("no source or no token");
+
+  const head = await ghJson<{ object: { sha: string } }>(
+    `/repos/${src.repo}/git/ref/heads/${encodeURIComponent(src.branch)}`, token);
+  const commit = await ghJson<{ tree: { sha: string } }>(
+    `/repos/${src.repo}/git/commits/${head.object.sha}`, token);
+  const tree = await ghJson<{ tree: { path: string; type: string; sha: string; size?: number }[]; truncated?: boolean }>(
+    `/repos/${src.repo}/git/trees/${commit.tree.sha}?recursive=1`, token);
+
+  const root = src.root ? `${src.root.replace(/^\/+|\/+$/g, "")}/` : "";
+  const wanted = tree.tree.filter((e) => {
+    if (e.type !== "blob") return false;
+    if (root && !e.path.startsWith(root)) return false;
+    const rel = root ? e.path.slice(root.length) : e.path;
+    if (!rel || rel.split("/").some((p) => p.startsWith("."))) return false;
+    if (rel.split("/").some((p) => HIDDEN.has(p))) return false;
+    return !NOT_THEIRS.has(rel.split("/").pop() ?? "");
+  });
+
+  if (wanted.length > MAX_FILES) throw new Error(`${wanted.length} files is more than this was built for`);
+  const total = wanted.reduce((n, e) => n + (e.size ?? 0), 0);
+  if (total > MAX_BYTES) throw new Error(`${total} bytes is more than this was built for`);
+
+  /* Eight at a time. One at a time is slow enough to hit a function timeout on
+     a site with a hundred images; all at once is how GitHub starts refusing. */
+  const out: { path: string; data: Buffer }[] = [];
+  for (let i = 0; i < wanted.length; i += 8) {
+    const batch = await Promise.all(wanted.slice(i, i + 8).map(async (e) => {
+      const blob = await ghJson<{ content: string; encoding: string }>(
+        `/repos/${src.repo}/git/blobs/${e.sha}`, token);
+      return {
+        path: root ? e.path.slice(root.length) : e.path,
+        data: Buffer.from(blob.content, (blob.encoding as BufferEncoding) || "base64"),
+      };
+    }));
+    out.push(...batch);
+  }
+  return out;
+}

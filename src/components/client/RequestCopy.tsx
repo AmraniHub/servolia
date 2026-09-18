@@ -3,42 +3,70 @@
 import { useState } from "react";
 
 /**
- * "Send me a copy of my website."
+ * "Send me a copy of my website" — ask, then download once it is approved.
  *
- * A request rather than an instant download, on purpose. What a client wants
- * when they ask this is not a zip of a git repository — it is reassurance that
- * the site is theirs and they could leave with it. A person putting the files
- * together can send something they can actually use, and can ask what they
- * need it for, which is usually the more useful conversation.
+ * What a client wants when they ask this is rarely a zip file. It is
+ * reassurance that the site is theirs and they could leave with it. So the
+ * request goes to a person, who usually replies about something else entirely,
+ * and the download appears here afterwards.
  *
- * The button does not pretend afterwards. It says a person will send it and
- * by when, because a confirmation that promises nothing specific is how a
- * client ends up asking three times.
+ * The screen never says "declined". A refusal shown on a page with no
+ * explanation is the worst possible version of a conversation he intended to
+ * have himself, so a request he did not approve simply leaves the ask button
+ * where it was.
  */
 
 const T = {
   en: {
-    ask: "Email me a copy of my website",
+    ask: "Ask for a copy of my website",
     sending: "Asking…",
-    done: "Asked. We will email your files to the address on your account within one working day.",
+    waiting: "Asked. We will confirm shortly, and a download button will appear here.",
+    download: "Download my website (.zip)",
+    ready: "Your copy is ready. The link works for the next few days.",
     failed: "That did not go through. Reply to any email from us and we will send them.",
   },
   fr: {
-    ask: "Envoyez-moi une copie de mon site",
+    ask: "Demander une copie de mon site",
     sending: "Envoi…",
-    done: "C'est noté. Nous envoyons vos fichiers à l'adresse de votre compte sous un jour ouvré.",
+    waiting: "C'est noté. Nous confirmons rapidement, et un bouton de téléchargement apparaîtra ici.",
+    download: "Télécharger mon site (.zip)",
+    ready: "Votre copie est prête. Le lien reste valable quelques jours.",
     failed: "Cela n'a pas abouti. Répondez à l'un de nos emails et nous vous les envoyons.",
   },
 };
 
-export default function RequestCopy(
-  { token, lang, sample = false }: { token: string; lang: "en" | "fr"; sample?: boolean },
-) {
-  const t = T[lang];
-  const [state, setState] = useState<"idle" | "busy" | "done" | "failed">("idle");
+export type CopyView = "none" | "waiting" | "ready";
 
-  if (state === "done") {
-    return <p className="mt-4 text-[13.5px] text-[#36671E] leading-relaxed">{t.done}</p>;
+export default function RequestCopy({
+  token,
+  lang,
+  initial = "none",
+  sample = false,
+}: {
+  token: string;
+  lang: "en" | "fr";
+  initial?: CopyView;
+  sample?: boolean;
+}) {
+  const t = T[lang];
+  const [state, setState] = useState<CopyView | "busy" | "failed">(initial);
+
+  if (state === "ready") {
+    return (
+      <div className="mt-4">
+        <a
+          href={sample ? undefined : `/api/client-area?do=download&t=${encodeURIComponent(token)}`}
+          className="inline-flex items-center h-10 px-4 rounded-lg bg-[#36671E] text-white text-[13.5px] font-bold"
+        >
+          {t.download}
+        </a>
+        <p className="mt-2 text-[13px] text-[#8A8A80] leading-relaxed">{t.ready}</p>
+      </div>
+    );
+  }
+
+  if (state === "waiting") {
+    return <p className="mt-4 text-[13.5px] text-[#36671E] leading-relaxed">{t.waiting}</p>;
   }
 
   return (
@@ -53,7 +81,8 @@ export default function RequestCopy(
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ t: token }),
             });
-            setState((await r.json()).ok ? "done" : "failed");
+            const d = await r.json();
+            setState(d.ok ? (d.state === "ready" ? "ready" : "waiting") : "failed");
           } catch {
             setState("failed");
           }

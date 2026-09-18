@@ -4,7 +4,8 @@ import { Check, ExternalLink, FileText, ArrowUpRight, PencilLine } from "lucide-
 import { editableSite } from "@/lib/siteEditor";
 import { listSiteFiles, humanSize } from "@/lib/clientFiles";
 import EditorPassword from "@/components/client/EditorPassword";
-import RequestCopy from "@/components/client/RequestCopy";
+import RequestCopy, { type CopyView } from "@/components/client/RequestCopy";
+import { readCopyRequest, copyState } from "@/lib/clientCopy";
 import { readUpgradeToken, subscriptionContext } from "@/lib/upgrade";
 import { productCopy, CLIENT_PRODUCTS, HOSTING_TIERS, usd } from "@/lib/hosting";
 import { supabaseAdmin } from "@/lib/supabase";
@@ -185,12 +186,20 @@ export default async function AccountPage({
      registration went through and where it is attached. */
   const DEMO_DOMAIN: DomainRecord = { domain: "goodscochina-shop.com", status: "bought", retailUsd: 26, boughtAt: "2026-09-09" };
   let domainRec: DomainRecord | null = isDemo ? DEMO_DOMAIN : null;
+  /* Where their request for a copy of the site stands. Read from the same row
+     as the domain rather than with a second query — one read, two answers. */
+  let copyView: CopyView = "none";
   if (!isDemo && subId) {
     const db = supabaseAdmin();
     const { data: row } = db
       ? await db.from("hosting_clients").select("notes").eq("subscription_id", subId).maybeSingle()
       : { data: null };
     domainRec = readDomainRecord(row?.notes);
+    const state = copyState(readCopyRequest((row as { notes?: string | null } | null)?.notes));
+    /* "Refused" and "expired" both show as nothing asked yet. A page that
+       reports a refusal, with no reason and nobody to ask, is worse for the
+       client than a button they can press again. */
+    copyView = state === "ready" ? "ready" : state === "waiting" ? "waiting" : "none";
   }
 
   if (!ctx) {
@@ -372,7 +381,7 @@ export default async function AccountPage({
           <p className="text-[13.5px] text-[#52525B] leading-relaxed">
             {t.filesBody(siteFiles.files.length, humanSize(siteFiles.bytes))}
           </p>
-          <RequestCopy token={token} lang={ctx.lang} sample={isDemo} />
+          <RequestCopy token={token} lang={ctx.lang} initial={copyView} sample={isDemo} />
         </div>
       )}
 

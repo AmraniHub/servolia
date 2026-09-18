@@ -4,8 +4,14 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { editableSite } from "@/lib/siteEditor";
 import { hashPassword, writeStoredHash, passwordProblem } from "@/lib/siteEditorPassword";
 import { sendTelegramMessage } from "@/lib/telegram";
+import { collectSiteFiles } from "@/lib/clientFiles";
+import { makeZip } from "@/lib/zip";
+import { readCopyRequest, writeCopyRequest, copyState, COPY_WINDOW_DAYS } from "@/lib/clientCopy";
 
 export const runtime = "nodejs";
+/* Fetching a few hundred blobs and zipping them is slower than a page render
+   and much faster than the ceiling. */
+export const maxDuration = 60;
 
 /**
  * THE THINGS A HOSTING CLIENT CAN DO FOR THEMSELVES.
@@ -87,12 +93,75 @@ export async function POST(req: NextRequest) {
   }
 
   if (doing === "request-copy") {
+    const already = readCopyRequest(notes);
+    const state = copyState(already);
+    /* Asking again while it is still live must not reset the clock or fire a
+       second alert — a client who sees no instant answer presses again. */
+    if (state === "ready" || state === "waiting") return NextResponse.json({ ok: true, state });
+
+    const { error } = await db
+      .from("hosting_clients")
+      .update({ notes: writeCopyRequest(notes, { requested: new Date().toISOString() }) })
+      .eq("client_ref", ref);
+    if (error) {
+      console.error("[client-area] copy request not saved:", error.message);
+      return NextResponse.json({ ok: false, error: "That did not go through. Please try again." }, { status: 502 });
+    }
+
     await sendTelegramMessage(
-      `📦 *${ref}* asked for a copy of their website files.\n` +
-        `Send to: ${email ?? "(no email on the row)"}`,
+      `📦 *${ref}* asked for a copy of their website.\n` +
+        `${email ?? "(no email on the row)"}\n\n` +
+        `Approve and a download button appears on their own page for ${COPY_WINDOW_DAYS} days. ` +
+        `Nothing is emailed either way.`,
+      [[
+        { text: "Approve", callback_data: `copy_ok:${ref}` },
+        { text: "Not now", callback_data: `copy_no:${ref}` },
+      ]],
     );
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, state: "waiting" });
   }
 
   return NextResponse.json({ ok: false, error: "unknown-action" }, { status: 400 });
+}
+
+/**
+ * The download itself, once he has approved it.
+ *
+ * A GET so the browser can save it like any other file. The token is in the
+ * query because that is how a link works — and it is the same token that
+ * opened the page, carrying no more authority here than it does there.
+ */
+export async function GET(req: NextRequest) {
+  if (req.nextUrl.searchParams.get("do") !== "download") {
+    return NextResponse.json({ ok: false, error: "unknown-action" }, { status: 400 });
+  }
+  const found = await rowFor(req.nextUrl.searchParams.get("t") ?? "");
+  if (!found) return NextResponse.json({ ok: false, error: "expired-link" }, { status: 401 });
+
+  const state = copyState(readCopyRequest(found.notes));
+  if (state !== "ready") {
+    /* Deliberately the same answer for "never asked", "still waiting" and
+       "expired". Whoever is holding this link, the file is not theirs to have
+       until it has been approved, and the state of someone else's request is
+       not something to narrate. */
+    return NextResponse.json({ ok: false, error: "not-approved" }, { status: 403 });
+  }
+
+  try {
+    const files = await collectSiteFiles(found.client_ref);
+    if (!files.length) throw new Error("no files");
+    const zip = makeZip(files);
+    return new NextResponse(new Uint8Array(zip), {
+      headers: {
+        "Content-Type": "application/zip",
+        "Content-Disposition": `attachment; filename="${found.client_ref}-website.zip"`,
+        "Content-Length": String(zip.length),
+        // Their own site, behind an approval: nothing caches this anywhere.
+        "Cache-Control": "private, no-store",
+      },
+    });
+  } catch (err) {
+    console.error("[client-area] copy failed:", err);
+    return NextResponse.json({ ok: false, error: "could-not-build" }, { status: 502 });
+  }
 }
