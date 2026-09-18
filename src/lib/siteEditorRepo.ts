@@ -11,7 +11,8 @@
  * control of their pages, not an account somewhere else.
  */
 import type { EditableSite, EditableField } from "@/lib/siteEditor";
-import { readRegion, writeRegion } from "@/lib/siteEditor";
+import { readDictValue, writeDictValue } from "@/lib/siteEditorDict";
+import { readRegion, writeRegion, fieldId } from "@/lib/siteEditor";
 
 const GITHUB_API = "https://api.github.com";
 
@@ -75,10 +76,20 @@ export async function readCurrent(site: EditableSite, fields: EditableField[]): 
 
   const out: CurrentValue[] = [];
   for (const [file, fs] of byFile) {
-    const html = await readFile(site, file);
+    const text = await readFile(site, file);
     for (const f of fs) {
-      const r = readRegion(html, f.key);
-      out.push(r.ok ? { key: f.key, value: r.value } : { key: f.key, value: "", problem: r.reason });
+      /* Two kinds of field, one loop. An HTML site has its words between its
+         tags; a dictionary-driven site has them in a language block, and
+         editing its HTML would change nothing a visitor ever sees. */
+      if (f.lang) {
+        const d = readDictValue(text, f.lang, f.key);
+        out.push(d.ok
+          ? { key: fieldId(f), value: d.value }
+          : { key: fieldId(f), value: "", problem: d.reason === "not-found" ? "not-found" : "has-markup" });
+        continue;
+      }
+      const r = readRegion(text, f.key);
+      out.push(r.ok ? { key: fieldId(f), value: r.value } : { key: fieldId(f), value: "", problem: r.reason });
     }
   }
   return out;
@@ -104,7 +115,7 @@ export async function saveEdits(
 ): Promise<SaveOutcome> {
   if (!process.env.GH_TOKEN) return { ok: false, reason: "no-token" };
   try {
-    const wanted = fields.filter((f) => typeof values[f.key] === "string");
+    const wanted = fields.filter((f) => typeof values[fieldId(f)] === "string");
     const byFile = new Map<string, EditableField[]>();
     for (const f of wanted) byFile.set(f.file, [...(byFile.get(f.file) ?? []), f]);
 
@@ -113,14 +124,21 @@ export async function saveEdits(
     const skipped: string[] = [];
 
     for (const [file, fs] of byFile) {
-      let html = await readFile(site, file);
+      let text = await readFile(site, file);
       let touched = false;
       for (const f of fs) {
-        const res = writeRegion(html, f.key, values[f.key]);
-        if (res.changed) { html = res.html; touched = true; changed.push(f.key); }
-        else if (readRegion(html, f.key).ok === false) skipped.push(f.key);
+        const id = fieldId(f);
+        if (f.lang) {
+          const res = writeDictValue(text, f.lang, f.key, values[id]);
+          if (res.changed) { text = res.source; touched = true; changed.push(id); }
+          else if (!readDictValue(text, f.lang, f.key).ok) skipped.push(id);
+          continue;
+        }
+        const res = writeRegion(text, f.key, values[id]);
+        if (res.changed) { text = res.html; touched = true; changed.push(id); }
+        else if (readRegion(text, f.key).ok === false) skipped.push(id);
       }
-      if (touched) changedFiles.push({ path: pathFor(site, file), content: html });
+      if (touched) changedFiles.push({ path: pathFor(site, file), content: text });
     }
 
     if (!changedFiles.length) return { ok: true, changed: [], commit: null, skipped };

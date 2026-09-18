@@ -25,7 +25,7 @@
  */
 
 export interface EditableField {
-  /** The `data-edit` key, e.g. "hero.title". */
+  /** The `data-edit` key, e.g. "hero.title" — or a dictionary key when `lang` is set. */
   key: string;
   /** What the client sees above the box. Their words, not ours. */
   label: string;
@@ -35,6 +35,23 @@ export interface EditableField {
   multiline?: boolean;
   /** Refused above this length, so one field cannot become a whole page. */
   max?: number;
+  /**
+   * Set when this field is a DICTIONARY entry rather than a region of HTML.
+   *
+   * Excellence Agency's site paints from js/i18n.js: every element carries a
+   * data-i18n key and the script replaces its text on load. Editing their HTML
+   * would change the file and nothing a visitor sees. So for a site like
+   * theirs the field names a language (`ar`, `fr`) and the value is written
+   * into that block of the dictionary instead.
+   */
+  lang?: string;
+  /**
+   * Which tab this belongs under. Defaults to the file, which is right when
+   * one page is one file — but a dictionary holds every page's words in a
+   * single file, and 26 boxes under one tab called "js/i18n.js" is not
+   * something to hand a client.
+   */
+  page?: string;
 }
 
 export interface EditableSite {
@@ -68,9 +85,15 @@ export interface EditableSite {
    * edited lines that language can no longer render — see siteEditorI18n.
    */
   translations?: { file: string; language: string };
-  /** What the pages are called, for the page picker. */
-  pages: { file: string; label: string }[];
+  /** What the pages are called, for the page picker. `id` defaults to `file`. */
+  pages: { file: string; label: string; id?: string }[];
   fields: EditableField[];
+  /**
+   * The language the editor itself speaks. Handing a French-speaking client a
+   * tool labelled "Save changes to my website" undoes most of the work of
+   * putting it on their own domain in their own colours.
+   */
+  uiLang?: "en" | "fr";
 }
 
 export const MAX_FIELD = 2000;
@@ -177,6 +200,33 @@ export function validate(field: EditableField, value: unknown): string | null {
  * Adding the next client is another entry here plus the `data-edit` markers
  * on their pages. Nothing else.
  */
+/**
+ * One dictionary key, as a box per language.
+ *
+ * Written as a helper rather than twenty-six hand-typed entries because the
+ * pairs must not drift: a key present in French and missing in Arabic gives a
+ * client a French box that saves and an Arabic one that silently does not.
+ */
+function bilingual(
+  key: string,
+  label: string,
+  page: string,
+  opts: { multiline?: boolean; max?: number } = {},
+): EditableField[] {
+  const LANGS: { code: string; name: string }[] = [
+    { code: "fr", name: "français" },
+    { code: "ar", name: "العربية" },
+  ];
+  return LANGS.map((l) => ({
+    key,
+    lang: l.code,
+    page,
+    file: "js/i18n.js",
+    label: `${label} (${l.name})`,
+    ...opts,
+  }));
+}
+
 export const EDITABLE_SITES: Record<string, EditableSite> = {
   goodscochina: {
     ref: "goodscochina",
@@ -223,6 +273,92 @@ export const EDITABLE_SITES: Record<string, EditableSite> = {
       { key: "home.s4.text", label: "Service 4 — description", file: "index.html", multiline: true, max: 240 },
       { key: "home.s5.title", label: "Service 5 — title", file: "index.html", max: 60 },
       { key: "home.s5.text", label: "Service 5 — description", file: "index.html", multiline: true, max: 240 },
+
+      /* The sourcing page is her sales page, so the fields are the ones with
+         money attached: what the service covers, what she guarantees, and how
+         many clients she takes. That last number is the one most certain to
+         change and the one she would otherwise have to ask us to edit. */
+      { key: "sourcing.promise", label: "The promise under the headline", file: "sourcing.html", multiline: true, max: 220 },
+      { key: "sourcing.s1.title", label: "What's covered 1 — title", file: "sourcing.html", max: 60 },
+      { key: "sourcing.s1.text", label: "What's covered 1 — description", file: "sourcing.html", multiline: true, max: 200 },
+      { key: "sourcing.s2.title", label: "What's covered 2 — title", file: "sourcing.html", max: 60 },
+      { key: "sourcing.s2.text", label: "What's covered 2 — description", file: "sourcing.html", multiline: true, max: 200 },
+      { key: "sourcing.s3.title", label: "What's covered 3 — title", file: "sourcing.html", max: 60 },
+      { key: "sourcing.s3.text", label: "What's covered 3 — description", file: "sourcing.html", multiline: true, max: 200 },
+      { key: "sourcing.s4.title", label: "What's covered 4 — title", file: "sourcing.html", max: 60 },
+      { key: "sourcing.s4.text", label: "What's covered 4 — description", file: "sourcing.html", multiline: true, max: 200 },
+      { key: "sourcing.s5.title", label: "What's covered 5 — title", file: "sourcing.html", max: 60 },
+      { key: "sourcing.s5.text", label: "What's covered 5 — description", file: "sourcing.html", multiline: true, max: 200 },
+      { key: "sourcing.s6.title", label: "What's covered 6 — title", file: "sourcing.html", max: 60 },
+      { key: "sourcing.s6.text", label: "What's covered 6 — description", file: "sourcing.html", multiline: true, max: 200 },
+      { key: "sourcing.guarantee.title", label: "Your guarantee — title", file: "sourcing.html", max: 60 },
+      { key: "sourcing.guarantee.text", label: "Your guarantee — what you promise", file: "sourcing.html", multiline: true, max: 320 },
+      { key: "sourcing.capacity.title", label: "How many clients you take — title", file: "sourcing.html", max: 70 },
+      { key: "sourcing.capacity.text", label: "How many clients you take — why", file: "sourcing.html", multiline: true, max: 260 },
+
+      { key: "contact.title", label: "Contact page headline", file: "contact.html", max: 70 },
+      { key: "contact.intro", label: "Contact page introduction", file: "contact.html", multiline: true, max: 220 },
+      /* Her email and WhatsApp number are NOT here: both are links, so the
+         text and the href would drift apart the first time she changed one.
+         Those stay with us until the editor can write an attribute safely. */
+      { key: "contact.office", label: "Where you are", file: "contact.html", max: 80 },
+      { key: "contact.response", label: "How fast you reply", file: "contact.html", max: 60 },
+    ],
+  },
+
+  /**
+   * EXCELLENCE AGENCY — the same editor, on a site built the opposite way.
+   *
+   * Nothing here points at their HTML. Their pages carry `data-i18n` keys and
+   * js/i18n.js replaces every string on load from an `ar` and an `fr` block,
+   * so their HTML is only the first paint: editing it would change the file
+   * and nothing a visitor ever sees.
+   *
+   * Which turns out to suit them better. One key has both languages, so each
+   * box comes in a pair and they keep Arabic and French in step themselves —
+   * the thing GoodsCoChina's English-keyed dictionary cannot give her.
+   *
+   * THE `.html` KEYS ARE NOT HERE. hero.title.html, about.title.html and the
+   * rest hold real markup — <br>, a highlight <span> — which their script
+   * writes into the page as HTML. A box that puts a client's typing into
+   * innerHTML is a broken layout on a good day. Those stay with us.
+   */
+  excellenceagency: {
+    ref: "excellenceagency",
+    businessName: "Excellence Agency",
+    repo: "AmraniHub/excellenceagency-ma",
+    branch: "master",
+    siteRoot: null, // their site deploys from the repo root
+    // Straight out of their css/style.css :root — --navy, --off-white, --gray-200.
+    accent: "#16255C",
+    surface: "#F8F9FC",
+    line: "#E2E8F0",
+    uiLang: "fr",
+    // Live since 2026-09-18, via the same three rewrites in their vercel.json.
+    adminUrl: "https://excellence-agency.org/admin",
+    /* Three tabs over ONE file. Twenty-two boxes under a tab called
+       "js/i18n.js" is not something to hand a client. */
+    pages: [
+      { id: "about", file: "js/i18n.js", label: "Qui vous êtes" },
+      { id: "services", file: "js/i18n.js", label: "Ce que vous faites" },
+      { id: "contact", file: "js/i18n.js", label: "Contact" },
+    ],
+    fields: [
+      ...bilingual("about.p1", "Présentation — premier paragraphe", "about", { multiline: true, max: 600 }),
+      ...bilingual("about.p2", "Présentation — second paragraphe", "about", { multiline: true, max: 600 }),
+      ...bilingual("about.vision.text", "Votre vision", "about", { multiline: true, max: 400 }),
+      ...bilingual("about.mission.text", "Votre mission", "about", { multiline: true, max: 400 }),
+
+      ...bilingual("hero.tagline", "Votre slogan", "services", { max: 90 }),
+      ...bilingual("about.feat1", "Ce que vous faites 1", "services", { max: 90 }),
+      ...bilingual("about.feat2", "Ce que vous faites 2", "services", { max: 90 }),
+      ...bilingual("about.feat3", "Ce que vous faites 3", "services", { max: 90 }),
+      ...bilingual("about.feat4", "Ce que vous faites 4", "services", { max: 90 }),
+
+      ...bilingual("home.cta.title", "Appel à l'action — titre", "contact", { max: 120 }),
+      ...bilingual("home.cta.subtitle", "Appel à l'action — texte", "contact", { multiline: true, max: 300 }),
+      ...bilingual("contact.address.value", "Votre adresse", "contact", { max: 120 }),
+      ...bilingual("contact.hours.value", "Vos horaires", "contact", { max: 120 }),
     ],
   },
 };
@@ -257,9 +393,26 @@ export function editorMountPaths(): string[] {
   return [...out];
 }
 
+/**
+ * The id a field is submitted under.
+ *
+ * A dictionary field's key is the SAME in every language — "about.p1" exists
+ * once in Arabic and once in French — so the key alone cannot identify a box.
+ * Prefixing the language is what stops a French edit overwriting the Arabic
+ * one, silently, in the same save.
+ */
+export function fieldId(f: { key: string; lang?: string }): string {
+  return f.lang ? `${f.lang}:${f.key}` : f.key;
+}
+
+/** A page's identity: its own id where it has one, otherwise its file. */
+export function pageId(p: { file: string; id?: string }): string {
+  return p.id ?? p.file;
+}
+
 /** The fields that belong to one page, in the order the client reads them. */
-export function fieldsFor(site: EditableSite, file: string): EditableField[] {
-  return site.fields.filter((f) => f.file === file);
+export function fieldsFor(site: EditableSite, page: string): EditableField[] {
+  return site.fields.filter((f) => (f.page ?? f.file) === page);
 }
 
 /**
@@ -270,6 +423,6 @@ export function fieldsFor(site: EditableSite, file: string): EditableField[] {
  * page earns its tab by having a field, so adding the fields is what adds the
  * tab and the two can never disagree.
  */
-export function pagesWithFields(site: EditableSite): { file: string; label: string }[] {
-  return site.pages.filter((p) => fieldsFor(site, p.file).length > 0);
+export function pagesWithFields(site: EditableSite): { file: string; label: string; id?: string }[] {
+  return site.pages.filter((p) => fieldsFor(site, pageId(p)).length > 0);
 }

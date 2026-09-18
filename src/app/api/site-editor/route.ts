@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { editableSite, fieldsFor, pagesWithFields, validate } from "@/lib/siteEditor";
+import { editableSite, fieldId, fieldsFor, pageId, pagesWithFields, validate } from "@/lib/siteEditor";
 import { readCurrent, readSiteFile, saveEdits } from "@/lib/siteEditorRepo";
 import { untranslatedAfterEdit, translationNote } from "@/lib/siteEditorI18n";
 import {
-  passwordMatches, createEditorSession, editorSession,
-  editorConfigured, EDITOR_COOKIE, EDITOR_SESSION_SECONDS,
+  passwordMatchesFor, createEditorSession, editorSession,
+  editorConfiguredFor, EDITOR_COOKIE, EDITOR_SESSION_SECONDS,
 } from "@/lib/siteEditorAuth";
 
 export const runtime = "nodejs";
@@ -57,10 +57,10 @@ export async function POST(req: NextRequest) {
     /* The same answer whether the site is unknown, has no password set, or the
        password is wrong. Anything else tells a stranger which businesses have
        an editor. */
-    if (!site || !editorConfigured(ref) || !passwordMatches(ref, String(body.password ?? ""))) {
+    if (!site || !(await editorConfiguredFor(ref)) || !(await passwordMatchesFor(ref, String(body.password ?? "")))) {
       return NextResponse.json({ ok: false, error: "That password is not right." }, { status: 401 });
     }
-    const res = NextResponse.json({ ok: true, businessName: site.businessName });
+    const res = NextResponse.json({ ok: true, businessName: site.businessName, uiLang: site.uiLang ?? "en" });
     res.cookies.set(EDITOR_COOKIE, await createEditorSession(ref), {
       httpOnly: true, sameSite: "lax", secure: true, path: "/", maxAge: EDITOR_SESSION_SECONDS,
     });
@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
     if (!site) return NextResponse.json({ ok: false, error: "signed-out" }, { status: 401 });
 
     const file = String(body.file ?? "");
-    if (!pagesWithFields(site).some((p) => p.file === file)) {
+    if (!pagesWithFields(site).some((p) => pageId(p) === file)) {
       return NextResponse.json({ ok: false, error: "unknown-page" }, { status: 400 });
     }
     const fields = fieldsFor(site, file);
@@ -83,9 +83,10 @@ export async function POST(req: NextRequest) {
        half-saved because the last box was too long. */
     const problems: Record<string, string> = {};
     for (const f of fields) {
-      if (!(f.key in values)) continue;
-      const bad = validate(f, values[f.key]);
-      if (bad) problems[f.key] = bad;
+      const id = fieldId(f);
+      if (!(id in values)) continue;
+      const bad = validate(f, values[id]);
+      if (bad) problems[id] = bad;
     }
     if (Object.keys(problems).length) {
       return NextResponse.json({ ok: false, error: "invalid", problems }, { status: 400 });
@@ -131,8 +132,8 @@ export async function GET(req: NextRequest) {
   if (!site) return NextResponse.json({ ok: false, error: "signed-out" }, { status: 401 });
 
   const offered = pagesWithFields(site);
-  const file = req.nextUrl.searchParams.get("file") || offered[0]?.file || site.pages[0].file;
-  if (!offered.some((p) => p.file === file)) {
+  const file = req.nextUrl.searchParams.get("file") || (offered[0] ? pageId(offered[0]) : "");
+  if (!offered.some((p) => pageId(p) === file)) {
     return NextResponse.json({ ok: false, error: "unknown-page" }, { status: 400 });
   }
   const fields = fieldsFor(site, file);
@@ -141,15 +142,19 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       ok: true,
       businessName: site.businessName,
-      pages: offered,
+      uiLang: site.uiLang ?? "en",
+      pages: offered.map((p) => ({ file: pageId(p), label: p.label })),
       file,
       fields: fields.map((f) => ({
-        key: f.key, label: f.label, multiline: Boolean(f.multiline), max: f.max ?? 2000,
-        value: current.find((c) => c.key === f.key)?.value ?? "",
+        key: fieldId(f), label: f.label, multiline: Boolean(f.multiline), max: f.max ?? 2000,
+        /* An Arabic box typed left-to-right is unusable, and the client will
+           not know why it feels wrong — they will just stop using it. */
+        rtl: f.lang === "ar",
+        value: current.find((c) => c.key === fieldId(f))?.value ?? "",
         /* A field whose marker is missing or misplaced is shown as
            unavailable rather than as an empty box — an empty box invites a
            client to type into something that will never save. */
-        problem: current.find((c) => c.key === f.key)?.problem ?? null,
+        problem: current.find((c) => c.key === fieldId(f))?.problem ?? null,
       })),
     });
   } catch (err) {

@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Check, ExternalLink, FileText, ArrowUpRight, PencilLine } from "lucide-react";
 import { editableSite } from "@/lib/siteEditor";
+import { listSiteFiles, humanSize } from "@/lib/clientFiles";
+import EditorPassword from "@/components/client/EditorPassword";
+import RequestCopy from "@/components/client/RequestCopy";
 import { readUpgradeToken, subscriptionContext } from "@/lib/upgrade";
 import { productCopy, CLIENT_PRODUCTS, HOSTING_TIERS, usd } from "@/lib/hosting";
 import { supabaseAdmin } from "@/lib/supabase";
@@ -65,7 +68,11 @@ const T = {
     domainYours: "It is yours: on request we transfer it to any registrar account you name.",
     editorTitle: "Edit your website",
     editorBody: "Change the words on your pages yourself, whenever you like. Your design stays exactly as it is, and the site updates in about a minute.",
-    editorNote: "Opens on your own website. Use the password we sent you — it is not the same as any other password you have.",
+    editorNote: "Opens on your own website. Use the password below — it is not the same as any other password you have.",
+    filesTitle: "Your website's files",
+    filesBody: (n: number, size: string) =>
+      `${n} ${n === 1 ? "file" : "files"}, ${size} in all. This is what your website is made of, and it is yours — ask any time and we will send you a copy.`,
+    filesUnavailable: "We cannot list your files at this moment. Ask us and we will send them.",
     problem: {
       title: "This link has expired",
       body: "Service links do not last forever. Reply to any email from us and we will send a fresh one.",
@@ -97,7 +104,11 @@ const T = {
     domainYours: "Il vous appartient : sur simple demande, nous le transférons vers le compte registrar de votre choix.",
     editorTitle: "Modifier votre site",
     editorBody: "Changez vous-même les textes de vos pages, quand vous voulez. Votre design ne bouge pas, et le site se met à jour en une minute environ.",
-    editorNote: "S'ouvre sur votre propre site. Utilisez le mot de passe que nous vous avons envoyé — il n'est identique à aucun autre.",
+    editorNote: "S'ouvre sur votre propre site. Utilisez le mot de passe ci-dessous — il n'est identique à aucun autre.",
+    filesTitle: "Les fichiers de votre site",
+    filesBody: (n: number, size: string) =>
+      `${n} ${n === 1 ? "fichier" : "fichiers"}, ${size} au total. Voilà de quoi votre site est fait, et il vous appartient — demandez-nous une copie quand vous voulez.`,
+    filesUnavailable: "Nous ne pouvons pas lister vos fichiers pour l'instant. Demandez-nous et nous vous les envoyons.",
     problem: {
       title: "Ce lien a expiré",
       body: "Les liens de service ne durent pas indéfiniment. Répondez à l'un de nos emails et nous vous en envoyons un nouveau.",
@@ -203,6 +214,24 @@ export default async function AccountPage({
      this card cannot advertise a link that 404s. */
   const editor = editableSite(ctx.ref);
   const editorUrl = editor?.adminUrl ?? null;
+
+  /* Their own files, listed from the repository their host deploys. In the
+     sample page this is invented, because a demo must never reach into a real
+     client's repository to fill itself in. */
+  const siteFiles = isDemo
+    ? {
+        unavailable: false,
+        bytes: 372_000,
+        files: [
+          { name: "index.html", size: 353_810, kind: "page" as const },
+          { name: "sourcing.html", size: 15_612, kind: "page" as const },
+          { name: "contact.html", size: 4_493, kind: "page" as const },
+          { name: "favicon.ico", size: 4_286, kind: "image" as const },
+          { name: "css", size: null, kind: "folder" as const },
+          { name: "img", size: null, kind: "folder" as const },
+        ],
+      }
+    : await listSiteFiles(ctx.ref);
 
   /* Servolia's own recommendation, on the page the client owns. Hosting-tier
    * clients only, and only until the assistant is theirs — the same rule as
@@ -315,6 +344,37 @@ export default async function AccountPage({
           <span className="block text-[12.5px] text-[#8A8A80] mt-3 leading-relaxed">{t.editorNote}</span>
         </a>
       ) : null}
+
+      {/* The password sits directly under the link it opens, because that is
+          the moment someone realises they do not know it. Only where there is
+          an editor to let them into. */}
+      {editorUrl ? <EditorPassword token={token} lang={ctx.lang} sample={isDemo} /> : null}
+
+      {/* THE FILES. A client asking for the admin of their site is usually
+          asking something underneath it — is this actually mine? A list of
+          their own files, by name, answers that better than a sentence. */}
+      {siteFiles.unavailable && !siteFiles.files.length ? null : (
+        <div className="rounded-2xl border border-[#E8E6E0] bg-white p-7 mb-5">
+          <p className="text-[10px] font-black text-[#8A8A80] uppercase tracking-widest mb-3">{t.filesTitle}</p>
+          <ul className="space-y-1.5 mb-3">
+            {siteFiles.files.map((f) => (
+              <li key={f.name} className="flex items-baseline justify-between gap-4 text-[14px]">
+                <span className={`truncate ${f.kind === "page" ? "font-bold text-[#18181B]" : "text-[#3F3F46]"}`}>
+                  {f.name}
+                  {f.kind === "folder" ? "/" : ""}
+                </span>
+                <span className="shrink-0 text-[13px] text-[#8A8A80] tabular-nums">
+                  {f.size === null ? "—" : humanSize(f.size)}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <p className="text-[13.5px] text-[#52525B] leading-relaxed">
+            {t.filesBody(siteFiles.files.length, humanSize(siteFiles.bytes))}
+          </p>
+          <RequestCopy token={token} lang={ctx.lang} sample={isDemo} />
+        </div>
+      )}
 
       {/* The assistant's own page: its brief, its languages, where its leads
           go, and the install line for a site we do not host. The one thing

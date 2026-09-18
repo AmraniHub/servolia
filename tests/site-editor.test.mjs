@@ -14,6 +14,8 @@ import { translatedStrings, untranslatedAfterEdit, translationNote } from "../sr
 import {
   editorMountPaths,
   pagesWithFields,
+  pageId,
+  fieldId,
   readRegion, writeRegion, validate, escapeHtml, decodeEntities,
   editableSite, fieldsFor, EDITABLE_SITES, MAX_FIELD,
 } from "../src/lib/siteEditor.ts";
@@ -126,15 +128,37 @@ test("the configured site points at the repo Vercel actually deploys", () => {
 
 test("every field belongs to a page the client can actually pick", () => {
   for (const site of Object.values(EDITABLE_SITES)) {
-    const pages = new Set(site.pages.map((p) => p.file));
+    const tabs = new Set(site.pages.map(pageId));
     for (const f of site.fields) {
-      assert.ok(pages.has(f.file), `${site.ref}: field ${f.key} is on ${f.file}, which is not in pages`);
+      const tab = f.page ?? f.file;
+      assert.ok(tabs.has(tab), `${site.ref}: field ${f.key} is on ${tab}, which is not a tab`);
       assert.ok(f.label && f.label.length < 60, `${site.ref}: ${f.key} needs a short human label`);
     }
-    const keys = site.fields.map((f) => f.key);
-    assert.equal(new Set(keys).size, keys.length, `${site.ref}: duplicate field keys`);
-    assert.ok(fieldsFor(site, site.pages[0].file).length > 0, `${site.ref}: the first page has no fields`);
+    /* The id, not the key. A dictionary key exists once per language, so the
+       bare key repeats by design and only the id must be unique — if it were
+       not, a French edit would overwrite the Arabic one in the same save. */
+    const ids = site.fields.map(fieldId);
+    assert.equal(new Set(ids).size, ids.length, `${site.ref}: two boxes submit under the same id`);
+    assert.ok(fieldsFor(site, pageId(site.pages[0])).length > 0, `${site.ref}: the first page has no fields`);
   }
+});
+
+test("a bilingual site gets the same boxes in both languages", () => {
+  const site = editableSite("excellenceagency");
+  assert.ok(site, "excellenceagency must be editable");
+  const byLang = new Map();
+  for (const f of site.fields) {
+    assert.ok(f.lang, `${f.key}: their site paints from a dictionary, so every field names a language`);
+    byLang.set(f.lang, [...(byLang.get(f.lang) ?? []), f.key]);
+  }
+  const [fr, ar] = [byLang.get("fr") ?? [], byLang.get("ar") ?? []];
+  assert.ok(fr.length > 0);
+  // A key in one language and not the other is a box that silently never saves.
+  assert.deepEqual([...fr].sort(), [...ar].sort());
+  for (const f of site.fields) {
+    assert.ok(!f.key.endsWith(".html"), `${f.key}: those values hold markup and are not a client's to type`);
+  }
+  assert.equal(site.uiLang, "fr", "they work in French; an English tool undoes the point");
 });
 
 test("the editor wears the client's colours, never Servolia's", () => {
@@ -220,7 +244,9 @@ test("a page with nothing to edit is not offered as a tab", () => {
   const offered = pagesWithFields(site);
   assert.ok(offered.length >= 1);
   for (const p of offered) assert.ok(fieldsFor(site, p.file).length > 0, `${p.file} has no fields`);
-  // Her sourcing and contact pages have no markers yet; listing them would be
-  // a tab that opens an empty screen.
-  assert.deepEqual(offered.map((p) => p.file), ["index.html"]);
+  // All three of her pages carry markers now, so all three are offered.
+  assert.deepEqual(offered.map((p) => p.file), ["index.html", "sourcing.html", "contact.html"]);
+  // A page added to `pages` without fields must drop straight back out.
+  const halfDone = { ...site, pages: [...site.pages, { file: "about.html", label: "About" }] };
+  assert.ok(!pagesWithFields(halfDone).some((p) => p.file === "about.html"));
 });

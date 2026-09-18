@@ -1,6 +1,6 @@
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
-import { createHash, timingSafeEqual } from "node:crypto";
+import { hashMatches, envPasswordHash, readStoredHash } from "@/lib/siteEditorPassword";
 
 /**
  * The page editor's own login — a password, per client site.
@@ -12,10 +12,16 @@ import { createHash, timingSafeEqual } from "node:crypto";
  * is the opposite of that. A password she types on goodscochina.com keeps the
  * whole thing hers.
  *
- * WHY A HASH IN AN ENV VAR AND NOT A DATABASE. One client today, two soon. A
- * users table would be more machinery than the problem has, and the hash can
- * be rotated by changing one Vercel variable — which is also how a password
- * gets revoked the day a client parts company with the person who had it.
+ * WHERE THE HASH LIVES. Originally one Vercel variable per site, which was
+ * right while only we could set a password. It stopped being right the moment
+ * a client could change her own: a deploy is not something she can trigger,
+ * and a password she cannot change is not really hers.
+ *
+ * So the hash is read from the client's own hosting_clients row first, and
+ * falls back to the env var. That keeps every password we set by hand working,
+ * needs no migration, and means a client changing her password takes effect on
+ * the next request rather than the next deploy. The env var also remains the
+ * way to get someone back in when they have locked themselves out.
  *
  * The password is SHA-256 hashed with a per-site salt and compared in constant
  * time. It is not bcrypt: these are long random passwords we generate and hand
@@ -38,30 +44,44 @@ function secret(): Uint8Array {
   return new TextEncoder().encode(s);
 }
 
-/** The env var holding one site's password hash, e.g. EDITOR_PW_GOODSCOCHINA. */
-export function passwordEnvName(ref: string): string {
-  return `EDITOR_PW_${ref.replace(/[^a-zA-Z0-9]/g, "_").toUpperCase()}`;
+/* The password rules themselves live in siteEditorPassword, which imports
+   nothing from Next and can therefore be tested. Re-exported here so every
+   caller still has one place to import the editor's auth from. */
+export {
+  passwordEnvName, hashPassword, hashMatches, envPasswordHash,
+  readStoredHash, writeStoredHash, passwordProblem,
+} from "@/lib/siteEditorPassword";
+
+
+/**
+ * Is this the site's password?
+ *
+ * The client's own hash wins over ours. If she has set one, the one we handed
+ * over must stop working — otherwise "change your password" changes nothing
+ * that matters, and the old password is still written in whatever chat we sent
+ * it through.
+ */
+export async function passwordMatchesFor(ref: string, password: string): Promise<boolean> {
+  const stored = await storedHashFor(ref);
+  if (stored) return hashMatches(ref, password, stored);
+  return hashMatches(ref, password, envPasswordHash(ref));
 }
 
-/** The value to put in that variable, for a password we are handing over. */
-export function hashPassword(ref: string, password: string): string {
-  return createHash("sha256").update(`${ref}:${password}`).digest("hex");
+/** True when a site has a password at all — nothing to log into otherwise. */
+export async function editorConfiguredFor(ref: string): Promise<boolean> {
+  return Boolean((await storedHashFor(ref)) || envPasswordHash(ref));
 }
 
-/** Is this the site's password? Constant-time, and false when none is set. */
-export function passwordMatches(ref: string, password: string): boolean {
-  const expected = process.env[passwordEnvName(ref)];
-  if (!expected || !password) return false;
-  const a = Buffer.from(hashPassword(ref, password), "utf8");
-  const b = Buffer.from(expected.trim(), "utf8");
-  // timingSafeEqual throws on a length mismatch, which would itself leak.
-  if (a.length !== b.length) return false;
-  return timingSafeEqual(a, b);
-}
-
-/** True when a site has a password configured at all — nothing to log into otherwise. */
-export function editorConfigured(ref: string): boolean {
-  return Boolean(process.env[passwordEnvName(ref)]);
+async function storedHashFor(ref: string): Promise<string | null> {
+  const { supabaseAdmin } = await import("@/lib/supabase");
+  const db = supabaseAdmin();
+  if (!db) return null;
+  const { data } = await db
+    .from("hosting_clients")
+    .select("notes")
+    .eq("client_ref", ref)
+    .maybeSingle();
+  return readStoredHash((data as { notes?: string | null } | null)?.notes);
 }
 
 export async function createEditorSession(ref: string): Promise<string> {

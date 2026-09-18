@@ -61,6 +61,7 @@ export default async function ClientEditorPage({
       <SiteEditor
         siteRef={site.ref}
         theme={{ accent: site.accent, surface, line: site.line }}
+        uiLang={site.uiLang ?? "en"}
       />
     </main>
   );
