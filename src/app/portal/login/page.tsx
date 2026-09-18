@@ -76,7 +76,11 @@ function LoginForm() {
         body: JSON.stringify({ email, password }),
       });
       if (res.ok) {
-        window.location.href = "/portal";
+        /* Where the server says. A hosting client has no builds to show, so
+           they are sent to the page that holds their actual service instead
+           of to an empty dashboard. */
+        const { to } = (await res.json().catch(() => ({}))) as { to?: string };
+        window.location.href = to === "/hosting/account" ? "/hosting/account" : "/portal";
       } else {
         const data = await res.json();
         setError(data.error ?? t.errLogin);
