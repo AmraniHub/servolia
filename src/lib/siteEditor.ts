@@ -45,6 +45,13 @@ export interface EditableSite {
   branch: string;
   /** Folder inside the repo that the host deploys, e.g. "web". */
   siteRoot: string | null;
+  /** The client's own brand colour. The editor wears it, not ours — this is
+   *  their tool on their domain, and Servolia green would announce whose
+   *  software it really is on the one screen that should feel like theirs. */
+  accent: string;
+  /** The page behind it. Servolia's warm cream is as much a signature as the
+   *  green, so it is set per client too — a faint tint of their own colour. */
+  surface: string;
   /** What the pages are called, for the page picker. */
   pages: { file: string; label: string }[];
   fields: EditableField[];
@@ -161,6 +168,10 @@ export const EDITABLE_SITES: Record<string, EditableSite> = {
     repo: "AmraniHub/yiwugoodsco-com",
     branch: "main",
     siteRoot: "web",
+    // The navy her own stylesheet leads with; the brand probe reads the same.
+    accent: "#111C74",
+    surface: "#F6F7FC", // that navy at a few per cent — hers, not our cream
+
     pages: [
       { file: "index.html", label: "Home page" },
       { file: "sourcing.html", label: "Sourcing page" },

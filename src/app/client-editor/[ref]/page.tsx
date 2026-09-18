@@ -35,9 +35,25 @@ export default async function ClientEditorPage({
   const site = editableSite(ref);
   if (!site) notFound();
 
+  /* Their colours, not ours. Servolia's green and warm cream are a signature;
+     on a page served at the client's own address they would quietly say whose
+     software this is. Both come from the site's own entry.
+
+     The <body> needs it too, not just this <main>. The root layout paints the
+     body Servolia cream, and although <main> covers it at any normal height,
+     the cream is what shows through an overscroll bounce on a phone — which is
+     exactly where she will use this. A style element is the only way to reach
+     <body> from a page, since the layout above owns that tag.
+
+     The colour is ours, out of EDITABLE_SITES, never anything a request
+     carried — but it is interpolated into CSS, so it is checked against a
+     literal hex shape first rather than trusted for being close to home. */
+  const surface = /^#[0-9A-Fa-f]{6}$/.test(site.surface) ? site.surface : "#FFFFFF";
+
   return (
-    <main className="min-h-screen bg-[#FAFAF7]">
-      <SiteEditor siteRef={site.ref} />
+    <main className="min-h-screen" style={{ background: surface }}>
+      <style>{`body{background:${surface}}`}</style>
+      <SiteEditor siteRef={site.ref} accent={site.accent} surface={surface} />
     </main>
   );
 }

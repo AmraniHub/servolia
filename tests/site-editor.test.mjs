@@ -133,3 +133,24 @@ test("every field belongs to a page the client can actually pick", () => {
     assert.ok(fieldsFor(site, site.pages[0].file).length > 0, `${site.ref}: the first page has no fields`);
   }
 });
+
+test("the editor wears the client's colours, never Servolia's", () => {
+  // The screen lives at the client's own /admin. Servolia green there would
+  // say, on the one page that should feel like theirs, whose software it is.
+  const HOUSE = ["#36671E", "#295115", "#FAFAF7", "#E2E6DD", "#EEF5EA"];
+  for (const site of Object.values(EDITABLE_SITES)) {
+    for (const [name, value] of [["accent", site.accent], ["surface", site.surface]]) {
+      assert.ok(value, `${site.ref}: ${name} is missing — it would fall back to nothing`);
+      assert.match(value, /^#[0-9A-Fa-f]{6}$/, `${site.ref}: ${name} must be a six-digit hex colour`);
+      assert.ok(
+        !HOUSE.includes(value.toUpperCase()),
+        `${site.ref}: ${name} is ${value}, a Servolia house colour — give the client their own`,
+      );
+    }
+    assert.notEqual(site.accent.toUpperCase(), site.surface.toUpperCase(), `${site.ref}: white text on the accent needs the two to differ`);
+  }
+});
+
+test("goodscochina gets the navy her own site leads with", () => {
+  assert.equal(editableSite("goodscochina")?.accent, "#111C74");
+});

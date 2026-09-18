@@ -28,7 +28,20 @@ interface Field {
 }
 interface Page { file: string; label: string }
 
-export default function SiteEditor({ siteRef }: { siteRef: string }) {
+/**
+ * The client's own brand colour, as a CSS variable the buttons, the active page
+ * tab and the success line all follow.
+ *
+ * Passed in rather than read from a theme: this component is served at several
+ * clients' own domains, and each one should see their colour, not ours. Servolia
+ * green on a screen at goodscochina.com/admin announces whose software it really
+ * is on the one page that should feel like hers.
+ */
+function accentVars(accent: string, surface: string): React.CSSProperties {
+  return { "--ed-accent": accent, "--ed-surface": surface } as React.CSSProperties;
+}
+
+export default function SiteEditor({ siteRef, accent, surface }: { siteRef: string; accent: string; surface: string }) {
   const [ready, setReady] = useState(false);
   const [signedIn, setSignedIn] = useState(false);
   const [business, setBusiness] = useState("");
@@ -128,29 +141,30 @@ export default function SiteEditor({ siteRef }: { siteRef: string }) {
 
   if (!signedIn) {
     return (
-      <div className="max-w-sm mx-auto px-5 py-20">
-        <h1 className="text-2xl font-black text-[#18181B] mb-1">Edit your website</h1>
+      <div className="max-w-sm mx-auto px-5 py-20" style={accentVars(accent, surface)}>
+        <h1 className="text-2xl font-black text-[var(--ed-accent)] mb-1">Edit your website</h1>
         <p className="text-[14px] text-[#52525B] mb-6">Enter the password you were given.</p>
         <form onSubmit={signIn}>
           <input
             type="password" value={password} onChange={(e) => setPassword(e.target.value)}
             placeholder="Password" autoComplete="current-password" autoFocus
-            className="w-full h-11 px-3 rounded-lg border border-[#E2E6DD] bg-white text-[15px] mb-3"
+            className="w-full h-11 px-3 rounded-lg border border-[#DEE0EA] bg-white text-[15px] mb-3"
           />
           <button type="submit" disabled={busy || !password}
-            className="w-full h-11 rounded-lg bg-[#36671E] text-white font-bold disabled:opacity-50">
+            style={{ background: "var(--ed-accent)" }}
+            className="w-full h-11 rounded-lg text-white font-bold disabled:opacity-50">
             {busy ? "Checking…" : "Open my website"}
           </button>
         </form>
-        {msg ? <p className={`mt-3 text-[13.5px] ${msg.good ? "text-[#36671E]" : "text-[#B45309]"}`}>{msg.text}</p> : null}
+        {msg ? <p className={`mt-3 text-[13.5px] ${msg.good ? "text-[var(--ed-accent)]" : "text-[#B45309]"}`}>{msg.text}</p> : null}
       </div>
     );
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-5 py-12">
+    <div className="max-w-2xl mx-auto px-5 py-12" style={accentVars(accent, surface)}>
       <div className="flex items-baseline justify-between gap-3 mb-1">
-        <h1 className="text-2xl font-black text-[#18181B]">{business}</h1>
+        <h1 className="text-2xl font-black text-[var(--ed-accent)]">{business}</h1>
         <button
           onClick={async () => { await fetch(`${API}?do=logout`, { method: "POST" }); setSignedIn(false); }}
           className="text-[13px] text-[#71717A] hover:underline">Sign out</button>
@@ -164,8 +178,9 @@ export default function SiteEditor({ siteRef }: { siteRef: string }) {
           {pages.map((p) => (
             <button key={p.file} onClick={() => load(p.file)} disabled={busy}
               className={`h-9 px-4 rounded-lg text-[13.5px] font-bold border ${
-                p.file === file ? "bg-[#18181B] text-white border-[#18181B]" : "bg-white text-[#3F3F46] border-[#E2E6DD]"
-              }`}>{p.label}</button>
+                p.file === file ? "text-white" : "bg-white text-[#3F3F46] border-[#DEE0EA]"
+              }`}
+              style={p.file === file ? { background: "var(--ed-accent)", borderColor: "var(--ed-accent)" } : undefined}>{p.label}</button>
           ))}
         </div>
       ) : null}
@@ -190,11 +205,11 @@ export default function SiteEditor({ siteRef }: { siteRef: string }) {
               {f.multiline ? (
                 <textarea id={f.key} rows={3} value={value} maxLength={f.max}
                   onChange={(e) => setEdited({ ...edited, [f.key]: e.target.value })}
-                  className={`w-full px-3 py-2 rounded-lg border bg-white text-[15px] leading-relaxed ${bad ? "border-[#B45309]" : "border-[#E2E6DD]"}`} />
+                  className={`w-full px-3 py-2 rounded-lg border bg-white text-[15px] leading-relaxed ${bad ? "border-[#B45309]" : "border-[#DEE0EA]"}`} />
               ) : (
                 <input id={f.key} type="text" value={value} maxLength={f.max}
                   onChange={(e) => setEdited({ ...edited, [f.key]: e.target.value })}
-                  className={`w-full h-11 px-3 rounded-lg border bg-white text-[15px] ${bad ? "border-[#B45309]" : "border-[#E2E6DD]"}`} />
+                  className={`w-full h-11 px-3 rounded-lg border bg-white text-[15px] ${bad ? "border-[#B45309]" : "border-[#DEE0EA]"}`} />
               )}
               {bad ? <p className="mt-1 text-[12.5px] text-[#B45309]">{bad}</p> : null}
             </div>
@@ -204,12 +219,18 @@ export default function SiteEditor({ siteRef }: { siteRef: string }) {
 
       {/* Sticky, because the list is longer than a phone screen and a Save
           button she has to scroll back up for is a Save button she misses. */}
-      <div className="sticky bottom-0 mt-8 -mx-5 px-5 py-4 bg-[#FAFAF7]/95 backdrop-blur border-t border-[#E8E6E0]">
+      {/* Opaque, not translucent. A 95% bar over a page of the same colour buys
+          nothing but a faint ghost of the fields sliding under it, and
+          color-mix() computes to a color(srgb …) value that is awkward to
+          assert against. */}
+      <div className="sticky bottom-0 mt-8 -mx-5 px-5 py-4 border-t border-black/[0.08]"
+        style={{ background: "var(--ed-surface)" }}>
         <button onClick={save} disabled={busy || !dirty}
-          className="w-full h-12 rounded-xl bg-[#36671E] text-white font-bold disabled:opacity-40">
+          style={{ background: "var(--ed-accent)" }}
+          className="w-full h-12 rounded-xl text-white font-bold disabled:opacity-40">
           {busy ? "Saving…" : dirty ? "Save changes to my website" : "No changes yet"}
         </button>
-        {msg ? <p className={`mt-3 text-[13.5px] ${msg.good ? "text-[#36671E]" : "text-[#B45309]"}`}>{msg.text}</p> : null}
+        {msg ? <p className={`mt-3 text-[13.5px] ${msg.good ? "text-[var(--ed-accent)]" : "text-[#B45309]"}`}>{msg.text}</p> : null}
       </div>
     </div>
   );
