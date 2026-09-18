@@ -7,6 +7,8 @@ import { sendTelegramMessage } from "@/lib/telegram";
 import { collectSiteFiles } from "@/lib/clientFiles";
 import { makeZip } from "@/lib/zip";
 import { readCopyRequest, writeCopyRequest, copyState, COPY_WINDOW_DAYS } from "@/lib/clientCopy";
+import { readDomainRequest, writeDomainRequest, domainRequestState } from "@/lib/domainRequest";
+import { domainQuote, isDomainSalesConfigured, normalizeDomain } from "@/lib/domainSales";
 import { identify, createClientSession, clientSession, CLIENT_COOKIE, CLIENT_SESSION_SECONDS } from "@/lib/clientAreaAuth";
 
 export const runtime = "nodejs";
@@ -143,6 +145,47 @@ export async function POST(req: NextRequest) {
       ]],
     );
     return NextResponse.json({ ok: true, state: "waiting" });
+  }
+
+  if (doing === "request-domain") {
+    if (!isDomainSalesConfigured()) {
+      return NextResponse.json({ ok: false, error: "Domains are not on sale at the moment." }, { status: 400 });
+    }
+    // Asking twice while one is outstanding is one request, not two.
+    if (domainRequestState(readDomainRequest(notes)) === "waiting") return NextResponse.json({ ok: true });
+
+    const name = normalizeDomain(String(body.domain ?? ""));
+    if (!name) return NextResponse.json({ ok: false, error: "That does not look like a domain name." }, { status: 400 });
+
+    /* Quoted again HERE. The browser showed a price and the browser can post
+       any figure it likes; the registrar's answer at this moment is the only
+       one that decides what the client will be asked to pay. */
+    const q = await domainQuote(name);
+    if (!q.sellable) {
+      return NextResponse.json(
+        { ok: false, error: q.reason === "taken" ? "That domain has just been taken." : "That ending is not one we can offer." },
+        { status: 409 },
+      );
+    }
+
+    const error = await saveNotes(row, writeDomainRequest(notes, {
+      domain: q.domain, yearlyUsd: q.yearlyUsd, requested: new Date().toISOString(),
+    }));
+    if (error) {
+      console.error("[client-area] domain request not saved:", error);
+      return NextResponse.json({ ok: false, error: "That did not go through. Please try again." }, { status: 502 });
+    }
+
+    /* Told, not bought. A domain is taken from the registrar the instant it is
+       ordered and cannot be given back, so the one irreversible thing on this
+       page is the one thing that goes past a person first. */
+    await sendTelegramMessage(
+      `*${ref}* wants to add *${q.domain}* — $${q.yearlyUsd}/year.\n` +
+        `${email ?? "(no email on the row)"}\n\n` +
+        `Nothing is bought yet. Register it from the admin and it goes on their invoice.`,
+      [[{ text: "Not now", callback_data: `dom_no:${ref}` }]],
+    );
+    return NextResponse.json({ ok: true });
   }
 
   return NextResponse.json({ ok: false, error: "unknown-action" }, { status: 400 });

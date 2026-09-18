@@ -6,6 +6,9 @@ import { listSiteFiles, humanSize } from "@/lib/clientFiles";
 import { mailSettingsFor } from "@/lib/mailSettings";
 import EditorPassword from "@/components/client/EditorPassword";
 import RequestCopy, { type CopyView } from "@/components/client/RequestCopy";
+import DomainSearch from "@/components/client/DomainSearch";
+import RenewalBar from "@/components/client/RenewalBar";
+import { readDomainRequest, domainRequestState } from "@/lib/domainRequest";
 import ClientSignIn from "@/components/client/ClientSignIn";
 import ClientSignOut from "@/components/client/ClientSignOut";
 import { clientSession } from "@/lib/clientAreaAuth";
@@ -78,6 +81,11 @@ const T = {
     filesBody: (n: number, size: string) =>
       `${n} ${n === 1 ? "file" : "files"}, ${size} in all. This is what your website is made of, and it is yours — ask any time and we will send you a copy.`,
     filesUnavailable: "We cannot list your files at this moment. Ask us and we will send them.",
+    daysLeft: "{n} days left on this period.",
+    secWebsite: "Your website",
+    secDomain: "Your domain",
+    secServices: "Your plan and services",
+    secAccount: "Your account",
     mailTitle: "Your email on your phone",
     mailIntro: (addr: string) => `Add ${addr} to the Mail app on your phone with exactly these settings.`,
     mailWebmail: "Or read it in a browser",
@@ -125,6 +133,11 @@ const T = {
     filesBody: (n: number, size: string) =>
       `${n} ${n === 1 ? "fichier" : "fichiers"}, ${size} au total. Voilà de quoi votre site est fait, et il vous appartient — demandez-nous une copie quand vous voulez.`,
     filesUnavailable: "Nous ne pouvons pas lister vos fichiers pour l'instant. Demandez-nous et nous vous les envoyons.",
+    daysLeft: "Il reste {n} jours sur cette période.",
+    secWebsite: "Votre site",
+    secDomain: "Votre domaine",
+    secServices: "Votre formule et vos services",
+    secAccount: "Votre compte",
     mailTitle: "Votre email sur votre téléphone",
     mailIntro: (addr: string) => `Ajoutez ${addr} à l'application Mail de votre téléphone avec exactement ces réglages.`,
     mailWebmail: "Ou lisez-le dans un navigateur",
@@ -143,6 +156,33 @@ const T = {
   },
 };
 
+/**
+ * A labelled group of cards.
+ *
+ * The page was eight cards of identical weight in one column, so everything
+ * looked equally important and nothing was findable — a client hunting for
+ * their renewal date read the same as one hunting for their password. Three
+ * groups and a heading each is the whole fix.
+ */
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="mb-9">
+      <h2 className="text-[11px] font-black text-[#8A8A80] uppercase tracking-[0.18em] mb-3 px-1">{title}</h2>
+      <div className="space-y-5">{children}</div>
+    </section>
+  );
+}
+
+/**
+ * How much of the paid period is left, as a bar.
+ *
+ * A date alone makes a person do arithmetic to answer the question they
+ * actually have, which is "am I about to be charged". The bar answers it at a
+ * glance and the date stays for the ones who want it.
+ *
+ * Only drawn when the whole period is known. A half-filled bar computed from a
+ * guess would be a confident picture of nothing.
+ */
 function Shell({ lang, children }: { lang: "en" | "fr"; children: React.ReactNode }) {
   const t = T[lang];
   return (
@@ -218,6 +258,9 @@ export default async function AccountPage({
   /* Where their request for a copy of the site stands. Read from the same row
      as the domain rather than with a second query — one read, two answers. */
   let copyView: CopyView = "none";
+  /* A domain they have asked for and he has not yet bought. Null once he
+     sets it aside, so their page goes back to a search box. */
+  let domainAsked: string | null = null;
   if (!isDemo && subId) {
     const db = supabaseAdmin();
     const { data: row } = db
@@ -229,6 +272,8 @@ export default async function AccountPage({
        reports a refusal, with no reason and nobody to ask, is worse for the
        client than a button they can press again. */
     copyView = state === "ready" ? "ready" : state === "waiting" ? "waiting" : "none";
+    const asked = readDomainRequest((row as { notes?: string | null } | null)?.notes);
+    domainAsked = domainRequestState(asked) === "waiting" ? (asked?.domain ?? null) : null;
   }
 
   /* No credential, or one that no longer works: offer the way in rather than
@@ -363,20 +408,19 @@ export default async function AccountPage({
             <dd className="font-bold text-[#18181B] tabular-nums">{date ?? t.renewsNever}</dd>
           </div>
         </dl>
+        {/* Monthly unless Stripe says a year: an unknown interval drawn as a
+            year shows a nearly-empty bar to someone billed every month. */}
+        {ctx.renewsAt ? (
+          <RenewalBar
+            renewsAt={String(ctx.renewsAt)}
+            interval={ctx.interval === "year" ? "year" : "month"}
+            label={t.daysLeft}
+          />
+        ) : null}
       </div>
 
-      <div className="rounded-2xl border border-[#E8E6E0] bg-white p-7 mb-5">
-        <p className="text-[10px] font-black text-[#8A8A80] uppercase tracking-widest mb-4">{t.included}</p>
-        <ul className="space-y-2.5">
-          {copy.includes.map((line) => (
-            <li key={line} className="flex items-start gap-2.5 text-[15px] text-[#3F3F46]">
-              <Check className="w-4 h-4 text-[#36671E] mt-1 shrink-0" />
-              <span>{line}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
 
+      <Section title={t.secWebsite}>
       {/* THE THING SHE ASKED FOR, ABOVE THE THINGS WE WANT TO SELL HER.
           A client who asked for control of her own pages should find that
           control first on the page that represents her service, not below two
@@ -480,6 +524,61 @@ export default async function AccountPage({
         </div>
       )}
 
+      </Section>
+
+      <Section title={t.secDomain}>
+      {domainRec ? (
+        <div className="rounded-2xl border border-[#E8E6E0] bg-white p-7 mb-5">
+          <p className="text-[17px] font-bold text-[#18181B] break-all">{domainRec.domain}</p>
+          <p className="mt-1.5 text-[14px] text-[#52525B] leading-relaxed">
+            {domainRec.status === "bought"
+              ? `${t.domainRegistered} · ${
+                  domainRec.nextChargeAt
+                    ? t.domainRenewsInvoice(
+                        new Date(`${domainRec.nextChargeAt}T00:00:00Z`).toLocaleDateString(fr ? "fr-FR" : "en-GB", {
+                          day: "numeric", month: "long", year: "numeric", timeZone: "UTC",
+                        }),
+                      )
+                    : t.domainRenews
+                }`
+              : t.domainPending}
+          </p>
+          <p className="mt-2 text-[13px] text-[#8A8A80] leading-relaxed">{t.domainYours}</p>
+        </div>
+      ) : null}
+
+        {/* Adding one. The price comes from the registrar before the client
+            sees it, so nobody is quoted one figure and invoiced another. */}
+        <DomainSearch
+          token={linkToken}
+          lang={ctx.lang}
+          pending={domainAsked}
+          sample={isDemo}
+        />
+      </Section>
+
+      <Section title={t.secServices}>
+      <div className="rounded-2xl border border-[#E8E6E0] bg-white p-7 mb-5">
+        <p className="text-[10px] font-black text-[#8A8A80] uppercase tracking-widest mb-4">{t.included}</p>
+        <ul className="space-y-2.5">
+          {copy.includes.map((line) => (
+            <li key={line} className="flex items-start gap-2.5 text-[15px] text-[#3F3F46]">
+              <Check className="w-4 h-4 text-[#36671E] mt-1 shrink-0" />
+              <span>{line}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {showUpgrade ? (
+        <Link
+          href={`/hosting/upgrade?t=${encodeURIComponent(linkToken)}`}
+          className="flex items-center justify-between gap-3 rounded-2xl border border-dashed border-[#CBE3BC] bg-[#F7FBF4] px-6 py-5 mb-5 hover:bg-[#F3F9EE] transition"
+        >
+          <span className="font-bold text-[#18181B]">{t.upgrade} {money(saving)}</span>
+          <ArrowUpRight className="w-4 h-4 text-[#36671E] shrink-0" />
+        </Link>
+      ) : null}
       {/* The assistant's own page: its brief, its languages, where its leads
           go, and the install line for a site we do not host. The one thing
           an assistant client comes back here for, so it is a card and not a
@@ -554,36 +653,9 @@ export default async function AccountPage({
         </div>
       ) : null}
 
-      {domainRec ? (
-        <div className="rounded-2xl border border-[#E8E6E0] bg-white p-7 mb-5">
-          <p className="text-[10px] font-black text-[#8A8A80] uppercase tracking-widest mb-3">{t.domain}</p>
-          <p className="text-[17px] font-bold text-[#18181B] break-all">{domainRec.domain}</p>
-          <p className="mt-1.5 text-[14px] text-[#52525B] leading-relaxed">
-            {domainRec.status === "bought"
-              ? `${t.domainRegistered} · ${
-                  domainRec.nextChargeAt
-                    ? t.domainRenewsInvoice(
-                        new Date(`${domainRec.nextChargeAt}T00:00:00Z`).toLocaleDateString(fr ? "fr-FR" : "en-GB", {
-                          day: "numeric", month: "long", year: "numeric", timeZone: "UTC",
-                        }),
-                      )
-                    : t.domainRenews
-                }`
-              : t.domainPending}
-          </p>
-          <p className="mt-2 text-[13px] text-[#8A8A80] leading-relaxed">{t.domainYours}</p>
-        </div>
-      ) : null}
+      </Section>
 
-      {showUpgrade ? (
-        <Link
-          href={`/hosting/upgrade?t=${encodeURIComponent(linkToken)}`}
-          className="flex items-center justify-between gap-3 rounded-2xl border border-dashed border-[#CBE3BC] bg-[#F7FBF4] px-6 py-5 mb-5 hover:bg-[#F3F9EE] transition"
-        >
-          <span className="font-bold text-[#18181B]">{t.upgrade} {money(saving)}</span>
-          <ArrowUpRight className="w-4 h-4 text-[#36671E] shrink-0" />
-        </Link>
-      ) : null}
+      <Section title={t.secAccount}>
 
       <a
         href={`/api/billing-portal?t=${encodeURIComponent(linkToken)}`}
@@ -603,6 +675,8 @@ export default async function AccountPage({
         <span className="font-bold text-[#18181B]">{t.terms}</span>
         <FileText className="w-4 h-4 text-[#A8A8A0] shrink-0" />
       </Link>
+
+      </Section>
 
       <p className="mt-8 text-center text-[13px] text-[#8A8A80]">{t.help}</p>
     </Shell>

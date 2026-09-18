@@ -56,6 +56,7 @@ export async function POST(req: NextRequest) {
     else if (action === "linkedin_skip") resultText = await handleLinkedInCallback("skip", entityId);
     else if (action === "copy_ok") resultText = await handleCopyCallback("approve", entityId);
     else if (action === "copy_no") resultText = await handleCopyCallback("refuse", entityId);
+    else if (action === "dom_no") resultText = await handleDomainCallback("refuse", entityId);
 
     await answerCallbackQuery(callbackId, "Done");
     if (message) {
@@ -117,4 +118,30 @@ async function handleCopyCallback(what: "approve" | "refuse", ref: string): Prom
   return what === "approve"
     ? `✅ ${ref} can download their website from their own page for the next ${COPY_WINDOW_DAYS} days.`
     : `✖ ${ref} was not approved. Their page shows nothing about it — tell them yourself.`;
+}
+
+/**
+ * A client asked for another domain and the answer is no, for now.
+ *
+ * There is no "approve" button beside it on purpose. Approving would mean
+ * buying — a registrar takes the name the instant it is ordered and will not
+ * take it back — and that belongs on the admin screen where the price, the
+ * margin and the attach step are all in front of you, not on a phone.
+ *
+ * Refusing clears the request so their page goes back to a search box. It says
+ * nothing to them: a client told "declined" with no reason and nobody to ask
+ * is the worst version of a conversation worth having properly.
+ */
+async function handleDomainCallback(what: "refuse", ref: string): Promise<string> {
+  const { readDomainRequest, writeDomainRequest } = await import("@/lib/domainRequest");
+  const { rowForRef, saveNotes } = await import("@/lib/hostingRow");
+
+  const row = await rowForRef(ref);
+  if (!row) return `No billing row found for ${ref}, so nothing changed.`;
+  const rec = readDomainRequest(row.notes);
+  if (!rec) return `${ref} has no outstanding domain request.`;
+
+  const error = await saveNotes(row, writeDomainRequest(row.notes, { ...rec, refused: new Date().toISOString() }));
+  if (error) return `Could not save that: ${error}`;
+  return `${ref}'s request for ${rec.domain} was set aside. Their page shows a search box again and says nothing about it.`;
 }
