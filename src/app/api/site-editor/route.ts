@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { editableSite, fieldsFor, validate } from "@/lib/siteEditor";
+import { editableSite, fieldsFor, pagesWithFields, validate } from "@/lib/siteEditor";
 import { readCurrent, readSiteFile, saveEdits } from "@/lib/siteEditorRepo";
 import { untranslatedAfterEdit, translationNote } from "@/lib/siteEditorI18n";
 import {
@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
     if (!site) return NextResponse.json({ ok: false, error: "signed-out" }, { status: 401 });
 
     const file = String(body.file ?? "");
-    if (!site.pages.some((p) => p.file === file)) {
+    if (!pagesWithFields(site).some((p) => p.file === file)) {
       return NextResponse.json({ ok: false, error: "unknown-page" }, { status: 400 });
     }
     const fields = fieldsFor(site, file);
@@ -130,8 +130,9 @@ export async function GET(req: NextRequest) {
   const site = ref ? editableSite(ref) : undefined;
   if (!site) return NextResponse.json({ ok: false, error: "signed-out" }, { status: 401 });
 
-  const file = req.nextUrl.searchParams.get("file") || site.pages[0].file;
-  if (!site.pages.some((p) => p.file === file)) {
+  const offered = pagesWithFields(site);
+  const file = req.nextUrl.searchParams.get("file") || offered[0]?.file || site.pages[0].file;
+  if (!offered.some((p) => p.file === file)) {
     return NextResponse.json({ ok: false, error: "unknown-page" }, { status: 400 });
   }
   const fields = fieldsFor(site, file);
@@ -140,7 +141,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       ok: true,
       businessName: site.businessName,
-      pages: site.pages,
+      pages: offered,
       file,
       fields: fields.map((f) => ({
         key: f.key, label: f.label, multiline: Boolean(f.multiline), max: f.max ?? 2000,

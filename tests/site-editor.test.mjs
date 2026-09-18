@@ -13,6 +13,7 @@ import assert from "node:assert/strict";
 import { translatedStrings, untranslatedAfterEdit, translationNote } from "../src/lib/siteEditorI18n.ts";
 import {
   editorMountPaths,
+  pagesWithFields,
   readRegion, writeRegion, validate, escapeHtml, decodeEntities,
   editableSite, fieldsFor, EDITABLE_SITES, MAX_FIELD,
 } from "../src/lib/siteEditor.ts";
@@ -212,4 +213,14 @@ test("the chrome gate follows where the editor is mounted, not our own path", ()
     assert.ok(site.adminUrl.startsWith("https://"), `${site.ref}: the editor takes a password, so it is https or nothing`);
     assert.ok(!site.adminUrl.includes("servolia"), `${site.ref}: the client's editor must live on the client's own domain`);
   }
+});
+
+test("a page with nothing to edit is not offered as a tab", () => {
+  const site = editableSite("goodscochina");
+  const offered = pagesWithFields(site);
+  assert.ok(offered.length >= 1);
+  for (const p of offered) assert.ok(fieldsFor(site, p.file).length > 0, `${p.file} has no fields`);
+  // Her sourcing and contact pages have no markers yet; listing them would be
+  // a tab that opens an empty screen.
+  assert.deepEqual(offered.map((p) => p.file), ["index.html"]);
 });

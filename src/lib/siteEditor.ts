@@ -261,3 +261,15 @@ export function editorMountPaths(): string[] {
 export function fieldsFor(site: EditableSite, file: string): EditableField[] {
   return site.fields.filter((f) => f.file === file);
 }
+
+/**
+ * The pages worth offering: the ones that actually have something to edit.
+ *
+ * A page listed with no fields is a tab the client clicks and lands on an
+ * empty screen — which reads as a broken tool, not as work still to come. A
+ * page earns its tab by having a field, so adding the fields is what adds the
+ * tab and the two can never disagree.
+ */
+export function pagesWithFields(site: EditableSite): { file: string; label: string }[] {
+  return site.pages.filter((p) => fieldsFor(site, p.file).length > 0);
+}
