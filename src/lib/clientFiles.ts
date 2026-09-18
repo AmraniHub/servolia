@@ -219,3 +219,122 @@ export async function collectSiteFiles(ref: string): Promise<{ path: string; dat
   }
   return out;
 }
+
+/* ── putting a file on their live site ──────────────────────────────────── */
+
+/**
+ * Write one file into a client's site and commit it.
+ *
+ * The same blobs → tree → commit → move-the-ref sequence the page editor uses,
+ * so an upload is one commit and their host rebuilds once. `force: false` on
+ * the ref: if anything else moved the branch since we read it — the editor,
+ * another upload, us — this fails rather than overwriting a change nobody saw.
+ *
+ * Returns the path it wrote, which is not always the path asked for: a file
+ * whose name collides with something else gets a number, because silently
+ * replacing a photo a client did not mean to replace is worse than an
+ * unexpected filename.
+ */
+export async function putSiteFile(
+  ref: string,
+  target: string,
+  data: Buffer,
+  who: string,
+  { replace = false }: { replace?: boolean } = {},
+): Promise<{ ok: true; path: string; commit: string } | { ok: false; reason: string }> {
+  const src = siteSourceFor(ref);
+  const token = process.env.GH_TOKEN;
+  if (!src || !token) return { ok: false, reason: "no-source" };
+
+  const root = src.root ? `${src.root.replace(/^\/+|\/+$/g, "")}/` : "";
+  try {
+    const head = await ghJson<{ object: { sha: string } }>(
+      `/repos/${src.repo}/git/ref/heads/${encodeURIComponent(src.branch)}`, token);
+    const headSha = head.object.sha;
+    const commitInfo = await ghJson<{ tree: { sha: string } }>(
+      `/repos/${src.repo}/git/commits/${headSha}`, token);
+    const tree = await ghJson<{ tree: { path: string; type: string }[] }>(
+      `/repos/${src.repo}/git/trees/${commitInfo.tree.sha}?recursive=1`, token);
+
+    const taken = new Set(tree.tree.filter((e) => e.type === "blob").map((e) => e.path));
+    let path = `${root}${target}`;
+    if (!replace && taken.has(path)) {
+      const dot = target.lastIndexOf(".");
+      const stem = dot > 0 ? target.slice(0, dot) : target;
+      const ext = dot > 0 ? target.slice(dot) : "";
+      let n = 2;
+      while (taken.has(`${root}${stem}-${n}${ext}`) && n < 100) n += 1;
+      path = `${root}${stem}-${n}${ext}`;
+    }
+
+    const blob = await ghPost<{ sha: string }>(`/repos/${src.repo}/git/blobs`, token, {
+      content: data.toString("base64"),
+      encoding: "base64",
+    });
+    const newTree = await ghPost<{ sha: string }>(`/repos/${src.repo}/git/trees`, token, {
+      base_tree: commitInfo.tree.sha,
+      tree: [{ path, mode: "100644", type: "blob", sha: blob.sha }],
+    });
+    const commit = await ghPost<{ sha: string }>(`/repos/${src.repo}/git/commits`, token, {
+      message: `${who}: ${replace ? "replaced" : "added"} ${path.slice(root.length)} from the file manager`,
+      tree: newTree.sha,
+      parents: [headSha],
+    });
+    await ghPatch(`/repos/${src.repo}/git/refs/heads/${encodeURIComponent(src.branch)}`, token, {
+      sha: commit.sha,
+      force: false,
+    });
+    return { ok: true, path: path.slice(root.length), commit: commit.sha };
+  } catch (err) {
+    return { ok: false, reason: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+async function ghPost<T>(path: string, token: string, body: unknown): Promise<T> {
+  return ghSend<T>(path, token, "POST", body);
+}
+async function ghPatch(path: string, token: string, body: unknown): Promise<unknown> {
+  return ghSend(path, token, "PATCH", body);
+}
+async function ghSend<T>(path: string, token: string, method: string, body: unknown): Promise<T> {
+  const r = await fetch(`https://api.github.com${path}`, {
+    method,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/vnd.github+json",
+      "Content-Type": "application/json",
+      "User-Agent": "servolia-client-area",
+    },
+    body: JSON.stringify(body),
+    cache: "no-store",
+  });
+  if (!r.ok) throw new Error(`GitHub ${r.status} on ${method} ${path}: ${(await r.text()).slice(0, 160)}`);
+  return (await r.json()) as T;
+}
+
+/** Every folder of the site, so the upload form can offer a place to put it. */
+export async function siteFolders(ref: string): Promise<string[]> {
+  const src = siteSourceFor(ref);
+  const token = process.env.GH_TOKEN;
+  if (!src || !token) return [];
+  try {
+    const head = await ghJson<{ object: { sha: string } }>(
+      `/repos/${src.repo}/git/ref/heads/${encodeURIComponent(src.branch)}`, token);
+    const commitInfo = await ghJson<{ tree: { sha: string } }>(
+      `/repos/${src.repo}/git/commits/${head.object.sha}`, token);
+    const tree = await ghJson<{ tree: { path: string; type: string }[] }>(
+      `/repos/${src.repo}/git/trees/${commitInfo.tree.sha}?recursive=1`, token);
+    const root = src.root ? `${src.root.replace(/^\/+|\/+$/g, "")}/` : "";
+    const out = new Set<string>([""]);
+    for (const e of tree.tree) {
+      if (e.type !== "tree") continue;
+      if (root && !e.path.startsWith(root)) continue;
+      const rel = root ? e.path.slice(root.length) : e.path;
+      if (!rel || rel.split("/").some((seg) => seg.startsWith(".") || HIDDEN.has(seg))) continue;
+      out.add(rel);
+    }
+    return [...out].sort();
+  } catch {
+    return [];
+  }
+}

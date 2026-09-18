@@ -4,7 +4,8 @@ import { rowForSubscription, refForEmail, saveNotes } from "@/lib/hostingRow";
 import { editableSite } from "@/lib/siteEditor";
 import { hashPassword, writeStoredHash, passwordProblem } from "@/lib/siteEditorPassword";
 import { sendTelegramMessage } from "@/lib/telegram";
-import { collectSiteFiles } from "@/lib/clientFiles";
+import { collectSiteFiles, putSiteFile } from "@/lib/clientFiles";
+import { uploadProblem, safeTarget } from "@/lib/siteUpload";
 import { makeZip } from "@/lib/zip";
 import { readCopyRequest, writeCopyRequest, copyState, COPY_WINDOW_DAYS } from "@/lib/clientCopy";
 import { readDomainRequest, writeDomainRequest, domainRequestState } from "@/lib/domainRequest";
@@ -58,6 +59,12 @@ async function rowFor(token: string) {
 
 export async function POST(req: NextRequest) {
   const doing = req.nextUrl.searchParams.get("do");
+
+  /* An upload arrives as multipart, not JSON — a 3.5 MB photo base64'd into a
+     JSON body is 4.7 MB, which is over this host's request limit, so the file
+     would be refused by the platform with a message nobody can read. */
+  if (doing === "upload") return handleUpload(req);
+
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const token = String(body.t ?? "");
 
@@ -231,4 +238,72 @@ export async function GET(req: NextRequest) {
     console.error("[client-area] copy failed:", err);
     return NextResponse.json({ ok: false, error: "could-not-build" }, { status: 502 });
   }
+}
+
+/**
+ * A CLIENT PUTTING A FILE ON THEIR OWN LIVE WEBSITE.
+ *
+ * This is the one action here that changes what the public sees, so the checks
+ * are in front of the write, not after it:
+ *
+ *  - the credential decides WHOSE site, never the form. A path or a client
+ *    reference in the body would be a way to write into somebody else's repo;
+ *  - the file type is checked against a short allow-list, and SVG is refused
+ *    for the reason that makes it dangerous rather than for being unusual;
+ *  - the destination folder is resolved against the site root and anything
+ *    that climbs out of it is refused;
+ *  - the name is reduced to its last segment, so a path inside the FILE NAME
+ *    cannot choose the folder either.
+ *
+ * Every upload is announced on Telegram. A client changing their own photo is
+ * unremarkable; a photo appearing that the owner did not upload is the thing
+ * worth knowing within minutes.
+ */
+async function handleUpload(req: NextRequest): Promise<NextResponse> {
+  let form: FormData;
+  try {
+    form = await req.formData();
+  } catch {
+    return NextResponse.json({ ok: false, error: "That upload did not arrive in one piece. Try again." }, { status: 400 });
+  }
+
+  const found = await rowFor(String(form.get("t") ?? ""));
+  if (!found) {
+    return NextResponse.json({ ok: false, error: "Please sign in again." }, { status: 401 });
+  }
+  const { ref, email } = found;
+
+  const file = form.get("file");
+  if (!(file instanceof File)) {
+    return NextResponse.json({ ok: false, error: "No file was chosen." }, { status: 400 });
+  }
+  const problem = uploadProblem(file.name, file.size);
+  if (problem) return NextResponse.json({ ok: false, error: problem }, { status: 400 });
+
+  const replace = String(form.get("replace") ?? "") === "1";
+  const folder = String(form.get("folder") ?? "");
+  const target = safeTarget(folder, file.name);
+  if (!target) {
+    return NextResponse.json({ ok: false, error: "That is not a folder on your site." }, { status: 400 });
+  }
+
+  const data = Buffer.from(await file.arrayBuffer());
+  /* Checked again on the bytes we actually received, not on what the browser
+     declared: `size` is a claim until the body is in hand. */
+  const realProblem = uploadProblem(file.name, data.length);
+  if (realProblem) return NextResponse.json({ ok: false, error: realProblem }, { status: 400 });
+
+  const out = await putSiteFile(ref, target, data, email ?? ref, { replace });
+  if (!out.ok) {
+    console.error("[client-area] upload failed:", out.reason);
+    return NextResponse.json(
+      { ok: false, error: "That could not be saved just now. Nothing on your site was changed — please try again." },
+      { status: 502 },
+    );
+  }
+
+  await sendTelegramMessage(
+    `*${ref}* ${replace ? "replaced" : "uploaded"} *${out.path}* on their site.\n${email ?? ""}`,
+  );
+  return NextResponse.json({ ok: true, path: out.path, renamed: out.path !== target });
 }

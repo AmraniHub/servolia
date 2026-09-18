@@ -2,11 +2,15 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Check, ExternalLink, FileText, ArrowUpRight, PencilLine } from "lucide-react";
 import { editableSite } from "@/lib/siteEditor";
-import { listSiteFiles, humanSize } from "@/lib/clientFiles";
+import { listSiteFiles, humanSize, siteFolders as listSiteFolders } from "@/lib/clientFiles";
 import { mailSettingsFor } from "@/lib/mailSettings";
 import EditorPassword from "@/components/client/EditorPassword";
 import RequestCopy, { type CopyView } from "@/components/client/RequestCopy";
 import DomainSearch from "@/components/client/DomainSearch";
+import DashNav, { dashPageFrom, dashLabel } from "@/components/client/DashNav";
+import StatTiles from "@/components/client/StatTiles";
+import FileManager from "@/components/client/FileManager";
+import { acceptAttribute, acceptedList } from "@/lib/siteUpload";
 import RenewalBar from "@/components/client/RenewalBar";
 import { readDomainRequest, domainRequestState } from "@/lib/domainRequest";
 import ClientSignIn from "@/components/client/ClientSignIn";
@@ -86,6 +90,12 @@ const T = {
     secDomain: "Your domain",
     secServices: "Your plan and services",
     secAccount: "Your account",
+    secFiles: "Your files",
+    copyTitle: "Take a copy",
+    copyBody: "Your website is yours. Ask for a copy of every file and we will confirm, then a download appears here.",
+    tileStatus: "Status",
+    tilePlan: "Plan",
+    tileFiles: "Files",
     mailTitle: "Your email on your phone",
     mailIntro: (addr: string) => `Add ${addr} to the Mail app on your phone with exactly these settings.`,
     mailWebmail: "Or read it in a browser",
@@ -138,6 +148,12 @@ const T = {
     secDomain: "Votre domaine",
     secServices: "Votre formule et vos services",
     secAccount: "Votre compte",
+    secFiles: "Vos fichiers",
+    copyTitle: "Prendre une copie",
+    copyBody: "Votre site vous appartient. Demandez une copie de tous les fichiers ; nous confirmons et le téléchargement apparaît ici.",
+    tileStatus: "État",
+    tilePlan: "Formule",
+    tileFiles: "Fichiers",
     mailTitle: "Votre email sur votre téléphone",
     mailIntro: (addr: string) => `Ajoutez ${addr} à l'application Mail de votre téléphone avec exactement ces réglages.`,
     mailWebmail: "Ou lisez-le dans un navigateur",
@@ -164,10 +180,14 @@ const T = {
  * their renewal date read the same as one hunting for their password. Three
  * groups and a heading each is the whole fix.
  */
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({ title, children, when = true }: { title: string; children: React.ReactNode; when?: boolean }) {
+  if (!when) return null;
   return (
     <section className="mb-9">
-      <h2 className="text-[11px] font-black text-[#8A8A80] uppercase tracking-[0.18em] mb-3 px-1">{title}</h2>
+      {/* Named for screen readers, not drawn: the nav and the page title
+          already say where you are, and a third copy of the same word is
+          noise. */}
+      <h2 className="sr-only">{title}</h2>
       <div className="space-y-5">{children}</div>
     </section>
   );
@@ -183,24 +203,56 @@ function Section({ title, children }: { title: string; children: React.ReactNode
  * Only drawn when the whole period is known. A half-filled bar computed from a
  * guess would be a confident picture of nothing.
  */
-function Shell({ lang, children }: { lang: "en" | "fr"; children: React.ReactNode }) {
+/**
+ * The panel around every page.
+ *
+ * A header that names who this is and what site it is about, a spine of
+ * sections down the left, and the page itself. The client is always told
+ * three things without looking for them: whose service this is, which site,
+ * and whether it is up.
+ */
+function Shell({
+  lang, children, nav, siteLabel, status,
+}: {
+  lang: "en" | "fr";
+  children: React.ReactNode;
+  nav?: React.ReactNode;
+  siteLabel?: string;
+  status?: { label: string; tone: string };
+}) {
   const t = T[lang];
   return (
     <main className="min-h-screen bg-[#FAFAF7] flex flex-col">
-      <header className="px-5 py-6 border-b border-[#E8E6E0] bg-white">
-        <div className="max-w-lg mx-auto">
-          <Link href="/" className="inline-flex items-center">
+      <header className="px-5 py-4 border-b border-[#E8E6E0] bg-white/90 backdrop-blur sticky top-0 z-20">
+        <div className="max-w-5xl mx-auto flex items-center gap-4">
+          <Link href="/" className="inline-flex items-center shrink-0">
             <span className="text-xl font-black tracking-tight text-[#18181B]">
               Serv<span className="gradient-text">olia</span>
             </span>
           </Link>
+          {siteLabel ? (
+            <>
+              <span className="h-5 w-px bg-[#E8E6E0] hidden sm:block" aria-hidden="true" />
+              <span className="min-w-0 hidden sm:flex items-center gap-2">
+                <span className="truncate text-[14px] font-bold text-[#3F3F46]">{siteLabel}</span>
+                {status ? (
+                  <span className={`shrink-0 text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border ${status.tone}`}>
+                    {status.label}
+                  </span>
+                ) : null}
+              </span>
+            </>
+          ) : null}
         </div>
       </header>
-      <div className="flex-1 px-5 py-12 sm:py-16">
-        <div className="max-w-lg mx-auto">{children}</div>
+      <div className="flex-1 px-5 py-8">
+        <div className={`mx-auto ${nav ? "max-w-5xl lg:flex lg:gap-10" : "max-w-lg"}`}>
+          {nav}
+          <div className="min-w-0 flex-1 mt-6 lg:mt-0">{children}</div>
+        </div>
       </div>
       <footer className="px-5 py-8 border-t border-[#E8E6E0] bg-white">
-        <div className="max-w-lg mx-auto text-center">
+        <div className="max-w-5xl mx-auto text-center">
           <p className="text-xs text-[#8A8A80]">{t.provider}</p>
         </div>
       </footer>
@@ -211,9 +263,10 @@ function Shell({ lang, children }: { lang: "en" | "fr"; children: React.ReactNod
 export default async function AccountPage({
   searchParams,
 }: {
-  searchParams: Promise<{ t?: string; demo?: string; lang?: string }>;
+  searchParams: Promise<{ t?: string; demo?: string; lang?: string; page?: string }>;
 }) {
-  const { t: token = "", demo = "", lang: demoLang = "" } = await searchParams;
+  const { t: token = "", demo = "", lang: demoLang = "", page: wantPage = "" } = await searchParams;
+  const dashPage = dashPageFrom(wantPage);
 
   /* ?demo=1 — the page with INVENTED data, so it can be looked at before any
    * client exists and shown to a prospect without opening someone's account.
@@ -321,6 +374,13 @@ export default async function AccountPage({
         ],
       }
     : await listSiteFiles(ctx.ref);
+  /* Only fetched on the page that offers an upload: it is a second call to
+     GitHub and every other page would pay for it without using it. */
+  const siteFolders = isDemo
+    ? ["", "css", "img", "js"]
+    : dashPage === "files"
+      ? await listSiteFolders(ctx.ref)
+      : [];
 
   /* Their mailbox settings, worked out from their own domain's MX record.
      Only for a client who HAS a mailbox on their domain — see the `mailbox`
@@ -372,21 +432,44 @@ export default async function AccountPage({
   const showUpgrade = ctx.interval === "month" && saving > 0 && active && !ending;
 
   return (
-    <Shell lang={ctx.lang}>
+    <Shell
+      lang={ctx.lang}
+      siteLabel={ctx.siteLabel || undefined}
+      status={{ label, tone }}
+      nav={
+        <DashNav
+          active={dashPage}
+          lang={ctx.lang}
+          token={token}
+          counts={{ files: siteFiles.files.length }}
+        />
+      }
+    >
       {isDemo ? (
         <div className="mb-6 rounded-xl border border-[#F5E3B3] bg-[#FEF7E7] px-4 py-3 text-[13px] text-[#92700E]">
           <strong className="font-bold">Example page.</strong> Sample figures, not a real account.
         </div>
       ) : null}
-      <div className="flex items-baseline justify-between gap-4 mb-7">
-        <h1 className="text-3xl font-black text-[#18181B] tracking-tight">{t.heading}</h1>
+      <div className="flex items-baseline justify-between gap-4 mb-6">
+        <h1 className="text-[26px] font-black text-[#18181B] tracking-tight">{dashLabel(dashPage, ctx.lang)}</h1>
         {/* Only for a password session. Someone on an emailed link has nothing
             to sign out of, and a button that does nothing visible is worse
             than no button. */}
         {!isDemo && !token ? <ClientSignOut lang={ctx.lang} /> : null}
       </div>
 
-      <div className="rounded-2xl border border-[#E8E6E0] bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden mb-5">
+      {dashPage === "overview" ? (
+        <StatTiles
+          tiles={[
+            { label: t.tileStatus, value: label, live: active && !ending, hint: ctx.siteLabel || undefined },
+            { label: t.tilePlan, value: copy.heading, hint: amount !== null ? `${money(amount)} / ${per}` : undefined },
+            { label: ending ? t.endsOn : t.renews, value: date ?? t.renewsNever },
+            { label: t.tileFiles, value: String(siteFiles.files.length), hint: humanSize(siteFiles.bytes) },
+          ]}
+        />
+      ) : null}
+
+      <div className={`rounded-2xl border border-[#E8E6E0] bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden mb-5 ${dashPage === "overview" ? "" : "hidden"}`}>
         <div className="px-7 py-6 border-b border-[#F0EFEA] bg-[#FAFAF7] flex items-start justify-between gap-4">
           <div className="min-w-0">
             <p className="text-[10px] font-black text-[#8A8A80] uppercase tracking-widest mb-1">{t.forLabel}</p>
@@ -420,7 +503,7 @@ export default async function AccountPage({
       </div>
 
 
-      <Section title={t.secWebsite}>
+      <Section title={t.secWebsite} when={dashPage === "website"}>
       {/* THE THING SHE ASKED FOR, ABOVE THE THINGS WE WANT TO SELL HER.
           A client who asked for control of her own pages should find that
           control first on the page that represents her service, not below two
@@ -498,35 +581,34 @@ export default async function AccountPage({
         </div>
       ) : null}
 
-      {/* THE FILES. A client asking for the admin of their site is usually
-          asking something underneath it — is this actually mine? A list of
-          their own files, by name, answers that better than a sentence. */}
-      {siteFiles.unavailable && !siteFiles.files.length ? null : (
-        <div className="rounded-2xl border border-[#E8E6E0] bg-white p-7 mb-5">
-          <p className="text-[10px] font-black text-[#8A8A80] uppercase tracking-widest mb-3">{t.filesTitle}</p>
-          <ul className="space-y-1.5 mb-3">
-            {siteFiles.files.map((f) => (
-              <li key={f.name} className="flex items-baseline justify-between gap-4 text-[14px]">
-                <span className={`truncate ${f.kind === "page" ? "font-bold text-[#18181B]" : "text-[#3F3F46]"}`}>
-                  {f.name}
-                  {f.kind === "folder" ? "/" : ""}
-                </span>
-                <span className="shrink-0 text-[13px] text-[#8A8A80] tabular-nums">
-                  {f.size === null ? "—" : humanSize(f.size)}
-                </span>
-              </li>
-            ))}
-          </ul>
-          <p className="text-[13.5px] text-[#52525B] leading-relaxed">
-            {t.filesBody(siteFiles.files.length, humanSize(siteFiles.bytes))}
-          </p>
-          <RequestCopy token={linkToken} lang={ctx.lang} initial={copyView} sample={isDemo} />
-        </div>
-      )}
-
       </Section>
 
-      <Section title={t.secDomain}>
+      <Section title={t.secFiles} when={dashPage === "files"}>
+        {/* The manager, not a list. A client looking at their own files is
+            usually looking for the one they want to change. */}
+        <FileManager
+          token={linkToken}
+          lang={ctx.lang}
+          files={siteFiles.files.map((f) => ({
+            name: f.name,
+            kind: f.kind,
+            size: f.size === null ? "—" : humanSize(f.size),
+          }))}
+          folders={siteFolders}
+          accept={acceptAttribute()}
+          acceptedList={acceptedList()}
+          sample={isDemo}
+        />
+
+        <div className="rounded-2xl border border-[#E8E6E0] bg-white p-7">
+          <p className="text-[10px] font-black text-[#8A8A80] uppercase tracking-widest mb-3">{t.copyTitle}</p>
+          <p className="text-[14px] text-[#52525B] leading-relaxed">{t.copyBody}</p>
+          <RequestCopy token={linkToken} lang={ctx.lang} initial={copyView} sample={isDemo} />
+        </div>
+      </Section>
+
+
+      <Section title={t.secDomain} when={dashPage === "domains"}>
       {domainRec ? (
         <div className="rounded-2xl border border-[#E8E6E0] bg-white p-7 mb-5">
           <p className="text-[17px] font-bold text-[#18181B] break-all">{domainRec.domain}</p>
@@ -557,7 +639,7 @@ export default async function AccountPage({
         />
       </Section>
 
-      <Section title={t.secServices}>
+      <Section title={t.secServices} when={dashPage === "services"}>
       <div className="rounded-2xl border border-[#E8E6E0] bg-white p-7 mb-5">
         <p className="text-[10px] font-black text-[#8A8A80] uppercase tracking-widest mb-4">{t.included}</p>
         <ul className="space-y-2.5">
@@ -655,7 +737,7 @@ export default async function AccountPage({
 
       </Section>
 
-      <Section title={t.secAccount}>
+      <Section title={t.secAccount} when={dashPage === "billing"}>
 
       <a
         href={`/api/billing-portal?t=${encodeURIComponent(linkToken)}`}
