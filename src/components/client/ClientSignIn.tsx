@@ -18,7 +18,7 @@ const T = {
   en: {
     title: "Your service",
     body: "Sign in to see your plan, your website's files, and your editor password.",
-    email: "Your email",
+    email: "Your email or website address",
     password: "Password",
     hint: "The same password you use to edit your website.",
     submit: "Sign in",
@@ -30,7 +30,7 @@ const T = {
   fr: {
     title: "Votre service",
     body: "Connectez-vous pour voir votre formule, les fichiers de votre site et votre mot de passe d'éditeur.",
-    email: "Votre email",
+    email: "Votre email ou adresse de site",
     password: "Mot de passe",
     hint: "Le même mot de passe que pour modifier votre site.",
     submit: "Se connecter",
@@ -85,7 +85,8 @@ export default function ClientSignIn({ lang, hadToken }: { lang: "en" | "fr"; ha
       <form onSubmit={submit}>
         <label className="block text-[13px] font-bold text-[#18181B] mb-1.5" htmlFor="client-email">{t.email}</label>
         <input
-          id="client-email" type="email" value={email} autoComplete="email" required
+          id="client-email" type="text" inputMode="email" value={email} autoComplete="username" required
+          placeholder="you@example.com  ·  yoursite.com"
           onChange={(e) => setEmail(e.target.value)}
           className="w-full h-11 px-3 rounded-lg border border-[#E2E6DD] bg-white text-[15px] mb-3"
         />

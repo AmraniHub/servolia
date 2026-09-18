@@ -2,6 +2,7 @@ import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { supabaseAdmin } from "@/lib/supabase";
 import { passwordMatchesFor } from "@/lib/siteEditorAuth";
+import { CLIENT_REFS } from "@/lib/clientRefs";
 
 /**
  * A HOSTING CLIENT SIGNING IN TO THEIR OWN SERVICE PAGE.
@@ -38,15 +39,52 @@ export interface ClientIdentity {
 }
 
 /**
- * Who this email and password belong to, or null.
+ * The client reference behind a website address, if we know one.
  *
- * Null for a wrong password, an unknown address, and a client with no password
- * set — the same answer for all three. Anything else turns this form into a
- * way to ask whether a given business is one of ours.
+ * A client is far surer of their own domain than of which address we have on
+ * file for them — an agency signs up with one mailbox and reads mail in
+ * another, and "which email did you use" is a support conversation nobody
+ * should need to have with their own hosting page.
+ *
+ * It grants nothing. The domain is on every page of their site; the password
+ * is still the whole gate.
+ */
+function refForSiteAddress(input: string): string | null {
+  const raw = input.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/.*$/, "");
+  if (!raw || raw.includes("@")) return null;
+  for (const [ref, client] of Object.entries(CLIENT_REFS)) {
+    if (ref === raw) return ref;
+    const label = (client.label ?? "").toLowerCase().replace(/^www\./, "");
+    if (label && label === raw) return ref;
+  }
+  return null;
+}
+
+/**
+ * Who this identifier and password belong to, or null.
+ *
+ * The identifier is their email OR their website address. Null for a wrong
+ * password, an unknown identifier, and a client with no password set — the
+ * same answer for all three. Anything else turns this form into a way to ask
+ * whether a given business is one of ours.
  */
 export async function identify(email: string, password: string): Promise<ClientIdentity | null> {
   const db = supabaseAdmin();
   if (!db || !email || !password) return null;
+
+  const byDomain = refForSiteAddress(email);
+  if (byDomain) {
+    const { data } = await db
+      .from("hosting_clients")
+      .select("client_ref, email, subscription_id")
+      .eq("client_ref", byDomain)
+      .maybeSingle();
+    const row = data as { client_ref?: string; email?: string; subscription_id?: string } | null;
+    if (!row?.client_ref || !row.subscription_id) return null;
+    const ref = row.client_ref.toLowerCase();
+    if (!(await passwordMatchesFor(ref, password))) return null;
+    return { subscriptionId: row.subscription_id, ref, email: row.email ?? null };
+  }
 
   const wanted = email.trim().toLowerCase();
   const { data } = await db
