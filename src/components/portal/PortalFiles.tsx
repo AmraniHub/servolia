@@ -44,20 +44,35 @@ function IconFor({ file }: { file: VaultFile }) {
   return <FileText className={cls} />;
 }
 
-/** One PUT straight to storage, with real progress — fetch() cannot report
- *  upload progress, and on this connection a silent 25MB upload looks broken. */
+/**
+ * One PUT straight to storage, with real progress.
+ *
+ * XHR rather than fetch because fetch cannot report upload progress, and on
+ * this connection a silent 25MB upload is indistinguishable from a hang.
+ *
+ * The body shape is copied from supabase-js: for a Blob in a browser it PUTs
+ * multipart form data with `cacheControl` and the file under an EMPTY field
+ * name. Raw bytes with a content-type header are also accepted by the storage
+ * API, but matching the SDK's own browser path leaves nothing to differ from
+ * the documented behaviour. The multipart boundary has to come from the
+ * browser, so Content-Type is deliberately not set here.
+ */
 function putToStorage(url: string, file: File, onProgress: (pct: number) => void): Promise<void> {
   return new Promise((resolve, reject) => {
+    const form = new FormData();
+    form.append("cacheControl", "3600");
+    form.append("", file);
+
     const xhr = new XMLHttpRequest();
     xhr.open("PUT", url);
-    xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream");
+    xhr.setRequestHeader("x-upsert", "false");
     xhr.upload.onprogress = (e) => {
       if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
     };
     xhr.onload = () =>
       xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(String(xhr.status)));
     xhr.onerror = () => reject(new Error("network"));
-    xhr.send(file);
+    xhr.send(form);
   });
 }
 
