@@ -9,10 +9,10 @@ import RequestCopy, { type CopyView } from "@/components/client/RequestCopy";
 import DomainSearch from "@/components/client/DomainSearch";
 import DashNav, { dashPageFrom, dashLabel } from "@/components/client/DashNav";
 import StatTiles from "@/components/client/StatTiles";
+import ServiceCards, { type ServiceCard } from "@/components/client/ServiceCards";
 import FileManager from "@/components/client/FileManager";
 import { acceptAttribute, acceptedList } from "@/lib/siteUpload";
 import RenewalBar from "@/components/client/RenewalBar";
-import { readDomainRequest, domainRequestState } from "@/lib/domainRequest";
 import ClientSignIn from "@/components/client/ClientSignIn";
 import ClientSignOut from "@/components/client/ClientSignOut";
 import { clientSession } from "@/lib/clientAreaAuth";
@@ -311,9 +311,6 @@ export default async function AccountPage({
   /* Where their request for a copy of the site stands. Read from the same row
      as the domain rather than with a second query — one read, two answers. */
   let copyView: CopyView = "none";
-  /* A domain they have asked for and he has not yet bought. Null once he
-     sets it aside, so their page goes back to a search box. */
-  let domainAsked: string | null = null;
   if (!isDemo && subId) {
     const db = supabaseAdmin();
     const { data: row } = db
@@ -325,8 +322,6 @@ export default async function AccountPage({
        reports a refusal, with no reason and nobody to ask, is worse for the
        client than a button they can press again. */
     copyView = state === "ready" ? "ready" : state === "waiting" ? "waiting" : "none";
-    const asked = readDomainRequest((row as { notes?: string | null } | null)?.notes);
-    domainAsked = domainRequestState(asked) === "waiting" ? (asked?.domain ?? null) : null;
   }
 
   /* No credential, or one that no longer works: offer the way in rather than
@@ -403,6 +398,38 @@ export default async function AccountPage({
   const settingsUrl = builtAssistant && subId ? await assistantLinkFor(subId) : null;
 
   const money = (n: number) => (fr ? `${usd(n)} $` : `$${usd(n)}`);
+
+  /* THE CATALOGUE, AS THIS CLIENT SEES IT.
+   *
+   * Built from CLIENT_PRODUCTS rather than written out here, so a price
+   * changed in one place is changed on every client's panel — and so a new
+   * service appears without anyone remembering this file exists.
+   *
+   * What they already pay for comes first and is marked. A client who cannot
+   * see their own plan on the page listing what they could buy reads the whole
+   * page as a sales pitch, and is right to. */
+  const serviceCards: ServiceCard[] = Object.values(CLIENT_PRODUCTS)
+    .filter((prod) => !("retired" in prod && prod.retired))
+    .map((prod) => {
+      const c = productCopy(prod, ctx.lang);
+      const yearly = HOSTING_TIERS.includes(prod.key);
+      const price = yearly
+        ? `${money(prod.annualUsd)} / ${fr ? "an" : "year"}`
+        : `${money(prod.monthlyUsd)} / ${fr ? "mois" : "month"}`;
+      const owned = prod.key === ctx.plan.key;
+      return {
+        key: prod.key,
+        name: c.heading,
+        blurb: c.blurb,
+        price,
+        includes: c.includes,
+        owned,
+        ready: !owned && prod.key === "chatbot" && builtAssistant,
+        href: `/hosting?plan=${prod.key}${ctx.ref ? `&ref=${encodeURIComponent(ctx.ref)}` : ""}`,
+      };
+    })
+    /* Theirs first, then the one already built for them, then the rest. */
+    .sort((a, b) => Number(b.owned ?? false) - Number(a.owned ?? false) || Number(b.ready ?? false) - Number(a.ready ?? false));
   // Cents to dollars WITHOUT rounding: a 5.39 plan must not read "$5".
   const amount = ctx.amountCents !== null ? ctx.amountCents / 100 : null;
   const per = ctx.interval === "year" ? (fr ? "an" : "year") : (fr ? "mois" : "month");
@@ -634,12 +661,13 @@ export default async function AccountPage({
         <DomainSearch
           token={linkToken}
           lang={ctx.lang}
-          pending={domainAsked}
           sample={isDemo}
         />
       </Section>
 
       <Section title={t.secServices} when={dashPage === "services"}>
+        <ServiceCards cards={serviceCards} lang={ctx.lang} />
+
       <div className="rounded-2xl border border-[#E8E6E0] bg-white p-7 mb-5">
         <p className="text-[10px] font-black text-[#8A8A80] uppercase tracking-widest mb-4">{t.included}</p>
         <ul className="space-y-2.5">

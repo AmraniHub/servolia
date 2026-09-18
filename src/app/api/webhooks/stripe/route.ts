@@ -22,6 +22,7 @@ import {
 } from "@/lib/hosting";
 import { setShopifyGate, applyGate } from "@/lib/hostingGate";
 import { normalizeDomain, purchaseDomainForClient, readDomainRecord, writeDomainRecord, setDomainAutoRenew } from "@/lib/domainSales";
+import { hasExtraDomain, writeExtraDomain } from "@/lib/extraDomains";
 import { upgradeLinkFor, accountLinkFor, setupLinkFor, assistantLinkFor, referenceFor, subscriptionContext } from "@/lib/upgrade";
 import { alreadyFulfilled, writeFulfilment } from "@/lib/fulfilment";
 import { assistantSlugFor, installSnippet } from "@/lib/assistant";
@@ -513,6 +514,50 @@ export async function POST(req: NextRequest) {
        * Dormant today: no client in CLIENT_REFS carries arrearsUsd, so
        * /api/hosting-checkout refuses every arrears request with "Nothing
        * outstanding". It stops being dormant the moment one is added. */
+      /* AN EXTRA DOMAIN, BOUGHT FROM THE CLIENT'S OWN PANEL.
+       *
+       * The money is already taken by the time this runs, so the registrar
+       * order happens here and the outcome is recorded either way — a name
+       * that could not be registered must be visible as a refund to make,
+       * not lost in a log.
+       *
+       * Idempotent on the domain name, because Stripe delivers a webhook more
+       * than once as a matter of course and a second delivery must not buy a
+       * second copy of something the client already owns. */
+      if (session.mode === "payment" && session.metadata?.kind === "domain_addon") {
+        const domain = normalizeDomain(session.metadata?.domain ?? "");
+        const retail = Number(session.metadata?.domain_retail_usd ?? 0);
+        const subId = session.metadata?.subscription_id ?? "";
+        const ref = session.metadata?.ref ?? "";
+
+        if (db && domain && subId) {
+          const { data: row } = await db
+            .from("hosting_clients")
+            .select("id, notes, business")
+            .eq("subscription_id", subId)
+            .maybeSingle();
+          const notes = (row as { notes?: string | null } | null)?.notes ?? null;
+
+          if (row && !hasExtraDomain(notes, domain)) {
+            const outcome = await purchaseDomainForClient(domain, retail);
+            const next = new Date(Date.now() + 365 * 86400000).toISOString().slice(0, 10);
+            const rec = outcome.ok
+              ? { domain, retailUsd: retail, orderId: outcome.orderId, boughtAt: new Date().toISOString().slice(0, 10), nextChargeAt: next }
+              : { domain, retailUsd: retail, failed: outcome.reason };
+            await db.from("hosting_clients")
+              .update({ notes: writeExtraDomain(notes, rec) })
+              .eq("id", (row as { id: string }).id);
+
+            await sendTelegramMessage(
+              outcome.ok
+                ? `🌐 *${ref || domain}* bought *${domain}* for $${retail}. Registered. Point it at their project when you can.`
+                : `⚠️ *${ref || domain}* PAID $${retail} for *${domain}* and the registrar refused (${outcome.reason}). Register it by hand or refund them.`,
+            );
+          }
+        }
+        return NextResponse.json({ received: true });
+      }
+
       if (session.mode === "payment" && session.metadata?.kind === HOSTING_METADATA_KIND) {
         const customerEmail = session.customer_details?.email ?? session.customer_email ?? null;
         const amount = (session.amount_total ?? 0) / 100;

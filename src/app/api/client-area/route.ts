@@ -9,7 +9,9 @@ import { uploadProblem, safeTarget } from "@/lib/siteUpload";
 import { makeZip } from "@/lib/zip";
 import { readCopyRequest, writeCopyRequest, copyState, COPY_WINDOW_DAYS } from "@/lib/clientCopy";
 import { readDomainRequest, writeDomainRequest, domainRequestState } from "@/lib/domainRequest";
-import { domainQuote, isDomainSalesConfigured, normalizeDomain } from "@/lib/domainSales";
+import { domainQuote, isDomainSalesConfigured, normalizeDomain, canBuyDomains } from "@/lib/domainSales";
+import { hasExtraDomain } from "@/lib/extraDomains";
+import { domainCheckoutUrl } from "@/lib/domainCheckout";
 import { identify, createClientSession, clientSession, CLIENT_COOKIE, CLIENT_SESSION_SECONDS } from "@/lib/clientAreaAuth";
 
 export const runtime = "nodejs";
@@ -152,6 +154,41 @@ export async function POST(req: NextRequest) {
       ]],
     );
     return NextResponse.json({ ok: true, state: "waiting" });
+  }
+
+  if (doing === "buy-domain") {
+    if (!isDomainSalesConfigured() || !canBuyDomains()) {
+      return NextResponse.json({ ok: false, error: "Domains are not on sale at the moment." }, { status: 400 });
+    }
+    const name = normalizeDomain(String(body.domain ?? ""));
+    if (!name) return NextResponse.json({ ok: false, error: "That does not look like a domain name." }, { status: 400 });
+    if (hasExtraDomain(notes, name)) {
+      return NextResponse.json({ ok: false, error: "You already have that one." }, { status: 409 });
+    }
+
+    /* PRICED HERE, NOT IN THE BROWSER. The page showed a figure and the
+       browser can post any figure it likes; the registrar's answer at this
+       moment is the only one allowed to become a charge. */
+    const q = await domainQuote(name);
+    if (!q.sellable) {
+      return NextResponse.json(
+        { ok: false, error: q.reason === "taken" ? "That domain has just been taken." : "That ending is not one we can offer." },
+        { status: 409 },
+      );
+    }
+
+    const url = await domainCheckoutUrl({
+      subscriptionId: found.subId,
+      domain: q.domain,
+      retailUsd: q.yearlyUsd,
+      ref,
+      email,
+      origin: req.nextUrl.origin,
+    });
+    if (!url) {
+      return NextResponse.json({ ok: false, error: "We could not open the payment page. Please try again." }, { status: 502 });
+    }
+    return NextResponse.json({ ok: true, url });
   }
 
   if (doing === "cancel-copy") {

@@ -10,10 +10,13 @@ import { useState } from "react";
  * another. A name that is taken comes back as taken, with alternatives, rather
  * than as a form that accepts anything and disappoints later.
  *
- * Asking is not buying. It records the request and tells him; he completes the
- * purchase. That is not caution for its own sake: a domain is bought from a
- * registrar the instant it is ordered and cannot be returned, so the one
- * irreversible thing on this page is the one thing that goes past a person.
+ * Buying happens here, on the card they already have with us. The charge is
+ * for the first year; the renewal joins their invoice a year later, so an
+ * extra domain never becomes a second Stripe relationship with one supplier.
+ *
+ * The price in the button is what the server quoted a moment ago, and the
+ * server quotes the registrar AGAIN before it creates the session. A figure
+ * that reached this component from anywhere never becomes a charge.
  */
 
 const T = {
@@ -29,9 +32,9 @@ const T = {
     tooDear: "That ending costs more than we can pass on at this price.",
     notOffered: "Domains are not on sale at the moment.",
     tryOthers: "These are free:",
-    add: "Add this domain",
-    adding: "Sending…",
-    waiting: (d: string) => `We have your request for ${d}. We will confirm by email before anything is charged.`,
+    add: "Buy this domain",
+    adding: "Opening payment…",
+    payNote: "You pay for the first year now, on the card you already have with us. It renews on your invoice each year unless you tell us to stop.",
     failed: "That did not go through. Reply to any email from us.",
     invalid: "That does not look like a domain name.",
   },
@@ -47,9 +50,9 @@ const T = {
     tooDear: "Cette extension coûte plus que ce que nous pouvons répercuter à ce prix.",
     notOffered: "Les domaines ne sont pas proposés pour le moment.",
     tryOthers: "Ceux-ci sont libres :",
-    add: "Ajouter ce domaine",
-    adding: "Envoi…",
-    waiting: (d: string) => `Nous avons votre demande pour ${d}. Nous confirmons par email avant tout prélèvement.`,
+    add: "Acheter ce domaine",
+    adding: "Ouverture du paiement…",
+    payNote: "Vous payez la première année maintenant, sur la carte déjà enregistrée. Il se renouvelle ensuite chaque année sur votre facture, sauf avis contraire.",
     failed: "Cela n'a pas abouti. Répondez à l'un de nos emails.",
     invalid: "Cela ne ressemble pas à un nom de domaine.",
   },
@@ -66,12 +69,10 @@ interface Quote {
 export default function DomainSearch({
   token,
   lang,
-  pending,
   sample = false,
 }: {
   token: string;
   lang: "en" | "fr";
-  pending?: string | null;
   sample?: boolean;
 }) {
   const t = T[lang];
@@ -80,16 +81,6 @@ export default function DomainSearch({
   const [quote, setQuote] = useState<Quote | null>(null);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
-  const [asked, setAsked] = useState<string | null>(pending ?? null);
-
-  if (asked) {
-    return (
-      <div className="rounded-2xl border border-[#CBE3BC] bg-[#F7FBF4] p-7">
-        <p className="text-[10px] font-black text-[#36671E] uppercase tracking-widest mb-2">{t.title}</p>
-        <p className="text-[14px] text-[#3F3F46] leading-relaxed">{t.waiting(asked)}</p>
-      </div>
-    );
-  }
 
   async function search(e: React.FormEvent) {
     e.preventDefault();
@@ -112,21 +103,24 @@ export default function DomainSearch({
     }
   }
 
-  async function add(domain: string, yearlyUsd: number) {
+  /* Straight to Stripe. The price in the button is what the server quoted a
+     moment ago, and the server quotes the registrar again before it creates
+     the session — the browser's figure never becomes a charge. */
+  async function add(domain: string) {
     setBusy(true);
     setNote(null);
     try {
-      const r = await fetch("/api/client-area?do=request-domain", {
+      const r = await fetch("/api/client-area?do=buy-domain", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ t: token, domain, yearlyUsd }),
+        body: JSON.stringify({ t: token, domain }),
       });
       const d = await r.json();
-      if (!d.ok) {
+      if (!d.ok || !d.url) {
         setNote(d.error || t.failed);
         return;
       }
-      setAsked(domain);
+      window.location.href = d.url;
     } catch {
       setNote(t.failed);
     } finally {
@@ -167,8 +161,9 @@ export default function DomainSearch({
       {quote?.sellable ? (
         <div className="mt-4 rounded-xl border border-[#CBE3BC] bg-[#F7FBF4] px-4 py-3">
           <p className="text-[14px] font-bold text-[#18181B]">{t.free(quote.domain, money(quote.yearlyUsd))}</p>
+          <p className="mt-1.5 text-[13px] text-[#52525B] leading-relaxed">{t.payNote}</p>
           <button
-            onClick={() => add(quote.domain, quote.yearlyUsd)} disabled={busy}
+            onClick={() => add(quote.domain)} disabled={busy}
             className="mt-3 h-10 px-4 rounded-lg bg-[#36671E] text-white text-[13.5px] font-bold disabled:opacity-40"
           >
             {busy ? t.adding : t.add}
@@ -186,7 +181,7 @@ export default function DomainSearch({
               <li key={a.domain} className="flex items-center justify-between gap-3 text-[14px]">
                 <span className="truncate text-[#18181B]">{a.domain}</span>
                 <button
-                  onClick={() => add(a.domain, a.yearlyUsd)} disabled={busy}
+                  onClick={() => add(a.domain)} disabled={busy}
                   className="shrink-0 text-[13px] font-bold text-[#36671E] hover:underline disabled:opacity-40"
                 >
                   {money(a.yearlyUsd)}/yr · {t.add}
