@@ -154,6 +154,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, state: "waiting" });
   }
 
+  if (doing === "cancel-copy") {
+    /* Their own request, so they can withdraw it. Without this a client who
+       pressed the button once is told "we will confirm shortly" forever, with
+       no way back to the button — which is how a helpful screen becomes a
+       dead end nobody can explain. Clearing it also clears a refusal, so the
+       ask is available again. */
+    const error = await saveNotes(row, writeCopyRequest(notes, {}));
+    if (error) {
+      console.error("[client-area] copy request not cleared:", error);
+      return NextResponse.json({ ok: false, error: "That did not go through. Please try again." }, { status: 502 });
+    }
+    return NextResponse.json({ ok: true });
+  }
+
   if (doing === "request-domain") {
     if (!isDomainSalesConfigured()) {
       return NextResponse.json({ ok: false, error: "Domains are not on sale at the moment." }, { status: 400 });
