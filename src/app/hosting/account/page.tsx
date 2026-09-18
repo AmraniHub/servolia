@@ -17,6 +17,7 @@ import ClientSignIn from "@/components/client/ClientSignIn";
 import ClientSignOut from "@/components/client/ClientSignOut";
 import { clientSession } from "@/lib/clientAreaAuth";
 import { readCopyRequest, copyState } from "@/lib/clientCopy";
+import { readExtraDomains } from "@/lib/extraDomains";
 import { readUpgradeToken, subscriptionContext, mintUpgradeToken } from "@/lib/upgrade";
 import { productCopy, CLIENT_PRODUCTS, HOSTING_TIERS, usd } from "@/lib/hosting";
 import { supabaseAdmin } from "@/lib/supabase";
@@ -91,6 +92,11 @@ const T = {
     secServices: "Your plan and services",
     secAccount: "Your account",
     secFiles: "Your files",
+    boughtTitle: (d: string) => `${d} is yours.`,
+    boughtBody: "We are pointing it at your website now. It can take a few minutes to start working, and we will email you when it is live.",
+    alsoYours: "Also yours",
+    renewsOn: (d: string) => `renews ${d}`,
+    domainProblem: "we are sorting this one out",
     copyTitle: "Take a copy",
     copyBody: "Your website is yours. Ask for a copy of every file and we will confirm, then a download appears here.",
     tileStatus: "Status",
@@ -149,6 +155,11 @@ const T = {
     secServices: "Votre formule et vos services",
     secAccount: "Votre compte",
     secFiles: "Vos fichiers",
+    boughtTitle: (d: string) => `${d} est à vous.`,
+    boughtBody: "Nous le dirigeons vers votre site. Cela peut prendre quelques minutes, et nous vous écrivons dès qu'il est actif.",
+    alsoYours: "Également à vous",
+    renewsOn: (d: string) => `renouvellement le ${d}`,
+    domainProblem: "nous nous en occupons",
     copyTitle: "Prendre une copie",
     copyBody: "Votre site vous appartient. Demandez une copie de tous les fichiers ; nous confirmons et le téléchargement apparaît ici.",
     tileStatus: "État",
@@ -263,9 +274,9 @@ function Shell({
 export default async function AccountPage({
   searchParams,
 }: {
-  searchParams: Promise<{ t?: string; demo?: string; lang?: string; page?: string }>;
+  searchParams: Promise<{ t?: string; demo?: string; lang?: string; page?: string; bought?: string }>;
 }) {
-  const { t: token = "", demo = "", lang: demoLang = "", page: wantPage = "" } = await searchParams;
+  const { t: token = "", demo = "", lang: demoLang = "", page: wantPage = "", bought = "" } = await searchParams;
   const dashPage = dashPageFrom(wantPage);
 
   /* ?demo=1 — the page with INVENTED data, so it can be looked at before any
@@ -311,6 +322,9 @@ export default async function AccountPage({
   /* Where their request for a copy of the site stands. Read from the same row
      as the domain rather than with a second query — one read, two answers. */
   let copyView: CopyView = "none";
+  /* Domains bought from this panel after the plan. Their own records, so the
+     one that came with the plan is untouched. */
+  let extraDomains: { domain: string; nextChargeAt?: string; failed?: string }[] = [];
   if (!isDemo && subId) {
     const db = supabaseAdmin();
     const { data: row } = db
@@ -322,6 +336,7 @@ export default async function AccountPage({
        reports a refusal, with no reason and nobody to ask, is worse for the
        client than a button they can press again. */
     copyView = state === "ready" ? "ready" : state === "waiting" ? "waiting" : "none";
+    extraDomains = readExtraDomains((row as { notes?: string | null } | null)?.notes);
   }
 
   /* No credential, or one that no longer works: offer the way in rather than
@@ -350,7 +365,9 @@ export default async function AccountPage({
      `adminUrl` is set only once their host is actually rewriting /admin, so
      this card cannot advertise a link that 404s. */
   const editor = editableSite(ctx.ref);
-  const editorUrl = editor?.adminUrl ?? null;
+  /* Offered only where the client is the one who edits. Where we maintain the
+     site, the editor exists and the panel stays quiet about it. */
+  const editorUrl = editor && editor.showOnPanel !== false ? (editor.adminUrl ?? null) : null;
 
   /* Their own files, listed from the repository their host deploys. In the
      sample page this is invented, because a demo must never reach into a real
@@ -371,6 +388,8 @@ export default async function AccountPage({
     : await listSiteFiles(ctx.ref);
   /* Only fetched on the page that offers an upload: it is a second call to
      GitHub and every other page would pay for it without using it. */
+  if (isDemo) extraDomains = [{ domain: "yiwu-goods.com", nextChargeAt: "2027-09-18" }];
+
   const siteFolders = isDemo
     ? ["", "css", "img", "js"]
     : dashPage === "files"
@@ -410,6 +429,14 @@ export default async function AccountPage({
    * page as a sales pitch, and is right to. */
   const serviceCards: ServiceCard[] = Object.values(CLIENT_PRODUCTS)
     .filter((prod) => !("retired" in prod && prod.retired))
+    /* THEIR OWN TIER, AND THINGS THAT ADD TO IT — never the other tiers.
+     *
+     * A client who has already chosen a hosting plan does not want the other
+     * two hosting plans on their own panel. It reads as a shop when they have
+     * already bought, and a cheaper tier beside what they pay reads worse than
+     * that. What belongs here is what they do NOT have and could add: the
+     * assistant, multilingual search. */
+    .filter((prod) => !HOSTING_TIERS.includes(prod.key) || prod.key === ctx.plan.key)
     .map((prod) => {
       const c = productCopy(prod, ctx.lang);
       const yearly = HOSTING_TIERS.includes(prod.key);
@@ -655,6 +682,32 @@ export default async function AccountPage({
           <p className="mt-2 text-[13px] text-[#8A8A80] leading-relaxed">{t.domainYours}</p>
         </div>
       ) : null}
+
+        {bought ? (
+          /* Straight back from Stripe. The registrar order happens on the
+             webhook, which may land a moment after the client does — so this
+             says what is true right now rather than claiming it is finished. */
+          <div className="rounded-2xl border border-[#CBE3BC] bg-[#F7FBF4] p-6">
+            <p className="text-[15px] font-bold text-[#18181B]">{t.boughtTitle(bought)}</p>
+            <p className="mt-1 text-[14px] text-[#52525B] leading-relaxed">{t.boughtBody}</p>
+          </div>
+        ) : null}
+
+        {extraDomains.length ? (
+          <div className="rounded-2xl border border-[#E8E6E0] bg-white p-7">
+            <p className="text-[10px] font-black text-[#8A8A80] uppercase tracking-widest mb-3">{t.alsoYours}</p>
+            <ul className="space-y-2">
+              {extraDomains.map((d) => (
+                <li key={d.domain} className="flex items-baseline justify-between gap-3 text-[14px]">
+                  <span className="font-bold text-[#18181B] break-all">{d.domain}</span>
+                  <span className="shrink-0 text-[12.5px] text-[#8A8A80]">
+                    {d.failed ? t.domainProblem : d.nextChargeAt ? t.renewsOn(d.nextChargeAt) : ""}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
 
         {/* Adding one. The price comes from the registrar before the client
             sees it, so nobody is quoted one figure and invoiced another. */}

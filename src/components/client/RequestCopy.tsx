@@ -22,6 +22,7 @@ const T = {
     sending: "Asking…",
     waiting: "Asked. We will confirm shortly, and a download button will appear here.",
     cancel: "Cancel this request",
+    revoke: "Remove this download",
     download: "Download my website (.zip)",
     ready: "Your copy is ready. The link works for the next few days.",
     failed: "That did not go through. Reply to any email from us and we will send them.",
@@ -31,6 +32,7 @@ const T = {
     sending: "Envoi…",
     waiting: "C'est noté. Nous confirmons rapidement, et un bouton de téléchargement apparaîtra ici.",
     cancel: "Annuler cette demande",
+    revoke: "Retirer ce téléchargement",
     download: "Télécharger mon site (.zip)",
     ready: "Votre copie est prête. Le lien reste valable quelques jours.",
     failed: "Cela n'a pas abouti. Répondez à l'un de nos emails et nous vous les envoyons.",
@@ -53,6 +55,24 @@ export default function RequestCopy({
   const t = T[lang];
   const [state, setState] = useState<CopyView | "busy" | "failed">(initial);
 
+  /* Clears the request whatever state it is in — asked, or approved and
+     downloadable — so the page goes back to the ask. */
+  async function clear() {
+    if (sample) return;
+    const was = state;
+    setState("busy");
+    try {
+      const r = await fetch("/api/client-area?do=cancel-copy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ t: token }),
+      });
+      setState((await r.json()).ok ? "none" : (was as CopyView));
+    } catch {
+      setState(was as CopyView);
+    }
+  }
+
   if (state === "ready") {
     return (
       <div className="mt-4">
@@ -63,6 +83,12 @@ export default function RequestCopy({
           {t.download}
         </a>
         <p className="mt-2 text-[13px] text-[#8A8A80] leading-relaxed">{t.ready}</p>
+        {/* An approval that cannot be withdrawn is a door left open. This puts
+            the page back to the ask, which is also how a test gets cleaned up
+            without editing the database by hand. */}
+        <button onClick={clear} className="mt-2 block text-[13px] text-[#71717A] hover:underline">
+          {t.revoke}
+        </button>
       </div>
     );
   }
@@ -73,23 +99,7 @@ export default function RequestCopy({
         <p className="text-[13.5px] text-[#36671E] leading-relaxed">{t.waiting}</p>
         {/* A way back. Without it a client who pressed the button once sees
             "we will confirm shortly" forever and has no route to the button. */}
-        <button
-          onClick={async () => {
-            if (sample) return;
-            setState("busy");
-            try {
-              const r = await fetch("/api/client-area?do=cancel-copy", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ t: token }),
-              });
-              setState((await r.json()).ok ? "none" : "waiting");
-            } catch {
-              setState("waiting");
-            }
-          }}
-          className="mt-2 text-[13px] text-[#71717A] hover:underline"
-        >
+        <button onClick={clear} className="mt-2 text-[13px] text-[#71717A] hover:underline">
           {t.cancel}
         </button>
       </div>

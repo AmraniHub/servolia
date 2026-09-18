@@ -80,6 +80,16 @@ export interface EditableSite {
    */
   adminUrl?: string;
   /**
+   * Whether the client's Servolia panel advertises the editor at all.
+   *
+   * False where WE are the ones who edit the site. GoodsCoChina's pages are
+   * maintained by the developer who built them; putting "edit your website"
+   * in front of her invites her to take on work she did not ask for and
+   * did not agree to own. The editor itself stays live at her own /admin —
+   * this is about what the panel offers, not about what exists.
+   */
+  showOnPanel?: boolean;
+  /**
    * A second language served by swapping recognised English strings, and the
    * file holding that dictionary. Where this is set, a save reports which
    * edited lines that language can no longer render — see siteEditorI18n.
@@ -238,6 +248,9 @@ export const EDITABLE_SITES: Record<string, EditableSite> = {
     // /_next with it — without that second rewrite the page renders and its
     // scripts 404, so the password box appears and the button does nothing.
     adminUrl: "https://goodscochina.com/admin",
+    // Her site is maintained by the developer who built it. The editor works
+    // at goodscochina.com/admin; her panel simply does not offer it.
+    showOnPanel: false,
     /* Copied out of her own web/css/yg.css :root, not matched by eye —
        --yg-navy, --yg-soft and --yg-line. The editor is then built from the
        same three tokens her website is, so it looks like part of it. */

@@ -5,6 +5,7 @@ import { sendTelegramMessage } from "@/lib/telegram";
 import {
   readDomainRecord, writeDomainRecord, currentRenewalUsd, netProfitUsd, DOMAIN_TARGET_PROFIT_USD,
 } from "@/lib/domainSales";
+import { readExtraDomains, writeExtraDomain } from "@/lib/extraDomains";
 import { nextChargeDate } from "@/lib/hosting";
 
 export const runtime = "nodejs";
@@ -71,6 +72,50 @@ export async function GET(req: NextRequest) {
       charged.push(`${rec.domain} $${rec.retailUsd} (${row.business}) — next ${next}`);
     } catch (e) {
       failed.push(`${rec.domain}: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+
+  /* DOMAINS BOUGHT FROM THE PANEL, AFTER THE PLAN.
+   *
+   * A different query because they are a different thing. The plan's domain
+   * belongs to the plan — on an annual subscription it renews with it, which
+   * is why the pass above only looks at monthly clients. An add-on bought in
+   * March belongs to nobody's cycle: it carries its own date and is charged on
+   * it whatever the plan does, so this pass ignores billing_period entirely.
+   *
+   * Without this the client pays once, keeps the domain, and we renew it at
+   * our own cost every year afterwards. */
+  const { data: addonRows } = await db
+    .from("hosting_clients")
+    .select("id, business, customer_id, status, notes")
+    .in("status", ["active", "past_due"])
+    .like("notes", "%servolia-extra-domain:%");
+
+  for (const row of addonRows ?? []) {
+    for (const rec of readExtraDomains(row.notes)) {
+      if (!rec.nextChargeAt || rec.failed || rec.nextChargeAt > horizon) continue;
+      if (!row.customer_id) { failed.push(`${rec.domain}: no Stripe customer on the row`); continue; }
+      try {
+        await stripe.invoiceItems.create(
+          {
+            customer: row.customer_id,
+            currency: "usd",
+            amount: Math.round(rec.retailUsd * 100),
+            description: `Domain ${rec.domain} — renewal, 12 months from ${rec.nextChargeAt}`,
+          },
+          /* Keyed on the client, the domain AND the date, so a cron that runs
+             twice in a day cannot bill the same renewal twice. */
+          { idempotencyKey: `domain-addon-${row.id}-${rec.domain}-${rec.nextChargeAt}` },
+        );
+        const next = nextChargeDate(new Date(`${rec.nextChargeAt}T00:00:00Z`), "annual").toISOString().slice(0, 10);
+        const { data: fresh } = await db.from("hosting_clients").select("notes").eq("id", row.id).maybeSingle();
+        await db.from("hosting_clients")
+          .update({ notes: writeExtraDomain((fresh as { notes?: string | null } | null)?.notes ?? row.notes, { ...rec, nextChargeAt: next }) })
+          .eq("id", row.id);
+        charged.push(`${rec.domain} $${rec.retailUsd} (${row.business}) — next ${next}`);
+      } catch (e) {
+        failed.push(`${rec.domain}: ${e instanceof Error ? e.message : String(e)}`);
+      }
     }
   }
 
