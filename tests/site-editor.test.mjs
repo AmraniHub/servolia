@@ -10,6 +10,7 @@
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { translatedStrings, untranslatedAfterEdit, translationNote } from "../src/lib/siteEditorI18n.ts";
 import {
   editorMountPaths,
@@ -249,4 +250,13 @@ test("a page with nothing to edit is not offered as a tab", () => {
   // A page added to `pages` without fields must drop straight back out.
   const halfDone = { ...site, pages: [...site.pages, { file: "about.html", label: "About" }] };
   assert.ok(!pagesWithFields(halfDone).some((p) => p.file === "about.html"));
+});
+
+test("the editor page's own title does not carry our name", () => {
+  /* The brand leaked here and nowhere else: the root layout's template turned
+     "Edit your website" into "Edit your website | Servolia", so a client's
+     browser tab on their own /admin said whose software it was. Invisible to
+     a check that reads the body, because a title is not in the body. */
+  const src = readFileSync(new URL("../src/app/client-editor/[ref]/page.tsx", import.meta.url), "utf8");
+  assert.match(src, /title:\s*\{\s*absolute:/, "the title must be absolute or the layout template applies");
 });

@@ -4,7 +4,11 @@ import SiteEditor from "@/components/SiteEditor";
 import { editableSite } from "@/lib/siteEditor";
 
 export const metadata: Metadata = {
-  title: "Edit your website",
+  /* ABSOLUTE, so the root layout's "%s | Servolia" template does not apply.
+     It did, and the browser tab on a client's own /admin read "Edit your
+     website | Servolia" — the one place the brand leaked, and invisible to a
+     check that reads the body text, because a title is not in the body. */
+  title: { absolute: "Edit your website" },
   robots: { index: false, follow: false, nocache: true },
   /* Their favicon, not ours. Left to itself Next asks for /icon and
      /apple-icon, which are Servolia's — and on the client's domain those
