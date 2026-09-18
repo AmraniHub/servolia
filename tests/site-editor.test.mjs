@@ -12,6 +12,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { translatedStrings, untranslatedAfterEdit, translationNote } from "../src/lib/siteEditorI18n.ts";
 import {
+  editorMountPaths,
   readRegion, writeRegion, validate, escapeHtml, decodeEntities,
   editableSite, fieldsFor, EDITABLE_SITES, MAX_FIELD,
 } from "../src/lib/siteEditor.ts";
@@ -195,4 +196,20 @@ test("a bilingual site says which file holds its other language", () => {
   const s = editableSite("goodscochina");
   assert.equal(s.translations?.file, "js/i18n.js");
   assert.equal(s.translations?.language, "Arabic");
+});
+
+test("the chrome gate follows where the editor is mounted, not our own path", () => {
+  /* The bug this pins: the editor is served at goodscochina.com/admin by a
+     rewrite, so the browser's path is "/admin" and SiteChrome's old check for
+     "/client-editor" did not match. Servolia's cookie banner came back over
+     her Save button and our tracker logged her editing as our traffic. */
+  const paths = editorMountPaths();
+  assert.ok(paths.includes("/admin"), `expected /admin among ${JSON.stringify(paths)}`);
+  for (const site of Object.values(EDITABLE_SITES)) {
+    if (!site.adminUrl) continue;
+    const p = new URL(site.adminUrl).pathname;
+    assert.ok(paths.includes(p), `${site.ref} is mounted at ${p} and the gate does not cover it`);
+    assert.ok(site.adminUrl.startsWith("https://"), `${site.ref}: the editor takes a password, so it is https or nothing`);
+    assert.ok(!site.adminUrl.includes("servolia"), `${site.ref}: the client's editor must live on the client's own domain`);
+  }
 });

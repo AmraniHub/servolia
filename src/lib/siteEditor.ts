@@ -184,6 +184,10 @@ export const EDITABLE_SITES: Record<string, EditableSite> = {
     repo: "AmraniHub/yiwugoodsco-com",
     branch: "main",
     siteRoot: "web",
+    // Live since 2026-09-18: her web/vercel.json rewrites /admin here, and
+    // /_next with it — without that second rewrite the page renders and its
+    // scripts 404, so the password box appears and the button does nothing.
+    adminUrl: "https://goodscochina.com/admin",
     /* Copied out of her own web/css/yg.css :root, not matched by eye —
        --yg-navy, --yg-soft and --yg-line. The editor is then built from the
        same three tokens her website is, so it looks like part of it. */
@@ -225,6 +229,32 @@ export const EDITABLE_SITES: Record<string, EditableSite> = {
 
 export function editableSite(ref: string | null | undefined): EditableSite | undefined {
   return EDITABLE_SITES[(ref ?? "").trim().toLowerCase()];
+}
+
+/**
+ * The paths the editor is reached at, as the BROWSER sees them.
+ *
+ * This exists because of a bug the rewrite reintroduced. The editor is served
+ * at goodscochina.com/admin by a proxy rewrite, so `usePathname()` returns
+ * "/admin" and not "/client-editor/goodscochina" — and SiteChrome, which
+ * strips Servolia's cookie banner and analytics from a client's own screen,
+ * stopped recognising it. Her admin page came back with our consent banner on
+ * it and our page tracker recording her private editing as our traffic.
+ *
+ * Deriving the list from where each editor is actually mounted means the next
+ * client cannot inherit that bug by being mounted at a different path.
+ */
+export function editorMountPaths(): string[] {
+  const out = new Set<string>();
+  for (const site of Object.values(EDITABLE_SITES)) {
+    if (!site.adminUrl) continue;
+    try {
+      out.add(new URL(site.adminUrl).pathname.replace(/\/+$/, "") || "/");
+    } catch {
+      // A malformed adminUrl must not take the whole site's chrome down.
+    }
+  }
+  return [...out];
 }
 
 /** The fields that belong to one page, in the order the client reads them. */
