@@ -37,6 +37,29 @@ export interface SiteFiles {
 
 const HIDDEN = new Set(["node_modules", "api", "google-apps-script"]);
 
+/**
+ * Files that are ours, not the client's — hidden from the list AND the archive.
+ *
+ * `site-status.js` and `middleware.js` are the hosting gate: the switch that
+ * takes a site down when an invoice goes unpaid. `build.py` and the README are
+ * the notes of the person who built it. `vercel.json` and `package.json` are
+ * deployment config no client will ever open on purpose.
+ *
+ * The first version of this filtered only the archive, so a client's own page
+ * listed the gate by name — shown to the one person who should never have to
+ * think about it, on the page whose whole job is to make the service feel like
+ * theirs.
+ */
+const NOT_THEIRS = new Set([
+  "site-status.js", "middleware.js", "promo.js", "promo-config.json",
+  "build.py", "vercel.json", "package.json", "package-lock.json",
+]);
+
+export function isOurs(rel: string): boolean {
+  const name = rel.split("/").pop() ?? "";
+  return NOT_THEIRS.has(name) || /\.(md|py)$/i.test(name);
+}
+
 function kindOf(name: string, isDir: boolean): SiteFile["kind"] {
   if (isDir) return "folder";
   const ext = name.slice(name.lastIndexOf(".") + 1).toLowerCase();
@@ -87,7 +110,7 @@ export async function listSiteFiles(ref: string): Promise<SiteFiles> {
     if (!Array.isArray(raw)) return { files: [], bytes: 0, unavailable: true };
 
     const files = raw
-      .filter((e) => !e.name.startsWith(".") && !HIDDEN.has(e.name))
+      .filter((e) => !e.name.startsWith(".") && !HIDDEN.has(e.name) && !isOurs(e.name))
       .map((e) => ({
         name: e.name,
         size: e.type === "dir" ? null : (e.size ?? 0),
@@ -152,38 +175,6 @@ async function ghJson<T>(path: string, token: string, tries = 3): Promise<T> {
     await new Promise((r) => setTimeout(r, 400 * (attempt + 1)));
   }
   throw last instanceof Error ? last : new Error(`GitHub unreachable for ${path}`);
-}
-
-/**
- * Every file of a client's site, ready to be zipped.
- *
- * Read from the git tree rather than by walking the contents endpoint folder
- * by folder: one call gives the whole shape, and the paths come back already
- * relative to the repository root so the site folder can be stripped off and
- * the archive opens as the website rather than as a folder inside a folder.
- *
- * WHAT IS LEFT OUT, AND WHY IT MATTERS MORE HERE THAN IN THE LISTING. This
- * archive leaves our hands. `site-status.js` and `middleware.js` are the
- * hosting gate — the mechanism that takes a site down when an invoice goes
- * unpaid — and handing a client the switch, unasked, inside a file they
- * requested for another reason entirely, is not something to do by accident.
- * Dotfiles go for the same reason a client should never have to wonder what
- * secret of theirs is in `.env.example`.
- */
-const NOT_THEIRS = new Set(["site-status.js", "middleware.js", "promo.js", "promo-config.json", "build.py"]);
-
-/**
- * Markdown and build scripts go too.
- *
- * `web/README.md` on her site is OUR notes about her site: it names build.py,
- * calls the home page "built from the CMS template", and describes the landing
- * page as built on the Hormozi Value Equation. None of that is secret and none
- * of it is hers — it is the working notes of the person who built it, and it
- * does not belong in a file called "your website".
- */
-function isOurs(rel: string): boolean {
-  const name = rel.split("/").pop() ?? "";
-  return NOT_THEIRS.has(name) || /\.(md|py)$/i.test(name);
 }
 
 export async function collectSiteFiles(ref: string): Promise<{ path: string; data: Buffer }[]> {
