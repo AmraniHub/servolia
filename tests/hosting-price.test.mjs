@@ -52,6 +52,33 @@ test("no hosting tier is a one-off", () => {
   }
 });
 
+test("only a hosting tier carries a setup fee", () => {
+  /* The checkout route appends a one-time line for any plan with setupUsd, and
+     that line reads "Mailbox setup — one time". It belongs to the Business
+     tier, which comes with mailboxes. seo_multilingual kept a setupUsd of 345
+     from an older quote, which put a $345 mailbox charge on its $145 one-off:
+     a $490 Stripe page selling mailboxes to someone buying SEO. The route is
+     gated on HOSTING_TIERS now; this stops the data drifting back. */
+  for (const [key, product] of Object.entries(CLIENT_PRODUCTS)) {
+    if (product.setupUsd === undefined) continue;
+    assert.ok(
+      HOSTING_TIERS.includes(key),
+      `${key} carries setupUsd ${product.setupUsd} but is not a hosting tier`,
+    );
+  }
+});
+
+test("a one-off carries no setup fee at all", () => {
+  for (const [key, product] of Object.entries(CLIENT_PRODUCTS)) {
+    if (!product.oneOffUsd) continue;
+    assert.equal(
+      product.setupUsd,
+      undefined,
+      `${key} is charged once but also carries a separate setup fee`,
+    );
+  }
+});
+
 test("a one-off never promises recurring work", () => {
   /* A bullet reading "checked every month" under a price charged once is a
      commitment with no revenue behind it, and the client is right to hold us

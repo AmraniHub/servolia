@@ -403,9 +403,17 @@ export const CLIENT_PRODUCTS: Record<string, ClientProduct> = {
     key: "seo_multilingual",
     /* ONE PAYMENT, NOT A SUBSCRIPTION (2026-09-18). The work is finite —
        hreflang declared, a sitemap per language, the structured data written —
-       so it is charged once. The $345 setup and $45/month it replaces are
-       left in the fields below unread rather than deleted, because they are
-       what earlier quotes were built on. */
+       so it is charged once.
+
+       setupUsd was 345 here and has been DELETED, not left behind: the claim
+       that the superseded fields sit here "unread" was wrong. The checkout
+       route reads setupUsd to append a one-time line, so the leftover put a
+       $345 "Mailbox setup" charge onto this $145 sale — a $490 page selling
+       mailboxes to an SEO buyer. monthlyUsd and annualUsd below genuinely are
+       unread for this product (hostingAmountCents returns the one-off first,
+       and the upgrade routes need a live subscription, which a one-off never
+       creates); they stay because older quotes were built on them. Before
+       leaving any superseded price in a product, grep for the field name. */
     oneOffUsd: 145,
     name: "Multilingual search",
     tier: "Search",
@@ -416,7 +424,6 @@ export const CLIENT_PRODUCTS: Record<string, ClientProduct> = {
       "Your site is in several languages — this is what tells Google which one to show to whom, so the right visitor lands on the right version.",
     monthlyUsd: 45,
     annualUsd: 450,
-    setupUsd: 345,
     includes: [
       "Each language declared to Google (hreflang), so versions stop competing",
       "A sitemap per language, and a robots file that lets them be found",

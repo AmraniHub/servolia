@@ -5,6 +5,7 @@ import {
   resolveHostingPlan,
   hostingAmountCents,
   productCopy,
+  HOSTING_TIERS,
   HOSTING_METADATA_KIND,
 } from "@/lib/hosting";
 import { domainQuote, isDomainSalesConfigured, normalizeDomain } from "@/lib/domainSales";
@@ -165,8 +166,18 @@ export async function POST(req: NextRequest) {
 
   /* A ONE-TIME LINE THE PLAN CARRIES (Business: mailbox setup). Charged on
      the first invoice only; the subscription itself stays at the plan's
-     price. Same one-time shape as a domain's year on a monthly plan. */
-  const setupLine: Stripe.Checkout.SessionCreateParams.LineItem | null = hostingPlan.setupUsd
+     price. Same one-time shape as a domain's year on a monthly plan.
+
+     GATED ON THE PLAN BEING A HOSTING TIER, not merely on setupUsd existing.
+     This line is literally "Mailbox setup", so it only makes sense attached to
+     a plan that comes with mailboxes. seo_multilingual carried a leftover
+     setupUsd of 345 from when it was quoted as a setup-plus-subscription, and
+     an ungated check put a $345 mailbox charge on a $145 one-off — a $490
+     checkout page, with a line item describing a service the buyer is not
+     buying. The field has since been removed too; this is the guard that stops
+     the next one. */
+  const setupLine: Stripe.Checkout.SessionCreateParams.LineItem | null =
+    hostingPlan.setupUsd && HOSTING_TIERS.includes(hostingPlan.key)
     ? {
         price_data: {
           currency: "usd",
