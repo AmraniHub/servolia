@@ -72,13 +72,35 @@ test("CORS headers echo the origin and vary on it", () => {
   assert.equal(corsHeaders(null)["Access-Control-Allow-Origin"], "*");
 });
 
-test("the install line points at the apex, defers, and carries the slug", () => {
+test("the install line is RELATIVE by default, so it names no supplier", () => {
+  /* It is written into the client's own HTML, where anyone can view source.
+     An absolute https://servolia.com/... there is the supplier's name sitting
+     permanently on the client's site. Their host proxies /assistant.js, so
+     relative works and says nothing. */
   const s = installSnippet("excellenceagency");
-  assert.equal(s, '<script defer src="https://servolia.com/assistant.js" data-site="excellenceagency"></script>');
+  assert.equal(s, '<script defer src="/assistant.js" data-site="excellenceagency"></script>');
+  assert.doesNotMatch(s, /servolia/i);
   assert.match(installSnippet("x", "left"), /data-position="left"/);
   assert.doesNotMatch(installSnippet("x", "right"), /data-position/);
-  assert.equal(hasAssistantTag(s), true);
+});
+
+test("an origin is used only where the host cannot proxy", () => {
+  /* A Shopify theme cannot add a rewrite, so a relative path would 404 there
+     and the assistant would silently never appear. */
+  const s = installSnippet("x", "right", { origin: "https://servolia.com" });
+  assert.equal(s, '<script defer src="https://servolia.com/assistant.js" data-site="x"></script>');
+  assert.equal(installSnippet("x", "right", { origin: "https://servolia.com/" }), s, "trailing slash");
+});
+
+test("hasAssistantTag matches both shapes, and only ours", () => {
+  /* The absolute form is already committed to sites installed before the
+     change. Miss it and the installer stops being idempotent: it would add a
+     second tag on the next run and two widgets would draw on the client's
+     site. */
+  assert.equal(hasAssistantTag(installSnippet("a")), true, "relative");
+  assert.equal(hasAssistantTag(installSnippet("a", "right", { origin: "https://servolia.com" })), true, "absolute");
   assert.equal(hasAssistantTag("<script src='https://evil.com/assistant.js'></script>"), false);
+  assert.equal(hasAssistantTag("<script src='https://servolia.com.evil.com/assistant.js'></script>"), false);
 });
 
 test("withAssistantTag inserts before the LAST </body>, once, keeping the file's line endings", () => {

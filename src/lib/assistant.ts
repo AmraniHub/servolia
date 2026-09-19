@@ -265,14 +265,35 @@ export function corsHeaders(origin: string | null | undefined): Record<string, s
  * rather than a query string so the script URL is identical for every client
  * and caches once.
  */
-export function installSnippet(slug: string, position: "left" | "right" = "right"): string {
+export function installSnippet(
+  slug: string,
+  position: "left" | "right" = "right",
+  opts: { origin?: string } = {},
+): string {
   const pos = position === "left" ? ` data-position="left"` : "";
-  return `<script defer src="${ASSISTANT_ORIGIN}/assistant.js" data-site="${slug}"${pos}></script>`;
+  /* RELATIVE BY DEFAULT — the client's own domain serves it.
+   *
+   * An absolute `https://servolia.com/assistant.js` puts the supplier's name
+   * in the client's page source, readable by anyone who views source on their
+   * site, and it stays there for as long as the assistant does. Their host
+   * already proxies /admin and /api/site-editor to us; /assistant.js and the
+   * three API paths go the same way, and the widget follows whatever origin
+   * served it, so nothing else has to change.
+   *
+   * `origin` is for a host that CANNOT proxy — a Shopify theme — where an
+   * absolute URL is the only thing that works. Pass ASSISTANT_ORIGIN there. */
+  const src = `${(opts.origin ?? "").replace(/\/+$/, "")}/assistant.js`;
+  return `<script defer src="${src}" data-site="${slug}"${pos}></script>`;
 }
 
 /** True when an HTML document already carries the assistant. */
 export function hasAssistantTag(html: string): boolean {
-  return /<script[^>]+src=["']https:\/\/servolia\.com\/assistant\.js["']/i.test(html);
+  /* Matches BOTH shapes: the relative `/assistant.js` written now, and the
+     absolute servolia.com one already committed to sites installed before the
+     change. Miss the old form and the installer stops being idempotent — it
+     would add a second tag to every page on the next run, and two widgets
+     would draw on the client's site. */
+  return /<script[^>]+src=["'](?:https:\/\/servolia\.com)?\/assistant\.js["']/i.test(html);
 }
 
 /**

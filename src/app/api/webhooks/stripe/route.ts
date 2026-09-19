@@ -25,7 +25,7 @@ import { normalizeDomain, purchaseDomainForClient, readDomainRecord, writeDomain
 import { hasExtraDomain, writeExtraDomain } from "@/lib/extraDomains";
 import { upgradeLinkFor, accountLinkFor, setupLinkFor, assistantLinkFor, referenceFor, subscriptionContext } from "@/lib/upgrade";
 import { alreadyFulfilled, writeFulfilment } from "@/lib/fulfilment";
-import { assistantSlugFor, installSnippet } from "@/lib/assistant";
+import { assistantSlugFor, installSnippet, ASSISTANT_ORIGIN } from "@/lib/assistant";
 import { installAssistantTag } from "@/lib/assistantInstall";
 import { ASSISTANT_SITES } from "@/lib/assistantSites";
 import { clientRefFor } from "@/lib/clientRefs";
@@ -444,7 +444,20 @@ export async function POST(req: NextRequest) {
             assistant: isAssistant
               ? {
                   installed: assistantInstalled,
-                  snippet: assistantInstalled ? null : installSnippet(assistantSlug, ASSISTANT_SITES[assistantSlug]?.widgetPosition ?? "right"),
+                  /* This one is pasted by the CLIENT, so it has to work where
+                     they put it: relative for a site we host and therefore
+                     proxy, absolute for one we do not, where a relative path
+                     would 404 and the assistant would never appear. */
+                  snippet: assistantInstalled
+                    ? null
+                    : installSnippet(
+                        assistantSlug,
+                        ASSISTANT_SITES[assistantSlug]?.widgetPosition ?? "right",
+                        clientRefFor(session.metadata?.ref ?? "")?.repo &&
+                        !clientRefFor(session.metadata?.ref ?? "")?.gateWidget
+                          ? {}
+                          : { origin: ASSISTANT_ORIGIN },
+                      ),
                   briefUrl,
                 }
               : null,

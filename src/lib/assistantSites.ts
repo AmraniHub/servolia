@@ -198,7 +198,17 @@ const GOODSCOCHINA: ClientSiteConfig = {
   assistantOnly: true,
   hostingEmail: "samiramousa77@hotmail.com",
   domains: ["goodscochina.com"],
-  widgetPosition: "right",
+  /* LEFT, because her WhatsApp bubble owns the right corner — and owns exactly
+     the pixels the launcher would: her `.whatsapp-float` is
+     `position:fixed; right:22px; bottom:22px` (52px) and `.sva-root` is
+     `position:fixed; bottom:22px; right:22px` (58px). Same corner, same
+     offsets. Our z-index is 2147483000 against her 30, so the assistant would
+     not sit beside her WhatsApp button, it would cover it — and WhatsApp is
+     how this client actually receives enquiries.
+     Her rule lives in an inline <style> in index.html, not a stylesheet, which
+     is why a scan of her linked CSS finds nothing. Read the page itself before
+     choosing a corner for any client. */
+  widgetPosition: "left",
 
   heroHeadline: "Your trusted sourcing partner in China",
   heroSub: "Source quality products, verify reliable factories and deliver with confidence, from China to the world.",

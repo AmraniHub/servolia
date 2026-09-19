@@ -3,7 +3,8 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { sendTelegramMessage } from "@/lib/telegram";
 import { readUpgradeToken, subscriptionContext, referenceFor } from "@/lib/upgrade";
 import { getClientSite, type ClientSiteConfig, type ClientService, type ClientFaq } from "@/lib/clientSites";
-import { assistantSlugFor, hostnameOf, installSnippet, isAssistantLang, type AssistantLang } from "@/lib/assistant";
+import { assistantSlugFor, hostnameOf, installSnippet, isAssistantLang, ASSISTANT_ORIGIN, type AssistantLang } from "@/lib/assistant";
+import { clientRefFor } from "@/lib/clientRefs";
 import { ASSISTANT_SITES } from "@/lib/assistantSites";
 import { HOSTING_TIERS } from "@/lib/hosting";
 
@@ -162,5 +163,15 @@ export async function POST(req: NextRequest) {
     { plain: true, silent: true },
   ).catch(() => {});
 
-  return NextResponse.json({ ok: true, slug, snippet: installSnippet(slug, config.widgetPosition) });
+  /* Same rule as the assistant page: a site we host proxies /assistant.js from
+     its own domain, so the snippet stays relative and names no supplier. One
+     we do not host is about to be pasted somewhere that cannot proxy, where a
+     relative path just 404s, so it gets the absolute URL. */
+  const hostRef = clientRefFor(ctx.ref);
+  const hosted = Boolean(hostRef?.repo && !hostRef.gateWidget);
+  return NextResponse.json({
+    ok: true,
+    slug,
+    snippet: installSnippet(slug, config.widgetPosition, hosted ? {} : { origin: ASSISTANT_ORIGIN }),
+  });
 }

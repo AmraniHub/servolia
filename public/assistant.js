@@ -1,12 +1,18 @@
 /*!
- * Servolia assistant — the one line a client's site loads.
+ * Site assistant — the one line a site loads.
  *
- *   <script defer src="https://servolia.com/assistant.js" data-site="SLUG"></script>
+ *   <script defer src="/assistant.js" data-site="SLUG"></script>
+ *
+ * SERVED FROM THE SITE'S OWN DOMAIN wherever the host can proxy it, which is
+ * why the src above is relative. This file is public on the client's address:
+ * anyone can read it, and every request it makes shows in their Network tab.
+ * A supplier's domain in either place is the supplier's name in the client's
+ * own page, so nothing here carries one.
  *
  * Plain JavaScript on purpose: it runs inside somebody else's page, next to
  * whatever framework, jQuery or theme they already have, and must depend on
- * none of it. No build step, no fonts, no third-party calls other than
- * servolia.com. Everything it draws is prefixed `sva-` so it cannot collide
+ * none of it. No build step, no fonts, no third-party calls at all when the
+ * host proxies. Everything it draws is prefixed `sva-` so it cannot collide
  * with the host page's CSS, and it sits in its own stacking context.
  *
  * What it does, in order:
@@ -32,17 +38,38 @@
   if (!script) return;
   var SLUG = (script.getAttribute("data-site") || "").trim();
   if (!SLUG) return;
-  var ORIGIN = (script.getAttribute("data-origin") || "https://servolia.com").replace(/\/+$/, "");
+  /* THE API LIVES WHEREVER THIS FILE CAME FROM.
+   *
+   * Served from the site's own domain — the host proxies /assistant.js and the
+   * three API paths — this resolves to "" and every call is relative, so the
+   * page source, the Network tab and the devtools globals name nobody. Loaded
+   * cross-origin instead (a Shopify theme, which cannot proxy) it calls back to
+   * whatever origin served it, which is the only thing that can work there.
+   *
+   * Deriving it beats hard-coding: the file cannot be served from an address it
+   * then refuses to talk to. `data-origin` still wins for local testing, and is
+   * read with !== null so an explicit empty value means same-origin rather than
+   * falling through to a default. */
+  var ORIGIN = (function () {
+    var given = script.getAttribute("data-origin");
+    if (given !== null) return given.replace(/\/+$/, "");
+    try {
+      var u = new URL(script.src, location.href);
+      return u.origin === location.origin ? "" : u.origin;
+    } catch (e) {
+      return "";
+    }
+  })();
   var POSITION = script.getAttribute("data-position") === "left" ? "left" : "right";
-  // Servolia's own try page sets this so an UNPAID assistant can be tried
-  // there. On a client's site the attribute does nothing: the server only
-  // honours it from servolia.com's own pages, so pasting it changes nothing.
+  // Our own try page sets this so an UNPAID assistant can be tried there. On a
+  // client's site the attribute does nothing: the server only honours it from
+  // our own pages, so pasting it changes nothing.
   var PREVIEW = script.getAttribute("data-preview") === "1";
   var MAX_TURNS = 12;
 
   // One widget per page, however many times the tag was pasted.
-  if (window.__servoliaAssistant) return;
-  window.__servoliaAssistant = true;
+  if (window.__siteAssistant) return;
+  window.__siteAssistant = true;
 
   function ready(fn) {
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", fn);
@@ -218,12 +245,19 @@
       }, 6000);
     }
 
-    // Let the host page open it from its own buttons: onclick="ServoliaAssistant.open()"
-    window.ServoliaAssistant = {
+    /* Let the host page open it from its own buttons:
+     *   onclick="SiteAssistant.open()"
+     * Named for what it is, not for who made it — the old name put a supplier
+     * in the client's own HTML the moment they wired a button to it, and in
+     * devtools for anyone who typed `window.` on their site. The old name is
+     * kept as an alias so any page already wired to it keeps working. */
+    var api = {
       open: function () { setOpen(true); },
       close: function () { setOpen(false); },
       ask: function (text) { setOpen(true); submit(String(text || "")); },
     };
+    window.SiteAssistant = api;
+    window.ServoliaAssistant = api;
 
     function applyLang() {
       panel.setAttribute("dir", isRtl() ? "rtl" : "ltr");

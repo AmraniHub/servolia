@@ -5,7 +5,7 @@ import { readUpgradeToken, subscriptionContext, referenceFor } from "@/lib/upgra
 import { supabaseAdmin } from "@/lib/supabase";
 import { getClientSite } from "@/lib/clientSites";
 import { clientRefFor } from "@/lib/clientRefs";
-import { assistantSlugFor, installSnippet } from "@/lib/assistant";
+import { assistantSlugFor, installSnippet, ASSISTANT_ORIGIN } from "@/lib/assistant";
 import { assistantInstalled } from "@/lib/assistantInstall";
 import { ASSISTANT_SITES } from "@/lib/assistantSites";
 import { HOSTING_TIERS, CLIENT_PRODUCTS } from "@/lib/hosting";
@@ -78,7 +78,14 @@ export default async function AssistantPage({
     ? await assistantInstalled({ repo: ref.repo, branch: ref.branch, siteRoot: ref.siteRoot ?? null })
     : null;
   const position = config?.widgetPosition === "left" ? "left" : "right";
-  const snippet = slug ? installSnippet(slug, position) : "";
+  /* A site WE host gets the relative src — their own domain proxies it, so
+     nothing in their page source names a supplier. A client whose site is
+     elsewhere is going to paste this into a host that cannot proxy, where a
+     relative path would simply 404 and the assistant would never appear, so
+     that one gets the absolute URL. */
+  const snippet = slug
+    ? installSnippet(slug, position, hosted ? {} : { origin: ASSISTANT_ORIGIN })
+    : "";
 
   const initial: BriefInitial | null = ctx
     ? {
