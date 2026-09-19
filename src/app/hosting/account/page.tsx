@@ -18,6 +18,7 @@ import NoticeBell from "@/components/client/NoticeBell";
 import { noticesFor } from "@/lib/clientNotices";
 import FileManager from "@/components/client/FileManager";
 import { acceptAttribute, acceptedList } from "@/lib/siteUpload";
+import { TRIAL_DAYS, trialStateFor } from "@/lib/assistantTrial";
 import RenewalBar from "@/components/client/RenewalBar";
 import ClientSignIn from "@/components/client/ClientSignIn";
 import ClientSignOut from "@/components/client/ClientSignOut";
@@ -450,6 +451,11 @@ export default async function AccountPage({
      card then opens the showroom and the settings page, not just the price. */
   const builtAssistant = recommendAssistant && Boolean(ASSISTANT_SITES[ctx.ref.toLowerCase()]);
   const settingsUrl = builtAssistant && subId ? await assistantLinkFor(subId) : null;
+  /* Where they stand on the free week. The card's reassurance has to match it:
+     promising "free for 7 days, nothing to pay" to a client who already had
+     their week is a promise the code refuses to keep — one trial per client,
+     and a second attempt is answered with "ended". */
+  const trialState = builtAssistant ? await trialStateFor(ctx.ref) : { state: "paid" as const };
 
   const money = (n: number) => (fr ? `${usd(n)} $` : `$${usd(n)}`);
 
@@ -926,6 +932,33 @@ export default async function AccountPage({
                 </Link>
               ) : null}
             </span>
+          ) : null}
+          {/* THE PRICE IS THE FIRST THING ON THIS CARD, AND THE TRIAL IS FREE.
+              Without this line a client reads "$12/month" directly above a link
+              saying "trial on my site" and reasonably assumes the trial takes a
+              card and turns into a subscription — so the safest-looking move is
+              to click nothing. Every clause here is enforced in code: no Stripe
+              object is created to start a trial, and access is checked against
+              the end date on every request, so it stops itself on day 7 whether
+              or not the nightly job runs. */}
+          {builtAssistant && linkToken && trialState.state === "none" ? (
+            <p className="mt-3 text-[12.5px] text-[#5B6B4F] leading-relaxed">
+              {fr
+                ? `L'essai est gratuit et sans carte bancaire. Au bout de ${TRIAL_DAYS} jours, il s'arrête de lui-même — rien à résilier. Vous ne payez les ${CLIENT_PRODUCTS.chatbot.monthlyUsd} $ que si vous décidez de le garder, et il continue alors sans rien réinstaller.`
+                : `The trial is free and takes no card. After ${TRIAL_DAYS} days it stops on its own — there is nothing to cancel. You pay the $${CLIENT_PRODUCTS.chatbot.monthlyUsd} only if you decide to keep it, and then it simply carries on with nothing to reinstall.`}
+            </p>
+          ) : builtAssistant && trialState.state === "running" ? (
+            <p className="mt-3 text-[12.5px] text-[#5B6B4F] leading-relaxed">
+              {fr
+                ? `Votre essai gratuit est en cours jusqu'au ${new Date(trialState.until).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}. Il s'arrêtera tout seul ce jour-là — rien à résilier. Pour le garder : ${CLIENT_PRODUCTS.chatbot.monthlyUsd} $/mois.`
+                : `Your free trial is running until ${new Date(trialState.until).toLocaleDateString("en-GB", { day: "numeric", month: "long" })}. It stops by itself that day — there is nothing to cancel. To keep it: $${CLIENT_PRODUCTS.chatbot.monthlyUsd}/month.`}
+            </p>
+          ) : builtAssistant && trialState.state === "ended" ? (
+            <p className="mt-3 text-[12.5px] text-[#5B6B4F] leading-relaxed">
+              {fr
+                ? `Votre semaine d'essai a eu lieu et l'assistant s'est retiré tout seul — vous n'avez rien payé. Pour le remettre en ligne, mêmes réglages : ${CLIENT_PRODUCTS.chatbot.monthlyUsd} $/mois.`
+                : `Your trial week has happened and the assistant stepped back on its own — you were not charged. To put it back, same settings: $${CLIENT_PRODUCTS.chatbot.monthlyUsd}/month.`}
+            </p>
           ) : null}
         </div>
       ) : null}
