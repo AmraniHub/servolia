@@ -105,10 +105,14 @@ export async function POST(req: NextRequest) {
   const { row, ref, email, notes } = found;
 
   if (doing === "set-password") {
+    /* NOT GATED ON HAVING AN EDITOR ANY MORE.
+       This is the same credential as the sign-in on the service page, so a
+       client who can sign in must be able to change it — refusing because
+       their pages happen to be edited for them left them holding a password
+       they could not rotate. `ref` alone is the requirement, and rowFor()
+       above has already established it. The editor entry is still read, for
+       the business name in the alert. */
     const site = editableSite(ref);
-    if (!site) {
-      return NextResponse.json({ ok: false, error: "There is no page editor on this website yet." }, { status: 400 });
-    }
     const password = String(body.password ?? "");
     const problem = passwordProblem(password);
     if (problem) return NextResponse.json({ ok: false, error: problem }, { status: 400 });
@@ -125,7 +129,7 @@ export async function POST(req: NextRequest) {
     /* Announced, not logged. A password change the owner did not make is the
        one event on this page worth interrupting someone for. */
     await sendTelegramMessage(
-      `🔑 *${site.businessName}* changed their website editor password.\n` +
+      `🔑 *${site?.businessName ?? ref}* changed their password (portal sign-in${site ? " and editor" : ""}).\n` +
         `Client: ${email ?? ref}\nIf they did not do this, set ${`EDITOR_PW_${ref.toUpperCase()}`} to a fresh hash.`,
     );
     return NextResponse.json({ ok: true });

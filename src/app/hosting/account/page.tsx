@@ -985,6 +985,19 @@ export default async function AccountPage({
 
       <Section title={t.secAccount} when={dashPage === "billing"}>
 
+      {/* THE PASSWORD MUST NOT DEPEND ON HAVING AN EDITOR.
+          It is the same credential as the sign-in on this page — identify()
+          checks it with the same passwordMatchesFor() — but the only control
+          for it sat under the editor link, behind `showOnPanel !== false`. So
+          a client whose pages we edit for them (goodscochina) could sign in
+          here and had no way to change the password they signed in with, while
+          a temporary staff password of ours also opened their account. Shown
+          here whenever it is not already shown beside the editor, so everyone
+          has exactly one. */}
+      {!editorUrl ? (
+        <EditorPassword token={linkToken} lang={ctxLang} sample={isDemo} withEditor={false} />
+      ) : null}
+
       <a
         href={`/api/billing-portal?t=${encodeURIComponent(linkToken)}`}
         className="flex items-center justify-between gap-3 rounded-2xl border border-[#E8E6E0] bg-white px-6 py-5 mb-3 hover:border-[#CBC9C2] transition"
