@@ -1,0 +1,20 @@
+name: Backfill client site URLs
+
+# Run by hand. The daily dunning pass does this too, so nothing here is
+# scheduled -- this exists so the fill can happen NOW rather than at 10:00,
+# without running the rest of the daily pass, which sends real client mail.
+#
+# GitHub holds CRON_SECRET, so the call is authenticated without the secret
+# ever being read onto a laptop -- which it cannot be, it is sensitive in
+# Vercel by design.
+on:
+  workflow_dispatch: {}
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fill any blank site_url from the client reference
+        run: |
+          curl -sf "https://servolia.com/api/cron/backfill-urls" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
