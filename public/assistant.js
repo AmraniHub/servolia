@@ -172,7 +172,9 @@
     document.head.appendChild(style);
 
     var root = el("div", "sva-root");
-    root.setAttribute("data-servolia-assistant", SLUG);
+    // Named for what it is. This attribute sits in the client's own DOM, one
+    // click away in any element inspector, so it must not carry a supplier.
+    root.setAttribute("data-site-assistant", SLUG);
     var launch = el("button", "sva-launch");
     launch.type = "button";
     launch.innerHTML =
@@ -250,14 +252,15 @@
      * Named for what it is, not for who made it — the old name put a supplier
      * in the client's own HTML the moment they wired a button to it, and in
      * devtools for anyone who typed `window.` on their site. The old name is
-     * kept as an alias so any page already wired to it keeps working. */
-    var api = {
+     * The old name is NOT kept as an alias: it would have been the last thing
+     * in this file naming a supplier, and it can be dropped safely because no
+     * site has the assistant installed yet, so nothing anywhere is wired to
+     * it. If one ever is, wire it to SiteAssistant. */
+    window.SiteAssistant = {
       open: function () { setOpen(true); },
       close: function () { setOpen(false); },
       ask: function (text) { setOpen(true); submit(String(text || "")); },
     };
-    window.SiteAssistant = api;
-    window.ServoliaAssistant = api;
 
     function applyLang() {
       panel.setAttribute("dir", isRtl() ? "rtl" : "ltr");
