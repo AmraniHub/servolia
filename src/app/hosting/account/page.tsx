@@ -385,9 +385,23 @@ export default async function AccountPage({
      who they are. */
   const linkToken = token || (subId ? await mintUpgradeToken(subId) : "");
 
-  const t = T[ctx.lang];
-  const fr = ctx.lang === "fr";
-  const copy = productCopy(ctx.plan, ctx.lang);
+  /* THE PORTAL IS IN ENGLISH FOR EVERY CLIENT (his call, 2026-09-19).
+   *
+   * The clients are worldwide and all of them read English, so one language
+   * here is one thing to keep correct instead of two — a French string that
+   * nobody updated is worse than an English one everybody can read.
+   *
+   * This governs the PORTAL ONLY. Email still goes out in the client's own
+   * language (CLIENT_REFS.lang), because a message that arrives unbidden in
+   * someone's inbox is not the same as a page they chose to open, and their
+   * site, their editor and their assistant all still speak their language.
+   *
+   * The demo keeps its ?lang=fr override so the French rendering can still be
+   * looked at without putting it in front of a client. */
+  const ctxLang: "en" | "fr" = isDemo ? ctx.lang : "en";
+  const t = T[ctxLang];
+  const fr = ctxLang === "fr";
+  const copy = productCopy(ctx.plan, ctxLang);
 
   /* The page editor, for a client who has one mounted on their own domain.
      `adminUrl` is set only once their host is actually rewriting /admin, so
@@ -476,14 +490,14 @@ export default async function AccountPage({
   const recs = dashPage === "overview" || dashPage === "services"
     ? recommendationsFor({
         ref: ctx.ref,
-        lang: ctx.lang,
+        lang: ctxLang,
         files: siteFiles,
         health,
         hasAssistant: ctx.plan.key === "chatbot" || !recommendAssistant,
         linkFor: dashHref,
       })
     : [];
-  const recCopy = recommendationCopy(ctx.lang);
+  const recCopy = recommendationCopy(ctxLang);
 
 
   const serviceCards: ServiceCard[] = Object.values(CLIENT_PRODUCTS)
@@ -497,7 +511,7 @@ export default async function AccountPage({
      * assistant, multilingual search. */
     .filter((prod) => !HOSTING_TIERS.includes(prod.key) || prod.key === ctx.plan.key)
     .map((prod) => {
-      const c = productCopy(prod, ctx.lang);
+      const c = productCopy(prod, ctxLang);
       const yearly = HOSTING_TIERS.includes(prod.key);
       /* A one-off says so. "$145 / month" for finished work is the kind of
          mistake a client only has to see once. */
@@ -513,7 +527,7 @@ export default async function AccountPage({
         blurb: c.blurb,
         price,
         includes: c.includes,
-        value: valueFor(prod.key, ctx.lang),
+        value: valueFor(prod.key, ctxLang),
         bestFor: c.bestFor ?? null,
         owned,
         ready: !owned && prod.key === "chatbot" && builtAssistant,
@@ -546,7 +560,7 @@ export default async function AccountPage({
     ? []
     : noticesFor({
         notes: rowNotes,
-        lang: ctx.lang,
+        lang: ctxLang,
         assistantWaiting: builtAssistant,
         copyReady: copyView === "ready",
         paymentDue: pastDue,
@@ -572,14 +586,14 @@ export default async function AccountPage({
 
   return (
     <Shell
-      lang={ctx.lang}
+      lang={ctxLang}
       siteLabel={ctx.siteLabel || undefined}
       status={{ label, tone }}
-      bell={<NoticeBell notices={notices} lang={ctx.lang} token={linkToken} />}
+      bell={<NoticeBell notices={notices} lang={ctxLang} token={linkToken} />}
       nav={
         <DashNav
           active={dashPage}
-          lang={ctx.lang}
+          lang={ctxLang}
           token={token}
           counts={{ files: siteFiles.files.length }}
           demo={isDemo}
@@ -592,17 +606,17 @@ export default async function AccountPage({
         </div>
       ) : null}
       <div className="flex items-baseline justify-between gap-4 mb-1">
-        <h1 className="text-[26px] font-black text-[#18181B] tracking-tight">{dashLabel(dashPage, ctx.lang)}</h1>
+        <h1 className="text-[26px] font-black text-[#18181B] tracking-tight">{dashLabel(dashPage, ctxLang)}</h1>
         {/* Only for a password session. Someone on an emailed link has nothing
             to sign out of, and a button that does nothing visible is worse
             than no button. */}
-        {!isDemo && !token ? <ClientSignOut lang={ctx.lang} /> : null}
+        {!isDemo && !token ? <ClientSignOut lang={ctxLang} /> : null}
       </div>
       {/* One line under every page title saying what this page is for. A
           client who has to work out what a section does reads it once and
           never comes back. */}
-      {featureIntro(dashPage, ctx.lang) ? (
-        <p className="text-[14px] text-[#71717A] leading-relaxed mb-6 max-w-2xl">{featureIntro(dashPage, ctx.lang)}</p>
+      {featureIntro(dashPage, ctxLang) ? (
+        <p className="text-[14px] text-[#71717A] leading-relaxed mb-6 max-w-2xl">{featureIntro(dashPage, ctxLang)}</p>
       ) : <div className="mb-6" />}
 
       {dashPage === "overview" ? (
@@ -702,7 +716,7 @@ export default async function AccountPage({
       {/* The password sits directly under the link it opens, because that is
           the moment someone realises they do not know it. Only where there is
           an editor to let them into. */}
-      {editorUrl ? <EditorPassword token={linkToken} lang={ctx.lang} sample={isDemo} /> : null}
+      {editorUrl ? <EditorPassword token={linkToken} lang={ctxLang} sample={isDemo} /> : null}
 
       {/* HER EMAIL ON HER PHONE. The settings are derived from her domain's
           own MX record, so the region can never be stale — and the region is
@@ -758,7 +772,7 @@ export default async function AccountPage({
             usually looking for the one they want to change. */}
         <FileManager
           token={linkToken}
-          lang={ctx.lang}
+          lang={ctxLang}
           files={siteFiles.files.map((f) => ({
             name: f.name,
             kind: f.kind,
@@ -773,7 +787,7 @@ export default async function AccountPage({
         <div className="rounded-2xl border border-[#E8E6E0] bg-white p-7">
           <p className="text-[10px] font-black text-[#8A8A80] uppercase tracking-widest mb-3">{t.copyTitle}</p>
           <p className="text-[14px] text-[#52525B] leading-relaxed">{t.copyBody}</p>
-          <RequestCopy token={linkToken} lang={ctx.lang} initial={copyView} sample={isDemo} />
+          <RequestCopy token={linkToken} lang={ctxLang} initial={copyView} sample={isDemo} />
         </div>
       </Section>
 
@@ -829,7 +843,7 @@ export default async function AccountPage({
             sees it, so nobody is quoted one figure and invoiced another. */}
         <DomainSearch
           token={linkToken}
-          lang={ctx.lang}
+          lang={ctxLang}
           sample={isDemo}
         />
       </Section>
@@ -839,7 +853,7 @@ export default async function AccountPage({
           <Recommendations items={recs} heading={recCopy.heading} sub={recCopy.sub} quiet={recCopy.quiet} />
         ) : null}
 
-        <ServiceCards cards={serviceCards} lang={ctx.lang} />
+        <ServiceCards cards={serviceCards} lang={ctxLang} />
 
       <div className="rounded-2xl border border-[#E8E6E0] bg-white p-7 mb-5">
         <p className="text-[10px] font-black text-[#8A8A80] uppercase tracking-widest mb-4">{t.included}</p>
@@ -966,7 +980,7 @@ export default async function AccountPage({
       </Section>
 
       <Section title={t.secHelp} when={dashPage === "help"}>
-        <SupportBox token={linkToken} lang={ctx.lang} sample={isDemo} />
+        <SupportBox token={linkToken} lang={ctxLang} sample={isDemo} />
       </Section>
 
       <Section title={t.secAccount} when={dashPage === "billing"}>

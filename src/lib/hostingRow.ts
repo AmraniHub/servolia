@@ -1,5 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase";
-import { CLIENT_REFS } from "@/lib/clientRefs";
+import { CLIENT_REFS, knownSiteUrl } from "@/lib/clientRefs";
 
 /**
  * FINDING A CLIENT'S BILLING ROW, THE WAY THE REST OF THIS CODEBASE DOES.
@@ -73,6 +73,40 @@ export async function rowForSubscription(subscriptionId: string): Promise<Hostin
     return null;
   }
   return (data as HostingRow) ?? null;
+}
+
+/**
+ * Fill in a blank `site_url` from the address the client's reference already
+ * carries. Runs on the daily pass; idempotent, and it never overwrites.
+ *
+ * WHY THIS IS A JOB AND NOT A FORM FIELD. site_url is typed in by hand when a
+ * client is set up, so it is blank whenever anyone forgot — and that blank is
+ * the link in the CRM and the address the client reads in their own
+ * assistant-trial email. Both live clients had it blank while their domains
+ * had been sitting in CLIENT_REFS since the day they were onboarded.
+ *
+ * It touches ONE column. `notes` carries the trial record, the invite marker
+ * and the editor password hash, and the handover endpoint next door rebuilds
+ * that column from scratch — which is exactly the mistake this must not copy.
+ */
+export async function backfillSiteUrls(): Promise<{ filled: string[]; errors: string[] }> {
+  const filled: string[] = [];
+  const errors: string[] = [];
+  const db = supabaseAdmin();
+  if (!db) return { filled, errors: ["no-db"] };
+
+  const { data, error } = await db.from("hosting_clients").select("id, email, site_url");
+  if (error) return { filled, errors: [error.message] };
+
+  for (const row of (data ?? []) as { id: string; email: string | null; site_url: string | null }[]) {
+    if (row.site_url && row.site_url.trim()) continue;
+    const url = knownSiteUrl(refForEmail(row.email));
+    if (!url) continue;
+    const { error: bad } = await db.from("hosting_clients").update({ site_url: url }).eq("id", row.id);
+    if (bad) errors.push(`${row.email}: ${bad.message}`);
+    else filled.push(`${row.email} -> ${url}`);
+  }
+  return { filled, errors };
 }
 
 /** Replace a row's notes. Keyed on the row's own id, which always exists. */

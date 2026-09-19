@@ -8,6 +8,7 @@ import { resolveHostingPlan, productCopy, HOSTING_TIERS } from "@/lib/hosting";
 import { applyGate } from "@/lib/hostingGate";
 import { clientRefFor } from "@/lib/clientRefs";
 import { expireAssistantTrials, nudgeAssistantTrials } from "@/lib/assistantTrial";
+import { backfillSiteUrls } from "@/lib/hostingRow";
 import { assistantTrialEndedEmail, assistantTrialNudgeEmail } from "@/lib/email";
 import { CLIENT_PRODUCTS } from "@/lib/hosting";
 import { assistantLinkFor } from "@/lib/upgrade";
@@ -285,6 +286,17 @@ export async function GET(req: NextRequest) {
    * conversations it held for them — with the one line to keep it. No gate,
    * no uninstall: the tag stays, drawing nothing, ready for the day they pay.
    * See src/lib/assistantTrial.ts. */
+  /* ── A CLIENT WE KNOW MUST NOT HAVE A BLANK ADDRESS ───────────────────
+   * site_url is typed by hand at setup, so it is blank whenever anyone
+   * forgot — and it is the link in the CRM and the address the client reads
+   * in their own trial email. The domain is already in CLIENT_REFS. Fills
+   * only what is empty, only that one column, every day, for every client
+   * added from here on. */
+  const urls = await backfillSiteUrls();
+  if (urls.filled.length || urls.errors.length) {
+    console.log("[cron/dunning] site_url filled:", urls.filled, "errors:", urls.errors);
+  }
+
   const trials = await expireAssistantTrials(now);
   for (const t of trials.ended) {
     const tpl = assistantTrialEndedEmail({
