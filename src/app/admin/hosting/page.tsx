@@ -3,6 +3,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { Server, ExternalLink, AlertTriangle } from "lucide-react";
 import HostingCheckout from "@/components/admin/HostingCheckout";
 import { referenceFor } from "@/lib/upgrade";
+import { knownSiteUrl, refKeyForEmail } from "@/lib/clientRefs";
 
 export const dynamic = "force-dynamic";
 
@@ -111,14 +112,17 @@ export default async function HostingPage() {
                     {c.subscription_id ? referenceFor(c.subscription_id) : "—"}
                   </td>
                   <td className="px-4 py-3">
-                    {c.site_url ? (
+                    {/* A blank column here used to mean "we do not know this
+                        client's address", when in fact their reference has
+                        carried it all along. Stored value first, then that. */}
+                    {(c.site_url || knownSiteUrl(refKeyForEmail(c.email))) ? (
                       <a
-                        href={c.site_url}
+                        href={c.site_url || knownSiteUrl(refKeyForEmail(c.email))!}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-1 text-[#2563EB] hover:underline"
                       >
-                        {c.site_url.replace(/^https?:\/\//, "")}
+                        {(c.site_url || knownSiteUrl(refKeyForEmail(c.email))!).replace(/^https?:\/\//, "")}
                         <ExternalLink className="w-3 h-3" />
                       </a>
                     ) : (

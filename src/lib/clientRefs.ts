@@ -149,6 +149,27 @@ export function siteLabelFor(ref: string | undefined): string {
  * row in hand but not the Stripe metadata — the admin page, mostly. The
  * assistant's slug is the ref, so this is how that page finds the brief.
  */
+/**
+ * The website address we ALREADY know for a client, from their reference.
+ *
+ * hosting_clients.site_url is typed in by hand when a client is set up, so it
+ * is blank whenever anyone forgot — and a blank address is not a cosmetic gap:
+ * it is the link in the CRM, and the address the client reads in their own
+ * assistant-trial email. Meanwhile the domain is sitting in CLIENT_REFS, where
+ * it had to be recorded anyway for the editor and for sign-in.
+ *
+ * So nothing should ever have to be typed twice. This is the fallback, not the
+ * truth: a stored site_url always wins, because a client can move to an address
+ * that is not their reference label.
+ *
+ * Returns the apex. Where a site canonicalises to www it redirects there in one
+ * hop, which is correct from any address a person might type.
+ */
+export function knownSiteUrl(ref: string | null | undefined): string | null {
+  const label = clientRefFor(ref ?? undefined)?.label?.trim();
+  return label ? `https://${label.replace(/^https?:\/\//, "")}` : null;
+}
+
 export function refKeyForEmail(email: string | null | undefined): string | undefined {
   const e = (email ?? "").trim().toLowerCase();
   if (!e) return undefined;

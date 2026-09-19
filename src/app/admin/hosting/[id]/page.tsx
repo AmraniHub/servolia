@@ -14,7 +14,7 @@ import AssistantInvite from "@/components/admin/AssistantInvite";
 import { assistantSlugFor } from "@/lib/assistant";
 import { assistantInstalled } from "@/lib/assistantInstall";
 import { getClientSite } from "@/lib/clientSites";
-import { clientRefFor, refKeyForEmail } from "@/lib/clientRefs";
+import { clientRefFor, refKeyForEmail, knownSiteUrl } from "@/lib/clientRefs";
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +37,10 @@ export default async function HostingClientPage({ params }: { params: Promise<{ 
   const reference = c.subscription_id ? referenceFor(c.subscription_id) : "—";
   const setUp = Boolean(c.repo || c.vercel_project);
   const domainRec = readDomainRecord(c.notes);
+  /* A stored address wins; otherwise use the one their reference already
+     carries, so LIVE URL is never blank for a client we know. The form is
+     seeded with it too, so saving the row once makes it real. */
+  const siteUrl = c.site_url || knownSiteUrl(refKeyForEmail(c.email));
 
   /* For an assistant row: which brief answers, whether the tag is really on
      the client's home page (read from the repo now, not from a past webhook),
@@ -115,13 +119,16 @@ export default async function HostingClientPage({ params }: { params: Promise<{ 
         ))}
       </div>
 
-      {c.site_url ? (
+      {siteUrl ? (
         <p className="text-sm text-[#52525B] mb-6">
           Site:{" "}
-          <a href={c.site_url.startsWith("http") ? c.site_url : `https://${c.site_url}`} target="_blank" rel="noreferrer"
+          <a href={siteUrl.startsWith("http") ? siteUrl : `https://${siteUrl}`} target="_blank" rel="noreferrer"
              className="inline-flex items-center gap-1 text-[#36671E] hover:underline">
-            {c.site_url} <ExternalLink className="w-3.5 h-3.5" />
+            {siteUrl} <ExternalLink className="w-3.5 h-3.5" />
           </a>
+          {!c.site_url ? (
+            <span className="text-[#A1A1AA]"> · from their client reference, not saved yet — press Save below</span>
+          ) : null}
         </p>
       ) : null}
 
@@ -211,7 +218,7 @@ export default async function HostingClientPage({ params }: { params: Promise<{ 
           id={c.id}
           initial={{
             repo: c.repo, branch: c.branch, site_root: c.site_root,
-            vercel_project: c.vercel_project, site_url: c.site_url, notes: c.notes,
+            vercel_project: c.vercel_project, site_url: siteUrl ?? "", notes: c.notes,
           }}
         />
       </div>
