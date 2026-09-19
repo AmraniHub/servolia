@@ -60,6 +60,18 @@
       return "";
     }
   })();
+  /* THE PATHS, WHICH DIFFER WHEN WE ARE PROXIED.
+   *
+   * /api/chat answers our own marketing chat when a request carries no slug.
+   * Proxying it onto a client's domain would therefore put a reply naming the
+   * supplier one curl away at their address — a leak created by the proxying
+   * itself, not by anything the widget does, since the widget always sends a
+   * slug. So same-origin uses distinct paths the client's host maps to us, and
+   * a bare /api/chat simply does not exist on their domain. Cross-origin (a
+   * Shopify theme) keeps the real paths, where no proxy is involved. */
+  var SAME_ORIGIN = ORIGIN === "";
+  var CHAT_PATH = SAME_ORIGIN ? "/api/site-chat" : ORIGIN + "/api/chat";
+  var FALLBACK_PATH = SAME_ORIGIN ? "/api/site-chat-fallback" : ORIGIN + "/api/chat-fallback";
   var POSITION = script.getAttribute("data-position") === "left" ? "left" : "right";
   // Our own try page sets this so an UNPAID assistant can be tried there. On a
   // client's site the attribute does nothing: the server only honours it from
@@ -341,7 +353,7 @@
       push("user", text);
       busy = true; send.disabled = true; state.error = "";
       render(); showTyping();
-      fetch(ORIGIN + "/api/chat", {
+      fetch(CHAT_PATH, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "omit",
@@ -379,7 +391,7 @@
       b.addEventListener("click", function () {
         if (!contact.value.trim()) { contact.focus(); return; }
         state.formState = "sending"; b.disabled = true; b.textContent = S.sending;
-        fetch(ORIGIN + "/api/chat-fallback", {
+        fetch(FALLBACK_PATH, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "omit",
