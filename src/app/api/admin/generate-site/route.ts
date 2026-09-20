@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { isAdminAuthed } from "@/lib/auth";
 import { generateSiteForBuild } from "@/lib/generateSite";
+import { notifyDraftReady, previewLinkFor } from "@/lib/draftPreview";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -11,8 +12,15 @@ export const maxDuration = 60;
  * Thin admin wrapper around generateSiteForBuild() — the same generation
  * path also runs automatically the moment a paid client submits the intake
  * form (see /api/contact); this endpoint is the manual (re-)run button.
- * POST { buildId }  →  { slug, config, ai }
- * Admin-only.
+ *
+ * It then tells the client, through the SAME notifier the intake path uses
+ * (once per site — a client who already has their link is not emailed
+ * again). So pressing this button on a build whose email is your own is how
+ * the draft-ready email is verified end to end, with no fake sale.
+ *
+ * POST { buildId }  →  { slug, config, ai, notified, previewUrl }
+ * `previewUrl` is always returned so a link a client lost can be re-sent by
+ * hand. Admin-only.
  */
 export async function POST(req: NextRequest) {
   if (!(await isAdminAuthed())) {
@@ -31,5 +39,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Build not found or generation failed" }, { status: 404 });
   }
 
-  return NextResponse.json(result);
+  const notified = await notifyDraftReady({ buildId, slug: result.slug, config: result.config, ai: result.ai });
+  const previewUrl = await previewLinkFor(result.slug, buildId);
+
+  return NextResponse.json({ ...result, notified, previewUrl });
 }

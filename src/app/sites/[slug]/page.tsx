@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import ClientSite from "@/components/ClientSite";
 import ClientAnalytics from "@/components/ClientAnalytics";
 import { getClientSite } from "@/lib/clientSites";
-import { isHiddenDraft, DraftPreviewRibbon } from "@/lib/draftGate";
+import { draftAccess, DraftPreviewRibbon } from "@/lib/draftGate";
 import { supabaseAdmin } from "@/lib/supabase";
 import { paymentAlertFrom } from "@/lib/clientBilling";
 
@@ -27,8 +27,15 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   };
 }
 
-export default async function ClientSitePage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function ClientSitePage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<{ preview?: string }>;
+}) {
   const { slug } = await params;
+  const { preview } = await searchParams;
   const config = await getClientSite(slug);
   if (!config) notFound();
   // A config that exists only for the assistant add-on has no site to render:
@@ -36,8 +43,10 @@ export default async function ClientSitePage({ params }: { params: Promise<{ slu
   // Rendering a template from a brief would put a fake Excellence Agency
   // homepage on servolia.com, indexed or not.
   if (config.assistantOnly) notFound();
-  // Unpublished drafts are private until an admin publishes them.
-  if (await isHiddenDraft(config)) notFound();
+  // Unpublished drafts are private — to an admin, or to the client it was
+  // built for through their signed preview link (query string or cookie).
+  const access = await draftAccess(config, preview);
+  if (access === "hidden") notFound();
 
   // Suspended for non-payment: the site goes offline until the invoice clears.
   // Vercel-style — banner in the portal comes first (14-day grace), this shutoff
@@ -74,10 +83,10 @@ export default async function ClientSitePage({ params }: { params: Promise<{ slu
     }
   }
 
-  const isDraft = config.status && config.status !== "published";
+  const viewer = access === "client" ? "client" : access === "admin" ? "admin" : null;
   return (
     <>
-      {isDraft && <DraftPreviewRibbon lang={config.language === "fr" ? "fr" : "en"} />}
+      {viewer && <DraftPreviewRibbon lang={config.language === "fr" ? "fr" : "en"} viewer={viewer} />}
       <ClientSite config={config} />
       <ClientAnalytics ga4Id={config.ga4Id} metaPixelId={config.metaPixelId} />
     </>

@@ -4,6 +4,7 @@ import { supabaseAdmin, estimateLeadValue, type LeadSource } from "@/lib/supabas
 import { sendEmail, auditConfirmationEmail } from "@/lib/email";
 import { sendMetaCapiEvent } from "@/lib/metaCapi";
 import { generateSiteForBuild } from "@/lib/generateSite";
+import { notifyDraftReady, type NotifyOutcome } from "@/lib/draftPreview";
 import { sendTelegramMessage, telegramConfigured } from "@/lib/telegram";
 import { rateLimited, clientIp } from "@/lib/security";
 
@@ -122,24 +123,38 @@ export async function POST(req: NextRequest) {
           // ── 1c. Auto-generate the draft site from the fresh intake ──────
           // Runs AFTER the response is sent (next/server after()), so the
           // client who just submitted the form never waits on the 10–30s
-          // Claude copywriting call. By the time the founder opens the admin,
-          // the draft should already exist — the founder reviews and publishes
-          // in /admin/sites; auto-generation only prepares the draft.
-          // Strictly best-effort: generateSiteForBuild returns null instead
-          // of throwing, and the try/catch is belt-and-braces. The outcome
-          // arrives as a second, silent Telegram message.
+          // Claude copywriting call. Strictly best-effort: generateSiteForBuild
+          // returns null instead of throwing, and the try/catch is
+          // belt-and-braces.
+          //
+          // THEN THE CLIENT IS TOLD. The moment the draft exists they get the
+          // signed preview link by email (src/lib/draftPreview.ts) — the same
+          // function the admin's Regenerate button calls, once per site. The
+          // silent Telegram follow-up says whether that email went, in words
+          // that name the next action when it did not; a draft the founder
+          // can see and the client cannot is the exact gap this closes.
           if (!updateErr) {
             const buildId = build.id as string;
             after(async () => {
-              let draftSite: { slug: string; ai: boolean } | null = null;
+              let draftSite: Awaited<ReturnType<typeof generateSiteForBuild>> = null;
               try {
                 draftSite = await generateSiteForBuild(buildId);
               } catch {
                 draftSite = null;
               }
+              let notified: NotifyOutcome | null = null;
+              if (draftSite) {
+                notified = await notifyDraftReady({
+                  buildId, slug: draftSite.slug, config: draftSite.config, ai: draftSite.ai,
+                }).catch(() => ({ sent: false, reason: "send-failed" }) as NotifyOutcome);
+              }
               if (telegramConfigured()) {
                 const text = draftSite
-                  ? `🪄 *Draft site ready* — review & publish\nhttps://servolia.com/sites/${draftSite.slug}\n[Open in admin](https://servolia.com/admin/sites)`
+                  ? `🪄 *Draft site ready*\nhttps://servolia.com/sites/${draftSite.slug}\n` +
+                    (notified?.sent
+                      ? `✉️ Client emailed their preview link (${notified.to})\n`
+                      : `⚠️ Client NOT emailed — ${notified?.reason ?? "unknown"}. Press Regenerate on the build page to send it.\n`) +
+                    `[Open in admin](https://servolia.com/admin/sites)`
                   : `⚠️ *Draft generation failed* for the new intake — generate manually from [the build page](https://servolia.com/admin/builds/${buildId})`;
                 await sendTelegramMessage(text, undefined, { silent: true }); // follow-up to the intake alert — no second buzz
               }

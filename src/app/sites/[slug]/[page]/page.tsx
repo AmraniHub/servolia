@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import ClientSite, { type ClientSitePage } from "@/components/ClientSite";
 import ClientAnalytics from "@/components/ClientAnalytics";
 import { getClientSite } from "@/lib/clientSites";
-import { isHiddenDraft, DraftPreviewRibbon } from "@/lib/draftGate";
+import { draftAccess, DraftPreviewRibbon } from "@/lib/draftGate";
 
 export const dynamic = "force-dynamic";
 
@@ -45,12 +45,15 @@ export default async function ClientSubPage({ params }: { params: Promise<{ slug
   const config = await getClientSite(slug);
   // Sub-pages are only meaningful for multi-page sites.
   if (!config || !config.multiPage) notFound();
-  // Unpublished drafts are private until an admin publishes them.
-  if (await isHiddenDraft(config)) notFound();
-  const isDraft = config.status && config.status !== "published";
+  // Unpublished drafts are private — to an admin, or to the client through the
+  // preview cookie /api/draft-preview set on their first click, which is what
+  // lets them move from the home page to /services without losing access.
+  const access = await draftAccess(config);
+  if (access === "hidden") notFound();
+  const viewer = access === "client" ? "client" : access === "admin" ? "admin" : null;
   return (
     <>
-      {isDraft && <DraftPreviewRibbon lang={config.language === "fr" ? "fr" : "en"} />}
+      {viewer && <DraftPreviewRibbon lang={config.language === "fr" ? "fr" : "en"} viewer={viewer} />}
       <ClientSite config={config} page={which} />
       <ClientAnalytics ga4Id={config.ga4Id} metaPixelId={config.metaPixelId} />
     </>

@@ -467,8 +467,8 @@ export const installationPaidEmail = (firstName: string, planName: string, amoun
         </p>
         <ul style="margin:0 0 16px;padding-left:20px;font-size:15px;line-height:1.7;color:#3F3F46;">
           <li><strong>Jour 1 (aujourd'hui) :</strong> Complétez le formulaire d'intake en 8 minutes (lien ci-dessous)</li>
-          <li><strong>Jour 3–5 :</strong> Vous recevez une vidéo Loom présentant votre brouillon</li>
-          <li><strong>Jour 5–7 :</strong> Votre validation → mise en ligne sous 24h</li>
+          <li><strong>Juste après :</strong> Votre première version arrive par email — un lien pour la voir, généralement en quelques minutes</li>
+          <li><strong>Jour 1–3 :</strong> Vous nous dites quoi changer ; votre validation → mise en ligne sous 24h</li>
           <li><strong>Ensuite :</strong> Votre abonnement mensuel démarre, une fois le site en ligne</li>
         </ul>
         ${btn(intakeUrl, "Compléter le formulaire →")}
@@ -493,8 +493,8 @@ export const installationPaidEmail = (firstName: string, planName: string, amoun
       </p>
       <ul style="margin:0 0 16px;padding-left:20px;font-size:15px;line-height:1.7;color:#3F3F46;">
         <li><strong>Day 1 (today):</strong> Complete your 8-minute intake form (link below)</li>
-        <li><strong>Day 3–5:</strong> You get a Loom walkthrough of your draft</li>
-        <li><strong>Day 5–7:</strong> Your approval → we go live within 24 hours</li>
+        <li><strong>Right after:</strong> Your first draft arrives by email — a link to look at, usually within minutes</li>
+        <li><strong>Day 1–3:</strong> You tell us what to change; your approval → we go live within 24 hours</li>
         <li><strong>Then:</strong> Your monthly plan starts, once the site is live</li>
       </ul>
       ${btn(intakeUrl, "Complete intake form →")}
@@ -503,6 +503,77 @@ export const installationPaidEmail = (firstName: string, planName: string, amoun
         Questions? Reply directly${wa ? " or message us on WhatsApp" : ""} — I read every message.
       </p>
       `, { preheader: "Your installation is confirmed. Here is what happens next.", lang: "en" }),
+  };
+};
+
+/**
+ * "Your first draft is ready" — sent by src/lib/draftPreview.ts the moment
+ * the generated site exists, never by a human, once per site.
+ *
+ * It promises only what code or a person will actually do: look at it, reply
+ * with changes, and "we take it live when you say so" — which today the
+ * founder does from the admin, and step 2 of the automation plan makes
+ * automatic. Nothing here mentions the client's own domain until that path
+ * exists. Mechanical copy (the AI call fell back) is called a first pass, and
+ * what the intake did not give is named so the client can send it, rather
+ * than found on day three.
+ */
+export const draftReadyEmail = (o: {
+  businessName: string;
+  previewUrl: string;
+  missing: string[];
+  aiWritten: boolean;
+  lang: "en" | "fr";
+}) => {
+  const items = (list: string[]) => list.map((m) => `<li>${escapeHtml(m)}</li>`).join("");
+  const P = `style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#3F3F46;"`;
+
+  if (o.lang === "fr") {
+    return {
+      subject: `Votre première version est prête — ${o.businessName}`,
+      html: wrapper(`
+        <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">Votre brouillon est prêt</h1>
+        <p ${P}>Bonjour,</p>
+        <p ${P}>
+          Nous avons pris vos réponses et en avons fait une première version de votre site. C'est un aperçu sur notre adresse — regardez-le tranquillement, sur téléphone comme sur ordinateur.
+        </p>
+        ${btn(o.previewUrl, "Voir mon brouillon →")}
+        ${o.aiWritten ? "" : `<p ${P}>Les textes sont une première passe ; nous les affinons avec vous avant la mise en ligne.</p>`}
+        ${o.missing.length ? `
+        <p ${P}><strong>Pour le terminer, il nous manque encore :</strong></p>
+        <ul style="margin:0 0 16px;padding-left:20px;font-size:15px;line-height:1.7;color:#3F3F46;">${items(o.missing)}</ul>
+        <p ${P}>Répondez simplement à cet email avec ces éléments.</p>` : ""}
+        <p ${P}>
+          <strong>Et maintenant ?</strong> Répondez à cet email avec tout ce que vous souhaitez modifier — un mot, une couleur, une photo. Quand la version vous convient, dites-le-nous et nous la mettons en ligne.
+        </p>
+        <p style="margin:24px 0 0;font-size:14px;line-height:1.6;color:#71717A;">
+          Ce lien reste valable 90 jours et n'ouvre que votre brouillon.
+        </p>
+      `, { preheader: "Votre site, premiere version. Regardez, puis dites-nous quoi changer.", lang: "fr" }),
+    };
+  }
+
+  return {
+    subject: `Your first draft is ready — ${o.businessName}`,
+    html: wrapper(`
+      <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">Your draft is ready</h1>
+      <p ${P}>Hello,</p>
+      <p ${P}>
+        We took your answers and turned them into a first version of your site. It's a preview on our address — take your time with it, on your phone as well as your computer.
+      </p>
+      ${btn(o.previewUrl, "See my draft →")}
+      ${o.aiWritten ? "" : `<p ${P}>The wording is a first pass; we refine it with you before it goes live.</p>`}
+      ${o.missing.length ? `
+      <p ${P}><strong>To finish it, we still need:</strong></p>
+      <ul style="margin:0 0 16px;padding-left:20px;font-size:15px;line-height:1.7;color:#3F3F46;">${items(o.missing)}</ul>
+      <p ${P}>Just reply to this email with them.</p>` : ""}
+      <p ${P}>
+        <strong>What happens next?</strong> Reply to this email with anything you'd like changed — a word, a colour, a photo. When it's right, tell us and we take it live.
+      </p>
+      <p style="margin:24px 0 0;font-size:14px;line-height:1.6;color:#71717A;">
+        This link works for 90 days and opens only your draft.
+      </p>
+      `, { preheader: "Your site, first version. Have a look, then tell us what to change.", lang: "en" }),
   };
 };
 

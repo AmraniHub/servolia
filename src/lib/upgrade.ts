@@ -37,6 +37,10 @@ function secret(): Uint8Array {
   return new TextEncoder().encode(s);
 }
 
+/** The same secret for the draft-preview token (src/lib/draftPreview.ts) —
+ *  one key to rotate, not two that can drift apart. */
+export const tokenSecret = secret;
+
 export async function mintUpgradeToken(
   subscriptionId: string,
   days = DEFAULT_TTL_DAYS,
