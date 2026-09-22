@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase";
+import { keepMarkers } from "@/lib/draftPreview";
 
 /**
  * Per-client site archive on GitHub — every delivered (published) site gets a
@@ -96,6 +97,13 @@ export async function restoreSite(slug: string): Promise<{ ok: true } | { ok: fa
   }
   if (!snapshot.slug || !snapshot.config) return { ok: false, reason: "Snapshot missing slug/config" };
 
+  /* The notes column carries marker lines other code relies on — the
+     "draft emailed" record above all, which is what stops a restored-then-
+     regenerated site emailing its client "your first draft" a second time.
+     Rewriting the summary must not erase them. */
+  const { data: prev } = await db.from("client_sites").select("notes").eq("slug", snapshot.slug).maybeSingle();
+  const prevNotes = (prev as { notes?: string | null } | null)?.notes ?? null;
+
   const { error } = await db.from("client_sites").upsert({
     slug: snapshot.slug,
     business: snapshot.business ?? snapshot.slug,
@@ -103,7 +111,7 @@ export async function restoreSite(slug: string): Promise<{ ok: true } | { ok: fa
     config: snapshot.config,
     build_id: snapshot.build_id ?? null,
     status: "draft", // restored sites always come back as drafts — founder republishes deliberately
-    notes: `RESTORED from GitHub archive ${new Date().toISOString().slice(0, 10)}`,
+    notes: keepMarkers(prevNotes, `RESTORED from GitHub archive ${new Date().toISOString().slice(0, 10)}`),
   }, { onConflict: "slug" });
   if (error) return { ok: false, reason: error.message };
   return { ok: true };

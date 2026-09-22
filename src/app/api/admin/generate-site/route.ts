@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { isAdminAuthed } from "@/lib/auth";
 import { generateSiteForBuild } from "@/lib/generateSite";
-import { notifyDraftReady, previewLinkFor } from "@/lib/draftPreview";
+import { notifyDraftReady, previewLinkFor, type NotifyOutcome } from "@/lib/draftPreview";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -39,8 +39,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Build not found or generation failed" }, { status: 404 });
   }
 
-  const notified = await notifyDraftReady({ buildId, slug: result.slug, config: result.config, ai: result.ai });
-  const previewUrl = await previewLinkFor(result.slug, buildId);
+  /* The site is already regenerated and written by now. Neither the email
+     nor the link may turn that into a 500 — the founder would see an error
+     for work that succeeded and press the button again. */
+  let notified: NotifyOutcome;
+  try {
+    notified = await notifyDraftReady({ buildId, slug: result.slug, config: result.config, ai: result.ai });
+  } catch (e) {
+    notified = { sent: false, reason: "send-failed", detail: e instanceof Error ? e.message : String(e) };
+  }
+  let previewUrl: string | null = null;
+  try {
+    previewUrl = await previewLinkFor(result.slug, buildId);
+  } catch (e) {
+    console.error("[generate-site] could not mint the preview link:", e instanceof Error ? e.message : e);
+  }
 
   return NextResponse.json({ ...result, notified, previewUrl });
 }

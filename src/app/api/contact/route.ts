@@ -12,8 +12,12 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export const runtime = "nodejs";
 // The intake auto-wire runs AFTER the response (see after() below) but shares
-// this route's duration budget — the Claude copy call needs the room.
-export const maxDuration = 60;
+// this route's duration budget. The Claude copy call is budgeted at 10–30s
+// and has no timeout of its own; on a slow day it has reached 50s, which
+// under the old 60s ceiling killed the draft-ready email AND the Telegram
+// message that would have said so — silence, against a thank-you screen
+// that now promises a link "within a few minutes". Pro allows 300.
+export const maxDuration = 120;
 
 /**
  * Receives every form submission: free-audit, contact, intake.
@@ -149,14 +153,19 @@ export async function POST(req: NextRequest) {
                 }).catch(() => ({ sent: false, reason: "send-failed" }) as NotifyOutcome);
               }
               if (telegramConfigured()) {
+                /* PLAIN, not Markdown. The client's address is in this message,
+                   and one underscore in it (marie_dubois@…) opens an italic run
+                   Telegram cannot close: a 400, swallowed, and the ONE message
+                   that says "the client was not emailed" is the one that dies.
+                   src/lib/telegram.ts documents exactly this trap. */
                 const text = draftSite
-                  ? `🪄 *Draft site ready*\nhttps://servolia.com/sites/${draftSite.slug}\n` +
+                  ? `Draft site ready\nhttps://servolia.com/sites/${draftSite.slug}\n` +
                     (notified?.sent
-                      ? `✉️ Client emailed their preview link (${notified.to})\n`
-                      : `⚠️ Client NOT emailed — ${notified?.reason ?? "unknown"}. Press Regenerate on the build page to send it.\n`) +
-                    `[Open in admin](https://servolia.com/admin/sites)`
-                  : `⚠️ *Draft generation failed* for the new intake — generate manually from [the build page](https://servolia.com/admin/builds/${buildId})`;
-                await sendTelegramMessage(text, undefined, { silent: true }); // follow-up to the intake alert — no second buzz
+                      ? `Client emailed their preview link: ${notified.to}${notified.recorded ? "" : " (NOT recorded - a retry may send it again)"}\n`
+                      : `CLIENT NOT EMAILED - ${notified?.reason ?? "unknown"}${notified?.detail ? ` (${notified.detail})` : ""}. Press Regenerate on the build page to send it.\n`) +
+                    `Admin: https://servolia.com/admin/sites`
+                  : `DRAFT GENERATION FAILED for the new intake - generate it from the build page: https://servolia.com/admin/builds/${buildId}`;
+                await sendTelegramMessage(text, undefined, { silent: true, plain: true }); // follow-up to the intake alert — no second buzz
               }
             });
           }

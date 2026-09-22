@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getClientSite } from "@/lib/clientSites";
-import { isHiddenDraft } from "@/lib/draftGate";
+import { draftAccess, DraftPreviewRibbon } from "@/lib/draftGate";
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +30,12 @@ export default async function ClientPrivacyPage({ params }: { params: Promise<{ 
   const { slug } = await params;
   const c = await getClientSite(slug);
   if (!c) notFound();
-  if (await isHiddenDraft(c)) notFound();
+  // Same gate as the other pages: an admin, or the client through their
+  // preview cookie — and the same ribbon, so a client reading their draft's
+  // privacy page is still told it is a draft.
+  const access = await draftAccess(c);
+  if (access === "hidden") notFound();
+  const viewer = access === "client" ? "client" : access === "admin" ? "admin" : null;
 
   const fr = c.language === "fr";
   const contact = c.email || null;
@@ -69,6 +74,7 @@ export default async function ClientPrivacyPage({ params }: { params: Promise<{ 
 
   return (
     <main className="min-h-screen bg-white text-[#18181B]">
+      {viewer && <DraftPreviewRibbon lang={fr ? "fr" : "en"} viewer={viewer} />}
       <div className="max-w-2xl mx-auto px-4 sm:px-6 py-14">
         <Link href={`/sites/${c.slug}`} className="text-sm font-semibold text-[#71717A] hover:text-[#18181B]">{S.back}</Link>
         <h1 className="text-3xl font-black mt-4 mb-1">{S.title}</h1>

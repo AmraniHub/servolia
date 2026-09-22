@@ -19,7 +19,7 @@ process.env.UPGRADE_TOKEN_SECRET = "test-only-secret-never-in-production";
 
 const {
   mintPreviewToken, readPreviewToken, previewLinkFor, previewGrantsView,
-  readDraftEmailed, writeDraftEmailed, draftMissing, PREVIEW_COOKIE, PREVIEW_TTL_DAYS,
+  readDraftEmailed, writeDraftEmailed, draftMissing, keepMarkers, PREVIEW_COOKIE, PREVIEW_TTL_DAYS,
 } = await import("../src/lib/draftPreview.ts");
 const { draftReadyEmail } = await import("../src/lib/email.ts");
 const { mintUpgradeToken } = await import("../src/lib/upgrade.ts");
@@ -166,4 +166,88 @@ test("no receipt or thank-you screen still promises a Loom walkthrough in 48 hou
   const form = src("src/components/OnboardingForm.tsx");
   assert.ok(!/Loom/.test(form), "OnboardingForm must not promise a Loom");
   assert.ok(!/48 hours|48 heures/.test(form), "…nor a 48-hour wait");
+});
+
+/* ── what the adversarial review found, kept from coming back ─────────── */
+
+test("the build is the identity: a renamed slug keeps its link, a same-slug later build does not inherit it", async () => {
+  const t = await mintPreviewToken("cabinet-martin", "b-OLD");
+  // Regenerate renamed the slug; the row kept its build. The old link still opens it.
+  assert.equal(await previewGrantsView({ slug: "dentiste-martin", status: "draft", buildId: "b-OLD" }, t), true);
+  // A later build that lands on the original slug is a different client's draft.
+  assert.equal(await previewGrantsView({ slug: "cabinet-martin", status: "draft", buildId: "b-NEW" }, t), false);
+});
+
+test("only a draft is ever granted — not any other non-published status a future change might add", async () => {
+  const t = await mintPreviewToken("x", "b");
+  for (const status of ["archived", "suspended", "paused", "deleted", "published", undefined]) {
+    assert.equal(await previewGrantsView({ slug: "x", status }, t), false, `status ${status} must not grant`);
+  }
+  assert.equal(await previewGrantsView({ slug: "x", status: "draft" }, t), true);
+});
+
+test("keepMarkers carries every servolia-* line through a wholesale notes rewrite", () => {
+  const old = "Platform: Vercel\nservolia-draft-emailed: at: 2026-09-20 | to: a@b.c\nservolia-fulfilled: cs_1 | at: x | plan: y";
+  const out = keepMarkers(old, "RESTORED from GitHub archive 2026-10-01");
+  assert.ok(out.startsWith("RESTORED from GitHub archive 2026-10-01"), "the new summary leads");
+  assert.ok(!out.includes("Platform: Vercel"), "the old summary is replaced");
+  assert.ok(out.includes("servolia-draft-emailed:"), "the draft marker survives");
+  assert.ok(out.includes("servolia-fulfilled:"), "the fulfilment marker survives");
+  assert.equal(keepMarkers(null, "fresh"), "fresh");
+  // A marker already present in the fresh text wins over the old one.
+  const dup = keepMarkers("servolia-draft-emailed: at: OLD | to: a@b.c", "note\nservolia-draft-emailed: at: NEW | to: a@b.c");
+  assert.equal(dup.split("\n").filter((l) => l.startsWith("servolia-draft-emailed:")).length, 1);
+  assert.ok(dup.includes("at: NEW"));
+});
+
+test("the two admin routes that rewrite client_sites.notes go through keepMarkers", () => {
+  assert.ok(src("src/lib/siteArchive.ts").includes("keepMarkers("), "restoreSite must preserve markers");
+  assert.ok(src("src/app/api/assistant-brief/route.ts").includes("keepMarkers("), "the assistant brief must preserve markers");
+});
+
+test("the intake's Telegram follow-up is plain text and has a budget the Claude call fits in", () => {
+  const route = src("src/app/api/contact/route.ts");
+  const start = route.indexOf("Draft site ready");
+  const call = route.indexOf("sendTelegramMessage(", start);
+  const args = route.slice(call, route.indexOf(")", call));
+  assert.ok(/plain:\s*true/.test(args), "one underscore in the client's address must not kill the alert");
+  const m = route.match(/export const maxDuration = (\d+)/);
+  assert.ok(m && Number(m[1]) >= 120, `maxDuration must be >= 120, is ${m && m[1]}`);
+});
+
+test("an invalid link lands on a page that says so, not on the sales homepage or a 404", () => {
+  const route = src("src/app/api/draft-preview/route.ts");
+  assert.ok(route.includes("/draft-expired"), "the route redirects there");
+  assert.ok(!route.includes("draft=expired"), "…and not to a homepage flag nothing renders");
+  const page = src("src/app/draft-expired/page.tsx");
+  assert.ok(/hello@servolia\.com/.test(page), "the page names the way to get a new link");
+  assert.ok(/n'est plus valable/.test(page) && /no longer valid/.test(page), "both languages, since the token carries none");
+  assert.ok(route.includes('eq("build_id", claim.buildId)'), "the current slug is looked up by build, so a rename does not strand the link");
+});
+
+test("a draft never fires the client's own analytics", () => {
+  for (const p of ["src/app/sites/[slug]/page.tsx", "src/app/sites/[slug]/[page]/page.tsx"]) {
+    assert.ok(/\{!viewer && <ClientAnalytics/.test(src(p)), `${p} must render analytics only for a published visitor`);
+  }
+});
+
+test("the intake's thank-you screen appears only when the server took the answers", () => {
+  const form = src("src/components/OnboardingForm.tsx");
+  assert.ok(/ok = res\.ok/.test(form), "the response status is read");
+  assert.ok(/if \(ok\) setSubmitted\(true\);/.test(form), "success only on ok");
+  assert.ok(/setFailed\(true\)/.test(form), "…and a visible failure otherwise");
+  assert.ok(/role="alert"/.test(form), "the failure is announced, not just coloured");
+});
+
+test("the admin Regenerate button cannot 500 after the site is already regenerated", () => {
+  const route = src("src/app/api/admin/generate-site/route.ts");
+  assert.ok(/try \{\s*notified = await notifyDraftReady\(/.test(route));
+  assert.ok(/try \{\s*previewUrl = await previewLinkFor\(/.test(route));
+});
+
+test("a database read that fails is never read as 'not sent yet'", () => {
+  const dp = src("src/lib/draftPreview.ts");
+  assert.ok(/error: buildErr/.test(dp) && /error: siteErr/.test(dp), "both reads capture their error");
+  assert.ok(/reason: "db-error"/.test(dp), "…and report it instead of sending");
+  assert.ok(/reason: "no-row"/.test(dp), "a missing row is not a licence to send unrecorded");
 });

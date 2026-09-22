@@ -16,13 +16,20 @@ import type { ClientSiteConfig } from "@/lib/clientSites";
  * exists, and sends it by the same code path that generated the draft — so
  * it cannot depend on anyone remembering.
  *
- * THE TOKEN. A signed claim on ONE slug, minted only into an email sent to
- * the address on the build, so possession of the link is possession of the
+ * THE TOKEN. A signed claim on ONE build, minted only into an email sent to
+ * the address on that build, so possession of the link is possession of the
  * inbox — the same reasoning as the hosting-upgrade token it borrows its
  * secret from. It grants exactly one thing: viewing an unpublished draft. It
  * cannot publish, edit, or open any other site. Ninety days, because a
  * client may come back to the link weeks later and "your link has expired"
  * is the wrong first thing to read.
+ *
+ * THE BUILD, NOT THE SLUG, IS THE IDENTITY. A regenerate that corrects the
+ * business name renames the slug; the row keeps its build_id. The gate
+ * compares build ids when it can, and the landing route looks the current
+ * slug up by build, so the link in the client's inbox keeps working after a
+ * rename — and a token minted for one build can never open a later build
+ * that happens to land on the same slug.
  *
  * THE COOKIE. A draft can be several pages, and a query-string token dies on
  * the first click to /services. So the emailed link lands on
@@ -30,10 +37,13 @@ import type { ClientSiteConfig } from "@/lib/clientSites";
  * and redirects to the draft. Every page under /sites then reads the cookie.
  *
  * ONCE PER SITE. The send is recorded on client_sites.notes in the same
- * one-line marker style fulfilment.ts and assistantTrial.ts use — no
- * migration. A re-submitted intake regenerates the draft and sends nothing
- * twice. The marker is written AFTER a successful send, so a crash between
- * the two can at worst repeat the email; the reverse order could lose it.
+ * one-line marker style fulfilment.ts uses — no migration. Two admin routes
+ * rewrite that column wholesale (archive/restore, the assistant brief); they
+ * go through keepMarkers() so the record survives them. The marker is
+ * written AFTER a successful send, so a crash between the two can at worst
+ * repeat the email; the reverse order could lose it. A database read that
+ * FAILS is never treated as "not sent yet": supabase-js reports errors as a
+ * value, and a discarded error here would email a client on every retry.
  */
 
 const ROLE = "draft-preview";
@@ -75,23 +85,29 @@ export async function previewLinkFor(slug: string, buildId: string, origin = "ht
 }
 
 /**
- * Does this token let its holder see this site? Only an unpublished draft,
- * only the slug the token names. Pure apart from the signature check, so it
- * is testable without a request; draftGate.tsx composes it with the admin
- * session and the cookie.
+ * Does this token let its holder see this site? Only a `draft` — not
+ * published, and not any other status a future change might add — and only
+ * the build the token names (falling back to the slug for a config with no
+ * build, which is what a bundled demo is). Pure apart from the signature
+ * check, so it is testable without a request; draftGate.tsx composes it with
+ * the admin session and the cookie.
  */
 export async function previewGrantsView(
-  config: { slug: string; status?: string },
+  config: { slug: string; status?: string; buildId?: string },
   token: string | null | undefined,
 ): Promise<boolean> {
-  if (!config.status || config.status === "published") return false; // nothing to grant
+  if (config.status !== "draft") return false;
   const claim = await readPreviewToken(token);
-  return Boolean(claim && claim.slug === config.slug);
+  if (!claim) return false;
+  if (config.buildId) return claim.buildId === config.buildId;
+  return claim.slug === config.slug;
 }
 
 /* ── the once-per-site marker, on client_sites.notes ─────────────────────── */
 
 const MARKER = "servolia-draft-emailed:";
+const isMarker = (l: string) => /^servolia-[a-z-]+:/.test(l);
+const markerPrefix = (l: string) => l.slice(0, l.indexOf(":") + 1);
 
 export interface DraftEmailRecord {
   at: string;
@@ -112,6 +128,20 @@ export function readDraftEmailed(notes: string | null | undefined): DraftEmailRe
 export function writeDraftEmailed(notes: string | null | undefined, rec: DraftEmailRecord): string {
   const kept = (notes ?? "").split("\n").filter((l) => !l.startsWith(MARKER) && l.trim() !== "");
   return [...kept, `${MARKER} at: ${rec.at} | to: ${rec.to}`].join("\n");
+}
+
+/**
+ * Replace the human-readable part of a notes column while keeping every
+ * `servolia-*:` marker line the old value carried. For any code that writes
+ * client_sites.notes wholesale — archive/restore, the assistant brief — so a
+ * rewrite of the summary cannot erase the record that the client was already
+ * sent their draft (and email them "your first draft" a second time).
+ */
+export function keepMarkers(existing: string | null | undefined, fresh: string): string {
+  const freshLines = fresh.split("\n").filter((l) => l.trim() !== "");
+  const freshPrefixes = new Set(freshLines.filter(isMarker).map(markerPrefix));
+  const kept = (existing ?? "").split("\n").filter((l) => isMarker(l) && !freshPrefixes.has(markerPrefix(l)));
+  return [...freshLines, ...kept].join("\n");
 }
 
 /* ── what the client should still send us ────────────────────────────────── */
@@ -135,14 +165,15 @@ export function draftMissing(config: Pick<ClientSiteConfig, "language" | "phone"
 /* ── the one place the email is sent from ────────────────────────────────── */
 
 export type NotifyOutcome =
-  | { sent: true; to: string; previewUrl: string }
-  | { sent: false; reason: "no-db" | "no-email" | "already" | "send-failed"; to?: string };
+  | { sent: true; to: string; previewUrl: string; recorded: boolean }
+  | { sent: false; reason: "no-db" | "no-email" | "no-row" | "already" | "db-error" | "send-failed"; to?: string; detail?: string };
 
 /**
  * Tell the client their draft exists. Called by the intake path the moment
  * generation finishes, and by the admin's Regenerate button — the same
  * function, so the founder pressing the button is also how the email is
- * verified. Once per site; never throws.
+ * verified. Once per site; never throws; never sends when it could not
+ * check whether it already had.
  */
 export async function notifyDraftReady(args: {
   buildId: string;
@@ -154,13 +185,19 @@ export async function notifyDraftReady(args: {
   const db = supabaseAdmin();
   if (!db) return { sent: false, reason: "no-db" };
 
-  const { data: build } = await db.from("builds").select("email").eq("id", args.buildId).maybeSingle();
+  const { data: build, error: buildErr } = await db.from("builds").select("email").eq("id", args.buildId).maybeSingle();
+  if (buildErr) return { sent: false, reason: "db-error", detail: `builds: ${buildErr.message}` };
   const to = (build as { email?: string | null } | null)?.email?.trim() ?? "";
   if (!to) return { sent: false, reason: "no-email" };
 
-  const { data: site } = await db.from("client_sites").select("id, notes").eq("slug", args.slug).maybeSingle();
+  const { data: site, error: siteErr } = await db.from("client_sites").select("id, notes").eq("slug", args.slug).maybeSingle();
+  if (siteErr) return { sent: false, reason: "db-error", detail: `client_sites: ${siteErr.message}`, to };
   const row = site as { id: string; notes: string | null } | null;
-  if (row && readDraftEmailed(row.notes)) return { sent: false, reason: "already", to };
+  /* The row is what the send is recorded on. generateSiteForBuild writes it
+     before this runs; its absence means something is wrong, and an email
+     that cannot be recorded would be repeated on every retry. */
+  if (!row) return { sent: false, reason: "no-row", to };
+  if (readDraftEmailed(row.notes)) return { sent: false, reason: "already", to };
 
   const previewUrl = await previewLinkFor(args.slug, args.buildId, args.origin ?? "https://servolia.com");
   const tpl = draftReadyEmail({
@@ -173,10 +210,9 @@ export async function notifyDraftReady(args: {
   const ok = await sendEmail(to, tpl.subject, tpl.html).catch(() => false);
   if (!ok) return { sent: false, reason: "send-failed", to };
 
-  if (row) {
-    await db.from("client_sites")
-      .update({ notes: writeDraftEmailed(row.notes, { at: new Date().toISOString(), to }) })
-      .eq("id", row.id);
-  }
-  return { sent: true, to, previewUrl };
+  const { error: markErr } = await db.from("client_sites")
+    .update({ notes: writeDraftEmailed(row.notes, { at: new Date().toISOString(), to }) })
+    .eq("id", row.id);
+  if (markErr) console.error("[draft-preview] email sent but the marker did not write — a retry may repeat it:", markErr.message);
+  return { sent: true, to, previewUrl, recorded: !markErr };
 }

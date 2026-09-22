@@ -7,6 +7,7 @@ import { assistantSlugFor, hostnameOf, installSnippet, isAssistantLang, ASSISTAN
 import { clientRefFor } from "@/lib/clientRefs";
 import { ASSISTANT_SITES } from "@/lib/assistantSites";
 import { HOSTING_TIERS } from "@/lib/hosting";
+import { keepMarkers } from "@/lib/draftPreview";
 
 export const runtime = "nodejs";
 
@@ -134,7 +135,8 @@ export async function POST(req: NextRequest) {
     status: "draft",
   };
 
-  const { data: current } = await db.from("client_sites").select("id").eq("slug", slug).maybeSingle();
+  const { data: current } = await db.from("client_sites").select("id, notes").eq("slug", slug).maybeSingle();
+  const cur = current as { id: string; notes?: string | null } | null;
   const record = {
     slug,
     build_id: null,
@@ -142,10 +144,11 @@ export async function POST(req: NextRequest) {
     niche: config.niche,
     config,
     status: "draft" as const,
-    notes: "ASSISTANT ONLY — hosting add-on (chatbot). No site is rendered for this slug.",
+    // Keeps any servolia-*: marker line the row already carries (see draftPreview.ts).
+    notes: keepMarkers(cur?.notes, "ASSISTANT ONLY — hosting add-on (chatbot). No site is rendered for this slug."),
   };
-  const { error } = current
-    ? await db.from("client_sites").update(record).eq("id", (current as { id: string }).id)
+  const { error } = cur
+    ? await db.from("client_sites").update(record).eq("id", cur.id)
     : await db.from("client_sites").insert(record);
   if (error) {
     console.error("[assistant-brief] write failed:", error.message);

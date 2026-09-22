@@ -55,7 +55,8 @@ export default async function ClientSubPage({ params }: { params: Promise<{ slug
     <>
       {viewer && <DraftPreviewRibbon lang={config.language === "fr" ? "fr" : "en"} viewer={viewer} />}
       <ClientSite config={config} page={which} />
-      <ClientAnalytics ga4Id={config.ga4Id} metaPixelId={config.metaPixelId} />
+      {/* No analytics on a draft — see the home page for why. */}
+      {!viewer && <ClientAnalytics ga4Id={config.ga4Id} metaPixelId={config.metaPixelId} />}
     </>
   );
 }

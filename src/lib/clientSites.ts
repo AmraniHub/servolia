@@ -241,6 +241,10 @@ export interface ClientSiteConfig {
 
   // Meta
   status?: "draft" | "published";
+  /** The build this row was generated for — the stable identity a draft-preview
+   *  token is checked against, so a renamed slug keeps its link and a token for
+   *  one build can never open a later build on the same slug. */
+  buildId?: string;
 }
 
 /* ───────────────────────── helpers ───────────────────────── */
@@ -1043,6 +1047,7 @@ interface ClientSiteRow {
   slug: string;
   config: ClientSiteConfig;
   status: string;
+  build_id?: string | null;
 }
 
 /**
@@ -1063,11 +1068,18 @@ export async function getClientSite(slug: string): Promise<ClientSiteConfig | un
     try {
       const { data } = await db
         .from("client_sites")
-        .select("slug, config, status")
+        .select("slug, config, status, build_id")
         .eq("slug", clean)
         .maybeSingle();
       const row = data as ClientSiteRow | null;
-      if (row?.config) return { ...row.config, slug: row.slug, status: (row.status as ClientSiteConfig["status"]) ?? "published" };
+      if (row?.config) {
+        return {
+          ...row.config,
+          slug: row.slug,
+          status: (row.status as ClientSiteConfig["status"]) ?? "published",
+          buildId: row.build_id ?? undefined,
+        };
+      }
     } catch {
       /* table may not exist yet — fall through */
     }
@@ -1084,11 +1096,16 @@ export async function listClientSites(): Promise<ClientSiteConfig[]> {
     try {
       const { data } = await db
         .from("client_sites")
-        .select("slug, config, status")
+        .select("slug, config, status, build_id")
         .order("created_at", { ascending: false });
       const rows = (data as ClientSiteRow[] | null) ?? [];
       if (rows.length) {
-        return rows.map((r) => ({ ...r.config, slug: r.slug, status: (r.status as ClientSiteConfig["status"]) ?? "published" }));
+        return rows.map((r) => ({
+          ...r.config,
+          slug: r.slug,
+          status: (r.status as ClientSiteConfig["status"]) ?? "published",
+          buildId: r.build_id ?? undefined,
+        }));
       }
     } catch {
       /* fall through */

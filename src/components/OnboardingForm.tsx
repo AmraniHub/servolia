@@ -214,6 +214,7 @@ function Form({ lang }: { lang: Lang }) {
   const [step, setStep] = useState(0);
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [failed, setFailed] = useState(false);
 
   const [form, setForm] = useState({
     // Step 0 – Business
@@ -250,17 +251,27 @@ function Form({ lang }: { lang: Lang }) {
 
   const handleSubmit = async () => {
     setLoading(true);
+    setFailed(false);
+    let ok = false;
     try {
-      await fetch("/api/contact", {
+      const res = await fetch("/api/contact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         // `lang` tells the team (and the generator) which language this client
         // filled the intake in — French answers in, French site out.
         body: JSON.stringify({ ...form, plan, planName, type: "intake", sessionId, lang }),
       });
-    } catch {}
+      ok = res.ok;
+    } catch {
+      ok = false;
+    }
     setLoading(false);
-    setSubmitted(true);
+    // The thank-you screen promises a draft link within minutes. It is shown
+    // only when the server actually took the answers. It used to be shown
+    // after a dropped connection too — and then nothing came, and the client
+    // had no way to know their answers had never arrived.
+    if (ok) setSubmitted(true);
+    else setFailed(true);
   };
 
   const inputClass = "w-full px-4 py-3 rounded-xl border border-[#E8E6E0] text-sm text-[#18181B] placeholder:text-[#52525B] focus:outline-none focus:ring-2 focus:ring-[#36671E] focus:border-transparent transition-all bg-white";
@@ -465,6 +476,14 @@ function Form({ lang }: { lang: Lang }) {
                 </div>
               </div>
             </div>
+          )}
+
+          {failed && (
+            <p role="alert" className="mt-6 text-sm font-semibold text-[#B91C1C]">
+              {lang === "fr"
+                ? "Vos réponses n'ont pas pu être envoyées — vérifiez votre connexion et réessayez. Rien n'est perdu : elles sont toujours dans le formulaire."
+                : "Your answers could not be sent — check your connection and try again. Nothing is lost: they are still in the form."}
+            </p>
           )}
 
           {/* Navigation */}

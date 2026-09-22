@@ -88,7 +88,10 @@ export default async function ClientSitePage({
     <>
       {viewer && <DraftPreviewRibbon lang={config.language === "fr" ? "fr" : "en"} viewer={viewer} />}
       <ClientSite config={config} />
-      <ClientAnalytics ga4Id={config.ga4Id} metaPixelId={config.metaPixelId} />
+      {/* A draft being reviewed is not traffic. The client's own GA4 and pixel
+          ids come from the intake, and firing them here would write our
+          servolia.com/sites/* preview views into their property before launch. */}
+      {!viewer && <ClientAnalytics ga4Id={config.ga4Id} metaPixelId={config.metaPixelId} />}
     </>
   );
 }
