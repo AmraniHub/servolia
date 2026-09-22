@@ -22,8 +22,8 @@ import { SETUP_PLAN, PLANS, PLAN_ORDER, POPULAR_PLAN_KEY } from "@/lib/pricing";
 // Offer plus bas, donc un prix périmé ici se retrouve dans Google.
 const BLURBS: Record<string, string> = {
   essentiel: "Site pro + assistante IA — pour ne plus perdre une demande, même la nuit.",
-  croissance: "Tout Essentiel + pipeline, avis Google, rappels SMS et rapport mensuel.",
-  performance: "Multi-praticiens, suivi publicitaire en boucle fermée et IA sur mesure.",
+  croissance: "Tout Essentiel, avec trois fois plus de conversations — pour 2 à 3 praticiens.",
+  performance: "800 conversations par mois pour le trafic publicitaire, support prioritaire.",
 };
 
 const packages = PLAN_ORDER.map((k) => ({
@@ -288,7 +288,7 @@ export default async function FrGeoPage({ params }: { params: Promise<{ niche: s
         </div>
       </section>
 
-      <StickyMobileCTA label="Recevoir mon audit gratuit" sub="Gratuit · Livré en 24 h · Sans appel" href="/fr/audit" />
+      <StickyMobileCTA label="Recevoir mon audit gratuit" sub="Gratuit · Résultat en 20 secondes · Sans appel" href="/fr/audit" />
 
       <ValueStack lang="fr" />
       <Guarantee lang="fr" />

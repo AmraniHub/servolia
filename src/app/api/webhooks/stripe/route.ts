@@ -33,7 +33,8 @@ import { billingPortalUrl } from "@/lib/clientPortal";
 import { sendTelegramMessage } from "@/lib/telegram";
 import { provisionAddon } from "@/lib/provisioning";
 import { TOPUP_PACKS, monthKey, writeTopup } from "@/lib/conversationCap";
-import { topupReceiptEmail, oneOffServicePaidEmail } from "@/lib/email";
+import { topupReceiptEmail, oneOffServicePaidEmail, receptionistPaidEmail } from "@/lib/email";
+import { completeReceptionistPurchase, loadReceptionist } from "@/lib/receptionistTrial";
 
 export const runtime = "nodejs";
 
@@ -632,6 +633,75 @@ export async function POST(req: NextRequest) {
         }
 
         return NextResponse.json({ received: true, line: "arrears" });
+      }
+
+      // ── RECEPTIONIST branch: a practice keeps the receptionist it tried ──
+      // Must stay ABOVE the generic plan branch below, which would open a
+      // build in `intake` and email her an intake form for a website she
+      // never asked for. This one makes her a client on the receptionist
+      // that is already on her site (completeReceptionistPurchase), and is
+      // idempotent on the subscription id.
+      if (session.mode === "subscription" && session.metadata?.kind === "receptionist") {
+        const customerEmail = (session.customer_details?.email ?? session.customer_email ?? session.metadata?.email ?? "").trim().toLowerCase();
+        const lang = session.metadata?.lang === "en" ? "en" : "fr";
+        const out = await completeReceptionistPurchase({
+          slug: session.metadata?.slug ?? "",
+          email: customerEmail,
+          planKey: session.metadata?.plan ?? "",
+          billing: session.metadata?.billing === "annual" ? "annual" : "monthly",
+          customerId: (session.customer as string) ?? null,
+          subscriptionId: (session.subscription as string) ?? null,
+        });
+        if (!out.ok) {
+          /* 500 on purpose: Stripe redelivers the event later, and
+             completeReceptionistPurchase is built so a retry finishes the
+             job (see its header). A 200 here would make a transient database
+             failure permanent. */
+          await sendTelegramMessage(
+            `Receptionist payment NOT finished yet - ${customerEmail || "no email"}\n` +
+            `slug ${session.metadata?.slug ?? "?"} · plan ${session.metadata?.plan ?? "?"} · session ${session.id}\n` +
+            `Reason: ${out.reason}\nStripe will redeliver it. If this message keeps coming, record the client by hand.`,
+            undefined, { plain: true },
+          ).catch(() => {});
+          return NextResponse.json({ received: false, line: "receptionist", retry: true }, { status: 500 });
+        }
+        if (out.duplicate) {
+          await sendTelegramMessage(
+            `SECOND SUBSCRIPTION for an already-paid receptionist - ${out.business}\n` +
+            `${customerEmail} paid again (session ${session.id}). Recorded as a client, NOT linked. ` +
+            `Cancel and refund one of the two subscriptions in Stripe, then mark the extra clients row churned.`,
+            undefined, { plain: true },
+          ).catch(() => {});
+          return NextResponse.json({ received: true, line: "receptionist", duplicate: true });
+        }
+        if (!out.already) {
+          const plan = resolvePlan(session.metadata?.plan);
+          if (customerEmail && plan) {
+            const tpl = receptionistPaidEmail({
+              business: out.business,
+              domain: (await loadReceptionist(session.metadata?.slug ?? ""))?.config.receptionist?.domain ?? out.business,
+              planName: lang === "fr" ? plan.nameFr : plan.name,
+              conversations: plan.conversations,
+              lang,
+            });
+            sendEmail(customerEmail, tpl.subject, tpl.html).catch(() => {});
+          }
+          await sendTelegramMessage(
+            `NEW CLIENT from the receptionist trial - ${out.business}\n` +
+            `${out.planName} · EUR ${Math.round(out.monthlyEur * 100) / 100}/mo equivalent · ${session.metadata?.billing ?? "monthly"} · installation waived\n` +
+            (out.linked ? `Linked to their receptionist; the meter and portal are live.\n` : `NOT LINKED to a receptionist row (slug ${session.metadata?.slug ?? "?"}) - their widget will go quiet at the end of the trial. Fix by hand.\n`) +
+            (out.clientId ? `https://servolia.com/admin/clients/${out.clientId}` : ""),
+            undefined, { plain: true },
+          ).catch(() => {});
+          sendMetaCapiEvent({
+            eventName: "Purchase",
+            email: customerEmail,
+            value: (session.amount_total ?? 0) / 100,
+            currency: "EUR",
+            eventSourceUrl: "https://servolia.com/fr/essai",
+          });
+        }
+        return NextResponse.json({ received: true, line: "receptionist", already: out.already });
       }
 
       // ── MONTHLY PLAN branch: recurring subscription, not the installation ──

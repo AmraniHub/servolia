@@ -15,7 +15,7 @@ const DICT = {
     h1b: "losing every month?",
     sub: "Missed calls after hours. No-shows that leave the chair empty. Enquiries nobody follows up. We audit your site, your booking flow and your online presence — and show you exactly what's costing you patients — scored on screen in about 20 seconds.",
     heroCta: "Get my free audit",
-    chips: ["Delivered in 24h", "No commitment", "No sales call"],
+    chips: ["Scored in about 20 seconds", "No commitment", "No sales call"],
 
     leaksTitle: "The three leaks that cost the most",
     leaks: [
@@ -89,7 +89,7 @@ const DICT = {
     h1b: "perdez-vous chaque mois ?",
     sub: "Les appels manqués le soir. Les rendez-vous non honorés qui laissent le fauteuil vide. Les demandes que personne ne relance. On analyse votre site, votre parcours de réservation et votre présence en ligne — et on vous montre exactement ce qui vous coûte des patients — noté à l'écran en 20 secondes environ.",
     heroCta: "Recevoir mon audit gratuit",
-    chips: ["Livré en 24h", "Sans engagement", "Aucun appel commercial"],
+    chips: ["Résultat en 20 secondes environ", "Sans engagement", "Aucun appel commercial"],
 
     leaksTitle: "Les trois fuites qui coûtent le plus cher",
     leaks: [

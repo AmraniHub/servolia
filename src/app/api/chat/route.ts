@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse, after } from "next/server";
 import { reportAiFallback } from "@/lib/aiHealth";
 import { checkConversationCap } from "@/lib/conversationCap";
+import { markSeenLive } from "@/lib/receptionistTrial";
 import { supabaseAdmin, estimateLeadValue } from "@/lib/supabase";
 import { getClientSite } from "@/lib/clientSites";
 import { notifyClientOfLead } from "@/lib/clientNotify";
@@ -256,6 +257,13 @@ export async function POST(req: NextRequest) {
         if (!preview) {
           return NextResponse.json({ error: "Chat is not enabled for this site." }, { status: 403, headers: cors });
         }
+      }
+      /* A practice's trial receptionist talking from her own domain IS the
+         install, whatever the raw HTML shows (tag managers, bot walls). */
+      if (!preview && config.receptionist && !config.receptionist.installedAt && origin) {
+        let host = "";
+        try { host = new URL(origin).hostname; } catch { /* no host, nothing to record */ }
+        if (host) after(() => markSeenLive(siteSlug, host).then(() => undefined));
       }
       const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "?";
       if (rateLimited(`${siteSlug}:${ip}`)) {

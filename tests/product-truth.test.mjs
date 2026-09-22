@@ -184,3 +184,30 @@ test("the two client portals no longer share a cookie name", () => {
   const b = src("src/lib/clientAreaAuth.ts").match(/const COOKIE = "([^"]+)"/)?.[1];
   assert.ok(a && b && a !== b, `clientAuth=${a} clientAreaAuth=${b}`);
 });
+
+/* ── the same claims, on EVERY page (added 2026-09-22) ─────────────────────
+ * The tier test above guarded CarePlansSection only. Seven other pages — the
+ * two homepages, both dentist pages, both aesthetics pages, the city pages —
+ * kept selling reviews automation, SMS reminders and patient confirmations
+ * that no code performs, and the Phase A report called them gone. This scans
+ * every page, component and content file, comments stripped (a comment that
+ * records what was removed is history, not a claim). */
+test("no page anywhere sells a feature nothing performs", () => {
+  const claims = [
+    /reviews automation/i, /SMS reminders?/i, /closed-loop ads/i, /custom AI training/i, /multi-practitioner routing/i,
+    /reminder sent to (the )?patient/i, /48-hour reminders/i, /pick a real slot/i,
+    /automatisation des avis Google/i, /rappels SMS/i, /boucle fermée/i, /IA entraînée sur mesure/i, /routage multi-prati/i,
+    /confirmation et rappel automatique/i, /envoie confirmation et rappel/i, /propose de vrais créneaux/i,
+    /Livré en 24 ?h/i, /Delivered in 24 ?h/i, /automated (email )?confirmations/i, /confirmations and reminders are included/i,
+    /booked straight into your calendar/i, /directly into your calendar/i, /Books straight into your calendar/i, /directement dans votre agenda/i,
+  ];
+  const files = [
+    ...walk(path.join(ROOT, "src/app")), ...walk(path.join(ROOT, "src/components")), ...walk(path.join(ROOT, "src/lib/content")),
+  ].filter((p) => !/[\/]admin[\/]/.test(p));
+  const bad = [];
+  for (const p of files) {
+    const code = readFileSync(p, "utf8").replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+    for (const c of claims) if (c.test(code)) bad.push(`${path.relative(ROOT, p)}: ${c}`);
+  }
+  assert.deepEqual(bad, [], "claims with nothing behind them");
+});

@@ -49,7 +49,7 @@ const cases = [
       { metric: "100 %", label: "Demandes enregistrées au CRM" },
     ],
     capability:
-      "Avec l'IA qui gère les demandes après 18h, les patients réservent, reçoivent une confirmation et un rappel automatiquement — l'agenda se remplit sans travail téléphonique manuel.",
+      "Avec l'IA qui gère les demandes après 18h, chaque patient laisse son nom, son téléphone et le soin souhaité — le cabinet rappelle le matin au lieu de perdre la demande sur répondeur.",
     color: "from-[#36671E] to-[#295115]",
     lightColor: "bg-[#EEF5EA]",
     borderColor: "border-[#36671E]/20",

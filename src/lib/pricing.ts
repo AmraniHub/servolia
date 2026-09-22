@@ -167,9 +167,9 @@ export const CARE_PLANS = PLANS;
 /** @deprecated use SubscriptionPlan */
 export type CarePlan = SubscriptionPlan;
 
-/** À-la-carte recurring add-ons — mostly upgrades for Essentiel clients,
- *  since Croissance and Performance already include SMS and reviews. Each one
- *  sold is also a nudge toward simply moving up a tier. */
+/** À-la-carte recurring add-ons. Only those with `available !== false` are
+ *  sold (SELLABLE_ADDONS): SMS and reviews are defined but have no code
+ *  behind them, so no tier includes them and no page may offer them. */
 export interface AddOn {
   key: string;
   name: string;

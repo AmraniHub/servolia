@@ -23,10 +23,12 @@ export default function AestheticClinicsPage() {
 
   const gains = [
     "AI receptionist captures and qualifies leads 24/7 — even from Instagram",
-    "Treatment-specific booking flows (Botox, fillers, laser, skin care)",
-    "Automated consultation confirmations and 48-hour reminders",
-    "Full source tracking — Google, Meta, referrals — so you scale what works",
-    "Automatic follow-up sequences for cold leads and past clients",
+    // Every line is something code does (2026-09-22): no confirmation,
+    // reminder or follow-up is ever sent to a client's own customers.
+    "It asks which treatment they want, then takes their name and phone — or sends them to your Planity",
+    "Every enquiry reaches you instantly by email, with a one-tap WhatsApp reply",
+    "A client portal: every enquiry, its status and your notes",
+    "A monthly report of what it captured",
   ];
 
   // Prices from src/lib/pricing.ts — never hardcode a tier price here.
@@ -47,14 +49,12 @@ export default function AestheticClinicsPage() {
     {
       name: PLANS.croissance.name,
       price: `€${PLANS.croissance.monthlyEur}/mo`,
-      description: "Everything above, plus the booking flow and the tracking that shows what it earned.",
+      description: "The same product, for a busier clinic.",
       features: [
+        // Tiers differ by conversations, not by features nothing performs.
         `Everything in ${PLANS.essentiel.name}`,
-        `${PLANS.croissance.conversations} AI conversations per month`,
-        "Online booking per treatment type",
-        "48-hour reminders + SMS confirmations",
-        "Lead pipeline + Google reviews automation",
-        "Monthly performance report",
+        `${PLANS.croissance.conversations} AI conversations per month — enough for 2–3 practitioners`,
+        "The live meter in your portal, and a top-up pack if a month runs hot",
       ],
       highlighted: true,
     },
@@ -64,11 +64,8 @@ export default function AestheticClinicsPage() {
       description: "For multi-practitioner clinics running Google and Meta ads.",
       features: [
         `Everything in ${PLANS.croissance.name}`,
-        `${PLANS.performance.conversations} AI conversations per month`,
-        "Multi-practitioner routing",
-        "Google + Meta ad landing pages",
-        "Closed-loop ads tracking",
-        "Custom AI training + quarterly strategy call",
+        `${PLANS.performance.conversations} AI conversations per month — built for ad traffic`,
+        "Priority support + quarterly strategy call",
       ],
     },
   ];
@@ -76,7 +73,7 @@ export default function AestheticClinicsPage() {
   const capabilities = [
     {
       title: "After-hours bookings, captured",
-      body: "A typical clinic is designed to move from a few online bookings a week to 14+ — the AI handles after-hours enquiries and books directly into the calendar instead of losing them to voicemail.",
+      body: "A typical clinic is designed to move from a few online bookings a week to 14+ — the AI handles after-hours enquiries and takes each booking request, name and phone included, instead of losing it to voicemail.",
     },
     {
       title: "Instagram DMs, converted",

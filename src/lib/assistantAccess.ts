@@ -28,8 +28,41 @@ export async function assistantEnabled(config: ClientSiteConfig): Promise<boolea
   if (config.features?.chat === false) return false;
   if (config.isDemo) return true;
   if (!config.assistantOnly) return true;
+  // A practice's own receptionist follows the EUR plans, never the hosting table.
+  if (config.receptionist) return receptionistOn(config);
 
   return hasAssistantSubscription(config.hostingEmail);
+}
+
+/**
+ * The receptionist from the public trial (receptionistTrial.ts): on while its
+ * week runs, and after that only while the EUR subscription it became is paid
+ * for — read off the clients row on the build the payment created, the same
+ * row the meter and the invoices use. A cancellation sets that row `churned`;
+ * a failed card sets `payment_status` past_due and a `suspend_at` (the Stripe
+ * webhook), and the receptionist keeps answering until that date — the same
+ * grace every EUR client gets — then goes quiet with no extra write.
+ *
+ * The phase test is inlined rather than imported: receptionistTrial.ts
+ * imports this module. Keep the two in step.
+ */
+export async function receptionistOn(config: ClientSiteConfig, now = Date.now()): Promise<boolean> {
+  const r = config.receptionist;
+  if (!r) return false;
+  if (r.started && r.until && Date.parse(r.until) > now) return true;
+  if (!r.paidAt || !config.buildId) return false;
+  const db = supabaseAdmin();
+  if (!db) return false;
+  const { data } = await db
+    .from("clients")
+    .select("id, payment_status, suspend_at")
+    .eq("build_id", config.buildId)
+    .in("status", ["active", "past_due"]);
+  return (data ?? []).some((c) => {
+    const row = c as { payment_status?: string | null; suspend_at?: string | null };
+    const lapsed = String(row.payment_status ?? "").startsWith("past_due") && row.suspend_at && Date.parse(row.suspend_at) <= now;
+    return !lapsed;
+  });
 }
 
 /**

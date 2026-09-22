@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
+import { markSeenLive } from "@/lib/receptionistTrial";
 import { getClientSite, slugify } from "@/lib/clientSites";
 import { assistantEnabled, previewOrigin, previewable } from "@/lib/assistantAccess";
 import { publicAssistantConfig, corsHeaders } from "@/lib/assistant";
@@ -39,6 +40,15 @@ export async function GET(req: NextRequest) {
   const config = slug ? await getClientSite(slug) : undefined;
   if (!config) return NextResponse.json({ enabled: false }, { headers });
   if (await assistantEnabled(config)) {
+    /* A practice's trial receptionist loading on her own domain is the
+       install, even when a tag manager hides the line from our HTML check.
+       Best effort: this response is CDN-cached, so /api/chat records it too. */
+    const origin = req.headers.get("origin");
+    if (config.receptionist && !config.receptionist.installedAt && origin && !askedPreview) {
+      let host = "";
+      try { host = new URL(origin).hostname; } catch { /* nothing to record */ }
+      if (host) after(() => markSeenLive(config.slug, host).then(() => undefined));
+    }
     return NextResponse.json(publicAssistantConfig(config), { headers });
   }
 

@@ -1932,3 +1932,153 @@ export const reactivateEmail = (input: {
       `, { preheader: `Back on in a minute — ${monthlyUsd} a month, and it restores itself.`, lang: "en" }),
   };
 };
+
+/* ── THE RECEPTIONIST TRIAL FOR A STRANGER (src/lib/receptionistTrial.ts) ──
+ *
+ * Five emails, one per step, each describing only what code does at that
+ * step. The business name comes off a stranger's homepage, so every
+ * interpolated name or domain is escaped. Prices arrive as arguments, read
+ * from PLANS by the caller — never typed here.
+ */
+
+export interface PlanLine { name: string; monthlyEur: number; conversations: number }
+
+const recP = (html: string, margin = "0 0 14px") =>
+  `<p style="margin:${margin};font-size:15px;line-height:1.6;color:${BODY};">${html}</p>`;
+const recDate = (iso: string, fr: boolean) =>
+  new Date(iso).toLocaleDateString(fr ? "fr-FR" : "en-GB", { day: "numeric", month: "long" });
+const recPlans = (plans: PlanLine[], fr: boolean) =>
+  `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:4px 0 8px;">${plans.map((p) =>
+    `<tr><td style="padding:3px 14px 3px 0;font-size:14px;font-weight:700;color:${INK};">${escapeHtml(p.name)}</td>` +
+    `<td style="padding:3px 14px 3px 0;font-size:14px;color:${BODY};">${p.monthlyEur}&nbsp;€${fr ? "/mois" : "/month"}</td>` +
+    `<td style="padding:3px 0;font-size:13px;color:${MUTED};">${p.conversations} ${fr ? "conversations/mois" : "conversations/month"}</td></tr>`,
+  ).join("")}</table>`;
+
+/** Step 1 — she asked for it on her site: prove the address, nothing else. */
+export const receptionistConfirmEmail = (o: { business: string; domain: string; link: string; lang: "fr" | "en" }) => {
+  const fr = o.lang === "fr";
+  const b = escapeHtml(o.business);
+  const d = escapeHtml(o.domain);
+  return {
+    subject: fr ? `Votre réceptionniste pour ${o.domain} — confirmez pour la mettre en ligne` : `Your receptionist for ${o.domain} — confirm to put it live`,
+    html: wrapper(`
+      <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">${fr ? "Confirmez votre adresse" : "Confirm your address"}</h1>
+      ${recP(fr
+        ? `Vous avez demandé à essayer la réceptionniste de <strong>${b}</strong> sur ${d}. Ce lien confirme que cette adresse est la vôtre : c'est là qu'arriveront les demandes de vos patients.`
+        : `You asked to try <strong>${b}</strong>'s receptionist on ${d}. This link confirms the address is yours: it is where your patients' enquiries will arrive.`)}
+      ${recP(fr
+        ? "Rien ne démarre en ouvrant ce lien. Sur la page, vous vérifiez ce qu'elle dit, puis un clic lance vos 7 jours gratuits — sans carte."
+        : "Opening the link starts nothing. On the page you check what it says, then one click starts your 7 free days — no card.")}
+      ${btn(o.link, fr ? "Confirmer et continuer →" : "Confirm and continue →")}
+      <p style="margin:18px 0 0;font-size:13px;line-height:1.6;color:${MUTED};">${fr
+        ? "Vous n'avez rien demandé ? Ignorez cet email : sans votre clic, rien ne se passe."
+        : "Did not ask for this? Ignore this email: without your click, nothing happens."}</p>
+      `, { preheader: fr ? "Un clic pour confirmer, un autre pour démarrer 7 jours gratuits." : "One click to confirm, another to start 7 free days.", lang: o.lang }),
+  };
+};
+
+/** Step 2 — the week has started: the line to paste, and the honest clock. */
+export const receptionistStartedEmail = (o: {
+  business: string; domain: string; snippet: string; untilIso: string; link: string; lang: "fr" | "en";
+}) => {
+  const fr = o.lang === "fr";
+  const d = escapeHtml(o.domain);
+  return {
+    subject: fr ? `Votre essai a commencé — la ligne à ajouter sur ${o.domain}` : `Your trial has started — the line to add to ${o.domain}`,
+    html: wrapper(`
+      <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">${fr ? "Il reste une ligne à coller" : "One line left to paste"}</h1>
+      ${recP(fr
+        ? `La réceptionniste de <strong>${escapeHtml(o.business)}</strong> est prête. Pour qu'elle apparaisse sur ${d}, ajoutez cette ligne juste avant <code>&lt;/body&gt;</code> de votre site — ou transférez cet email à la personne qui s'occupe de votre site :`
+        : `<strong>${escapeHtml(o.business)}</strong>'s receptionist is ready. To make it appear on ${d}, add this line just before your site's <code>&lt;/body&gt;</code> — or forward this email to whoever runs your site:`)}
+      <pre style="margin:0 0 16px;padding:14px;background:${CREAM};border:1px solid ${LINE};border-radius:10px;font-size:12px;line-height:1.5;white-space:pre-wrap;word-break:break-all;color:${INK};">${escapeHtml(o.snippet)}</pre>
+      ${recP(fr
+        ? `Vos 7 jours ont commencé ; s'ils sont encore en cours le jour où nous voyons la ligne sur votre site, ils repartent de ce jour-là. Sinon, l'essai court jusqu'au <strong>${recDate(o.untilIso, fr)}</strong>. Chaque demande de rendez-vous qu'elle prend, avec le nom et le téléphone du patient, arrive dans cette boîte mail.`
+        : `Your 7 days have started; if they are still running on the day we see the line on your site, they restart from that day. Otherwise the trial runs until <strong>${recDate(o.untilIso, fr)}</strong>. Every appointment request it takes, with the patient's name and phone, arrives in this inbox.`)}
+      ${btn(o.link, fr ? "Vérifier l'installation →" : "Check the installation →")}
+      <p style="margin:18px 0 0;font-size:13px;line-height:1.6;color:${MUTED};">${fr
+        ? "À la fin de l'essai elle se retire toute seule : rien à désinstaller, rien à payer. Besoin d'aide pour l'installer ? Répondez à cet email."
+        : "When the trial ends it steps back on its own: nothing to uninstall, nothing to pay. Need help installing it? Reply to this email."}</p>
+      `, { preheader: fr ? "Une ligne à coller, 7 jours gratuits, sans carte." : "One line to paste, 7 free days, no card.", lang: o.lang }),
+  };
+};
+
+/** Step 3 — two days left. What it did first; a quiet week gets help, not a pitch. */
+export const receptionistNudgeEmail = (o: {
+  business: string; domain: string; conversations: number; installed: boolean; untilIso: string; link: string; lang: "fr" | "en";
+}) => {
+  const fr = o.lang === "fr";
+  const d = escapeHtml(o.domain);
+  const quiet = o.conversations === 0;
+  const body = !o.installed
+    ? recP(fr
+        ? `Nous ne voyons pas encore la ligne sur ${d}, donc personne n'a pu lui parler. C'est souvent une question de minutes pour la personne qui gère votre site — le lien ci-dessous redonne la ligne et vérifie qu'elle est en place.`
+        : `We cannot see the line on ${d} yet, so nobody has been able to talk to it. It is usually minutes of work for whoever runs your site — the link below gives the line again and checks it is in place.`)
+    : quiet
+      ? recP(fr
+          ? `Elle est bien sur ${d}, mais personne ne lui a encore écrit. Une semaine calme arrive — ouvrez votre site sur votre téléphone et posez-lui une question comme le ferait un patient : vous verrez la demande arriver ici.`
+          : `It is on ${d}, but nobody has written to it yet. Quiet weeks happen — open your site on your phone and ask it something a patient would: you will see the enquiry arrive here.`)
+      : recP(fr
+          ? `Depuis son arrivée sur ${d}, elle a tenu <strong>${o.conversations} conversation${o.conversations > 1 ? "s" : ""}</strong> avec vos visiteurs — y compris le soir et le week-end, quand personne ne répond au téléphone.`
+          : `Since it arrived on ${d} it has held <strong>${o.conversations} conversation${o.conversations === 1 ? "" : "s"}</strong> with your visitors — evenings and weekends included, when nobody answers the phone.`);
+  return {
+    subject: !o.installed
+      ? (fr ? `Votre réceptionniste n'est pas encore sur ${o.domain}` : `Your receptionist is not on ${o.domain} yet`)
+      : quiet
+        ? (fr ? `Vérifiez votre réceptionniste sur ${o.domain}` : `Check your receptionist on ${o.domain}`)
+        : (fr ? `${o.conversations} conversation${o.conversations > 1 ? "s" : ""} sur ${o.domain} cette semaine` : `${o.conversations} conversation${o.conversations === 1 ? "" : "s"} on ${o.domain} this week`),
+    html: wrapper(`
+      <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">${escapeHtml(o.business)}</h1>
+      ${body}
+      ${recP(fr
+        ? `L'essai se termine le <strong>${recDate(o.untilIso, fr)}</strong>. Ce jour-là elle se retire d'elle-même, sauf si vous la gardez.`
+        : `The trial ends on <strong>${recDate(o.untilIso, fr)}</strong>. That day it steps back on its own, unless you keep it.`)}
+      ${btn(o.link, !o.installed || quiet ? (fr ? "Ouvrir ma page d'essai →" : "Open my trial page →") : (fr ? "La garder →" : "Keep it →"))}
+      `, { preheader: fr ? "Deux jours d'essai restants." : "Two days of your trial left.", lang: o.lang }),
+  };
+};
+
+/** Step 4 — the week is over; it has gone quiet. The count, the plans, one link. */
+export const receptionistEndedEmail = (o: {
+  business: string; domain: string; conversations: number; plans: PlanLine[]; setupEur: number; link: string; lang: "fr" | "en";
+}) => {
+  const fr = o.lang === "fr";
+  const d = escapeHtml(o.domain);
+  return {
+    subject: fr ? `Votre essai est terminé — ${o.conversations} conversation${o.conversations > 1 ? "s" : ""} sur ${o.domain}` : `Your trial is over — ${o.conversations} conversation${o.conversations === 1 ? "" : "s"} on ${o.domain}`,
+    html: wrapper(`
+      <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">${fr ? "Votre semaine est terminée" : "Your week is over"}</h1>
+      ${recP(fr
+        ? `La réceptionniste de <strong>${escapeHtml(o.business)}</strong> a tenu <strong>${o.conversations}</strong> conversation${o.conversations > 1 ? "s" : ""} sur ${d}. Elle s'est retirée d'elle-même : la ligne peut rester sur votre site, elle n'affiche plus rien.`
+        : `<strong>${escapeHtml(o.business)}</strong>'s receptionist held <strong>${o.conversations}</strong> conversation${o.conversations === 1 ? "" : "s"} on ${d}. It has stepped back on its own: the line can stay on your site, it now draws nothing.`)}
+      ${recP(fr
+        ? `Pour la garder, choisissez une formule selon le nombre de conversations — la mise en place (${o.setupEur}&nbsp;€) est offerte, puisqu'elle est déjà installée. Elle revient sur votre site dans les minutes qui suivent le paiement, sans rien toucher.`
+        : `To keep it, choose a plan by conversation volume — the ${o.setupEur}&nbsp;€ installation is waived, since it is already installed. It is back on your site within minutes of payment, with nothing to change.`, "0 0 6px")}
+      ${recPlans(o.plans, fr)}
+      ${btn(o.link, fr ? "La garder →" : "Keep it →")}
+      <p style="margin:18px 0 0;font-size:13px;line-height:1.6;color:${MUTED};">${fr ? "Résiliable à tout moment. Prix HT." : "Cancel anytime. Prices excl. VAT."}</p>
+      `, { preheader: fr ? "Elle s'est retirée d'elle-même. Un clic la remet en ligne." : "It stepped back on its own. One click puts it back.", lang: o.lang }),
+  };
+};
+
+/** Step 5 — she paid. What she has now, where to see it. */
+export const receptionistPaidEmail = (o: {
+  business: string; domain: string; planName: string; conversations: number; lang: "fr" | "en";
+}) => {
+  const fr = o.lang === "fr";
+  return {
+    subject: fr ? `C'est fait — la réceptionniste de ${o.business} reste sur ${o.domain}` : `Done — ${o.business}'s receptionist stays on ${o.domain}`,
+    html: wrapper(`
+      <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">${fr ? "Elle reste en ligne" : "It stays live"}</h1>
+      ${recP(fr
+        ? `Merci. Formule <strong>${escapeHtml(o.planName)}</strong> : ${o.conversations} conversations par mois, et la réceptionniste reste sur ${escapeHtml(o.domain)} sans que vous ayez rien à toucher.`
+        : `Thank you. <strong>${escapeHtml(o.planName)}</strong> plan: ${o.conversations} conversations a month, and the receptionist stays on ${escapeHtml(o.domain)} with nothing for you to change.`)}
+      ${recP(fr
+        ? "Votre espace client montre vos demandes, votre compteur de conversations et vos factures. Vous vous y connectez avec cette adresse email : un lien de connexion vous est envoyé, sans mot de passe."
+        : "Your client space shows your enquiries, your conversation meter and your invoices. You sign in with this email address: a sign-in link is sent to you, no password.")}
+      ${btn("https://servolia.com/portal", fr ? "Ouvrir mon espace client →" : "Open my client space →")}
+      <p style="margin:18px 0 0;font-size:13px;line-height:1.6;color:${MUTED};">${fr
+        ? "Une question, une correction de ce qu'elle dit ? Répondez simplement à cet email."
+        : "A question, or something it should say differently? Just reply to this email."}</p>
+      `, { preheader: fr ? "Paiement reçu. Rien à faire de votre côté." : "Payment received. Nothing to do on your side.", lang: o.lang }),
+  };
+};

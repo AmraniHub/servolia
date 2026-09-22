@@ -76,9 +76,12 @@ export default function HomePage() {
     },
     {
       num: "04", icon: <TrendingUp className="w-5 h-5" />,
-      title: "Your growth layer", tag: `From ${PLANS.croissance.name}`,
-      desc: "Lead pipeline, Google reviews automation, SMS reminders and a monthly report that shows exactly what the system brought in.",
-      features: ["Lead pipeline", "Google reviews automation", "SMS reminders", "Monthly ROI report"],
+      /* Until 2026-09-22 this card sold reviews automation and SMS reminders
+         from Croissance up. Nothing performs either; the tiers differ by
+         conversations. */
+      title: "Room to grow", tag: `From ${PLANS.croissance.name}`,
+      desc: "The same product for a busier practice: more conversations each month, a live meter in your portal, and a top-up pack if a month runs hot.",
+      features: [`${PLANS.croissance.conversations}+ conversations a month`, "Live conversation meter", "Top-up packs for a busy month", "Never cut off mid-month"],
       accent: false,
     },
   ];
@@ -141,7 +144,7 @@ export default function HomePage() {
             transition={{ duration: 0.65, delay: 0.25 }}
             className="text-[#ABDF90]/80 text-lg sm:text-xl max-w-2xl mx-auto mb-3 leading-relaxed"
           >
-            Every enquiry answered in seconds, day or night, and booked straight into your calendar. Servolia builds the AI website, receptionist and booking system that does it — for dentists, aesthetic clinics, med-spas and home services across Europe and the US.
+            Every enquiry answered in seconds, day or night, and every booking request in your hands at once — or sent straight to your online booking. Servolia builds the AI website, receptionist and booking system that does it — for dentists, aesthetic clinics, med-spas and home services across Europe and the US.
           </motion.p>
           <motion.p
             initial={{ opacity: 0, y: 12 }}
@@ -245,7 +248,7 @@ export default function HomePage() {
               <ul className="space-y-3 mb-8">
                 {[
                   "Answers instantly, day or night, in French or English",
-                  "Books appointments directly into your calendar",
+                  "Takes the booking request — or sends them to your Doctolib or Planity",
                   "Every conversation saved as a scored lead in your CRM",
                   "Trained on your services, prices, and policies",
                 ].map((f, i) => (

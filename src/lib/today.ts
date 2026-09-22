@@ -2,6 +2,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { computeLeadScore } from "@/lib/scoring";
 import { HOSTING_TIERS } from "@/lib/hosting";
 import { readDraftEmailed } from "@/lib/draftPreview";
+import type { ReceptionistState } from "@/lib/clientSites";
 
 /**
  * TODAY — one list of what needs a human, assembled from everything that
@@ -23,7 +24,7 @@ import { readDraftEmailed } from "@/lib/draftPreview";
 export type Owner = "me" | "client";
 
 export interface TodayItem {
-  /** stable kind for scripts: lead-sla, lead-hot, build-intake, build-building, draft-send, draft-go, trial-ending, payment-failed, needs-setup, prospect, request-unpaid */
+  /** stable kind for scripts: lead-sla, lead-hot, build-intake, build-building, draft-send, draft-go, trial-ending, payment-failed, needs-setup, prospect, request-unpaid, reception-not-installed, reception-ending, reception-ended */
   kind: string;
   title: string;
   detail?: string;
@@ -62,7 +63,7 @@ export async function buildToday(now = Date.now()): Promise<Today> {
   const empty: Today = { generatedAt: new Date(now).toISOString(), sections: [], counts: { me: 0, client: 0, urgent: 0 } };
   if (!db) return empty;
 
-  const [leadsRes, buildsRes, sitesRes, hostRes, clientsRes, prospectsRes, requestsRes] = await Promise.all([
+  const [leadsRes, buildsRes, sitesRes, hostRes, clientsRes, prospectsRes, requestsRes, receptionRes] = await Promise.all([
     db.from("leads").select("id, business, email, niche, stage, created_at, last_contacted_at, value_estimate, source, problems, client_value, plan_interest")
       .not("stage", "in", '("live","lost")').eq("status", "active"),
     db.from("builds").select("id, business, email, status, deadline, created_at, started_at").not("status", "in", '("live","delivered")'),
@@ -72,7 +73,31 @@ export async function buildToday(now = Date.now()): Promise<Today> {
     db.from("prospects").select("id, business, city, niche, status, next_action_at, touch_count, demo_slug")
       .eq("status", "to_contact").order("next_action_at", { ascending: true, nullsFirst: true }).limit(3),
     db.from("custom_requests").select("id, title, email, amount_eur, created_at, build_id").eq("status", "quoted"),
+    db.from("client_sites").select("slug, config").like("notes", "%servolia-receptionist:%"),
   ]);
+
+  /* ── Practices trying the receptionist on their own site ─────────────
+     The public trial (receptionistTrial.ts). The three moments a human
+     changes the outcome: the line is still not on their site, the week is
+     nearly over, the week ended without a payment. */
+  const trials: TodayItem[] = [];
+  for (const s of (receptionRes.data ?? []) as Array<{ slug: string; config: { businessName?: string; receptionist?: ReceptionistState } }>) {
+    const r = s.config?.receptionist;
+    if (!r?.started || r.paidAt) continue;
+    const title = `${s.config.businessName ?? s.slug} (${r.domain})`;
+    const href = `${ADMIN}/sites`;
+    const left = daysUntil(r.until, now);
+    const since = hrsAgo(r.started, now) ?? 0;
+    if (r.ended) {
+      const endedDays = Math.floor((hrsAgo(r.ended, now) ?? 0) / 24);
+      if (endedDays <= 14) trials.push({ kind: "reception-ended", title, detail: `trial ended ${endedDays}d ago, not paid — ${r.email ?? "?"}`, href, owner: "me", urgency: endedDays <= 2 ? 1 : 0 });
+    } else if (!r.installedAt && since >= 24) {
+      trials.push({ kind: "reception-not-installed", title, detail: `started ${Math.round(since / 24)}d ago, line NOT on their site — offer to help (${r.email ?? "?"})`, href, owner: "me", urgency: since >= 72 ? 2 : 1 });
+    } else if (left !== null && left <= 2) {
+      trials.push({ kind: "reception-ending", title, detail: `trial ends in ${Math.max(left, 0)}d — ${r.email ?? "?"}`, href, owner: "me", urgency: left <= 1 ? 2 : 1 });
+    }
+  }
+  if (trials.length) sections.push({ key: "trials", label: "Trials on their own site", items: trials });
 
   /* ── Leads: answer them ─────────────────────────────────────────────── */
   const leads: TodayItem[] = [];

@@ -92,7 +92,10 @@ export async function listBuiltSites(lang: "en" | "fr" = "en"): Promise<BuiltSit
       slug: string; business: string | null; niche: string | null; config: ClientSiteConfig;
     }[])
       // Prospect demos and the bundled showcases are not clients.
-      .filter((r) => !r.config?.isDemo && !r.slug.startsWith("demo-"))
+      // An assistant-only config (a hosting add-on, or a practice's own
+      // receptionist from the public trial) is not a site we built: it has no
+      // /sites page, and its name was never ours to publish.
+      .filter((r) => !r.config?.isDemo && !r.slug.startsWith("demo-") && !r.config?.assistantOnly && !r.config?.receptionist)
       .map((r) => ({
         kind: "client" as const,
         slug: r.slug,

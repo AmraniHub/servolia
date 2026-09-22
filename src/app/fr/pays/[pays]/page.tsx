@@ -146,7 +146,7 @@ export default async function CountryPage({ params }: { params: Promise<{ pays: 
         </div>
       </section>
 
-      <StickyMobileCTA label="Recevoir mon audit gratuit" sub="Gratuit · Livré en 24h · Sans appel" href="/fr/audit" />
+      <StickyMobileCTA label="Recevoir mon audit gratuit" sub="Gratuit · Résultat en 20 secondes · Sans appel" href="/fr/audit" />
 
       <ValueStack lang="fr" />
       <Guarantee lang="fr" />

@@ -71,7 +71,7 @@ const solutionsFr: MarketingContentFr[] = [
     title: "Une réceptionniste IA qui ne rate plus",
     highlight: "jamais un client.",
     sub: "Vos visiteurs obtiennent des réponses immédiates et des rendez-vous confirmés à 14 h comme à 2 h du matin — en français ou en anglais. Chaque conversation devient un lead scoré dans votre CRM.",
-    heroBullets: ["Répond en quelques secondes, 24 h/24", "Réserve directement dans votre agenda", "Formée sur vos services et tarifs"],
+    heroBullets: ["Répond en quelques secondes, 24 h/24", "Prend chaque demande de rendez-vous", "Formée sur vos services"],
     metaTitle: "Réceptionniste IA pour entreprises de services — Servolia",
     metaDescription: "Une réceptionniste IA qui répond aux visiteurs 24 h/24, les qualifie, prend les rendez-vous et enregistre chaque lead dans votre CRM. Formée sur vos services. Installée par Servolia en quelques jours.",
     withoutTitle: "Sans réceptionniste IA",
@@ -91,14 +91,14 @@ const solutionsFr: MarketingContentFr[] = [
     featuresTitle: "Ce que fait la réceptionniste IA",
     features: [
       { icon: "message", title: "Réponses immédiates et naturelles", body: "Répond aux questions sur les services, tarifs, horaires et localisation en langage naturel — dans la langue du client." },
-      { icon: "calendar", title: "Prend les rendez-vous", body: "Propose de vrais créneaux, confirme la réservation, puis envoie confirmation et rappel automatiquement." },
+      { icon: "calendar", title: "Prend les demandes de rendez-vous", body: "Recueille le nom, le téléphone et le soin souhaité — ou envoie le patient directement sur votre Doctolib ou Planity." },
       { icon: "users", title: "Qualifie chaque lead", body: "Pose les bonnes questions pour séparer les demandes sérieuses des simples curieux avant qu'ils n'arrivent jusqu'à vous." },
       { icon: "dashboard", title: "Alimente votre CRM", body: "Chaque conversation devient une fiche lead avec score, source et transcription complète — rien ne passe entre les mailles." },
     ],
     steps: [
       { title: "Nous la formons sur vous", body: "Vos services, tarifs, règles et votre ton — l'IA est configurée pour parler comme votre établissement, pas comme un bot générique." },
       { title: "Elle se met en ligne sur votre site", body: "Intégrée à votre site web, prête à répondre, qualifier et réserver dès le premier jour." },
-      { title: "Vous recevez les leads", body: "Les rendez-vous tombent dans votre agenda, les leads dans votre CRM, et un rapport mensuel récapitule ce qu'elle a capté." },
+      { title: "Vous recevez les demandes", body: "Chaque demande vous arrive aussitôt par email et reste dans votre espace client, et un rapport mensuel récapitule ce qu'elle a capté." },
     ],
     faqs: [
       { q: "Parle-t-elle français ?", a: "Oui — elle répond en français ou en anglais automatiquement selon le visiteur." },
@@ -149,7 +149,7 @@ const solutionsFr: MarketingContentFr[] = [
     faqs: [
       { q: "S'intègre-t-il à mon agenda ?", a: "Oui — les réservations confirmées se synchronisent avec votre agenda pour tout gérer au même endroit." },
       { q: "Peut-il gérer des acomptes ?", a: "Oui, nous pouvons ajouter une étape d'acompte via Stripe pour réduire les absences sur les rendez-vous à forte valeur." },
-      { q: "Et les rappels ?", a: "Confirmations et rappels par email inclus ; les rappels SMS/WhatsApp sont disponibles en module." },
+      { q: "Et les rappels aux patients ?", a: "La réceptionniste n'en envoie pas : elle recueille la demande et vous la transmet aussitôt. Si vous utilisez Doctolib ou Planity, ce sont leurs rappels qui s'appliquent." },
       { q: "Délai de mise en place ?", a: "Le système de réservation est généralement en ligne en 4 à 5 jours ouvrés, dans le cadre de la mise en place." },
     ],
     ctaHeadline: "Laissez vos clients réserver seuls — même à minuit.",
@@ -228,7 +228,7 @@ const industriesFr: MarketingContentFr[] = [
     with: [
       "Les questions courantes traitées immédiatement, à toute heure",
       "Prospects qualifiés par prestation et taille d'entreprise",
-      "RDV découverte réservés directement dans votre agenda",
+      "RDV découverte réservés via votre lien Calendly",
       "Chaque demande scorée et suivie jusqu'à la signature",
     ],
     featuresTitle: "Conçu pour les cabinets comptables",

@@ -44,8 +44,11 @@ export async function GET(req: NextRequest) {
   if (!brand) {
     return NextResponse.json({ ok: false, error: "invalid-domain" }, { status: 400 });
   }
+  // The page text is for server-side drafts only — never ship it back.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { text: _text, ...publicBrand } = brand;
   return NextResponse.json(
-    { ok: true, ...brand },
+    { ok: true, ...publicBrand },
     { headers: { "Cache-Control": "public, max-age=300, s-maxage=600" } },
   );
 }

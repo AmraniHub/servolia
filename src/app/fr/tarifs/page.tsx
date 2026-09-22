@@ -230,7 +230,7 @@ export default async function FrenchPricingPage() {
             Pas sûr du bon système ? <span className="gradient-text">L&apos;audit décide pour vous.</span>
           </h2>
           <p className="text-[#52525B] mb-6">
-            Gratuit, livré en 24h, sans appel : nous analysons votre site et vous recommandons exactement ce qu&apos;il vous faut — rien de plus.
+            Gratuit et sans appel : votre site est noté en 20 secondes environ, puis une personne vous répond sous un jour ouvré avec exactement ce qu&apos;il vous faut — rien de plus.
           </p>
           <Link href="/fr/audit"
             className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl bg-gradient-to-r from-[#36671E] to-[#295115] text-[#FAFAF7] font-bold hover:opacity-90">
@@ -241,7 +241,7 @@ export default async function FrenchPricingPage() {
 
       <Guarantee lang="fr" />
 
-      <StickyMobileCTA label="Recevoir mon audit gratuit" sub="Gratuit · Livré en 24h · Sans appel" href="/fr/audit" />
+      <StickyMobileCTA label="Recevoir mon audit gratuit" sub="Gratuit · Résultat en 20 secondes · Sans appel" href="/fr/audit" />
       <FrenchFooter />
     </main>
   );

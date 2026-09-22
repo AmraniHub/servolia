@@ -38,7 +38,7 @@ const pain = [
 const gains = [
   "L'assistante IA répond à chaque demande en secondes — soirs et week-ends compris",
   "Elle qualifie chaque cliente (soin recherché, budget, urgence) avant de proposer un créneau",
-  "Réservation en ligne intégrée à votre site, confirmation automatique",
+  "Demandes de rendez-vous en ligne 24h/24 — et votre lien Planity ou Doctolib si vous en avez un",
   "Suivi complet : Instagram, Google, direct — vous voyez ce qui remplit l'agenda",
   "Chaque contact est enregistré — plus aucune demande ne s'évapore",
 ];
@@ -50,12 +50,12 @@ const packages = [
     price: `${PLANS.essentiel.monthlyEur} €/mois`,
     meter: `${PLANS.essentiel.conversations} conversations IA/mois`,
     features: [
-      "Site clinique rédigé pour vos soins",
-      "Assistante IA entraînée sur vos protocoles",
-      "Formulaire de demande de RDV",
+      "Assistante IA 24h/24, formée sur vos soins",
       "Alertes de demandes instantanées + espace client",
+      "Site clinique rédigé pour vos soins, si vous en voulez un",
       "Pages RGPD conformes",
       "Hébergement, domaine et email pro inclus",
+      "Rapport mensuel de résultats",
     ],
     cta: `Choisir ${PLANS.essentiel.nameFr}`,
     popular: false,
@@ -65,12 +65,11 @@ const packages = [
     price: `${PLANS.croissance.monthlyEur} €/mois`,
     meter: `${PLANS.croissance.conversations} conversations IA/mois`,
     features: [
+      // Les formules diffèrent par le nombre de conversations, pas par des
+      // fonctions que rien n'exécute (voir CarePlansSection.tsx).
       `Tout ${PLANS.essentiel.nameFr}`,
-      "Parcours de réservation par type de soin",
-      "Pipeline de demandes + historique clientes",
-      "Automatisation des avis Google",
-      "Rappels SMS à 48 h",
-      "Rapport de performance mensuel",
+      "Trois fois plus de conversations — de quoi couvrir 2 à 3 praticiennes",
+      "Le compteur en direct dans votre espace, et un pack en plus si un mois s'emballe",
     ],
     cta: `Choisir ${PLANS.croissance.nameFr}`,
     popular: true,
@@ -81,11 +80,8 @@ const packages = [
     meter: `${PLANS.performance.conversations} conversations IA/mois`,
     features: [
       `Tout ${PLANS.croissance.nameFr}`,
-      "Routage multi-praticiennes",
-      "Landing pages Google + Meta",
-      "Suivi publicitaire en boucle fermée",
-      "IA entraînée sur mesure",
-      "Point stratégique trimestriel",
+      "800 conversations par mois — prévu pour le trafic publicitaire",
+      "Support prioritaire + point stratégique trimestriel",
     ],
     cta: `Choisir ${PLANS.performance.nameFr}`,
     popular: false,
@@ -281,7 +277,7 @@ export default function FrenchAestheticPage() {
         </div>
       </section>
 
-      <StickyMobileCTA label="Recevoir mon audit gratuit" sub="Gratuit · Livré en 24h · Sans appel" href="/fr/audit" />
+      <StickyMobileCTA label="Recevoir mon audit gratuit" sub="Gratuit · Résultat en 20 secondes · Sans appel" href="/fr/audit" />
 
       <ValueStack lang="fr" niche="aesthetic" />
       <Guarantee lang="fr" />

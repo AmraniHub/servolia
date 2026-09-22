@@ -28,12 +28,15 @@ const pain = [
   "Aucun suivi des patients qui se renseignent sans réserver",
 ];
 
+// Chaque ligne est une chose que le code fait. Jusqu'au 2026-09-22 cette
+// liste promettait une confirmation et un rappel envoyés au patient et une
+// relance à 48 h : aucun code n'écrit jamais à un patient.
 const gains = [
   "La réceptionniste IA répond à chaque demande — même à 2h du matin",
-  "Réservation en ligne intégrée directement à votre site",
-  "Confirmation et rappel automatiques envoyés au patient",
-  "Suivi complet : Google, Meta, direct — vous voyez ce qui fonctionne",
-  "Relance automatique des demandes non réservées après 48h",
+  "Demandes de rendez-vous en ligne, 24h/24, avec le nom et le téléphone du patient",
+  "Chaque demande vous arrive aussitôt par email, avec une réponse WhatsApp en un clic",
+  "Elle renvoie vers Doctolib si vous l'utilisez, sinon elle prend les coordonnées",
+  "Un espace client : toutes vos demandes, leur statut et vos notes",
 ];
 
 // Tarifs issus de src/lib/pricing.ts — ne jamais coder un prix en dur ici.
@@ -43,12 +46,12 @@ const packages = [
     price: `${PLANS.essentiel.monthlyEur} €/mois`,
     meter: `${PLANS.essentiel.conversations} conversations IA/mois`,
     features: [
-      "Site dentaire rédigé pour votre cabinet",
-      "Réceptionniste IA entraînée sur vos actes",
-      "Formulaire de demande de RDV",
+      "Réceptionniste IA 24h/24, formée sur vos soins",
       "Alertes de demandes instantanées + espace client",
+      "Site dentaire rédigé pour votre cabinet, si vous en voulez un",
       "Pages RGPD conformes",
       "Hébergement, domaine et email pro inclus",
+      "Rapport mensuel de résultats",
     ],
     cta: `Choisir ${PLANS.essentiel.nameFr}`,
     popular: false,
@@ -57,13 +60,12 @@ const packages = [
     name: PLANS.croissance.nameFr,
     price: `${PLANS.croissance.monthlyEur} €/mois`,
     meter: `${PLANS.croissance.conversations} conversations IA/mois`,
+    // Les formules diffèrent par le nombre de conversations, pas par des
+    // fonctions que rien n'exécute (voir CarePlansSection.tsx).
     features: [
       `Tout ${PLANS.essentiel.nameFr}`,
-      "Parcours de réservation en ligne",
-      "Pipeline de demandes + historique patient",
-      "Automatisation des avis Google",
-      "Rappels SMS",
-      "Rapport de performance mensuel",
+      "Trois fois plus de conversations — de quoi couvrir 2 à 3 praticiens",
+      "Le compteur en direct dans votre espace, et un pack en plus si un mois s'emballe",
     ],
     cta: `Choisir ${PLANS.croissance.nameFr}`,
     popular: true,
@@ -74,11 +76,8 @@ const packages = [
     meter: `${PLANS.performance.conversations} conversations IA/mois`,
     features: [
       `Tout ${PLANS.croissance.nameFr}`,
-      "Routage multi-praticiens",
-      "Landing pages Google + Meta",
-      "Suivi publicitaire en boucle fermée",
-      "IA entraînée sur mesure",
-      "Point stratégique trimestriel",
+      "800 conversations par mois — prévu pour le trafic publicitaire",
+      "Support prioritaire + point stratégique trimestriel",
     ],
     cta: `Choisir ${PLANS.performance.nameFr}`,
     popular: false,
@@ -97,10 +96,10 @@ export default function FrenchDentistsPage() {
             </span>
           </Link>
           <Link
-            href="/fr/audit"
+            href="/fr/essai"
             className="px-4 py-2 rounded-lg bg-[#36671E] text-[#FAFAF7] text-sm font-semibold hover:bg-[#295115] transition-colors"
           >
-            Audit gratuit →
+            Essai gratuit →
           </Link>
         </div>
       </nav>
@@ -131,13 +130,15 @@ export default function FrenchDentistsPage() {
             <p className="text-[10px] text-[#A1A1AA] mt-1">Estimation illustrative — votre audit gratuit utilise les chiffres réels de votre cabinet.</p>
           </div>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-10">
-            <Link href="/fr/audit" className="px-7 py-3.5 rounded-xl bg-gradient-to-r from-[#36671E] to-[#295115] text-[#FAFAF7] font-bold text-base hover:opacity-90 flex items-center gap-2">
-              Recevoir mon audit gratuit <ArrowRight className="w-4 h-4" />
+            {/* The front door (src/lib/receptionistTrial.ts): her own site, her
+                own receptionist, seven days on it — before any call or audit. */}
+            <Link href="/fr/essai" className="px-7 py-3.5 rounded-xl bg-gradient-to-r from-[#36671E] to-[#295115] text-[#FAFAF7] font-bold text-base hover:opacity-90 flex items-center gap-2">
+              Essayer sur mon site — 7 jours gratuits <ArrowRight className="w-4 h-4" />
             </Link>
-            <a href="/sites/demo-metay" target="_blank" rel="noopener noreferrer"
+            <Link href="/fr/audit"
               className="px-6 py-3.5 rounded-xl border-2 border-[#36671E]/30 text-[#36671E] font-bold text-base hover:bg-[#EEF5EA] transition-colors">
-              🦷 Voir une démo en direct
-            </a>
+              Audit gratuit de mon site
+            </Link>
             <Link href="/fr/tarifs" className="text-[#52525B] hover:text-[#18181B] text-sm font-semibold transition-colors">
               Voir les tarifs →
             </Link>
@@ -265,16 +266,16 @@ export default function FrenchDentistsPage() {
             Prêt à remplir votre <span className="gradient-text">agenda de rendez-vous ?</span>
           </h2>
           <p className="text-[#52525B] mb-6">
-            Recevez un audit gratuit de votre cabinet. Nous vous montrons exactement ce qui manque et comment le corriger en 7 jours.
+            Tapez l&apos;adresse de votre site : votre réceptionniste apparaît à votre nom, vous lui parlez, puis vous la mettez sur votre site 7 jours. Sans carte, sans appel.
           </p>
-          <Link href="/fr/audit"
+          <Link href="/fr/essai"
             className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl bg-gradient-to-r from-[#36671E] to-[#295115] text-[#FAFAF7] font-bold hover:opacity-90">
-            Recevoir mon audit gratuit <ArrowRight className="w-4 h-4" />
+            Essayer sur mon site — 7 jours gratuits <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
       </section>
 
-      <StickyMobileCTA label="Recevoir mon audit gratuit" sub="Gratuit · Livré en 24h · Sans appel" href="/fr/audit" />
+      <StickyMobileCTA label="Essayer sur mon site" sub="7 jours gratuits · sans carte · sans appel" href="/fr/essai" />
 
       <ValueStack lang="fr" niche="dental" />
       <Guarantee lang="fr" />

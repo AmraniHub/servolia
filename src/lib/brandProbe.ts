@@ -26,6 +26,28 @@ export interface BrandProbe {
   niche: string | null;
   /** True when the site could not be read and everything but the name is a default. */
   fallback: boolean;
+  /** The first tel: link on the page — how a practice's own site says "call us". */
+  phone?: string | null;
+  /** The page's own meta description: the one sentence the business wrote about itself. */
+  description?: string | null;
+  /** Where the homepage actually lives after redirects, when that differs from `domain`. */
+  finalHost?: string | null;
+  /** The page's visible text, capped — for server-side use only (a draft
+   *  brief reads which treatments the practice itself names). Never sent to
+   *  a browser: /api/assistant-preview strips it. */
+  text?: string;
+}
+
+/** Visible text of a page: scripts, styles and tags out, whitespace folded. */
+export function visibleText(html: string, cap = 20_000): string {
+  return html
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, cap);
 }
 
 const FETCH_TIMEOUT_MS = 6000;
@@ -215,6 +237,31 @@ export function detectNiche(html: string): string | null {
   return null;
 }
 
+/**
+ * The practice's phone, from the first tel: link. Only digits, spaces, dots,
+ * dashes, parentheses and a leading + survive — a tel: href is page content
+ * and ends up read aloud by the receptionist, so nothing else gets through.
+ * Too short or too long to be a real number is no number.
+ */
+export function extractPhone(html: string): string | null {
+  for (const m of html.matchAll(/href=["']tel:([^"']{4,40})["']/gi)) {
+    let raw = m[1];
+    try { raw = decodeURIComponent(raw); } catch { /* keep as typed */ }
+    const clean = raw.replace(/[^\d+().\-\s]/g, "").replace(/\s+/g, " ").trim();
+    const digits = clean.replace(/\D/g, "");
+    if (digits.length >= 8 && digits.length <= 15) return clean;
+  }
+  return null;
+}
+
+/** The site's own one-line description, trimmed to what a brief can hold. */
+export function extractDescription(html: string): string | null {
+  const d = meta(html, "description", "name") ?? meta(html, "og:description", "property");
+  if (!d) return null;
+  const clean = d.replace(/\s+/g, " ").trim();
+  return clean.length >= 20 ? clean.slice(0, 300) : null;
+}
+
 /* ── the probe itself ──────────────────────────────────────────────────── */
 
 async function readCapped(res: Response, cap: number): Promise<string> {
@@ -240,7 +287,7 @@ async function readCapped(res: Response, cap: number): Promise<string> {
   return new TextDecoder("utf-8", { fatal: false }).decode(buf);
 }
 
-async function fetchPublic(url: string, cap: number, timeoutMs: number): Promise<{ text: string; finalUrl: string } | null> {
+export async function fetchPublic(url: string, cap: number, timeoutMs: number): Promise<{ text: string; finalUrl: string } | null> {
   const ctl = new AbortController();
   const t = setTimeout(() => ctl.abort(), timeoutMs);
   try {
@@ -323,6 +370,15 @@ export async function probeBrand(input: string): Promise<BrandProbe | null> {
       languages: extractLanguages(page.text),
       niche: detectNiche(page.text),
       fallback: false,
+      phone: extractPhone(page.text),
+      description: extractDescription(page.text),
+      text: visibleText(page.text),
+      finalHost: (() => {
+        try {
+          const h = new URL(page.finalUrl).hostname.toLowerCase().replace(/^www\./, "");
+          return h !== domain ? h : null;
+        } catch { return null; }
+      })(),
     };
   }
 

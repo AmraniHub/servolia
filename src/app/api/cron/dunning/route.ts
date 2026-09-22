@@ -12,9 +12,12 @@ import { backfillSiteUrls } from "@/lib/hostingRow";
 import { assistantTrialEndedEmail, assistantTrialNudgeEmail } from "@/lib/email";
 import { CLIENT_PRODUCTS } from "@/lib/hosting";
 import { assistantLinkFor } from "@/lib/upgrade";
+import { receptionistDailyPass, receptionistLinkFor } from "@/lib/receptionistTrial";
+import { receptionistNudgeEmail, receptionistEndedEmail } from "@/lib/email";
+import { PLANS, PLAN_ORDER, SETUP_PLAN } from "@/lib/pricing";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 /**
  * THE SECOND NUDGE — daily, one email per client, seven days after their card
@@ -99,10 +102,13 @@ export async function GET(req: NextRequest) {
     console.error("[dunning] query failed:", error.message);
     return NextResponse.json({ error: "query-failed" }, { status: 500 });
   }
-  if (!overdue?.length) return NextResponse.json({ ok: true, nudged: 0 });
-
+  /* NO EARLY RETURN HERE. Until 2026-09-22 this line returned when nobody was
+     overdue — most days — and so every pass below it (the suspension stage,
+     both trial passes, the site_url backfill) ran only on a day some card had
+     failed. The trial day-5 and day-7 emails could never have fired on a
+     normal morning. An empty list simply skips the loop. */
   let sent = 0;
-  for (const c of overdue) {
+  for (const c of overdue ?? []) {
     if (!c.email || !c.subscription_id) continue;
 
     // Read the live subscription rather than trusting the row: a client who
@@ -321,8 +327,45 @@ export async function GET(req: NextRequest) {
     await sendTelegramMessage(`*Trial expiry hit errors*\n` + trials.errors.map((e) => `- ${e}`).join("\n")).catch(() => {});
   }
 
+  /* ── RECEPTIONIST TRIALS FROM THE PUBLIC FRONT DOOR ────────────────────
+   * A different trial from the one above: a practice that found Servolia on
+   * its own, put the receptionist on its own site, and will pay in EUR. Its
+   * row lives in client_sites (see src/lib/receptionistTrial.ts), so nothing
+   * above ever sees it. Each step marks the row before its email goes. */
+  const rec = await receptionistDailyPass(now);
+  const planLines = PLAN_ORDER.map((k) => PLANS[k]);
+  for (const e of rec.nudged) {
+    if (!e.email) continue;
+    const link = await receptionistLinkFor({ slug: e.slug, email: e.email, lang: e.lang });
+    const tpl = receptionistNudgeEmail({ business: e.business, domain: e.domain, conversations: e.conversations, installed: e.installed, untilIso: e.until, link, lang: e.lang });
+    sendEmail(e.email, tpl.subject, tpl.html).catch(() => {});
+  }
+  for (const e of rec.ended) {
+    if (!e.email) continue;
+    const link = await receptionistLinkFor({ slug: e.slug, email: e.email, lang: e.lang });
+    const tpl = receptionistEndedEmail({
+      business: e.business, domain: e.domain, conversations: e.conversations, setupEur: SETUP_PLAN.totalEur, link, lang: e.lang,
+      plans: planLines.map((p) => ({ name: e.lang === "fr" ? p.nameFr : p.name, monthlyEur: p.monthlyEur, conversations: p.conversations })),
+    });
+    sendEmail(e.email, tpl.subject, tpl.html).catch(() => {});
+  }
+  if (rec.installed.length || rec.nudged.length || rec.ended.length) {
+    await sendTelegramMessage(
+      [
+        ...rec.installed.map((e) => `Installed: ${e.business} (${e.domain}) - 7 days now run to ${e.until.slice(0, 10)}`),
+        ...rec.nudged.map((e) => `Day 5: ${e.business} - ${e.installed ? `${e.conversations} conversations` : "line NOT on their site yet - worth a call"}`),
+        ...rec.ended.map((e) => `Ended: ${e.business} - ${e.conversations} conversations; the keep-it email went`),
+      ].join("\n"),
+      undefined, { plain: true },
+    ).catch(() => {});
+  }
+  if (rec.errors.length) {
+    await sendTelegramMessage(`Receptionist pass hit errors\n${rec.errors.map((x) => `- ${x}`).join("\n")}`, undefined, { plain: true }).catch(() => {});
+  }
+
   return NextResponse.json({
-    ok: true, checked: overdue.length, nudged: sent, suspended, blocked: blocked.length,
+    ok: true, checked: overdue?.length ?? 0, nudged: sent, suspended, blocked: blocked.length,
     trialsEnded: trials.ended.length,
+    receptionist: { installed: rec.installed.length, nudged: rec.nudged.length, ended: rec.ended.length },
   });
 }

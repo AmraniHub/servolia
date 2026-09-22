@@ -207,6 +207,10 @@ export interface ClientSiteConfig {
   ownerInstructions?: string;
   /** IANA zone for the after-hours badge on lead alerts. Default Europe/Paris. */
   timezone?: string;
+  /** A receptionist a practice found, tried and put on its OWN site from the
+   *  public trial (src/lib/receptionistTrial.ts). Its presence is what makes
+   *  this config follow the EUR plans rather than the hosting table. */
+  receptionist?: ReceptionistState;
 
   // Per-client Google Sheets CRM sync (Booking System promise): an Apps
   // Script webhook URL — every captured lead is POSTed there as a JSON row.
@@ -245,6 +249,30 @@ export interface ClientSiteConfig {
    *  token is checked against, so a renamed slug keeps its link and a token for
    *  one build can never open a later build on the same slug. */
   buildId?: string;
+}
+
+/**
+ * The life of a receptionist trial, kept on its own config. Every date is ISO.
+ * No field is ever removed — each one records that a step happened, which is
+ * what makes every step idempotent.
+ */
+export interface ReceptionistState {
+  /** The domain she typed, normalised — the site the widget may draw on. */
+  domain: string;
+  practice: "dental" | "aesthetic";
+  lang: "fr" | "en";
+  createdAt: string;
+  /** The address she confirmed. Absent while it is only a showroom draft. */
+  email?: string;
+  started?: string;
+  /** When it goes quiet unless paid for. Moves once, to install + 7 days. */
+  until?: string;
+  /** First time the tag was seen on her homepage. */
+  installedAt?: string;
+  nudged?: string;
+  ended?: string;
+  paidAt?: string;
+  plan?: string;
 }
 
 /* ───────────────────────── helpers ───────────────────────── */

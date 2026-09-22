@@ -75,9 +75,12 @@ export default function FrenchHome() {
     },
     {
       num: "04", icon: <TrendingUp className="w-5 h-5" />,
-      title: "Votre couche croissance", tag: `Dès ${PLANS.croissance.nameFr}`,
-      desc: "Pipeline de leads, automatisation des avis Google, rappels SMS et un rapport mensuel qui montre exactement ce que le système a rapporté.",
-      features: ["Pipeline de leads", "Automatisation des avis Google", "Rappels SMS", "Rapport ROI mensuel"],
+      /* Jusqu'au 2026-09-22 cette carte vendait l'automatisation des avis et
+         les rappels SMS : rien ne les exécute. Les formules diffèrent par le
+         nombre de conversations. */
+      title: "De la marge pour grandir", tag: `Dès ${PLANS.croissance.nameFr}`,
+      desc: "Le même produit pour un cabinet plus sollicité : plus de conversations chaque mois, un compteur en direct dans votre espace, et un pack en plus si un mois s'emballe.",
+      features: [`${PLANS.croissance.conversations}+ conversations par mois`, "Compteur de conversations en direct", "Packs pour un mois chargé", "Jamais coupée en cours de mois"],
       accent: false,
     },
   ];
@@ -119,7 +122,7 @@ export default function FrenchHome() {
             initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.65, delay: 0.25 }}
             className="text-[#ABDF90]/80 text-lg sm:text-xl max-w-2xl mx-auto mb-3 leading-relaxed"
           >
-            Chaque demande traitée en quelques secondes, jour et nuit, et le rendez-vous posé directement dans votre agenda. Servolia crée le site IA, le réceptionniste et le système de réservation qui s&apos;en chargent — pour <Link href="/fr/dentistes" className="underline decoration-[#BEF264]/50 underline-offset-2 hover:decoration-[#BEF264]">cabinets dentaires</Link>, <Link href="/fr/esthetique" className="underline decoration-[#BEF264]/50 underline-offset-2 hover:decoration-[#BEF264]">cliniques esthétiques</Link> et entreprises de services en Europe.
+            Chaque demande traitée en quelques secondes, jour et nuit, et chaque demande de rendez-vous transmise aussitôt — ou envoyée directement sur votre Doctolib. Servolia crée le site IA, le réceptionniste et le système de réservation qui s&apos;en chargent — pour <Link href="/fr/dentistes" className="underline decoration-[#BEF264]/50 underline-offset-2 hover:decoration-[#BEF264]">cabinets dentaires</Link>, <Link href="/fr/esthetique" className="underline decoration-[#BEF264]/50 underline-offset-2 hover:decoration-[#BEF264]">cliniques esthétiques</Link> et entreprises de services en Europe.
           </motion.p>
           <motion.p
             initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.35 }}
@@ -194,7 +197,7 @@ export default function FrenchHome() {
               <ul className="space-y-3 mb-8">
                 {[
                   "Répond instantanément, jour et nuit, en français ou anglais",
-                  "Prend les rendez-vous directement dans votre agenda",
+                  "Prend la demande de rendez-vous — ou envoie le patient sur votre Doctolib",
                   "Chaque conversation enregistrée comme lead scoré dans le CRM",
                   "Entraînée sur vos services, prix et conditions",
                 ].map((f, i) => (
@@ -694,7 +697,7 @@ export default function FrenchHome() {
 
       {/* FOOTER (French, shared) */}
       {/* ValueStack retiré ici — un 4e récap tarifaire APRÈS le CTA final ; passé le CTA, le visiteur a besoin du footer, pas d'un second pitch. */}
-      <StickyMobileCTA label="Réservez votre audit gratuit" sub="Gratuit · Livré en 24h · Sans appel" href="/fr/audit" />
+      <StickyMobileCTA label="Réservez votre audit gratuit" sub="Gratuit · Résultat en 20 secondes · Sans appel" href="/fr/audit" />
       {/* The product demo itself — French visitors could not test it before. */}
       <ChatWidget lang="fr" />
       <FrenchFooter />

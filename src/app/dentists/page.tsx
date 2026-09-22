@@ -32,10 +32,13 @@ export default function DentistsPage() {
 
   const gains = [
     "AI receptionist answers every patient inquiry — at 2am if needed",
-    "Online booking integrated directly into your website",
-    "Automatic email/SMS confirmation and reminder sent to patient",
-    "Full tracking: Google, Meta, direct — you see what's working",
-    "Automatic follow-up for unbooked leads after 48 hours",
+    // Every line is something code does. Until 2026-09-22 this promised a
+    // confirmation and reminder sent to the patient and a 48h follow-up:
+    // no code ever writes to a patient.
+    "Online appointment requests, 24/7, with the patient's name and phone",
+    "Every enquiry reaches you instantly by email, with a one-tap WhatsApp reply",
+    "It sends patients to your Doctolib if you use it, otherwise it takes their details",
+    "A client portal: every enquiry, its status and your notes",
   ];
 
   // Prices from src/lib/pricing.ts — never hardcode a tier price here.
@@ -45,12 +48,12 @@ export default function DentistsPage() {
       price: `€${PLANS.essentiel.monthlyEur}/mo`,
       meter: `${PLANS.essentiel.conversations} AI conversations/mo`,
       features: [
-        "Dental website, written for your practice",
-        "AI receptionist trained on your treatments",
-        "Appointment request flow",
+        "24/7 AI receptionist, trained on your treatments",
         "Instant lead alerts + client portal",
+        "Dental website, written for your practice, if you want one",
         "GDPR compliant pages",
         "Hosting, domain and pro email included",
+        "Monthly results report",
       ],
       cta: `Start ${PLANS.essentiel.name}`,
       popular: false,
@@ -60,12 +63,10 @@ export default function DentistsPage() {
       price: `€${PLANS.croissance.monthlyEur}/mo`,
       meter: `${PLANS.croissance.conversations} AI conversations/mo`,
       features: [
+        // Tiers differ by conversations, not by features nothing performs.
         `Everything in ${PLANS.essentiel.name}`,
-        "Online booking flow",
-        "Lead pipeline + patient history",
-        "Google reviews automation",
-        "SMS reminders",
-        "Monthly performance report",
+        "Three times the conversations — enough for 2–3 practitioners",
+        "The live meter in your portal, and a top-up pack if a month runs hot",
       ],
       cta: `Start ${PLANS.croissance.name}`,
       popular: true,
@@ -76,11 +77,8 @@ export default function DentistsPage() {
       meter: `${PLANS.performance.conversations} AI conversations/mo`,
       features: [
         `Everything in ${PLANS.croissance.name}`,
-        "Multi-practitioner routing",
-        "Google + Meta ad landing pages",
-        "Closed-loop ads tracking",
-        "Custom AI training",
-        "Quarterly strategy call",
+        "800 conversations a month — built for ad traffic",
+        "Priority support + quarterly strategy call",
       ],
       cta: `Start ${PLANS.performance.name}`,
       popular: false,

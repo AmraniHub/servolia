@@ -58,28 +58,23 @@ export default function HomeServicesPage() {
     {
       name: PLANS.croissance.name,
       price: `€${PLANS.croissance.monthlyEur}/mo`,
-      description: "Most chosen by contractors who want every quote request followed up automatically.",
+      description: "The same product, for a busier crew.",
+      // Tiers differ by conversations, not by features nothing performs (2026-09-22).
       features: [
         `Everything in ${PLANS.essentiel.name}`,
         `${PLANS.croissance.conversations} AI conversations per month`,
-        "Online quote request flow",
-        "Automated 24h + 72h follow-up",
-        "Lead pipeline + Google reviews automation",
-        "Monthly ROI report",
+        "The live meter in your portal, and a top-up pack if a month runs hot",
       ],
       highlighted: true,
     },
     {
       name: PLANS.performance.name,
       price: `€${PLANS.performance.monthlyEur}/mo`,
-      description: "For contractors running ads or scaling a crew — full pipeline visibility and reporting.",
+      description: "For contractors running ads — room for the traffic.",
       features: [
         `Everything in ${PLANS.croissance.name}`,
-        `${PLANS.performance.conversations} AI conversations per month`,
-        "Landing pages for Google Ads",
-        "Meta CAPI + Google Ads conversion tracking",
-        "Pipeline CRM with job status",
-        "Custom AI training + quarterly strategy call",
+        `${PLANS.performance.conversations} AI conversations per month — built for ad traffic`,
+        "Priority support + quarterly strategy call",
       ],
     },
   ];

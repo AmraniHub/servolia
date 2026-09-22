@@ -66,7 +66,7 @@ const posts: Post[] = [
       { type: "p", text: "A contact form is a one-way message into a void. The patient fills it in, hears nothing for hours, and books elsewhere. An AI receptionist is a conversation that ends in a booked appointment — the difference between collecting an email and filling a chair." },
       { type: "callout", text: "Rule of thumb: every hour a high-intent dental enquiry waits for a reply, the odds of converting it drop sharply. After-hours, the wait is the whole night — unless something answers." },
       { type: "h2", text: "The practical setup" },
-      { type: "p", text: "You don't need to rebuild your practice management software. The AI receptionist lives on your website, books into your calendar, and feeds a simple CRM so your team sees every new patient enquiry in one place — with a confirmation and reminder already sent." },
+      { type: "p", text: "You don't need to rebuild your practice management software. The AI receptionist lives on your website, takes each booking request (or hands off to your online booking), and feeds a simple CRM so your team sees every new patient enquiry in one place — with a confirmation and reminder already sent." },
       { type: "p", text: "The result is quiet but compounding: the patients who used to vanish after 6pm now show up in your schedule the next morning." },
     ],
     related: ["ai-receptionist-clinics-what-it-does", "real-cost-of-a-missed-enquiry"],
