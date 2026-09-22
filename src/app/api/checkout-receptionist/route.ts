@@ -80,6 +80,12 @@ export async function POST(req: NextRequest) {
       }],
       subscription_data: { metadata },
       metadata,
+      /* Promotion codes: the founding-practice offer, and the €0 live test
+         that proves the payment path (2026-09-22). No code exists unless one
+         is created in Stripe, so this opens nothing by itself. A card is
+         asked for only when money is due now — a paid plan always is. */
+      allow_promotion_codes: true,
+      payment_method_collection: "if_required",
       custom_text: {
         submit: {
           message: fr
