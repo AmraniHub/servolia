@@ -33,7 +33,6 @@ const has = (...keys: string[]) => keys.every((k) => !!process.env[k]?.trim());
 /** Provider readiness — flip to automated once the account + keys exist. */
 export const PROVIDERS = {
   twilio: () => has("TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN"),
-  cloudflare: () => has("CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID"),
   workspace: () => has("GOOGLE_WORKSPACE_RESELLER_TOKEN"),
 };
 
@@ -56,9 +55,8 @@ export async function provisionAddon(ctx: ProvisionContext): Promise<ProvisionRe
       result = { automated: true, status: "provisioned", message: `${label} enabled — will start once the Google Business link is confirmed.` };
       break;
     case "domain":
-      result = PROVIDERS.cloudflare()
-        ? { automated: false, status: "queued", message: `${label}: Cloudflare connected — register/transfer the chosen domain.` }
-        : { automated: false, status: "queued", message: `${label}: register/transfer the client's domain and point DNS.` };
+      // C2 (2026-09-22): she keeps her domain; it is attached on /admin/sites.
+      result = { automated: false, status: "queued", message: `${label}: attach the client's own domain on /admin/sites and send her the DNS lines.` };
       break;
     case "email":
       result = PROVIDERS.workspace()

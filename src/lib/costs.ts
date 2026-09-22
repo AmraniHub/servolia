@@ -115,11 +115,6 @@ export const SERVICE_COSTS: ServiceCost[] = [
     activeWhen: ["TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN"], dashboardHint: "console.twilio.com → Billing",
   },
   {
-    key: "cf-registrar", label: "Cloudflare Registrar (domain add-on)", category: "Add-on providers", billing: "usage", monthlyEur: null,
-    note: "At-cost domain pricing (Cloudflare adds no markup), per domain registered for a client, once enabled.",
-    activeWhen: ["CLOUDFLARE_API_TOKEN"],
-  },
-  {
     key: "workspace", label: "Google Workspace reseller (email add-on)", category: "Add-on providers", billing: "usage", monthlyEur: null,
     note: "Variable per mailbox once partner-approved and enabled — not active yet.",
     activeWhen: ["GOOGLE_WORKSPACE_RESELLER_TOKEN"],

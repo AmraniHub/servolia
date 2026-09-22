@@ -5,7 +5,7 @@ import { supabaseAdmin, type Build, type Client } from "@/lib/supabase";
 import PortalDashboard from "@/components/PortalDashboard";
 import { paymentAlertFrom } from "@/lib/clientBilling";
 import { complianceFor, type ComplianceReport } from "@/lib/zeroMiss";
-import { domainForEmail, type DomainRow } from "@/lib/domains";
+import type { PortalDomain } from "@/components/portal/DomainPanel";
 import { capStateForBuild } from "@/lib/conversationCap";
 
 export const dynamic = "force-dynamic";
@@ -20,6 +20,8 @@ export default async function PortalPage() {
   let siteSlugs: Record<string, string> = {}; // build_id -> slug
   // build_id -> the address to open: her own domain once it serves the site (C2).
   const siteUrls: Record<string, string> = {};
+  // C2: her own domain, from her site — the portal's "Your domain" panel.
+  let domain: PortalDomain | null = null;
   let scopesByLeadId: Record<string, { token: string; accepted: boolean }> = {};
 
   if (db) {
@@ -45,6 +47,7 @@ export default async function PortalPage() {
       for (const s of (sites ?? []) as { slug: string; build_id: string; config?: { customDomain?: string; domainLiveAt?: string } }[]) {
         siteSlugs[s.build_id] = s.slug;
         siteUrls[s.build_id] = siteUrlFor({ slug: s.slug, ...(s.config ?? {}) });
+        if (!domain && s.config?.customDomain) domain = { name: s.config.customDomain, live: Boolean(s.config.domainLiveAt) };
       }
     }
 
@@ -66,7 +69,6 @@ export default async function PortalPage() {
   if (primarySlug) zeroMiss = await complianceFor(primarySlug);
 
   // CGV 7 bis: the client owns their domain. The panel proves it back to them.
-  const domain: DomainRow | null = await domainForEmail(email);
 
   // The conversation meter: the number the plan is priced on, shown to the
   // person paying for it. Read for the build the subscription belongs to.

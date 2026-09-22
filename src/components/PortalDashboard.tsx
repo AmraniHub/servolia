@@ -25,7 +25,7 @@ import PortalChatDock from "@/components/portal/PortalChatDock";
 import type { ComplianceReport } from "@/lib/zeroMiss";
 import DomainPanel from "@/components/portal/DomainPanel";
 import PortalFiles from "@/components/portal/PortalFiles";
-import type { DomainRow } from "@/lib/domains";
+import type { PortalDomain } from "@/components/portal/DomainPanel";
 import { PStat, PPanel, PBars, PChart } from "@/components/portal/TrafficWidgets";
 
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
@@ -77,7 +77,7 @@ export interface PortalUsage { used: number; included: number; topups: number; p
 
 export default function PortalDashboard({
   email, builds, subscription, siteSlugs, siteUrls, scopesByLeadId, paymentAlert, zeroMiss, domain, usage,
-}: { email: string; builds: Build[]; subscription?: Client | null; siteSlugs?: Record<string, string>; siteUrls?: Record<string, string>; scopesByLeadId?: Record<string, { token: string; accepted: boolean }>; paymentAlert?: PaymentAlert | null; zeroMiss?: ComplianceReport | null; domain?: DomainRow | null; usage?: PortalUsage | null }) {
+}: { email: string; builds: Build[]; subscription?: Client | null; siteSlugs?: Record<string, string>; siteUrls?: Record<string, string>; scopesByLeadId?: Record<string, { token: string; accepted: boolean }>; paymentAlert?: PaymentAlert | null; zeroMiss?: ComplianceReport | null; domain?: PortalDomain | null; usage?: PortalUsage | null }) {
   const router = useRouter();
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [lang, setLang] = useState<Lang>("en");
