@@ -227,21 +227,26 @@ export default async function FrenchPricingPage() {
       <section className="py-16 bg-white">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-3xl font-black text-[#18181B] mb-4">
-            Pas sûr du bon système ? <span className="gradient-text">L&apos;audit décide pour vous.</span>
+            Pas sûr ? <span className="gradient-text">Essayez-la d&apos;abord.</span>
           </h2>
           <p className="text-[#52525B] mb-6">
-            Gratuit et sans appel : votre site est noté en 20 secondes environ, puis une personne vous répond sous un jour ouvré avec exactement ce qu&apos;il vous faut — rien de plus.
+            Tapez l&apos;adresse de votre site : votre réceptionniste apparaît à votre nom, vous lui parlez, puis vous la mettez sur votre site 7 jours — sans carte, sans appel. Vous choisissez la formule ensuite, selon ce qu&apos;elle a fait.
           </p>
-          <Link href="/fr/audit"
+          <Link href="/fr/essai"
             className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl bg-gradient-to-r from-[#36671E] to-[#295115] text-[#FAFAF7] font-bold hover:opacity-90">
-            Recevoir mon audit gratuit <ArrowRight className="w-4 h-4" />
+            Essayer sur mon site — 7 jours gratuits <ArrowRight className="w-4 h-4" />
           </Link>
+          <p className="mt-4 text-[13px] text-[#71717A]">
+            Vous préférez un avis sur votre site ?{" "}
+            <Link href="/fr/audit" className="font-bold text-[#36671E] hover:underline">Audit gratuit</Link>
+            {" "}— noté en 20 secondes, puis une réponse d&apos;une personne sous un jour ouvré.
+          </p>
         </div>
       </section>
 
       <Guarantee lang="fr" />
 
-      <StickyMobileCTA label="Recevoir mon audit gratuit" sub="Gratuit · Résultat en 20 secondes · Sans appel" href="/fr/audit" />
+      <StickyMobileCTA label="Essayer sur mon site" sub="7 jours gratuits · sans carte · sans appel" href="/fr/essai" />
       <FrenchFooter />
     </main>
   );

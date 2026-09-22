@@ -100,10 +100,10 @@ export default function FrenchAestheticPage() {
             </span>
           </Link>
           <Link
-            href="/fr/audit"
+            href="/fr/essai"
             className="px-4 py-2 rounded-lg bg-[#36671E] text-[#FAFAF7] text-sm font-semibold hover:bg-[#295115] transition-colors"
           >
-            Audit gratuit →
+            Essai gratuit →
           </Link>
         </div>
       </nav>
@@ -134,8 +134,8 @@ export default function FrenchAestheticPage() {
             <p className="text-[10px] text-[#A1A1AA] mt-1">Estimation illustrative — votre audit gratuit utilise les chiffres réels de votre clinique.</p>
           </div>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-10">
-            <Link href="/fr/audit" className="px-7 py-3.5 rounded-xl bg-gradient-to-r from-[#36671E] to-[#295115] text-[#FAFAF7] font-bold text-base hover:opacity-90 flex items-center gap-2">
-              Recevoir mon audit gratuit <ArrowRight className="w-4 h-4" />
+            <Link href="/fr/essai" className="px-7 py-3.5 rounded-xl bg-gradient-to-r from-[#36671E] to-[#295115] text-[#FAFAF7] font-bold text-base hover:opacity-90 flex items-center gap-2">
+              Essayer sur mon site — 7 jours gratuits <ArrowRight className="w-4 h-4" />
             </Link>
             <a href="/sites/demo-lumea" target="_blank" rel="noopener noreferrer"
               className="px-6 py-3.5 rounded-xl border-2 border-[#36671E]/30 text-[#36671E] font-bold text-base hover:bg-[#EEF5EA] transition-colors flex items-center gap-2">
@@ -270,14 +270,14 @@ export default function FrenchAestheticPage() {
           <p className="text-[#52525B] mb-6">
             Recevez un audit gratuit de votre clinique. Nous vous montrons exactement où partent vos demandes et comment les récupérer en 7 jours.
           </p>
-          <Link href="/fr/audit"
+          <Link href="/fr/essai"
             className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl bg-gradient-to-r from-[#36671E] to-[#295115] text-[#FAFAF7] font-bold hover:opacity-90">
-            Recevoir mon audit gratuit <ArrowRight className="w-4 h-4" />
+            Essayer sur mon site — 7 jours gratuits <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
       </section>
 
-      <StickyMobileCTA label="Recevoir mon audit gratuit" sub="Gratuit · Résultat en 20 secondes · Sans appel" href="/fr/audit" />
+      <StickyMobileCTA label="Essayer sur mon site" sub="7 jours gratuits · sans carte · sans appel" href="/fr/essai" />
 
       <ValueStack lang="fr" niche="aesthetic" />
       <Guarantee lang="fr" />

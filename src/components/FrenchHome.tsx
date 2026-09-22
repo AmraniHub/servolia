@@ -135,8 +135,8 @@ export default function FrenchHome() {
             initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.45 }}
             className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12"
           >
-            <Link href="/fr/audit" className="group px-8 py-4 rounded-xl bg-[#BEF264] text-[#0A1F14] font-black text-base hover:bg-[#D9F99D] transition-colors shadow-lg shadow-[#BEF264]/20 flex items-center gap-2">
-              Réserver un audit gratuit <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            <Link href="/fr/essai" className="group px-8 py-4 rounded-xl bg-[#BEF264] text-[#0A1F14] font-black text-base hover:bg-[#D9F99D] transition-colors shadow-lg shadow-[#BEF264]/20 flex items-center gap-2">
+              Essayer sur mon site — 7 jours gratuits <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </Link>
             <a href="#demo-ia" className="px-7 py-4 rounded-xl border border-[#FAFAF7]/20 text-[#FAFAF7] font-semibold text-base hover:bg-[#FAFAF7]/8 transition-colors flex items-center gap-2">
               <Bot className="w-4 h-4 opacity-60" /> Voir la démo
@@ -697,7 +697,7 @@ export default function FrenchHome() {
 
       {/* FOOTER (French, shared) */}
       {/* ValueStack retiré ici — un 4e récap tarifaire APRÈS le CTA final ; passé le CTA, le visiteur a besoin du footer, pas d'un second pitch. */}
-      <StickyMobileCTA label="Réservez votre audit gratuit" sub="Gratuit · Résultat en 20 secondes · Sans appel" href="/fr/audit" />
+      <StickyMobileCTA label="Essayer sur mon site" sub="7 jours gratuits · sans carte · sans appel" href="/fr/essai" />
       {/* The product demo itself — French visitors could not test it before. */}
       <ChatWidget lang="fr" />
       <FrenchFooter />

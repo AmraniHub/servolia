@@ -276,3 +276,12 @@ test("a failed card past its grace turns the receptionist off", () => {
   const acc = src("src/lib/assistantAccess.ts");
   assert.ok(/startsWith\("past_due"\) && row\.suspend_at && Date\.parse\(row\.suspend_at\) <= now/.test(acc));
 });
+
+test("the trial can be found: the French menu, footer, homepage and both landing pages lead to it", () => {
+  for (const f of ["src/components/FrenchNav.tsx", "src/components/FrenchFooter.tsx", "src/components/FrenchHome.tsx",
+                   "src/app/fr/dentistes/page.tsx", "src/app/fr/esthetique/page.tsx", "src/app/fr/tarifs/page.tsx", "src/app/sitemap.ts"]) {
+    assert.ok(src(f).includes("/fr/essai"), `${f} links to /fr/essai`);
+  }
+  const nav = src("src/components/FrenchNav.tsx");
+  assert.equal((nav.match(/href="\/fr\/essai"/g) ?? []).length, 2, "desktop and mobile menu both");
+});

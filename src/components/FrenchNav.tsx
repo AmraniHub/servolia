@@ -97,9 +97,19 @@ export default function FrenchNav({ heroDark = false, enHref = "/" }: { heroDark
             </Link>
             <Link
               href="/fr/audit"
+              className={`text-sm font-medium transition-colors ${
+                light ? "text-[#52525B] hover:text-[#18181B]" : "text-[#FAFAF7]/70 hover:text-[#FAFAF7]"
+              }`}
+            >
+              Audit gratuit
+            </Link>
+            {/* The front door (src/lib/receptionistTrial.ts): her own site,
+                her own receptionist, seven days — the one button in the menu. */}
+            <Link
+              href="/fr/essai"
               className="px-4 py-2 rounded-lg bg-[#36671E] text-[#FAFAF7] text-sm font-semibold hover:bg-[#295115] transition-colors shadow-soft"
             >
-              Audit gratuit →
+              Essai gratuit 7 jours →
             </Link>
           </div>
 
@@ -144,9 +154,16 @@ export default function FrenchNav({ heroDark = false, enHref = "/" }: { heroDark
           <Link
             href="/fr/audit"
             onClick={() => setOpen(false)}
+            className="text-sm font-medium text-[#52525B] hover:text-[#18181B] transition-colors py-2"
+          >
+            Audit gratuit
+          </Link>
+          <Link
+            href="/fr/essai"
+            onClick={() => setOpen(false)}
             className="mt-2 px-4 py-3 rounded-lg bg-[#36671E] text-[#FAFAF7] text-sm font-semibold text-center"
           >
-            Audit gratuit →
+            Essai gratuit 7 jours →
           </Link>
         </div>
       )}
