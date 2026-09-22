@@ -58,7 +58,7 @@ export default function ContactPage() {
             <span className="gradient-text">free business audit</span>
           </h1>
           <p className="text-[#52525B] text-lg max-w-2xl mx-auto">
-            Tell us about your business. We'll analyze your online presence and send you a PDF report showing exactly what's costing you clients — within 24 hours.
+            Tell us about your business. We read every message and reply personally within one working day — and if you want the numbers first, the free audit scores your site on screen in about 20 seconds.
           </p>
         </div>
       </section>
@@ -73,7 +73,7 @@ export default function ContactPage() {
                 <div className="flex flex-col gap-5">
                   {[
                     { icon: <Mail className="w-4 h-4 text-[#36671E]" />, title: "You submit this form", desc: "5 minutes. No payment required." },
-                    { icon: <Clock className="w-4 h-4 text-[#36671E]" />, title: "We audit your business", desc: "Within 24 hours we send a PDF audit showing your gaps and our recommendations." },
+                    { icon: <Clock className="w-4 h-4 text-[#36671E]" />, title: "We audit your business", desc: "We reply personally within one working day, with what we would fix and why." },
                     { icon: <Zap className="w-4 h-4 text-[#059669]" />, title: "Optional 15-min call", desc: "If you want, we hop on a quick call to walk through the audit together." },
                     { icon: <CheckCircle className="w-4 h-4 text-[#059669]" />, title: "We build your system", desc: "If you're ready, we propose a fixed-price package. Deposit via Stripe. Build starts immediately." },
                   ].map((s, i) => (
@@ -119,12 +119,12 @@ export default function ContactPage() {
                   </div>
                   <h2 className="text-2xl font-black text-[#18181B] mb-3">We've got your request!</h2>
                   <p className="text-[#71717A] mb-6 leading-relaxed">
-                    Your free audit is being prepared. You'll receive a detailed PDF report at <strong>{form.email}</strong> within 24 hours.
+                    Thank you — we read every message. You'll hear from us personally at <strong>{form.email}</strong> within one working day.
                   </p>
                   <div className="p-4 rounded-xl bg-[#FAFAF7] border border-[#E8E6E0] text-sm text-[#71717A]">
                     <p className="font-semibold text-[#18181B] mb-1">What to expect:</p>
                     <ul className="flex flex-col gap-1 text-left">
-                      <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-[#059669]" /> PDF audit sent within 24h</li>
+                      <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-[#059669]" /> Personal reply within one working day</li>
                       <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-[#059669]" /> No pressure, no spam</li>
                       <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-[#059669]" /> Reply to schedule a free call if you'd like</li>
                     </ul>

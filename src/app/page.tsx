@@ -370,8 +370,8 @@ export default function HomePage() {
 
           <div className="grid md:grid-cols-3 gap-6">
             {[
-              { num: "01", icon: <MessageSquare className="w-5 h-5" />, title: "Free Business Audit", desc: "Fill our 5-question form. We send a PDF audit within 24h showing exactly what's costing you clients and what to fix. No payment, no pitch call required." },
-              { num: "02", icon: <Zap className="w-5 h-5" />, title: "We Build Everything", desc: "Fixed scope, fixed price, fixed deadline — in writing before you pay a cent. We build using our 22-step checklist and send Loom walkthroughs at every milestone." },
+              { num: "01", icon: <MessageSquare className="w-5 h-5" />, title: "Free Business Audit", desc: "Fill our 5-question form. Your audit is scored on screen in about 20 seconds — what's costing you clients and what to fix — and we reply personally within one working day. No payment, no pitch call." },
+              { num: "02", icon: <Zap className="w-5 h-5" />, title: "We Build Everything", desc: "Fixed scope, fixed price, fixed deadline — in writing before you pay a cent. We build using our 22-step checklist and keep you posted by email at every milestone." },
               { num: "03", icon: <TrendingUp className="w-5 h-5" />, title: "Clients Start Booking", desc: "System goes live. AI receptionist starts answering leads. You get a monthly report: leads captured, bookings made, traffic sources, conversion rate." },
             ].map((s, i) => (
               <FadeUp key={i} delay={i * 0.12}>

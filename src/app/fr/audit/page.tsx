@@ -7,7 +7,7 @@ import AuditScorecard from "@/components/AuditScorecard";
 export const metadata: Metadata = {
   title: "Audit gratuit — Servolia",
   description:
-    "Recevez sous 24h un audit gratuit de votre site, de votre parcours de réservation et de votre acquisition de clients. Sans engagement, sans appel commercial.",
+    "Un audit gratuit de votre site, de votre parcours de réservation et de votre acquisition de clients — noté à l'écran en 20 secondes, puis une réponse personnelle sous un jour ouvré. Sans engagement, sans appel commercial.",
   alternates: {
     canonical: "https://servolia.com/fr/audit",
     languages: {

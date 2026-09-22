@@ -26,10 +26,10 @@ export const metadata: Metadata = {
 
 
 const processus = [
-  { num: "01", title: "Audit gratuit", desc: "Remplissez un formulaire de 5 questions. Vous recevez un audit PDF sous 24 h." },
+  { num: "01", title: "Audit gratuit", desc: "Remplissez un formulaire de 5 questions. Votre audit chiffré s'affiche en 20 secondes ; nous répondons sous un jour ouvré." },
   { num: "02", title: "Validation du périmètre", desc: "Nous rédigeons le périmètre complet par écrit. Vous relisez et validez." },
   { num: "03", title: "Mise en place 690 €", desc: "Réglez la mise en place via Stripe pour lancer la production — offerte si vous payez la première année." },
-  { num: "04", title: "Nous construisons", desc: "7 jours de production. Vous recevez une vidéo Loom à chaque étape." },
+  { num: "04", title: "Nous construisons", desc: "7 jours de production. Votre première version par email en quelques minutes, puis l'avancement à chaque étape." },
   { num: "05", title: "Validation + mise en ligne", desc: "Vous validez et votre formule mensuelle démarre. Nous mettons en ligne et vous remettons tout." },
 ];
 

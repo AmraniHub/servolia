@@ -302,7 +302,7 @@ export default function FrenchHome() {
 
           <div className="grid md:grid-cols-3 gap-6">
             {[
-              { num: "01", icon: <MessageSquare className="w-5 h-5" />, title: "Audit gratuit de votre activité", desc: "Remplissez notre formulaire de 5 questions. Nous envoyons un audit sous 24h montrant exactement ce qui vous coûte des clients et quoi corriger. Sans paiement, sans appel commercial." },
+              { num: "01", icon: <MessageSquare className="w-5 h-5" />, title: "Audit gratuit de votre activité", desc: "Remplissez notre formulaire de 5 questions. Votre audit s'affiche à l'écran en 20 secondes — ce qui vous coûte des clients et quoi corriger — et nous répondons personnellement sous un jour ouvré. Sans paiement, sans appel commercial." },
               { num: "02", icon: <Zap className="w-5 h-5" />, title: "Nous construisons tout", desc: "Périmètre fixe, prix fixe, date fixe — par écrit avant que vous ne payiez un centime. Nous construisons avec notre checklist en 22 étapes et envoyons des vidéos de suivi à chaque étape clé." },
               { num: "03", icon: <TrendingUp className="w-5 h-5" />, title: "Les clients commencent à réserver", desc: "Le système est en ligne. La réceptionniste IA répond aux demandes. Vous recevez un rapport mensuel : leads capturés, rendez-vous pris, sources de trafic, taux de conversion." },
             ].map((s, i) => (

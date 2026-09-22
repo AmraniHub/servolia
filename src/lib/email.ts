@@ -369,73 +369,73 @@ const waBtn = (href: string, label: string) => `
   </td></tr>
 </table>`;
 
-/** Sent immediately when someone submits the free-audit form. */
+/**
+ * Sent immediately when someone submits the free-audit or contact form.
+ *
+ * It used to promise "a personalised 5-minute video within 24 hours". Nothing
+ * recorded one — the follow-up cron sent a nudge two days later and that
+ * was all. What is true: the audit page scores their site on screen in
+ * about 20 seconds (/api/audit), and a person reads every request and
+ * replies within one working day, with the SLA clock on /admin/today. That
+ * is what this says.
+ */
 export const auditConfirmationEmail = (firstName: string, lang: "en" | "fr" = "en") => {
   if (lang === "fr") {
     return {
-      subject: "Votre audit Servolia est en préparation 🎯",
+      subject: "Bien reçu — nous vous répondons sous un jour ouvré",
       html: wrapper(`
-        <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">Nous avons bien reçu votre demande d'audit.</h1>
+        <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">Nous avons bien reçu votre demande.</h1>
         <p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#3F3F46;">Bonjour ${firstName},</p>
         <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#3F3F46;">
-          Merci de votre confiance. Nous préparons un audit vidéo Loom personnalisé de 5 minutes sur votre présence en ligne, livré sous <strong>24 heures</strong>.
+          Merci. Une personne — pas un robot — lit votre demande et vous répond sous <strong>un jour ouvré</strong>, avec ce que nous corrigerions sur votre présence en ligne et pourquoi.
         </p>
         <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#3F3F46;">
-          <strong>La suite :</strong>
+          En attendant, si vous voulez les chiffres tout de suite : l'audit gratuit note votre site à l'écran en 20 secondes environ.
         </p>
-        <ul style="margin:0 0 16px;padding-left:20px;font-size:15px;line-height:1.7;color:#3F3F46;">
-          <li>Nous étudions votre site + Google Maps + vos concurrents</li>
-          <li>Nous enregistrons une vidéo montrant exactement ce qui vous fait perdre des clients</li>
-          <li>Vous la regardez quand vous voulez — aucun appel nécessaire</li>
-        </ul>
-        <p style="margin:0 0 16px;font-size:14px;line-height:1.6;color:#71717A;">
+        ${btn("https://servolia.com/fr/audit", "Noter mon site maintenant →")}
+        <p style="margin:24px 0 0;font-size:14px;line-height:1.6;color:#71717A;">
           Une question entre-temps ? Répondez simplement à cet email.
         </p>
-        ${btn("https://servolia.com/fr/cas-clients", "Voir les cas clients →")}
-      `, { preheader: "Votre audit vidéo de 5 minutes arrive sous 24 heures. Aucun appel requis.", lang: "fr" }),
+      `, { preheader: "Une personne vous repond sous un jour ouvre. Aucun appel requis.", lang: "fr" }),
     };
   }
   return {
-    subject: "Your Servolia audit is on the way 🎯",
+    subject: "Received — a personal reply within one working day",
     html: wrapper(`
-      <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">We received your audit request.</h1>
+      <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">We received your request.</h1>
       <p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#3F3F46;">Hi ${firstName},</p>
       <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#3F3F46;">
-        Thanks for trusting Servolia. We'll record a personalized 5-minute Loom audit of your current online presence and send it within <strong>24 hours</strong>.
+        Thank you. A person — not a bot — reads your request and replies within <strong>one working day</strong>, with what we would fix about your online presence and why.
       </p>
       <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#3F3F46;">
-        <strong>What's next:</strong>
+        If you want the numbers right now: the free audit scores your site on screen in about 20 seconds.
       </p>
-      <ul style="margin:0 0 16px;padding-left:20px;font-size:15px;line-height:1.7;color:#3F3F46;">
-        <li>We study your site + Google Maps + competitors</li>
-        <li>We record a screen-share Loom showing exactly what's losing you clients</li>
-        <li>You watch it on your time — no call needed</li>
-      </ul>
-      <p style="margin:0 0 16px;font-size:14px;line-height:1.6;color:#71717A;">
-        If you have questions in the meantime, just reply to this email.
+      ${btn("https://servolia.com/free-audit", "Score my site now →")}
+      <p style="margin:24px 0 0;font-size:14px;line-height:1.6;color:#71717A;">
+        Questions in the meantime? Just reply to this email.
       </p>
-      ${btn("https://servolia.com/case-studies", "See case studies →")}
-      `, { preheader: "Your 5-minute video audit lands within 24 hours. No call needed.", lang: "en" }),
+      `, { preheader: "A person replies within one working day. No call needed.", lang: "en" }),
   };
 };
 
-/** Sent 24h after audit request if no follow-up. Reminds them you're working on it. */
+/** Sent a day after an audit request with no reply from us. Asks the one
+ *  question that sharpens the answer — and promises only the reply. */
 export const auditInProgressEmail = (firstName: string) => ({
   subject: "Working on your audit — quick question",
   html: wrapper(`
     <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">Quick update</h1>
     <p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#3F3F46;">Hi ${firstName},</p>
     <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#3F3F46;">
-      Your audit is in progress. While I'm recording, one question helps me give you a sharper recommendation:
+      I'm writing your reply. One question helps me make it sharper:
     </p>
     <p style="margin:0 0 16px;padding:16px;background:#FAFAF7;border-left:3px solid #36671E;font-size:15px;line-height:1.6;color:#18181B;">
       <strong>What's the #1 problem you'd want this AI system to solve in the next 90 days?</strong><br/>
       (Just reply with a sentence or two.)
     </p>
     <p style="margin:0;font-size:14px;line-height:1.6;color:#71717A;">
-      Loom dropping in your inbox in the next 12–24 hours.
+      My reply follows within the working day either way.
     </p>
-      `, { preheader: "One quick detail and I can finish the recording today.", lang: "en" }),
+      `, { preheader: "One quick detail and I can send you a sharper answer.", lang: "en" }),
 });
 
 /**
@@ -468,7 +468,7 @@ export const installationPaidEmail = (firstName: string, planName: string, amoun
         <ul style="margin:0 0 16px;padding-left:20px;font-size:15px;line-height:1.7;color:#3F3F46;">
           <li><strong>Jour 1 (aujourd'hui) :</strong> Complétez le formulaire d'intake en 8 minutes (lien ci-dessous)</li>
           <li><strong>Juste après :</strong> Votre première version arrive par email — un lien pour la voir, généralement en quelques minutes</li>
-          <li><strong>Jour 1–3 :</strong> Vous nous dites quoi changer ; votre validation → mise en ligne sous 24h</li>
+          <li><strong>Jour 1–3 :</strong> Vous nous dites quoi changer ; vous dites go, nous mettons en ligne</li>
           <li><strong>Ensuite :</strong> Votre abonnement mensuel démarre, une fois le site en ligne</li>
         </ul>
         ${btn(intakeUrl, "Compléter le formulaire →")}
@@ -494,7 +494,7 @@ export const installationPaidEmail = (firstName: string, planName: string, amoun
       <ul style="margin:0 0 16px;padding-left:20px;font-size:15px;line-height:1.7;color:#3F3F46;">
         <li><strong>Day 1 (today):</strong> Complete your 8-minute intake form (link below)</li>
         <li><strong>Right after:</strong> Your first draft arrives by email — a link to look at, usually within minutes</li>
-        <li><strong>Day 1–3:</strong> You tell us what to change; your approval → we go live within 24 hours</li>
+        <li><strong>Day 1–3:</strong> You tell us what to change; you say go, we take it live</li>
         <li><strong>Then:</strong> Your monthly plan starts, once the site is live</li>
       </ul>
       ${btn(intakeUrl, "Complete intake form →")}
@@ -574,6 +574,126 @@ export const draftReadyEmail = (o: {
         This link works for 90 days and opens only your draft.
       </p>
       `, { preheader: "Your site, first version. Have a look, then tell us what to change.", lang: "en" }),
+  };
+};
+
+/**
+ * The conversation meter, when it matters: once at 80 % and once at 100 % a
+ * month (src/lib/conversationCap.ts). Never a cut-off — the receptionist
+ * keeps answering their patients. Two honest ways forward: a one-off pack,
+ * or the next tier, which the pricing page already promises.
+ */
+export const conversationsEmail = (o: {
+  businessName: string;
+  level: 80 | 100;
+  used: number;
+  allowance: number;
+  planName: string;
+  nextPlan: { name: string; monthlyEur: number } | null;
+  topupUrl: string;
+  lang: "en" | "fr";
+}) => {
+  const P = `style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#3F3F46;"`;
+  const at100 = o.level === 100;
+  if (o.lang === "fr") {
+    return {
+      subject: at100
+        ? `Vos ${o.allowance} conversations du mois sont utilisées — ${o.businessName}`
+        : `${o.used} conversations sur ${o.allowance} ce mois-ci — ${o.businessName}`,
+      html: wrapper(`
+        <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">${at100 ? "Votre assistante a été très sollicitée ce mois-ci" : "Votre assistante travaille bien"}</h1>
+        <p ${P}>Bonjour,</p>
+        <p ${P}>
+          Votre formule <strong>${o.planName}</strong> inclut ${o.allowance} conversations par mois, et vos patients en ont déjà eu <strong>${o.used}</strong>.
+          ${at100 ? "Rien ne s'arrête : votre assistante continue de répondre à chaque patient." : "Au rythme actuel, vous atteindrez la limite avant la fin du mois."}
+        </p>
+        <p ${P}><strong>Deux options, au choix :</strong></p>
+        <ul style="margin:0 0 16px;padding-left:20px;font-size:15px;line-height:1.7;color:#3F3F46;">
+          <li>Un pack de conversations en plus pour ce mois — paiement unique, depuis votre espace.</li>
+          ${o.nextPlan ? `<li>Passer à la formule <strong>${o.nextPlan.name}</strong> (${o.nextPlan.monthlyEur} €/mois) — c'est ce que nous vous proposerons de toute façon si le rythme se confirme, jamais de facture surprise.</li>` : `<li>Vous êtes déjà sur la formule la plus large — répondez à cet email et nous regardons ensemble.</li>`}
+        </ul>
+        ${btn(o.topupUrl, "Voir mon compteur →")}
+        <p style="margin:24px 0 0;font-size:14px;line-height:1.6;color:#71717A;">Une question ? Répondez simplement à cet email.</p>
+      `, { preheader: at100 ? "Rien ne s'arrete. Deux options pour la suite." : "Vous approchez de la limite du mois.", lang: "fr" }),
+    };
+  }
+  return {
+    subject: at100
+      ? `Your ${o.allowance} conversations this month are used — ${o.businessName}`
+      : `${o.used} of ${o.allowance} conversations this month — ${o.businessName}`,
+    html: wrapper(`
+      <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">${at100 ? "Your receptionist has been busy this month" : "Your receptionist is working"}</h1>
+      <p ${P}>Hello,</p>
+      <p ${P}>
+        Your <strong>${o.planName}</strong> plan includes ${o.allowance} conversations a month, and your patients have already had <strong>${o.used}</strong>.
+        ${at100 ? "Nothing stops: your receptionist keeps answering every patient." : "At this pace you will reach the limit before the month ends."}
+      </p>
+      <p ${P}><strong>Two options, your choice:</strong></p>
+      <ul style="margin:0 0 16px;padding-left:20px;font-size:15px;line-height:1.7;color:#3F3F46;">
+        <li>A pack of extra conversations for this month — one-off payment, from your portal.</li>
+        ${o.nextPlan ? `<li>Move to the <strong>${o.nextPlan.name}</strong> plan (€${o.nextPlan.monthlyEur}/month) — which is what we'd suggest anyway if this pace holds; never a surprise bill.</li>` : `<li>You are already on the widest plan — reply to this email and we'll look at it together.</li>`}
+      </ul>
+      ${btn(o.topupUrl, "See my meter →")}
+      <p style="margin:24px 0 0;font-size:14px;line-height:1.6;color:#71717A;">Questions? Just reply to this email.</p>
+      `, { preheader: at100 ? "Nothing stops. Two options for what's next." : "You are approaching this month's limit.", lang: "en" }),
+  };
+};
+
+/** The receipt for a bought pack — says what was added and to which month. */
+export const topupReceiptEmail = (o: { businessName: string; conversations: number; priceEur: number; month: string; lang: "en" | "fr" }) => {
+  const P = `style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#3F3F46;"`;
+  if (o.lang === "fr") {
+    return {
+      subject: `+${o.conversations} conversations ajoutées — ${o.businessName}`,
+      html: wrapper(`
+        <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">C'est ajouté</h1>
+        <p ${P}>Bonjour,</p>
+        <p ${P}><strong>${o.conversations} conversations</strong> ont été ajoutées à votre compteur pour ${o.month}. Paiement unique de ${o.priceEur} €, déjà réglé — rien d'autre ne change sur votre formule.</p>
+        ${btn("https://servolia.com/portal", "Ouvrir mon espace →")}
+      `, { preheader: `${o.conversations} conversations ajoutees pour ${o.month}.`, lang: "fr" }),
+    };
+  }
+  return {
+    subject: `+${o.conversations} conversations added — ${o.businessName}`,
+    html: wrapper(`
+      <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">Added</h1>
+      <p ${P}>Hello,</p>
+      <p ${P}><strong>${o.conversations} conversations</strong> have been added to your meter for ${o.month}. One-off payment of €${o.priceEur}, already settled — nothing else on your plan changes.</p>
+      ${btn("https://servolia.com/portal", "Open my portal →")}
+    `, { preheader: `${o.conversations} conversations added for ${o.month}.`, lang: "en" }),
+  };
+};
+
+/**
+ * A one-off service on the hosting line (today: the multilingual search
+ * setup). Until 2026-09-22 this sale fell into the ARREARS branch of the
+ * webhook and the buyer was told they had settled an "outstanding balance".
+ * This says what they bought and what happens next — the work is done by a
+ * person, so the promise is a date range, not an hour.
+ */
+export const oneOffServicePaidEmail = (o: { productName: string; amountUsd: number; siteLabel: string; whatHappens: string; lang: "en" | "fr" }) => {
+  const P = `style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#3F3F46;"`;
+  if (o.lang === "fr") {
+    return {
+      subject: `Paiement reçu — ${o.productName}`,
+      html: wrapper(`
+        <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">Paiement reçu, merci</h1>
+        <p ${P}>Bonjour,</p>
+        <p ${P}>Nous avons bien reçu <strong>${o.amountUsd} $</strong> pour <strong>${o.productName}</strong>${o.siteLabel ? ` sur ${o.siteLabel}` : ""}. Paiement unique — rien de récurrent.</p>
+        <p ${P}><strong>La suite :</strong> ${o.whatHappens}</p>
+        <p style="margin:24px 0 0;font-size:14px;line-height:1.6;color:#71717A;">Une question ? Répondez simplement à cet email.</p>
+      `, { preheader: `${o.productName} : paiement recu, voici la suite.`, lang: "fr" }),
+    };
+  }
+  return {
+    subject: `Payment received — ${o.productName}`,
+    html: wrapper(`
+      <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">Payment received, thank you</h1>
+      <p ${P}>Hello,</p>
+      <p ${P}>We received <strong>$${o.amountUsd}</strong> for <strong>${o.productName}</strong>${o.siteLabel ? ` on ${o.siteLabel}` : ""}. One-off — nothing recurring.</p>
+      <p ${P}><strong>What happens next:</strong> ${o.whatHappens}</p>
+      <p style="margin:24px 0 0;font-size:14px;line-height:1.6;color:#71717A;">Questions? Just reply to this email.</p>
+    `, { preheader: `${o.productName}: payment received, here is what happens next.`, lang: "en" }),
   };
 };
 
@@ -728,7 +848,7 @@ export const liveEmail = (firstName: string, url: string, lang: "en" | "fr" = "e
         <ul style="margin:0 0 16px;padding-left:20px;font-size:15px;line-height:1.7;color:#3F3F46;">
           <li>Partagez l'adresse sur Instagram, Google Maps et votre signature email</li>
           <li><strong>Votre espace client :</strong> <a href="https://servolia.com/portal" style="color:#36671E;">servolia.com/portal</a> — connectez-vous avec cette adresse email, un lien de connexion vous arrive aussitôt. Toutes vos demandes, vos statistiques et vos rapports y sont.</li>
-          <li>Les premières demandes arrivent en général sous 48 h</li>
+          <li>Chaque demande qui arrive vous est signalée aussitôt, et apparaît dans votre espace</li>
           <li>Quelque chose ne va pas ? Répondez simplement à cet email</li>
         </ul>
         ${btn(url, "Voir mon système en ligne →")}
@@ -749,7 +869,7 @@ export const liveEmail = (firstName: string, url: string, lang: "en" | "fr" = "e
       <ul style="margin:0 0 16px;padding-left:20px;font-size:15px;line-height:1.7;color:#3F3F46;">
         <li>Share the URL on Instagram, Google Maps, your email signature</li>
         <li><strong>Your client portal:</strong> <a href="https://servolia.com/portal" style="color:#36671E;">servolia.com/portal</a> — log in with this email address and a sign-in link arrives instantly. Every enquiry, your traffic and your reports live there.</li>
-        <li>First leads usually arrive within 48 hours</li>
+        <li>Every enquiry that lands is flagged to you at once, and appears in your portal</li>
         <li>If anything looks off, just reply to this email</li>
       </ul>
       ${btn(url, "View your live system →")}

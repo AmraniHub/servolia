@@ -5,7 +5,7 @@ import { CheckCircle, MessageSquare, Star, Mail } from "lucide-react";
 import CheckoutButton from "@/components/CheckoutButton";
 import Link from "next/link";
 import FoundingOffer, { FOUNDING_PLACES, FOUNDING_PLACES_OPEN } from "@/components/FoundingOffer";
-import { PLANS, PLAN_ORDER, POPULAR_PLAN_KEY, ADDONS, SETUP_PLAN } from "@/lib/pricing";
+import { PLANS, PLAN_ORDER, POPULAR_PLAN_KEY, SELLABLE_ADDONS, SETUP_PLAN } from "@/lib/pricing";
 
 /**
  * The subscription section — the actual product, on every marketing page.
@@ -44,6 +44,12 @@ const T = {
     addonsTitle: "Optional extras",
     perMailbox: "/mailbox", perMoShort: "/mo",
     includedFrom: (p: string) => `Included from ${p}`,
+    /* THE PLANS DIFFER BY CONVERSATIONS, NOT BY FEATURES. Until 2026-09-22
+       the middle and top tiers listed reviews automation, SMS reminders, an
+       ads closed loop and custom AI training — none of which any code
+       performs — while the pipeline, the report and the analytics they
+       "added" already go to every client. Every line below is true for the
+       plan it sits under. */
     plans: {
       essentiel: {
         tag: "Everything you need to stop losing enquiries.",
@@ -51,28 +57,24 @@ const T = {
           "Professional multi-page site",
           "24/7 AI receptionist, trained on your services",
           "Instant lead alerts — email + one-tap WhatsApp reply",
-          "Client portal with every enquiry",
+          "Client portal: every enquiry, with status and private notes",
+          "Visitor analytics and a monthly results report",
           "Hosting, domain, SSL and pro email included",
         ],
       },
       croissance: {
-        tag: "Turn those enquiries into booked appointments.",
+        tag: "The same product, for a busier practice.",
         inc: [
-          "Everything in Essentiel, plus:",
-          "Lead pipeline with statuses and private notes",
-          "Monthly results report (enquiries, bookings, after-hours)",
-          "Google reviews automation",
-          "SMS / WhatsApp appointment reminders",
-          "Visitor analytics — see what actually brings patients",
+          "Everything in Essentiel",
+          "Three times the conversations — enough for 2–3 practitioners",
+          "The live meter in your portal, and a top-up pack if a month runs hot",
         ],
       },
       performance: {
         tag: "For clinics running ads and multiple practitioners.",
         inc: [
-          "Everything in Croissance, plus:",
-          "Multi-practitioner / multi-site",
-          "Ads closed loop — every euro tracked to a booking",
-          "Custom AI training on your own protocols",
+          "Everything in Croissance",
+          "800 conversations a month — built for ad traffic",
           "Priority support + quarterly strategy call",
         ],
       },
@@ -102,28 +104,24 @@ const T = {
           "Site professionnel multi-pages",
           "Assistante IA 24 h/24, formée sur vos prestations",
           "Alerte immédiate — email + réponse WhatsApp en un clic",
-          "Espace client avec toutes vos demandes",
+          "Espace client : chaque demande, avec statut et notes privées",
+          "Statistiques de visite et rapport mensuel de résultats",
           "Hébergement, nom de domaine, SSL et email pro inclus",
         ],
       },
       croissance: {
-        tag: "Transformez ces demandes en rendez-vous.",
+        tag: "Le même produit, pour un cabinet plus sollicité.",
         inc: [
-          "Tout Essentiel, plus :",
-          "Pipeline de demandes avec statuts et notes privées",
-          "Rapport mensuel de résultats (demandes, RDV, hors horaires)",
-          "Automatisation des avis Google",
-          "Rappels de rendez-vous SMS / WhatsApp",
-          "Statistiques de visite — voyez ce qui amène vraiment des patients",
+          "Tout Essentiel",
+          "Trois fois plus de conversations — de quoi couvrir 2 à 3 praticiens",
+          "Le compteur en direct dans votre espace, et un pack en plus si un mois s'emballe",
         ],
       },
       performance: {
         tag: "Pour les cabinets qui font de la publicité et travaillent à plusieurs.",
         inc: [
-          "Tout Croissance, plus :",
-          "Multi-praticiens / multi-sites",
-          "Boucle publicitaire — chaque euro suivi jusqu'au rendez-vous",
-          "IA entraînée sur vos propres protocoles",
+          "Tout Croissance",
+          "800 conversations par mois — prévu pour le trafic publicitaire",
           "Support prioritaire + point stratégique trimestriel",
         ],
       },
@@ -273,7 +271,7 @@ export default function CarePlansSection({ lang = "en" }: { lang?: "en" | "fr" }
         <div className="mt-10">
           <p className="text-xs font-bold text-[#52525B] uppercase tracking-widest text-center mb-4">{t.addonsTitle}</p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {Object.values(ADDONS).map((a) => {
+            {SELLABLE_ADDONS.map((a) => {
               const Icon = ADDON_ICON[a.key] ?? Mail;
               const unit = a.per === "mailbox" ? t.perMailbox : t.perMoShort;
               const incFrom = a.includedFrom ? PLANS[a.includedFrom] : null;

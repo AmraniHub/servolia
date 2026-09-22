@@ -1,5 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { reportAiFallback } from "@/lib/aiHealth";
+import { checkConversationCap } from "@/lib/conversationCap";
 import { supabaseAdmin, estimateLeadValue } from "@/lib/supabase";
 import { getClientSite } from "@/lib/clientSites";
 import { notifyClientOfLead } from "@/lib/clientNotify";
@@ -312,7 +313,13 @@ export async function POST(req: NextRequest) {
             utm: parseUtm(pageUrl) ?? undefined,
           };
           if (existing) await db.from("chat_sessions").update(row).eq("id", existing.id);
-          else await db.from("chat_sessions").insert({ session_id: sessionId, ...row });
+          else {
+            await db.from("chat_sessions").insert({ session_id: sessionId, ...row });
+            // A NEW conversation was counted: check it against the plan after
+            // the reply has gone out. Never a cut-off — an email at 80 % and
+            // 100 %, and the founder told (src/lib/conversationCap.ts).
+            after(() => checkConversationCap(siteSlug));
+          }
 
           // Alert the clinic owner the FIRST time this conversation becomes a
           // booking (transition only — a long chat can never spam them).

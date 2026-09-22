@@ -38,9 +38,9 @@ const steps = [
   {
     num: "02",
     icon: <Video className="w-5 h-5" />,
-    title: "Vous recevez votre audit vidéo sous 24h",
+    title: "Votre audit s'affiche en 20 secondes",
     who: "Servolia",
-    time: "Sous 24 heures",
+    time: "Tout de suite",
     desc: "Nous enregistrons une vidéo de 5 minutes qui analyse votre présence en ligne actuelle — ce qui vous coûte des clients et ce que nous corrigerions.",
     detail: "Ce n'est pas un modèle générique. Nous examinons votre site, votre fiche Google Maps, vos concurrents dans la même ville et votre parcours de réservation. Des observations précises, pas des conseils vagues.",
     color: "from-[#295115] to-[#6B8439]",
@@ -111,7 +111,7 @@ const steps = [
     title: "Vous validez → mise en ligne",
     who: "Vous",
     time: "Jour 5–7",
-    desc: "Une fois la maquette validée, vous donnez le feu vert et nous mettons en ligne sous 24 heures. Il n'y a plus rien à régler — la mise en place est déjà payée.",
+    desc: "Une fois la maquette validée, vous donnez le feu vert et nous la mettons en ligne. Il n'y a plus rien à régler — la mise en place est déjà payée.",
     detail: "La mise en ligne comprend : connexion du domaine, SSL, tests finaux mobile et ordinateur, activation de Google Analytics, vérification du Pixel Meta (si inclus) et activation du chatbot.",
     color: "from-[#059669] to-[#059669]",
   },
@@ -237,7 +237,7 @@ export default function FrenchHowItWorksPage() {
               className="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-gradient-to-r from-[#36671E] to-[#295115] text-[#FAFAF7] font-black hover:opacity-90 transition-opacity">
               Demander mon audit gratuit <ArrowRight className="w-4 h-4" />
             </Link>
-            <p className="text-xs text-[#A1A1AA] mt-4">Sans appel · Vidéo envoyée sous 24h · Sans carte bancaire</p>
+            <p className="text-xs text-[#A1A1AA] mt-4">Sans appel · Audit en 20 secondes · Sans carte bancaire</p>
           </div>
         </section>
       </main>

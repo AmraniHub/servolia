@@ -21,6 +21,7 @@ const navGroups: { group: string; items: { label: string; href: string; icon: ty
   {
     group: "Run the day",
     items: [
+      { label: "Today",     href: "/admin/today",     icon: Sun },
       { label: "Deadlines", href: "/admin/deadlines", icon: CalendarDays },
     ],
   },

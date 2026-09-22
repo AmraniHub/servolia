@@ -60,7 +60,7 @@ export default function FrenchContactPage() {
             <span className="gradient-text">audit gratuit</span>
           </h1>
           <p className="text-[#52525B] text-lg max-w-2xl mx-auto">
-            Parlez-nous de votre activité. Nous analysons votre présence en ligne et vous envoyons un rapport montrant exactement ce qui vous coûte des clients — sous 24 heures.
+            Parlez-nous de votre activité. Nous lisons chaque message et vous répondons personnellement sous un jour ouvré — et si vous voulez les chiffres d'abord, l'audit gratuit note votre site à l'écran en 20 secondes environ.
           </p>
         </div>
       </section>
@@ -75,7 +75,7 @@ export default function FrenchContactPage() {
                 <div className="flex flex-col gap-5">
                   {[
                     { icon: <Mail className="w-4 h-4 text-[#36671E]" />, title: "Vous envoyez ce formulaire", desc: "5 minutes. Aucun paiement requis." },
-                    { icon: <Clock className="w-4 h-4 text-[#36671E]" />, title: "Nous auditons votre activité", desc: "Sous 24 heures, nous envoyons un audit montrant vos points faibles et nos recommandations." },
+                    { icon: <Clock className="w-4 h-4 text-[#36671E]" />, title: "Nous auditons votre activité", desc: "Nous vous répondons personnellement sous un jour ouvré, avec ce que nous corrigerions et pourquoi." },
                     { icon: <Zap className="w-4 h-4 text-[#059669]" />, title: "Appel optionnel de 15 min", desc: "Si vous le souhaitez, nous parcourons l'audit ensemble lors d'un court appel." },
                     { icon: <CheckCircle className="w-4 h-4 text-[#059669]" />, title: "Nous construisons votre système", desc: "Si vous êtes prêt, nous proposons une formule à prix fixe. Acompte via Stripe. Construction immédiate." },
                   ].map((s, i) => (
@@ -121,12 +121,12 @@ export default function FrenchContactPage() {
                   </div>
                   <h2 className="text-2xl font-black text-[#18181B] mb-3">Demande bien reçue !</h2>
                   <p className="text-[#71717A] mb-6 leading-relaxed">
-                    Votre audit gratuit est en préparation. Vous recevrez un rapport détaillé à <strong>{form.email}</strong> sous 24 heures.
+                    Merci — nous lisons chaque message. Vous aurez une réponse personnelle à <strong>{form.email}</strong> sous un jour ouvré.
                   </p>
                   <div className="p-4 rounded-xl bg-[#FAFAF7] border border-[#E8E6E0] text-sm text-[#71717A]">
                     <p className="font-semibold text-[#18181B] mb-1">À quoi vous attendre :</p>
                     <ul className="flex flex-col gap-1 text-left">
-                      <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-[#059669]" /> Audit envoyé sous 24h</li>
+                      <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-[#059669]" /> Réponse personnelle sous un jour ouvré</li>
                       <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-[#059669]" /> Aucune pression, aucun spam</li>
                       <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-[#059669]" /> Répondez pour planifier un appel gratuit si vous le souhaitez</li>
                     </ul>

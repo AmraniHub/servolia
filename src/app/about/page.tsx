@@ -93,11 +93,11 @@ export default function AboutPage() {
             <h2 className="text-2xl font-black text-[#18181B] mb-8">How we work</h2>
             <ul className="space-y-4">
               {[
-                ["Free audit before anything else.", "We record a 5-minute Loom of your current online presence — what's working, what's costing you clients, and what we'd fix. No commitment, no call required."],
+                ["Free audit before anything else.", "Your site is scored on screen in about 20 seconds — what's working, what's costing you clients, and what we'd fix — and we reply personally within one working day. No commitment, no call required."],
                 ["Scope in writing before you pay.", "Every project starts with a 1-page scope document. Fixed deliverables. Fixed price. Fixed deadline. Approved by you before any invoice."],
                 ["A fixed installation fee, then a monthly plan.", "The installation is quoted in writing before we start — no deposit, no balance owed on delivery day. You see your finished system before it goes live, and the monthly plan is cancellable any time with 30 days notice. If we miss the deadline through our fault, we refund 10% per day late."],
                 ["One revision included.", "Major scope additions are quoted separately. No surprise invoices, no hourly billing, no agency games."],
-                ["We never go silent.", "Weekly progress updates. Same-day responses to email. Loom walkthroughs at every milestone."],
+                ["We never go silent.", "Progress by email at every step. Same-day responses. Your first draft in your inbox minutes after your intake."],
               ].map(([title, body], i) => (
                 <li key={i} className="flex gap-3">
                   <CheckCircle className="w-5 h-5 text-[#36671E] flex-shrink-0 mt-0.5" />
@@ -118,7 +118,7 @@ export default function AboutPage() {
               Want to see what we&apos;d build for you?
             </h2>
             <p className="text-[#FAFAF7]/80 mb-8 max-w-xl mx-auto">
-              Request a free audit. We record a 5-minute Loom showing exactly what we&apos;d fix on your current site to start bringing in more clients. No call, no credit card.
+              Request a free audit. Your site is scored on screen in about 20 seconds, showing exactly what we&apos;d fix to start bringing in more clients. No call, no credit card.
             </p>
             <Link href="/free-audit"
               className="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-[#FAFAF7] text-[#36671E] font-black hover:bg-white transition-colors">

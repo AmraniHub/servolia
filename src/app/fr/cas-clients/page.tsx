@@ -270,7 +270,7 @@ export default async function FrenchCaseStudiesPage() {
                 Voir les tarifs
               </Link>
             </div>
-            <p className="text-xs text-[#A1A1AA] mt-5">Audit livré sous 24h · Sans appel · Sans carte bancaire</p>
+            <p className="text-xs text-[#A1A1AA] mt-5">Audit chiffré en 20 secondes · Réponse personnelle sous un jour ouvré · Sans carte bancaire</p>
           </div>
         </section>
       </main>

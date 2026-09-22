@@ -37,7 +37,7 @@ const steps = [
   {
     num: "02",
     icon: <Video className="w-5 h-5" />,
-    title: "We send your Loom audit within 24h",
+    title: "Your audit appears in 20 seconds",
     who: "Servolia",
     time: "Within 24 hours",
     desc: "We record a 5-minute screen video walking through your current online presence — showing exactly what's costing you clients and what we'd fix.",
@@ -97,7 +97,7 @@ const steps = [
   {
     num: "08",
     icon: <Eye className="w-5 h-5" />,
-    title: "Loom walkthrough of your draft",
+    title: "Your first draft, by email, within minutes",
     who: "Servolia",
     time: "Day 3–5",
     desc: "We record a full walkthrough of your draft — page by page, feature by feature. You see everything before anything goes live.",
@@ -110,7 +110,7 @@ const steps = [
     title: "You approve → we go live",
     who: "You",
     time: "Day 5–7",
-    desc: "Once you're happy with the draft, you give the green light and we go live within 24 hours. There is nothing left to pay — the installation is already settled.",
+    desc: "Once you're happy with the draft, you give the green light and we take it live. There is nothing left to pay — the installation is already settled.",
     detail: "Going live includes: domain connection, SSL setup, final testing on mobile and desktop, Google Analytics activation, and chatbot activation.",
     color: "from-[#059669] to-[#059669]",
   },
@@ -241,7 +241,7 @@ export default function HowItWorksPage() {
               className="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-gradient-to-r from-[#36671E] to-[#295115] text-[#FAFAF7] font-black hover:opacity-90 transition-opacity">
               Request my free audit <ArrowRight className="w-4 h-4" />
             </Link>
-            <p className="text-xs text-[#A1A1AA] mt-4">No call required · Loom sent within 24h · No credit card</p>
+            <p className="text-xs text-[#A1A1AA] mt-4">No call required · Audit in 20 seconds · No credit card</p>
           </div>
         </section>
       </main>

@@ -9,7 +9,8 @@ import Link from "next/link";
 import type { Build, Client } from "@/lib/supabase";
 import { toCsv } from "@/lib/csv";
 import AutoRefresh from "@/components/AutoRefresh";
-import { ADDONS, PLAN_ORDER, resolvePlan } from "@/lib/pricing";
+import { addonsFor, PLAN_ORDER, resolvePlan } from "@/lib/pricing";
+import { TOPUP_PACKS } from "@/lib/conversationCap";
 import { countryName } from "@/lib/traffic";
 import {
   LogOut, Send, MessageSquare, Clock, CreditCard, CheckCircle2, Users, CalendarCheck,
@@ -72,9 +73,11 @@ interface PortalTraffic {
   devices: [string, number][];
 }
 
+export interface PortalUsage { used: number; included: number; topups: number; pct: number; month: string }
+
 export default function PortalDashboard({
-  email, builds, subscription, siteSlugs, scopesByLeadId, paymentAlert, zeroMiss, domain,
-}: { email: string; builds: Build[]; subscription?: Client | null; siteSlugs?: Record<string, string>; scopesByLeadId?: Record<string, { token: string; accepted: boolean }>; paymentAlert?: PaymentAlert | null; zeroMiss?: ComplianceReport | null; domain?: DomainRow | null }) {
+  email, builds, subscription, siteSlugs, scopesByLeadId, paymentAlert, zeroMiss, domain, usage,
+}: { email: string; builds: Build[]; subscription?: Client | null; siteSlugs?: Record<string, string>; scopesByLeadId?: Record<string, { token: string; accepted: boolean }>; paymentAlert?: PaymentAlert | null; zeroMiss?: ComplianceReport | null; domain?: DomainRow | null; usage?: PortalUsage | null }) {
   const router = useRouter();
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [lang, setLang] = useState<Lang>("en");
@@ -325,6 +328,24 @@ export default function PortalDashboard({
       const res = await fetch("/api/portal/messages", { method: "DELETE" });
       if (res.ok) setMessages([]);
     } finally { setDeletingChat(false); }
+  }
+
+  /* A pack of extra conversations for this month — one-off, from the meter.
+     Same shape as enableAddon: the server reads who is buying from the
+     session and the price from TOPUP_PACKS, never from this request. */
+  const [topupBusy, setTopupBusy] = useState<string | null>(null);
+  async function buyTopup(pack: string) {
+    if (topupBusy) return;
+    setTopupBusy(pack);
+    try {
+      const res = await fetch("/api/checkout-topup", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pack, lang }),
+      });
+      const data = await res.json();
+      if (data.url) { window.location.href = data.url; return; }
+    } catch { /* fall through */ }
+    setTopupBusy(null);
   }
 
   const [addonBusy, setAddonBusy] = useState<string | null>(null);
@@ -613,6 +634,35 @@ export default function PortalDashboard({
                       }`}>{subStatusLabel(subscription.status)}</span>
                     </p>
                     <p className="text-xs text-[var(--p-muted)] mt-0.5">{t.subManageDesc}</p>
+                    {usage && (
+                      /* THE METER. The plan is priced by conversations; this is the
+                         number, live, with the honest way past it. The bar goes
+                         amber at 80 % and red at 100 % — the same thresholds the
+                         emails fire at. Nothing stops at 100 %. */
+                      <div className="mt-3">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-black text-[var(--p-text)]">
+                            {usage.used} / {usage.included + usage.topups} {lang === "fr" ? "conversations ce mois-ci" : "conversations this month"}
+                            {usage.topups > 0 && <span className="font-semibold text-[var(--p-muted)]"> (+{usage.topups} {lang === "fr" ? "en pack" : "top-up"})</span>}
+                          </span>
+                          <span className={`font-black ${usage.pct >= 100 ? "text-[var(--p-bad-fg)]" : usage.pct >= 80 ? "text-[var(--p-warn-fg)]" : "text-[var(--p-muted)]"}`}>{usage.pct}%</span>
+                        </div>
+                        <div className="h-1.5 rounded-full bg-[var(--p-raised)] mt-1.5 overflow-hidden">
+                          <div className={`h-full rounded-full ${usage.pct >= 100 ? "bg-[var(--p-bad-fg)]" : usage.pct >= 80 ? "bg-[var(--p-warn-fg)]" : "bg-[var(--p-accent)]"}`} style={{ width: `${Math.min(100, usage.pct)}%` }} />
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2 mt-2.5">
+                          <span className="text-[11px] text-[var(--p-muted)]">
+                            {lang === "fr" ? "Un mois s'emballe ? Un pack en plus, paiement unique :" : "A busy month? Add a pack, one-off payment:"}
+                          </span>
+                          {Object.values(TOPUP_PACKS).map((p) => (
+                            <button key={p.key} onClick={() => buyTopup(p.key)} disabled={!!topupBusy}
+                              className="text-[11px] font-black px-2.5 py-1 rounded-lg border border-[var(--p-border)] text-[var(--p-text)] hover:border-[var(--p-accent)] transition-colors disabled:opacity-50">
+                              {topupBusy === p.key ? "…" : `+${p.conversations} · €${p.priceEur}`}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </>
                 ) : (
                   <>
@@ -708,7 +758,8 @@ export default function PortalDashboard({
               </div>
               <p className="text-xs text-[var(--p-muted)] mb-4">{t.addonsDesc}</p>
               <div className="grid grid-cols-1 min-[520px]:grid-cols-2 gap-2.5">
-                {Object.values(ADDONS).map((a) => (
+                {/* Only what this plan does not already include, and only what exists. */}
+                {addonsFor(subscription?.plan).map((a) => (
                   <div key={a.key} className="flex items-center justify-between gap-3 rounded-xl border border-[var(--p-border)] bg-[var(--p-raised)] px-3.5 py-2.5">
                     <div className="min-w-0">
                       <p className="text-sm text-[var(--p-text)] truncate">{lang === "fr" ? a.nameFr : a.name}</p>

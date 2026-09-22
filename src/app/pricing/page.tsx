@@ -27,10 +27,10 @@ export const metadata: Metadata = {
 
 
 const process = [
-  { num: "01", title: "Free audit", desc: "Fill a 5-question form. We send a PDF audit within 24h." },
-  { num: "02", title: "Approve scope", desc: "We write the full scope in writing. You review and sign off." },
+  { num: "01", title: "Free audit", desc: "Fill a 5-question form. Your audit is scored on screen in 20 seconds; we reply within one working day." },
+  { num: "02", title: "Scope in writing", desc: "Your full scope is written down and waiting in your portal before we build a thing." },
   { num: "03", title: "€690 installation", desc: "Pay the installation via Stripe to start — waived if you pay the first year up front." },
-  { num: "04", title: "We build", desc: "7-day build. You get Loom walkthroughs at every step." },
+  { num: "04", title: "We build", desc: "7-day build. Your first draft by email within minutes, then progress at every step." },
   { num: "05", title: "Review + launch", desc: "You review, approve, and your monthly plan starts. We go live and hand over everything." },
 ];
 

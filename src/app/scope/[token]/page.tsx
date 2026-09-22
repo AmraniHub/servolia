@@ -2,7 +2,6 @@ import { notFound } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import ScopeAcceptForm from "@/components/ScopeAcceptForm";
-import CheckoutButton from "@/components/CheckoutButton";
 import { supabaseAdmin } from "@/lib/supabase";
 import { BUILD_PLANS } from "@/lib/pricing";
 import { CheckCircle } from "lucide-react";
@@ -42,12 +41,17 @@ export default async function ScopeAcceptancePage({ params }: { params: Promise<
               <p className="text-sm text-[#71717A] mb-5">
                 Accepted by {scope.accepted_name} on {new Date(scope.accepted_at).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}.
               </p>
-              <CheckoutButton
-                plan={scope.plan_key}
-                leadId={scope.lead_id ?? undefined}
-                label={`Pay installation — ${planLabel}`}
-                className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-[#36671E] to-[#295115] text-white font-black hover:opacity-90 transition-opacity disabled:opacity-60"
-              />
+              {/* Until 2026-09-22 this button ran /api/checkout in payment mode:
+                  the installation was charged and NO monthly plan was created —
+                  a client with a build and no subscription, no portal, no plan.
+                  The plan checkout collects the installation with the first
+                  payment, so that is where paying goes. */}
+              <a
+                href="/pricing#plans"
+                className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-[#36671E] to-[#295115] text-white font-black hover:opacity-90 transition-opacity"
+              >
+                Choose your plan — the {planLabel} installation is charged with it →
+              </a>
             </div>
           ) : (
             <ScopeAcceptForm token={token} planKey={scope.plan_key} leadId={scope.lead_id} planLabel={planLabel} />

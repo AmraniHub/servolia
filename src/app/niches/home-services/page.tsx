@@ -293,14 +293,14 @@ export default function HomeServicesPage() {
           <div className="max-w-3xl mx-auto px-4 sm:px-6 text-center">
             <h2 className="text-3xl font-black text-[#FAFAF7] mb-4">Ready to stop missing $5k jobs?</h2>
             <p className="text-[#FAFAF7]/80 mb-8 max-w-xl mx-auto">
-              Get a free audit. We&apos;ll record a 5-minute Loom showing exactly what&apos;s costing you jobs and how we&apos;d fix it.
+              Get a free audit. Your site is scored on screen in about 20 seconds, showing exactly what&apos;s costing you jobs and how we&apos;d fix it.
             </p>
             <Link href="/free-audit"
               className="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-[#FAFAF7] text-[#36671E] font-black hover:bg-white transition-colors">
               Get My Free Audit <ArrowRight className="w-4 h-4" />
             </Link>
             <p className="text-xs text-[#FAFAF7]/60 mt-4 flex items-center justify-center gap-2">
-              <Clock className="w-3 h-3" /> Response within 24 hours · No call required
+              <Clock className="w-3 h-3" /> Personal reply within one working day · No call required
             </p>
           </div>
         </section>

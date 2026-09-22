@@ -32,6 +32,8 @@ import { clientRefFor } from "@/lib/clientRefs";
 import { billingPortalUrl } from "@/lib/clientPortal";
 import { sendTelegramMessage } from "@/lib/telegram";
 import { provisionAddon } from "@/lib/provisioning";
+import { TOPUP_PACKS, monthKey, writeTopup } from "@/lib/conversationCap";
+import { topupReceiptEmail, oneOffServicePaidEmail } from "@/lib/email";
 
 export const runtime = "nodejs";
 
@@ -571,6 +573,38 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ received: true });
       }
 
+      /* A ONE-OFF SERVICE on the hosting line — today the multilingual search
+       * setup. Until 2026-09-22 this fell through to the arrears branch
+       * below: the buyer got a receipt titled "Outstanding balance", Telegram
+       * said "Arrears settled", and nothing recorded the work to do. The
+       * plan key on the session is what tells the two apart. */
+      if (session.mode === "payment" && session.metadata?.kind === HOSTING_METADATA_KIND && session.metadata?.plan === "seo_multilingual") {
+        const customerEmail = session.customer_details?.email ?? session.customer_email ?? null;
+        const amount = (session.amount_total ?? 0) / 100;
+        const siteLabel = session.metadata?.business || session.metadata?.ref || "";
+        const lang = session.metadata?.lang === "fr" ? "fr" : "en";
+        const product = resolveHostingPlan("seo_multilingual");
+        if (customerEmail) {
+          const tpl = oneOffServicePaidEmail({
+            productName: product ? productCopy(product, lang).heading : "Multilingual search setup",
+            amountUsd: amount,
+            siteLabel,
+            whatHappens: lang === "fr"
+              ? "nous déclarons vos langues (hreflang), écrivons un plan de site par langue et les données structurées, et vous confirmons par email quand c'est en place — sous cinq jours ouvrés."
+              : "we declare your languages (hreflang), write a sitemap per language and the structured data, and email you when it is in place — within five working days.",
+            lang,
+          });
+          sendEmail(customerEmail, tpl.subject, tpl.html).catch(() => {});
+        }
+        sendTelegramMessage(
+          `ONE-OFF PAID - multilingual search setup, $${amount}\n${siteLabel || "unnamed site"}\n${customerEmail ?? "no email"}\n` +
+          `Promised within five working days: hreflang, a sitemap per language, structured data. Confirm to the client by email when done.\n` +
+          `https://servolia.com/admin/hosting`,
+          undefined, { plain: true },
+        ).catch(() => {});
+        return NextResponse.json({ received: true, line: "one-off" });
+      }
+
       if (session.mode === "payment" && session.metadata?.kind === HOSTING_METADATA_KIND) {
         const customerEmail = session.customer_details?.email ?? session.customer_email ?? null;
         const amount = (session.amount_total ?? 0) / 100;
@@ -689,6 +723,49 @@ export async function POST(req: NextRequest) {
         });
 
         return NextResponse.json({ received: true });
+      }
+
+      // ── TOP-UP branch: a one-off pack of conversations, bought from the portal.
+      // Credited to the clients row that carries the buyer's email, as a marker
+      // line on notes keyed by this session — a replayed webhook credits nothing
+      // twice. Must run before the build-payment logic at the bottom, which has
+      // no mode check and would open a build for a €49 pack.
+      if (session.mode === "payment" && session.metadata?.kind === "topup") {
+        const customerEmail = (session.customer_details?.email ?? session.customer_email ?? session.metadata?.email ?? "").trim();
+        const conversations = Number(session.metadata?.conversations ?? 0);
+        const pack = TOPUP_PACKS[session.metadata?.pack ?? ""];
+        const lang = session.metadata?.lang === "fr" ? "fr" : "en";
+        const month = monthKey(new Date(event.created * 1000));
+        let credited = false;
+        let business = customerEmail;
+        if (customerEmail && conversations > 0) {
+          const { data: row } = await db.from("clients").select("id, business, notes")
+            .ilike("email", customerEmail).in("status", ["active", "past_due", "paused"])
+            .order("created_at", { ascending: false }).limit(1).maybeSingle();
+          const c = row as { id: string; business: string; notes: string | null } | null;
+          if (c) {
+            business = c.business;
+            const notes = writeTopup(c.notes, { conversations, month, session: session.id });
+            if (notes !== (c.notes ?? "")) {
+              const { error } = await db.from("clients").update({ notes }).eq("id", c.id);
+              credited = !error;
+            } else {
+              return NextResponse.json({ received: true, line: "topup", replay: true });
+            }
+          }
+        }
+        if (customerEmail && credited) {
+          const tpl = topupReceiptEmail({ businessName: business, conversations, priceEur: pack?.priceEur ?? (session.amount_total ?? 0) / 100, month, lang });
+          sendEmail(customerEmail, tpl.subject, tpl.html).catch(() => {});
+        }
+        sendTelegramMessage(
+          (credited ? `Top-up credited - ${business}\n` : `TOP-UP PAID BUT NOT CREDITED - ${customerEmail || "no email"}\n`) +
+          `+${conversations} conversations for ${month}, EUR ${(session.amount_total ?? 0) / 100}\n` +
+          (credited ? `` : `No active clients row carries that email. Credit it by hand on the client's notes: servolia-topup: +${conversations} | month: ${month} | session: ${session.id}\n`) +
+          `https://servolia.com/admin/clients`,
+          undefined, { plain: true },
+        ).catch(() => {});
+        return NextResponse.json({ received: true, line: "topup", credited });
       }
 
       // ── CUSTOM REQUEST branch: a one-off payment for personalized extra work.

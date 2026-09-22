@@ -309,7 +309,7 @@ export default function AestheticClinicsPage() {
             >
               Get My Free Audit <ArrowRight className="w-5 h-5" />
             </Link>
-            <p className="text-xs text-[#A1A1AA] mt-4">No commitment · Response within 24h · Free</p>
+            <p className="text-xs text-[#A1A1AA] mt-4">No commitment · Personal reply within one working day · Free</p>
           </div>
         </section>
       </main>

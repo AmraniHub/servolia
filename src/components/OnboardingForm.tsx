@@ -102,7 +102,7 @@ const COPY = {
       timeline: [
         ["Right now", "Your answers become a first version of your site"],
         ["Minutes from now", "A link to your draft arrives by email — look, then tell us what to change"],
-        ["After approval", "We go live within 24h — nothing more to pay"],
+        ["After approval", "You say go, we take it live — nothing more to pay"],
         ["At launch", "Your monthly plan starts and runs the system"],
       ] as [string, string][],
       wa: (biz: string, plan: string) => `Hi! I just completed my intake for ${biz} (${plan}).`,
@@ -192,7 +192,7 @@ const COPY = {
       timeline: [
         ["Tout de suite", "Vos réponses deviennent une première version de votre site"],
         ["Dans quelques minutes", "Le lien vers votre brouillon arrive par email — regardez, puis dites-nous quoi changer"],
-        ["Après validation", "Mise en ligne sous 24 h — plus rien à régler"],
+        ["Après validation", "Vous dites go, nous mettons en ligne — plus rien à régler"],
         ["Au lancement", "Votre formule mensuelle démarre et fait tourner le système"],
       ] as [string, string][],
       wa: (biz: string, plan: string) => `Bonjour ! Je viens de compléter mon brief pour ${biz} (${plan}).`,

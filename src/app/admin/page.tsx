@@ -19,6 +19,25 @@ async function fetchKpis(): Promise<CrmKpis> {
   return (data as CrmKpis) ?? { leads_30d: 0, leads_7d: 0, awaiting_response: 0, qualified: 0, active_builds: 0, live_clients: 0, mrr: 0, deposits_30d: 0 };
 }
 
+/* THE OTHER LINE. crm_kpis sums `clients.monthly_amount` — the EUR plans —
+   and nothing else. The three clients who actually pay today live in
+   hosting_clients (USD), so until 2026-09-22 the dashboard's MRR read zero
+   while money arrived. Shown as its own pair of cards, in its own currency,
+   never summed into the EUR figure: two currencies added together is a
+   number that means nothing. */
+async function fetchHostingKpis(): Promise<{ clients: number; monthlyUsd: number; trials: number }> {
+  const db = supabaseAdmin();
+  if (!db) return { clients: 0, monthlyUsd: 0, trials: 0 };
+  const { data } = await db.from("hosting_clients").select("status, monthly_usd").in("status", ["active", "past_due", "trial"]);
+  const rows = (data ?? []) as { status: string; monthly_usd: number | null }[];
+  const paying = rows.filter((r) => r.status !== "trial");
+  return {
+    clients: paying.length,
+    monthlyUsd: paying.reduce((s, r) => s + Number(r.monthly_usd ?? 0), 0),
+    trials: rows.length - paying.length,
+  };
+}
+
 async function fetchRecentLeads(): Promise<Lead[]> {
   const db = supabaseAdmin();
   if (!db) return [];
@@ -56,8 +75,8 @@ async function fetchStageCounts(): Promise<Record<string, number>> {
 }
 
 export default async function AdminDashboard() {
-  const [kpis, recent, stageCounts, payments, chats] = await Promise.all([
-    fetchKpis(), fetchRecentLeads(), fetchStageCounts(), fetchRecentPayments(), fetchRecentChats(),
+  const [kpis, recent, stageCounts, payments, chats, hosting] = await Promise.all([
+    fetchKpis(), fetchRecentLeads(), fetchStageCounts(), fetchRecentPayments(), fetchRecentChats(), fetchHostingKpis(),
   ]);
   const supabaseConfigured = !!supabaseAdmin();
 
@@ -95,7 +114,13 @@ export default async function AdminDashboard() {
         <KpiCard label="New leads (30d)" value={kpis.leads_30d} sub={`${kpis.leads_7d} in last 7 days`} icon={<Users className="w-4 h-4" />} />
         <KpiCard label="Active builds" value={kpis.active_builds} sub="In progress now" icon={<Hammer className="w-4 h-4" />} />
         <KpiCard label="Live clients" value={kpis.live_clients} sub="Active subscriptions" icon={<UserCircle className="w-4 h-4" />} />
-        <KpiCard label="MRR" value={`€${Number(kpis.mrr).toLocaleString()}`} sub={`€${(Number(kpis.mrr) * 12).toLocaleString()} ARR`} icon={<TrendingUp className="w-4 h-4" />} accent />
+        <KpiCard label="MRR (plans, EUR)" value={`€${Number(kpis.mrr).toLocaleString()}`} sub={`€${(Number(kpis.mrr) * 12).toLocaleString()} ARR`} icon={<TrendingUp className="w-4 h-4" />} accent />
+      </div>
+
+      {/* The hosting line — the clients who actually pay today, in their own currency */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <KpiCard label="Hosting clients" value={hosting.clients} sub={hosting.trials ? `+ ${hosting.trials} on an assistant trial` : "Paying, USD line"} icon={<Globe className="w-4 h-4" />} />
+        <KpiCard label="MRR (hosting, USD)" value={`$${hosting.monthlyUsd.toLocaleString(undefined, { maximumFractionDigits: 0 })}`} sub={`$${(hosting.monthlyUsd * 12).toLocaleString(undefined, { maximumFractionDigits: 0 })} ARR`} icon={<TrendingUp className="w-4 h-4" />} accent />
       </div>
 
       {/* Second row */}

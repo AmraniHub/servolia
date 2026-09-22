@@ -5,6 +5,7 @@ import PortalDashboard from "@/components/PortalDashboard";
 import { paymentAlertFrom } from "@/lib/clientBilling";
 import { complianceFor, type ComplianceReport } from "@/lib/zeroMiss";
 import { domainForEmail, type DomainRow } from "@/lib/domains";
+import { capStateForBuild } from "@/lib/conversationCap";
 
 export const dynamic = "force-dynamic";
 
@@ -61,5 +62,11 @@ export default async function PortalPage() {
   // CGV 7 bis: the client owns their domain. The panel proves it back to them.
   const domain: DomainRow | null = await domainForEmail(email);
 
-  return <PortalDashboard email={email} builds={builds} subscription={subscription} siteSlugs={siteSlugs} scopesByLeadId={scopesByLeadId} paymentAlert={paymentAlert} zeroMiss={zeroMiss} domain={domain} />;
+  // The conversation meter: the number the plan is priced on, shown to the
+  // person paying for it. Read for the build the subscription belongs to.
+  const meterBuild = subscription?.build_id ?? builds[0]?.id ?? null;
+  const cap = meterBuild ? await capStateForBuild(meterBuild) : null;
+  const usage = cap ? { used: cap.used, included: cap.included, topups: cap.topups, pct: cap.pct, month: cap.month } : null;
+
+  return <PortalDashboard email={email} builds={builds} subscription={subscription} siteSlugs={siteSlugs} scopesByLeadId={scopesByLeadId} paymentAlert={paymentAlert} zeroMiss={zeroMiss} domain={domain} usage={usage} />;
 }

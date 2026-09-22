@@ -183,19 +183,29 @@ export interface AddOn {
   selfServe?: boolean;
   /** Included from this tier upward — hidden as a paid add-on for those plans. */
   includedFrom?: string;
+  /** False = not sold anywhere until the code that performs it exists.
+   *  SMS and reviews were switched off on 2026-09-22: both took money through
+   *  a one-click "Enable" and then posted a Telegram "to fulfil" — no Twilio
+   *  sender exists, nothing asks anyone for a review. They come back when
+   *  they are real. */
+  available?: boolean;
 }
 
 export const ADDONS: Record<string, AddOn> = {
   email:   { key: "email",   name: "Extra mailbox",              nameFr: "Boîte email supplémentaire",      priceEur: 12, interval: "month", per: "mailbox" },
-  sms:     { key: "sms",     name: "SMS / WhatsApp reminders",   nameFr: "Rappels SMS / WhatsApp",          priceEur: 19, interval: "month", selfServe: true, includedFrom: "croissance" },
-  reviews: { key: "reviews", name: "Google reviews automation",  nameFr: "Automatisation des avis Google",  priceEur: 39, interval: "month", selfServe: true, includedFrom: "croissance" },
+  sms:     { key: "sms",     name: "SMS / WhatsApp reminders",   nameFr: "Rappels SMS / WhatsApp",          priceEur: 19, interval: "month", selfServe: true, includedFrom: "croissance", available: false },
+  reviews: { key: "reviews", name: "Google reviews automation",  nameFr: "Automatisation des avis Google",  priceEur: 39, interval: "month", selfServe: true, includedFrom: "croissance", available: false },
 };
 
-/** Add-ons still worth selling to a client on this plan. */
+/** Every add-on that is actually for sale today. */
+export const SELLABLE_ADDONS = Object.values(ADDONS).filter((a) => a.available !== false);
+
+/** Add-ons still worth selling to a client on this plan — and only the ones
+ *  that exist. */
 export function addonsFor(planKey?: string | null): AddOn[] {
   const plan = resolvePlan(planKey);
   const rank = plan ? PLAN_ORDER.indexOf(plan.key as typeof PLAN_ORDER[number]) : -1;
-  return Object.values(ADDONS).filter((a) => {
+  return SELLABLE_ADDONS.filter((a) => {
     if (!a.includedFrom) return true;
     const incRank = PLAN_ORDER.indexOf(a.includedFrom as typeof PLAN_ORDER[number]);
     return rank < incRank;
@@ -245,9 +255,10 @@ export function pricingPromptLines(): string {
   return [
     `Servolia is sold as a one-time installation plus a monthly plan. The monthly plan IS the product.`,
     `1. Installation — €${s.totalEur} once (${s.delivery}). Site built, AI receptionist trained, everything live. Waived when paying a year up front.`,
-    `2. ${p.essentiel.name} — €${p.essentiel.monthlyEur}/month. Site + 24/7 AI receptionist (${p.essentiel.conversations} conversations/mo), instant lead alerts, client portal, hosting + domain + email included.`,
-    `3. ${p.croissance.name} — €${p.croissance.monthlyEur}/month (most chosen). Everything above with ${p.croissance.conversations} conversations/mo, plus lead pipeline, monthly ROI report, Google reviews automation, SMS reminders and traffic analytics.`,
-    `4. ${p.performance.name} — €${p.performance.monthlyEur}/month. Everything above with ${p.performance.conversations} conversations/mo, plus multi-practitioner, ads closed-loop tracking, custom AI training and a quarterly strategy call.`,
-    `Pay yearly and get two months free. Going over the included conversations moves you to the next plan — never a surprise bill.`,
+    `Every plan includes the same product: a multi-page site, the 24/7 AI receptionist trained on their services, instant lead alerts, the client portal with every enquiry and its status, visitor analytics, a monthly results report, hosting, domain, SSL and professional email.`,
+    `2. ${p.essentiel.name} — €${p.essentiel.monthlyEur}/month, ${p.essentiel.conversations} conversations/month. ${p.essentiel.audience}`,
+    `3. ${p.croissance.name} — €${p.croissance.monthlyEur}/month (most chosen), ${p.croissance.conversations} conversations/month. ${p.croissance.audience}`,
+    `4. ${p.performance.name} — €${p.performance.monthlyEur}/month, ${p.performance.conversations} conversations/month, plus priority support and a quarterly strategy call. ${p.performance.audience}`,
+    `The plans differ by included conversations, not by features. Pay yearly and get two months free. Going over the included conversations moves you to the next plan, or a one-off pack of extra conversations can be bought from the portal — never a surprise bill.`,
   ].join("\n");
 }

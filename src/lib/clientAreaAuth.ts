@@ -23,7 +23,12 @@ import { rowForRef, refForEmail } from "@/lib/hostingRow";
  * screen asking for a password nobody has mentioned to them yet.
  */
 
-const COOKIE = "servolia_client";
+/* Its own name. Until 2026-09-22 this was "servolia_client" — the same
+   cookie the EUR portal (clientAuth.ts) sets with a different role and a
+   different secret — so signing into one silently signed the other out, and
+   a client with both a plan and a hosted site could never hold both. Sessions
+   here last eight hours, so the rename costs at most one re-login. */
+const COOKIE = "servolia_hosting";
 const SESSION_SECONDS = 60 * 60 * 8;
 
 function secret(): Uint8Array {

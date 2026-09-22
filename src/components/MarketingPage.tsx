@@ -26,12 +26,12 @@ const ICONS: Record<IconName, React.ComponentType<{ className?: string }>> = {
 const CHROME = {
   en: {
     audit: "Book a Free System Audit", pricing: "View pricing", how: "How it works",
-    faq: "Common questions", footNote: "Delivered within 24h · No call required · Fixed price in writing",
+    faq: "Common questions", footNote: "Scored in 20 seconds · No call required · Fixed price in writing",
     auditHref: "/free-audit", pricingHref: "/pricing",
   },
   fr: {
     audit: "Recevoir mon audit gratuit", pricing: "Voir les tarifs", how: "Comment ça marche",
-    faq: "Questions fréquentes", footNote: "Livré sous 24 h · Sans appel obligatoire · Prix fixe par écrit",
+    faq: "Questions fréquentes", footNote: "Noté en 20 secondes · Sans appel obligatoire · Prix fixe par écrit",
     auditHref: "/fr/audit", pricingHref: "/fr/tarifs",
   },
 };

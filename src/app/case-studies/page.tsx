@@ -282,7 +282,7 @@ export default async function CaseStudiesPage() {
               Want results like these for your business?
             </h2>
             <p className="text-[#52525B] mb-8 max-w-xl mx-auto">
-              Start with a free audit. We record a 5-minute Loom video of your current online presence and show you exactly what to fix — no charge, no commitment.
+              Start with a free audit. Your site is scored on screen in about 20 seconds and we show you exactly what to fix — no charge, no commitment.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link href="/free-audit"
@@ -294,7 +294,7 @@ export default async function CaseStudiesPage() {
                 View pricing
               </Link>
             </div>
-            <p className="text-xs text-[#A1A1AA] mt-5">Audit delivered within 24h · No call required · No credit card</p>
+            <p className="text-xs text-[#A1A1AA] mt-5">Scored in 20 seconds · Personal reply within one working day · No credit card</p>
           </div>
         </section>
       </main>
