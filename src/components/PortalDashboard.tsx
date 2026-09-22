@@ -76,8 +76,8 @@ interface PortalTraffic {
 export interface PortalUsage { used: number; included: number; topups: number; pct: number; month: string }
 
 export default function PortalDashboard({
-  email, builds, subscription, siteSlugs, scopesByLeadId, paymentAlert, zeroMiss, domain, usage,
-}: { email: string; builds: Build[]; subscription?: Client | null; siteSlugs?: Record<string, string>; scopesByLeadId?: Record<string, { token: string; accepted: boolean }>; paymentAlert?: PaymentAlert | null; zeroMiss?: ComplianceReport | null; domain?: DomainRow | null; usage?: PortalUsage | null }) {
+  email, builds, subscription, siteSlugs, siteUrls, scopesByLeadId, paymentAlert, zeroMiss, domain, usage,
+}: { email: string; builds: Build[]; subscription?: Client | null; siteSlugs?: Record<string, string>; siteUrls?: Record<string, string>; scopesByLeadId?: Record<string, { token: string; accepted: boolean }>; paymentAlert?: PaymentAlert | null; zeroMiss?: ComplianceReport | null; domain?: DomainRow | null; usage?: PortalUsage | null }) {
   const router = useRouter();
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [lang, setLang] = useState<Lang>("en");
@@ -393,7 +393,9 @@ export default function PortalDashboard({
 
   // The client's primary live site (first build with a slug) — powers the tool hub.
   const primarySlug = builds.map((b) => siteSlugs?.[b.id]).find(Boolean) ?? null;
-  const siteUrl = primarySlug ? `https://servolia.com/sites/${primarySlug}` : null;
+  const primaryBuild = builds.find((b) => siteSlugs?.[b.id]);
+  // Her own domain once it serves the site (C2); the servolia.com preview until then.
+  const siteUrl = primaryBuild ? (siteUrls?.[primaryBuild.id] ?? `https://servolia.com/sites/${primarySlug}`) : null;
 
   const [copied2, setCopied2] = useState<string | null>(null);
   function copyText(text: string, key: string) {
@@ -739,7 +741,7 @@ export default function PortalDashboard({
                         </>
                       )}
                       {slug && (
-                        <a href={`/sites/${slug}`} target="_blank" rel="noopener noreferrer"
+                        <a href={siteUrls?.[b.id] ?? `/sites/${slug}`} target="_blank" rel="noopener noreferrer"
                           className="mt-4 flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-[var(--p-border)] text-[var(--p-text)] text-sm font-bold hover:bg-[var(--p-raised)] transition-colors">
                           <Globe className="w-3.5 h-3.5 text-[var(--p-accent)]" /> {b.status === "live" ? t.viewLiveSite : t.previewSite} <ExternalLink className="w-3 h-3" />
                         </a>

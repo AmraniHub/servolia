@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { usePathname, useSelectedLayoutSegments } from "next/navigation";
 import CookieBanner from "@/components/CookieBanner";
 import ScrollToTop from "@/components/ScrollToTop";
 import Analytics from "@/components/Analytics";
@@ -38,7 +38,14 @@ const BARE = ["/client-editor", ...editorMountPaths()];
 
 export default function SiteChrome() {
   const pathname = usePathname() || "";
+  const segments = useSelectedLayoutSegments();
   if (BARE.some((p) => pathname === p || pathname.startsWith(`${p}/`))) return null;
+  /* A practice's generated site — at servolia.com/sites/<slug> or, since C2,
+     at her own domain, where the browser path is "/" and could be our own
+     homepage. The rendered route says which it is. Her site gets none of
+     Servolia's furniture: no Servolia consent banner, no Servolia analytics.
+     Only the first-party counter, credited to her site, feeds her portal. */
+  if (segments[0] === "sites") return <PageTracker siteSlug={segments[1] ?? null} />;
   return (
     <>
       <CookieBanner />

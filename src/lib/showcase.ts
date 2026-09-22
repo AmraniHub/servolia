@@ -101,7 +101,7 @@ export async function listBuiltSites(lang: "en" | "fr" = "en"): Promise<BuiltSit
         slug: r.slug,
         href: `/sites/${r.slug}`,
         business: r.config?.businessName ?? r.business ?? r.slug,
-        displayUrl: `servolia.com/sites/${r.slug}`,
+        displayUrl: r.config?.customDomain && r.config?.domainLiveAt ? r.config.customDomain : `servolia.com/sites/${r.slug}`,
         niche: r.niche ?? r.config?.niche ?? null,
         city: r.config?.city ?? null,
         language: r.config?.language === "fr" ? "fr" : "en",

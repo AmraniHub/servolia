@@ -25,6 +25,10 @@ export interface ChatWidgetProps {
   poweredBy?: boolean;
   /** UI language for the built-in copy. Client sites pass their own strings. */
   lang?: "en" | "fr";
+  /** Where the chat posts. A client site at its own domain uses the neutral
+   *  /api/site-chat (proxied to /api/chat): a bare /api/chat there would be
+   *  Servolia's own sales chat, one curl away at her address. */
+  endpoint?: "/api/chat" | "/api/site-chat";
 }
 
 /** Copy for Servolia's OWN widget — the one on servolia.com and /fr.
@@ -52,7 +56,8 @@ const OWN_COPY = {
 
 function getSessionId(scope: string): string {
   if (typeof window === "undefined") return "";
-  const KEY = `servolia_chat_sid_${scope}`;
+  // Neutral name: this key sits in a practice's visitors' browsers too.
+  const KEY = `chat_sid_${scope}`;
   let sid = localStorage.getItem(KEY);
   if (!sid) {
     sid = crypto.randomUUID();
@@ -70,6 +75,7 @@ export default function ChatWidget({
   quickReplies: quickRepliesProp,
   poweredBy = true,
   lang = "en",
+  endpoint = "/api/chat",
 }: ChatWidgetProps = {}) {
   const own = OWN_COPY[lang === "fr" ? "fr" : "en"];
   const [open, setOpen] = useState(false);
@@ -138,7 +144,7 @@ export default function ChatWidget({
     setLoading(true);
 
     try {
-      const res = await fetch("/api/chat", {
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -168,7 +174,7 @@ export default function ChatWidget({
     if (!fbContact.trim() || fbState === "sending") return;
     setFbState("sending");
     try {
-      const res = await fetch("/api/chat-fallback", {
+      const res = await fetch(endpoint === "/api/site-chat" ? "/api/site-chat-fallback" : "/api/chat-fallback", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

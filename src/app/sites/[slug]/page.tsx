@@ -1,5 +1,7 @@
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
+import { headers } from "next/headers";
 import type { Metadata } from "next";
+import { customHostFrom, customHostMetadata } from "@/lib/siteHost";
 import ClientSite from "@/components/ClientSite";
 import ClientAnalytics from "@/components/ClientAnalytics";
 import { getClientSite } from "@/lib/clientSites";
@@ -13,6 +15,9 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const c = await getClientSite(slug);
   if (!c) return { title: "Site not found" };
+  // At her own domain (C2): her title, her canonical, indexable.
+  const host = customHostFrom(await headers());
+  if (host) return customHostMetadata(c, host, "/") as Metadata;
   return {
     title: `${c.businessName}${c.city ? ` · ${c.city}` : ""}`,
     description: c.heroSub || c.about,
@@ -47,6 +52,14 @@ export default async function ClientSitePage({
   // built for through their signed preview link (query string or cookie).
   const access = await draftAccess(config, preview);
   if (access === "hidden") notFound();
+
+  /* C2: served at her own domain, or at servolia.com? Once her domain is
+     live, the servolia.com copy sends visitors (and Google) there for good,
+     so the site is never indexed twice. A draft preview never redirects. */
+  const host = customHostFrom(await headers());
+  if (!host && access === "public" && config.customDomain && config.domainLiveAt) {
+    permanentRedirect(`https://${config.customDomain}`);
+  }
 
   // Suspended for non-payment: the site goes offline until the invoice clears.
   // Vercel-style — banner in the portal comes first (14-day grace), this shutoff
@@ -87,11 +100,11 @@ export default async function ClientSitePage({
   return (
     <>
       {viewer && <DraftPreviewRibbon lang={config.language === "fr" ? "fr" : "en"} viewer={viewer} />}
-      <ClientSite config={config} />
+      <ClientSite config={config} basePath={host ? "" : undefined} customHost={Boolean(host)} />
       {/* A draft being reviewed is not traffic. The client's own GA4 and pixel
           ids come from the intake, and firing them here would write our
           servolia.com/sites/* preview views into their property before launch. */}
-      {!viewer && <ClientAnalytics ga4Id={config.ga4Id} metaPixelId={config.metaPixelId} />}
+      {!viewer && <ClientAnalytics ga4Id={config.ga4Id} metaPixelId={config.metaPixelId} slug={config.slug} lang={config.language === "fr" ? "fr" : "en"} />}
     </>
   );
 }

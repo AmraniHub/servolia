@@ -1,3 +1,4 @@
+import { siteUrlFor } from "@/lib/siteHost";
 import { redirect } from "next/navigation";
 import { getClientEmail } from "@/lib/clientAuth";
 import { supabaseAdmin, type Build, type Client } from "@/lib/supabase";
@@ -17,6 +18,8 @@ export default async function PortalPage() {
   let builds: Build[] = [];
   let subscription: Client | null = null;
   let siteSlugs: Record<string, string> = {}; // build_id -> slug
+  // build_id -> the address to open: her own domain once it serves the site (C2).
+  const siteUrls: Record<string, string> = {};
   let scopesByLeadId: Record<string, { token: string; accepted: boolean }> = {};
 
   if (db) {
@@ -38,8 +41,11 @@ export default async function PortalPage() {
 
     const buildIds = builds.map((b) => b.id);
     if (buildIds.length) {
-      const { data: sites } = await db.from("client_sites").select("slug, build_id").in("build_id", buildIds);
-      for (const s of (sites ?? []) as { slug: string; build_id: string }[]) siteSlugs[s.build_id] = s.slug;
+      const { data: sites } = await db.from("client_sites").select("slug, build_id, config").in("build_id", buildIds);
+      for (const s of (sites ?? []) as { slug: string; build_id: string; config?: { customDomain?: string; domainLiveAt?: string } }[]) {
+        siteSlugs[s.build_id] = s.slug;
+        siteUrls[s.build_id] = siteUrlFor({ slug: s.slug, ...(s.config ?? {}) });
+      }
     }
 
     const leadIds = builds.map((b) => b.lead_id).filter((id): id is string => !!id);
@@ -68,5 +74,5 @@ export default async function PortalPage() {
   const cap = meterBuild ? await capStateForBuild(meterBuild) : null;
   const usage = cap ? { used: cap.used, included: cap.included, topups: cap.topups, pct: cap.pct, month: cap.month } : null;
 
-  return <PortalDashboard email={email} builds={builds} subscription={subscription} siteSlugs={siteSlugs} scopesByLeadId={scopesByLeadId} paymentAlert={paymentAlert} zeroMiss={zeroMiss} domain={domain} usage={usage} />;
+  return <PortalDashboard email={email} builds={builds} subscription={subscription} siteSlugs={siteSlugs} siteUrls={siteUrls} scopesByLeadId={scopesByLeadId} paymentAlert={paymentAlert} zeroMiss={zeroMiss} domain={domain} usage={usage} />;
 }

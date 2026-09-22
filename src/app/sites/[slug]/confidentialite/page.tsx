@@ -1,5 +1,7 @@
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
+import { headers } from "next/headers";
 import type { Metadata } from "next";
+import { customHostFrom, customHostMetadata } from "@/lib/siteHost";
 import Link from "next/link";
 import { getClientSite } from "@/lib/clientSites";
 import { draftAccess, DraftPreviewRibbon } from "@/lib/draftGate";
@@ -20,6 +22,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const c = await getClientSite(slug);
   if (!c) return { title: "Not found" };
   const fr = c.language === "fr";
+  const host = customHostFrom(await headers());
+  if (host) return customHostMetadata(c, host, "/confidentialite", fr ? "Politique de confidentialité" : "Privacy policy") as Metadata;
   return {
     title: `${fr ? "Politique de confidentialité" : "Privacy policy"} — ${c.businessName}`,
     robots: { index: false, follow: false },
@@ -35,7 +39,13 @@ export default async function ClientPrivacyPage({ params }: { params: Promise<{ 
   // privacy page is still told it is a draft.
   const access = await draftAccess(c);
   if (access === "hidden") notFound();
+  const host = customHostFrom(await headers());
+  if (!host && access === "public" && c.customDomain && c.domainLiveAt) {
+    permanentRedirect(`https://${c.customDomain}/confidentialite`);
+  }
   const viewer = access === "client" ? "client" : access === "admin" ? "admin" : null;
+  // Her own measurement tags, if she gave any — they wait for consent (ClientAnalytics).
+  const tracks = Boolean(c.ga4Id || c.metaPixelId);
 
   const fr = c.language === "fr";
   const contact = c.email || null;
@@ -51,7 +61,7 @@ export default async function ClientPrivacyPage({ params }: { params: Promise<{ 
         s3t: "3. Finalité",
         s3: "Vos données servent uniquement à traiter votre demande et organiser votre rendez-vous. Elles ne sont jamais vendues ni transmises à des tiers à des fins commerciales.",
         s4t: "4. Hébergement & sous-traitance",
-        s4: "Ce site est opéré par Servolia (servolia.com) pour le compte du responsable du traitement. Les données sont hébergées de manière sécurisée dans l'Union européenne / conformément au RGPD.",
+        s4: `Ce site est opéré par Servolia (servolia.com) pour le compte du responsable du traitement. Les données sont hébergées de manière sécurisée, conformément au RGPD.${tracks ? " Des cookies de mesure d'audience (Google Analytics, Meta) ne sont déposés que si vous les acceptez dans le bandeau affiché à votre première visite ; vous pouvez les refuser." : " Ce site ne dépose aucun cookie publicitaire ni de mesure d'audience tiers."}`,
         s5t: "5. Vos droits (RGPD)",
         s5: `Vous disposez d'un droit d'accès, de rectification, d'effacement et d'opposition sur vos données.${contact ? ` Pour l'exercer, écrivez à ${contact}.` : " Pour l'exercer, contactez le cabinet directement."} Vous pouvez également saisir la CNIL (cnil.fr).`,
         back: "← Retour au site",
@@ -66,7 +76,7 @@ export default async function ClientPrivacyPage({ params }: { params: Promise<{ 
         s3t: "3. Purpose",
         s3: "Your data is used solely to handle your enquiry and arrange your appointment. It is never sold or shared with third parties for commercial purposes.",
         s4t: "4. Hosting & processing",
-        s4: "This site is operated by Servolia (servolia.com) on behalf of the controller. Data is hosted securely in line with the GDPR.",
+        s4: `This site is operated by Servolia (servolia.com) on behalf of the controller. Data is hosted securely in line with the GDPR.${tracks ? " Audience-measurement cookies (Google Analytics, Meta) are set only if you accept them in the banner shown on your first visit; you can decline." : " This site sets no third-party advertising or audience-measurement cookies."}`,
         s5t: "5. Your rights (GDPR)",
         s5: `You have the right to access, correct, delete and object to the processing of your data.${contact ? ` To exercise these rights, write to ${contact}.` : " To exercise these rights, contact the practice directly."}`,
         back: "← Back to the site",
@@ -76,7 +86,7 @@ export default async function ClientPrivacyPage({ params }: { params: Promise<{ 
     <main className="min-h-screen bg-white text-[#18181B]">
       {viewer && <DraftPreviewRibbon lang={fr ? "fr" : "en"} viewer={viewer} />}
       <div className="max-w-2xl mx-auto px-4 sm:px-6 py-14">
-        <Link href={`/sites/${c.slug}`} className="text-sm font-semibold text-[#71717A] hover:text-[#18181B]">{S.back}</Link>
+        <Link href={host ? "/" : `/sites/${c.slug}`} className="text-sm font-semibold text-[#71717A] hover:text-[#18181B]">{S.back}</Link>
         <h1 className="text-3xl font-black mt-4 mb-1">{S.title}</h1>
         <p className="text-sm text-[#A1A1AA] mb-8">{c.businessName} · {S.updated} {new Date().getFullYear()}</p>
         <div className="space-y-6 text-sm leading-relaxed text-[#3F3F46]">

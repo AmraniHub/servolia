@@ -207,6 +207,14 @@ export interface ClientSiteConfig {
   ownerInstructions?: string;
   /** IANA zone for the after-hours badge on lead alerts. Default Europe/Paris. */
   timezone?: string;
+  /** C2: the practice's own domain (apex, no www), attached to this project.
+   *  She keeps it at her own registrar; see src/lib/siteHost.ts. */
+  customDomain?: string;
+  /** When the founder attached it to Vercel (the DNS lines went to her). */
+  domainAttachedAt?: string;
+  /** When her domain first served THIS site over HTTPS — the go-live email
+   *  goes then, and servolia.com/sites/<slug> starts redirecting to it. */
+  domainLiveAt?: string;
   /** A receptionist a practice found, tried and put on its OWN site from the
    *  public trial (src/lib/receptionistTrial.ts). Its presence is what makes
    *  this config follow the EUR plans rather than the hosting table. */

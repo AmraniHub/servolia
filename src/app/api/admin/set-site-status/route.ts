@@ -44,7 +44,11 @@ export async function POST(req: NextRequest) {
   if (status === "published" && !wasPublished && before) {
     const row = before as { config?: ClientSiteConfig; build_id?: string | null; business?: string | null };
     const cfg = row.config;
-    if (!cfg?.isDemo) {
+    /* C2: a site going onto her own domain is announced by
+       /api/cron/domain-live, the first time her domain actually serves it,
+       with her address in it. Announcing servolia.com/sites/<slug> here
+       would send her the wrong address, before it is true. */
+    if (!cfg?.isDemo && !cfg?.customDomain) {
       let to = cfg?.email ?? null;
       if (!to && row.build_id) {
         const { data: build } = await db.from("builds").select("email").eq("id", row.build_id).maybeSingle();

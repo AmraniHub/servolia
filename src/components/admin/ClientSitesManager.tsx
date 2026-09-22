@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Globe, ExternalLink, Sparkles, Loader2, Eye, EyeOff } from "lucide-react";
+import SiteDomainControl from "@/components/admin/SiteDomainControl";
 
 export interface SiteRow {
   slug: string;
@@ -11,6 +12,13 @@ export interface SiteRow {
   niche: string;
   status: string;
   serviceCount: number;
+  /** C2 — her own domain, when attached; live once it serves the site. */
+  customDomain?: string;
+  domainLiveAt?: string;
+  /** The domain she gave at intake, offered as the default. */
+  wantedDomain?: string;
+  /** A real generated site (not a demo, not an assistant-only config). */
+  canHaveDomain?: boolean;
 }
 
 export interface GeneratableBuild {
@@ -123,6 +131,9 @@ export default function ClientSitesManager({
                       {published ? "Unpublish" : "Publish"}
                     </button>
                   </div>
+                  {s.canHaveDomain ? (
+                    <SiteDomainControl slug={s.slug} customDomain={s.customDomain} domainLiveAt={s.domainLiveAt} wanted={s.wantedDomain} />
+                  ) : null}
                 </div>
               );
             })}

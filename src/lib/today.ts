@@ -24,7 +24,7 @@ import type { ReceptionistState } from "@/lib/clientSites";
 export type Owner = "me" | "client";
 
 export interface TodayItem {
-  /** stable kind for scripts: lead-sla, lead-hot, build-intake, build-building, draft-send, draft-go, trial-ending, payment-failed, needs-setup, prospect, request-unpaid, reception-not-installed, reception-ending, reception-ended, reception-running */
+  /** stable kind for scripts: lead-sla, lead-hot, build-intake, build-building, draft-send, draft-go, trial-ending, payment-failed, needs-setup, prospect, request-unpaid, reception-not-installed, reception-ending, reception-ended, reception-running, domain-waiting */
   kind: string;
   title: string;
   detail?: string;
@@ -66,7 +66,7 @@ export async function buildToday(now = Date.now()): Promise<Today> {
   const empty: Today = { generatedAt: new Date(now).toISOString(), sections: [], counts: { me: 0, client: 0, urgent: 0 } };
   if (!db) return empty;
 
-  const [leadsRes, buildsRes, sitesRes, hostRes, clientsRes, prospectsRes, requestsRes, receptionRes] = await Promise.all([
+  const [leadsRes, buildsRes, sitesRes, hostRes, clientsRes, prospectsRes, requestsRes, receptionRes, domainRes] = await Promise.all([
     db.from("leads").select("id, business, email, niche, stage, created_at, last_contacted_at, value_estimate, source, problems, client_value, plan_interest")
       .not("stage", "in", '("live","lost")').eq("status", "active"),
     db.from("builds").select("id, business, email, status, deadline, created_at, started_at").not("status", "in", '("live","delivered")'),
@@ -77,7 +77,25 @@ export async function buildToday(now = Date.now()): Promise<Today> {
       .eq("status", "to_contact").order("next_action_at", { ascending: true, nullsFirst: true }).limit(3),
     db.from("custom_requests").select("id, title, email, amount_eur, created_at, build_id").eq("status", "quoted"),
     db.from("client_sites").select("slug, config").like("notes", "%servolia-receptionist:%"),
+    db.from("client_sites").select("slug, config").eq("status", "published").not("config->>customDomain", "is", null),
   ]);
+
+  /* ── C2: a practice's own domain that is not answering yet ────────────
+     Attached a day ago and still not serving her site: her DNS lines were
+     not added, or were added wrong. A nudge from a person fixes it. */
+  const domains: TodayItem[] = [];
+  for (const s of (domainRes.data ?? []) as Array<{ slug: string; config: { businessName?: string; customDomain?: string; domainAttachedAt?: string; domainLiveAt?: string } }>) {
+    const c = s.config ?? {};
+    if (!c.customDomain || c.domainLiveAt) continue;
+    const waited = hrsAgo(c.domainAttachedAt, now) ?? 0;
+    if (waited < 24) continue;
+    domains.push({
+      kind: "domain-waiting", title: `${c.businessName ?? s.slug} (${c.customDomain})`,
+      detail: `attached ${Math.round(waited / 24)}d ago, not serving her site yet — check her DNS lines`,
+      href: `${ADMIN}/sites`, owner: "me", urgency: waited >= 72 ? 2 : 1,
+    });
+  }
+  if (domains.length) sections.push({ key: "domains", label: "Domains not answering", items: domains });
 
   /* ── Practices trying the receptionist on their own site ─────────────
      The public trial (receptionistTrial.ts). The three moments a human

@@ -26,6 +26,16 @@ export default async function AdminSitesPage() {
         .select("slug, business, niche, status, build_id, config")
         .order("created_at", { ascending: false });
       const rows = (data as ClientSiteDbRow[] | null) ?? [];
+      // The domain each practice gave at intake — the default for C2's Attach.
+      const buildIds = rows.map((r) => r.build_id).filter((x): x is string => Boolean(x));
+      const wanted = new Map<string, string>();
+      if (buildIds.length) {
+        const { data: builds } = await db.from("builds").select("id, intake_data").in("id", buildIds);
+        for (const b of (builds ?? []) as { id: string; intake_data?: Record<string, unknown> | null }[]) {
+          const d = b.intake_data?.domain ?? b.intake_data?.existingWebsite;
+          if (typeof d === "string" && d.trim()) wanted.set(b.id, d.trim());
+        }
+      }
       siteRows = rows.map((r) => {
         if (r.build_id) siteBuildIds.add(r.build_id);
         return {
@@ -34,6 +44,10 @@ export default async function AdminSitesPage() {
           niche: r.niche ?? r.config?.niche ?? "—",
           status: r.status,
           serviceCount: r.config?.services?.length ?? 0,
+          customDomain: r.config?.customDomain,
+          domainLiveAt: r.config?.domainLiveAt,
+          wantedDomain: r.build_id ? wanted.get(r.build_id) : undefined,
+          canHaveDomain: !r.config?.assistantOnly && !r.config?.isDemo && !r.config?.receptionist,
         };
       });
     } catch {

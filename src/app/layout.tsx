@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { OrgSchema, WebSiteSchema } from "@/components/StructuredData";
 import SiteChrome from "@/components/SiteChrome";
+import ServoliaHead from "@/components/ServoliaOnly";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
@@ -38,9 +38,8 @@ export const metadata: Metadata = {
   verification: process.env.GOOGLE_SITE_VERIFICATION
     ? { google: process.env.GOOGLE_SITE_VERIFICATION }
     : undefined,
-  other: {
-    "facebook-domain-verification": "y91x60qk6fueqiuz3ncnb295oepldu",
-  },
+  // facebook-domain-verification lives in ServoliaHead: metadata here is
+  // merged into every page, a practice's own site included (C2).
   alternates: {
     canonical: "https://servolia.com",
     languages: {
@@ -55,8 +54,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased scroll-smooth`}>
       <head>
-        <OrgSchema />
-        <WebSiteSchema />
+        {/* Not on a practice's generated site: at her own domain (C2) it
+            would name Servolia in her page source. */}
+        <ServoliaHead />
       </head>
       <body className="min-h-full flex flex-col">
         {children}

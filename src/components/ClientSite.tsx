@@ -117,7 +117,19 @@ function FeatureRow({ block, reverse, accent, accentDark, t }: { block: ClientEx
   );
 }
 
-export default function ClientSite({ config, page = "home" }: { config: ClientSiteConfig; page?: ClientSitePage }) {
+export default function ClientSite({
+  config,
+  page = "home",
+  basePath: base,
+  customHost = false,
+}: {
+  config: ClientSiteConfig;
+  page?: ClientSitePage;
+  /** "" when served at the practice's own domain (C2), else /sites/<slug>. */
+  basePath?: string;
+  /** Served at her own domain: the chat takes the neutral /api/site-chat path. */
+  customHost?: boolean;
+}) {
   const c = config;
   const accent = c.accent || "#36671E";
   const accentDark = shade(accent, -28);
@@ -144,9 +156,11 @@ export default function ClientSite({ config, page = "home" }: { config: ClientSi
   const hasStats = !!c.stats && c.stats.length > 0;
   const hasHighlights = !!c.highlights && c.highlights.length > 0;
 
-  const basePath = `/sites/${c.slug}`;
+  const basePath = base ?? `/sites/${c.slug}`;
+  // At her domain's root, the home link is "/", never an empty href.
+  const homeHref = basePath || "/";
   const nav = [
-    { key: "home", label: t.home, anchor: "#top", route: basePath, show: true },
+    { key: "home", label: t.home, anchor: "#top", route: homeHref, show: true },
     { key: "cabinet", label: t.about, anchor: "#about", route: `${basePath}/cabinet`, show: !!c.about || hasTeam || hasValues },
     { key: "expertise", label: t.expertise, anchor: "#expertise", route: `${basePath}/expertise`, show: hasExpertise || hasSolutions },
     { key: "conseils", label: t.advice, anchor: "#conseils", route: `${basePath}/conseils`, show: hasAdvice || c.whyUs.length > 0 || c.faqs.length > 0 },
@@ -218,7 +232,7 @@ export default function ClientSite({ config, page = "home" }: { config: ClientSi
       {/* Header */}
       <header className="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-[#ECECEC]">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
-          <a href={isMulti ? basePath : "#top"} className="flex items-center gap-2.5 min-w-0">
+          <a href={isMulti ? homeHref : "#top"} className="flex items-center gap-2.5 min-w-0">
             {c.logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={c.logoUrl} alt={c.businessName} className="h-8 w-auto object-contain shrink-0" />
@@ -256,7 +270,7 @@ export default function ClientSite({ config, page = "home" }: { config: ClientSi
             <div className="absolute inset-0 opacity-25" style={{ background: "radial-gradient(600px 240px at 75% 0%, rgba(255,255,255,0.3), transparent)" }} />
           )}
           <div className={`relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center ${bannerImgs.length > 0 ? "py-20 lg:py-28" : "py-14 lg:py-20"}`}>
-            <a href={isMulti ? basePath : "#top"} className="text-white/80 text-xs font-semibold hover:text-white transition-colors">← {t.backHome}</a>
+            <a href={isMulti ? homeHref : "#top"} className="text-white/80 text-xs font-semibold hover:text-white transition-colors">← {t.backHome}</a>
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight mt-2 [text-shadow:0_2px_16px_rgba(0,0,0,0.25)]">{pageTitle}</h1>
             {page === "expertise" && c.expertiseIntro && (
               <p className="text-white/90 max-w-2xl mx-auto mt-5 leading-relaxed">{c.expertiseIntro}</p>
@@ -660,8 +674,8 @@ export default function ClientSite({ config, page = "home" }: { config: ClientSi
             <a href={`${basePath}/confidentialite`} className="underline underline-offset-2 hover:text-[#71717A]">
               {c.language === "fr" ? "Confidentialité" : "Privacy"}
             </a>
-            {" · "}
-            <span className="opacity-70">Built with Servolia</span>
+            {/* No supplier credit: it is her site (decided 2026-09-22). The
+                privacy page names Servolia once, as the data processor. */}
           </p>
         </div>
       </footer>
@@ -674,7 +688,7 @@ export default function ClientSite({ config, page = "home" }: { config: ClientSi
           marker the site's defining capability is invisible to anything
           that reads raw HTML — including our own audit engine. */}
       {(c.features?.chat ?? true) && (
-        <div id="servolia-chat-widget" data-chat data-ai-receptionist="24-7">
+        <div id="site-chat-widget" data-chat data-ai-receptionist="24-7">
           <ChatWidget
             siteSlug={c.slug}
             brandName={`${c.businessName}`}
@@ -682,6 +696,7 @@ export default function ClientSite({ config, page = "home" }: { config: ClientSi
             accent={accent}
             greeting={c.aiGreeting}
             poweredBy={false}
+            endpoint={customHost ? "/api/site-chat" : "/api/chat"}
           />
         </div>
       )}

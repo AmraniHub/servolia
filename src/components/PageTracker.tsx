@@ -19,7 +19,7 @@ function siteSlugFrom(pathname: string): string | null {
   return m ? m[1] : null;
 }
 
-function Tracker() {
+function Tracker({ siteSlug: forced }: { siteSlug?: string | null }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   // Guards against double-firing in React strict mode and on no-op re-renders.
@@ -68,7 +68,8 @@ function Tracker() {
 
     const payload = JSON.stringify({
       path: pathname,
-      siteSlug: siteSlugFrom(pathname),
+      // Given by SiteChrome on a client site (at her own domain the path is "/").
+      siteSlug: forced ?? siteSlugFrom(pathname),
       referrer: document.referrer || null,
       sessionId,
       isEntry,
@@ -82,16 +83,16 @@ function Tracker() {
       body: payload,
       keepalive: true,
     }).catch(() => {});
-  }, [pathname, searchParams]);
+  }, [pathname, searchParams, forced]);
 
   return null;
 }
 
-export default function PageTracker() {
+export default function PageTracker({ siteSlug }: { siteSlug?: string | null } = {}) {
   // useSearchParams needs a Suspense boundary or it opts the whole tree out of SSG.
   return (
     <Suspense fallback={null}>
-      <Tracker />
+      <Tracker siteSlug={siteSlug} />
     </Suspense>
   );
 }

@@ -1,5 +1,7 @@
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
+import { headers } from "next/headers";
 import type { Metadata } from "next";
+import { customHostFrom, customHostMetadata } from "@/lib/siteHost";
 import ClientSite, { type ClientSitePage } from "@/components/ClientSite";
 import ClientAnalytics from "@/components/ClientAnalytics";
 import { getClientSite } from "@/lib/clientSites";
@@ -31,6 +33,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const which = PAGES[page];
   if (!c || !which || !c.multiPage) return { title: "Site not found" };
   const label = PAGE_LABEL[which][c.language === "fr" ? "fr" : "en"];
+  const host = customHostFrom(await headers());
+  if (host) return customHostMetadata(c, host, `/${page}`, label) as Metadata;
   return {
     title: `${label} · ${c.businessName}${c.city ? ` · ${c.city}` : ""}`,
     description: c.heroSub || c.about,
@@ -50,13 +54,18 @@ export default async function ClientSubPage({ params }: { params: Promise<{ slug
   // lets them move from the home page to /services without losing access.
   const access = await draftAccess(config);
   if (access === "hidden") notFound();
+  // C2: once her domain is live, this page lives there (see the home page).
+  const host = customHostFrom(await headers());
+  if (!host && access === "public" && config.customDomain && config.domainLiveAt) {
+    permanentRedirect(`https://${config.customDomain}/${page}`);
+  }
   const viewer = access === "client" ? "client" : access === "admin" ? "admin" : null;
   return (
     <>
       {viewer && <DraftPreviewRibbon lang={config.language === "fr" ? "fr" : "en"} viewer={viewer} />}
-      <ClientSite config={config} page={which} />
+      <ClientSite config={config} page={which} basePath={host ? "" : undefined} customHost={Boolean(host)} />
       {/* No analytics on a draft — see the home page for why. */}
-      {!viewer && <ClientAnalytics ga4Id={config.ga4Id} metaPixelId={config.metaPixelId} />}
+      {!viewer && <ClientAnalytics ga4Id={config.ga4Id} metaPixelId={config.metaPixelId} slug={config.slug} lang={config.language === "fr" ? "fr" : "en"} />}
     </>
   );
 }

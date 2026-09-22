@@ -39,12 +39,17 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         .eq("build_id", id)
         .limit(1)
         .single();
-      const cfg = (site?.config ?? {}) as { language?: string; contactName?: string };
-      const url = site?.slug ? `https://servolia.com/sites/${site.slug}` : "https://servolia.com";
-      const lang = cfg.language === "fr" ? "fr" as const : "en" as const;
-      const firstName = (cfg.contactName || data.business || "").split(" ")[0] || data.business;
-      const mail = liveEmail(firstName, url, lang);
-      liveEmailSent = await sendEmail(data.email, mail.subject, mail.html);
+      /* One go-live email per client, from the path that knows the address:
+         a build with a generated site is announced by publishing that site
+         (set-site-status) or, on her own domain, by /api/cron/domain-live.
+         Before 2026-09-22 this sent a second one, always to servolia.com. */
+      if (!site?.slug) {
+        const cfg = (site?.config ?? {}) as { language?: string; contactName?: string };
+        const lang = cfg.language === "fr" ? "fr" as const : "en" as const;
+        const firstName = (cfg.contactName || data.business || "").split(" ")[0] || data.business;
+        const mail = liveEmail(firstName, "https://servolia.com", lang);
+        liveEmailSent = await sendEmail(data.email, mail.subject, mail.html);
+      }
     } catch {
       // logged by sendEmail; the build update already succeeded
     }
