@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   draftReceptionist, loadReceptionist, receptionistPhase, readReceptionistToken, receptionistLinkFor,
-  startReceptionistTrial, updateReceptionistDetails, checkReceptionistInstall, receptionistSnippet, canTakeOver,
+  startReceptionistTrial, updateReceptionistDetails, checkReceptionistInstall, receptionistSnippet, canTakeOver, recordSend,
   type Practice, type ReceptionistDetails,
 } from "@/lib/receptionistTrial";
 import { sendEmail, receptionistConfirmEmail, receptionistStartedEmail } from "@/lib/email";
@@ -84,6 +84,10 @@ export async function POST(req: NextRequest) {
     if (receptionistPhase(r) !== "draft" && !mine && !canTakeOver(r, Date.now())) {
       return NextResponse.json({ ok: false, reason: "taken" }, { status: 409 });
     }
+    // The durable caps, read from the database: the same answer on every instance.
+    const cap = await recordSend(row.slug, email);
+    if (cap === null) return NextResponse.json({ ok: false, reason: "send-failed" }, { status: 503 });
+    if (cap !== "ok") return NextResponse.json({ ok: false, reason: "rate" }, { status: 429 });
     const link = await receptionistLinkFor({ slug: row.slug, email, lang }, origin);
     const tpl = receptionistConfirmEmail({ business: row.config.businessName, domain: r.domain, link, lang });
     const sent = await sendEmail(email, tpl.subject, tpl.html).catch(() => false);

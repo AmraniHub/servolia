@@ -285,3 +285,43 @@ test("the trial can be found: the French menu, footer, homepage and both landing
   const nav = src("src/components/FrenchNav.tsx");
   assert.equal((nav.match(/href="\/fr\/essai"/g) ?? []).length, 2, "desktop and mobile menu both");
 });
+
+/* ── the still-open items, closed (2026-09-22) ────────────────────────── */
+
+test("the send caps hold across instances: three a day per site, per address, thirty an hour in all", () => {
+  const now = Date.parse("2026-09-22T12:00:00Z");
+  const at = (minsAgo) => new Date(now - minsAgo * 60_000).toISOString();
+  const h = (slug, ...reqs) => ({ slug, requests: reqs });
+  assert.equal(T.sendAllowed([], "a", "x@a.fr", now), "ok");
+  assert.equal(T.sendAllowed([h("a", { at: at(10), to: "1@a.fr" }, { at: at(20), to: "2@a.fr" }, { at: at(30), to: "3@a.fr" })], "a", "x@a.fr", now), "site");
+  assert.equal(T.sendAllowed([h("a", { at: at(25 * 60), to: "1@a.fr" }, { at: at(26 * 60), to: "2@a.fr" }, { at: at(27 * 60), to: "3@a.fr" })], "a", "x@a.fr", now), "ok", "yesterday's sends have lapsed");
+  assert.equal(T.sendAllowed([h("b", { at: at(1), to: "x@a.fr" }), h("c", { at: at(2), to: "x@a.fr" }), h("d", { at: at(3), to: "x@a.fr" })], "a", "x@a.fr", now), "address");
+  const flood = Array.from({ length: 30 }, (_, i) => h(`s${i}`, { at: at(5), to: `${i}@z.fr` }));
+  assert.equal(T.sendAllowed(flood, "a", "x@a.fr", now), "global");
+  const route = src("src/app/api/receptionist-trial/route.ts");
+  assert.ok(route.indexOf("await recordSend(") < route.indexOf("await sendEmail("), "the send is recorded BEFORE the email goes");
+});
+
+test("two deliveries of one payment cannot both write: the trial row is claimed by compare-and-swap", () => {
+  const lib = src("src/lib/receptionistTrial.ts");
+  const fn = lib.slice(lib.indexOf("export async function completeReceptionistPurchase"));
+  const claim = fn.indexOf('q.is("config->receptionist->>paying", null)');
+  assert.ok(claim > 0 && fn.includes('q.eq("config->receptionist->>paying", held)'), "CAS on the claim field, plain filters only");
+  assert.ok(claim < fn.indexOf('db.from("builds").insert('), "claimed before anything is written");
+  assert.ok(fn.includes('clientErr?.code === "23505"'), "the unique index, once run, is read as 'the other delivery won'");
+  assert.ok(!/\.or\(/.test(fn), "no or() filter whose syntax a typo could break");
+  const sql = src("supabase/2026-09-22-clients-subscription-unique.sql");
+  assert.ok(/create unique index if not exists clients_subscription_id_unique/.test(sql) && !/concurrently/i.test(sql), "runs in the SQL editor's transaction");
+});
+
+test("the founder can end or remove a trial, never a paid one", () => {
+  const lib = src("src/lib/receptionistTrial.ts");
+  for (const fn of ["export async function endReceptionistTrial", "export async function removeReceptionist"]) {
+    const body = lib.slice(lib.indexOf(fn), lib.indexOf("\n}\n", lib.indexOf(fn)));
+    assert.ok(body.includes('return "paid"'), `${fn} refuses a paid receptionist`);
+  }
+  assert.ok(lib.includes('.delete().eq("id", row.id).is("build_id", null)'), "the delete re-checks, in the query itself");
+  const route = src("src/app/api/admin/receptionist/route.ts");
+  assert.ok(route.indexOf("isAdminAuthed()") < route.indexOf("endReceptionistTrial("), "admin session first");
+  assert.ok(src("src/lib/today.ts").includes("r.closedBy) continue;"), "an ended-by-hand trial leaves the list");
+});

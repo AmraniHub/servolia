@@ -1,4 +1,5 @@
 import Link from "next/link";
+import ReceptionistTrialAction from "@/components/admin/ReceptionistTrialAction";
 import { redirect } from "next/navigation";
 import { isAdminAuthed } from "@/lib/auth";
 import { buildToday, type TodayItem } from "@/lib/today";
@@ -60,8 +61,8 @@ function Row({ item }: { item: TodayItem }) {
   const mine = item.owner === "me";
   const tone = item.urgency === 2 ? "border-[#FCA5A5] bg-[#FEF2F2]" : mine ? "border-[#E8E6E0] bg-white" : "border-[#F1F0EC] bg-[#FAFAF7]";
   return (
-    <li>
-      <Link href={item.href} className={`flex items-start justify-between gap-4 rounded-xl border px-4 py-3 hover:border-[#36671E] transition-colors ${tone}`}>
+    <li className="flex items-center gap-2">
+      <Link href={item.href} className={`flex-1 min-w-0 flex items-start justify-between gap-4 rounded-xl border px-4 py-3 hover:border-[#36671E] transition-colors ${tone}`}>
         <div className="min-w-0">
           <p className={`text-sm font-black truncate ${mine ? "text-[#18181B]" : "text-[#71717A]"}`}>{item.title}</p>
           {item.detail && <p className="text-xs text-[#71717A] mt-0.5">{item.detail}</p>}
@@ -70,6 +71,7 @@ function Row({ item }: { item: TodayItem }) {
           {item.urgency === 2 ? "today" : mine ? "you" : "client"}
         </span>
       </Link>
+      {item.trialSlug ? <ReceptionistTrialAction slug={item.trialSlug} ended={Boolean(item.trialEnded)} /> : null}
     </li>
   );
 }

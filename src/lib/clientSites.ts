@@ -273,6 +273,14 @@ export interface ReceptionistState {
   ended?: string;
   paidAt?: string;
   plan?: string;
+  /** Confirmation emails sent for this site — the durable half of the send
+   *  caps (the in-memory limits are per serverless instance). Last 10 kept. */
+  requests?: { at: string; to: string }[];
+  /** Ended or removed by the founder, not by the clock (a test, a spam claim). */
+  closedBy?: string;
+  /** "<subscription>|<iso>" while a payment is being recorded — the claim
+   *  completeReceptionistPurchase takes so two deliveries cannot both write. */
+  paying?: string;
 }
 
 /* ───────────────────────── helpers ───────────────────────── */

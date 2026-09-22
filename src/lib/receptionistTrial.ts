@@ -390,6 +390,9 @@ export async function draftReceptionist(input: string, practice: Practice, lang:
   }
 
   const config = draftReceptionistConfig(probe, practice, lang, new Date(), slug);
+  // A refreshed draft keeps its send history, or re-typing the domain would reset the cap.
+  const sent = existing?.config.receptionist?.requests;
+  if (sent?.length) config.receptionist = { ...config.receptionist!, requests: sent };
   const record = {
     slug,
     build_id: null,
@@ -407,6 +410,60 @@ export async function draftReceptionist(input: string, practice: Practice, lang:
     return { ok: false, reason: "write-failed" };
   }
   return { ok: true, slug, name: config.businessName, accent: config.accent, fallback: probe.fallback, phase: "draft" };
+}
+
+/* ── the durable send caps ─────────────────────────────────────────────── */
+
+export const SEND_CAPS = { perSitePerDay: 3, perAddressPerDay: 3, allPerHour: 30 } as const;
+
+/**
+ * May we send one more confirmation email? Pure, over every receptionist's
+ * send history. This is what the in-memory limits in the route cannot be:
+ * the same answer on every serverless instance, because it is read from the
+ * database. Three a day for one site, three a day to one address, thirty an
+ * hour in total — a practice needs one, and a mailer would need thousands.
+ */
+export function sendAllowed(
+  histories: { slug: string; requests?: { at: string; to: string }[] }[],
+  slug: string, to: string, now: number,
+): "ok" | "site" | "address" | "global" {
+  const day = now - 86_400_000;
+  const hour = now - 3_600_000;
+  let site = 0, address = 0, all = 0;
+  for (const h of histories) {
+    for (const r of h.requests ?? []) {
+      const at = Date.parse(r.at);
+      if (!Number.isFinite(at)) continue;
+      if (at > day && h.slug === slug) site++;
+      if (at > day && r.to === to) address++;
+      if (at > hour) all++;
+    }
+  }
+  if (site >= SEND_CAPS.perSitePerDay) return "site";
+  if (address >= SEND_CAPS.perAddressPerDay) return "address";
+  if (all >= SEND_CAPS.allPerHour) return "global";
+  return "ok";
+}
+
+/**
+ * Check the caps and, if allowed, write the send BEFORE the email goes, so a
+ * burst of parallel requests sees each other's marks. Null when the history
+ * cannot be read: the caller refuses rather than sends blind.
+ */
+export async function recordSend(slug: string, to: string, now = new Date()): Promise<"ok" | "site" | "address" | "global" | null> {
+  const db = supabaseAdmin();
+  if (!db) return null;
+  const { data, error } = await db.from("client_sites")
+    .select("id, slug, config, notes, build_id").like("notes", `%${RECEPTIONIST_MARKER}%`);
+  if (error) return null;
+  const rows = (data ?? []) as Row[];
+  const verdict = sendAllowed(rows.map((r) => ({ slug: r.slug, requests: r.config?.receptionist?.requests })), slug, to, now.getTime());
+  if (verdict !== "ok") return verdict;
+  const row = rows.find((r) => r.slug === slug && r.config?.receptionist);
+  if (!row) return null;
+  const r = row.config.receptionist!;
+  const requests = [...(r.requests ?? []), { at: now.toISOString(), to }].slice(-10);
+  return (await saveConfig(row, { ...row.config, receptionist: { ...r, requests } })) ? "ok" : null;
 }
 
 /** Has this address already had a trial, on any site? Null when we could
@@ -454,6 +511,7 @@ export async function startReceptionistTrial(claim: ReceptionistClaim, details: 
   const next: ReceptionistState = {
     domain: r.domain, practice: r.practice, createdAt: r.createdAt,
     email, lang: claim.lang, started: now.toISOString(), until,
+    ...(r.requests ? { requests: r.requests } : {}),
   };
   const config: ClientSiteConfig = {
     ...applyDetails(row.config, details),
@@ -528,6 +586,35 @@ export async function markSeenLive(slug: string, originHost: string, now = new D
   if (!mine.includes(host)) return false;
   const next = withInstallSeen(r, now);
   return next !== r && saveConfig(row, { ...row.config, receptionist: next });
+}
+
+/* ── the founder's hand (/admin/today) ─────────────────────────────────── */
+
+/**
+ * End a trial now (a test, a squatter, a practice that asked): the widget
+ * goes quiet at once and no day-5 or day-7 email will follow — `ended` is
+ * set, which is what both crons skip on. A paid receptionist is refused:
+ * that one is ended by cancelling its subscription, not from here.
+ */
+export async function endReceptionistTrial(slug: string, now = new Date()): Promise<"ok" | "not-found" | "paid" | "failed"> {
+  const row = await loadReceptionist(slug);
+  const r = row?.config.receptionist;
+  if (!row || !r) return "not-found";
+  if (r.paidAt || row.build_id) return "paid";
+  const iso = now.toISOString();
+  const next: ReceptionistState = { ...r, ended: r.ended ?? iso, closedBy: "founder", ...(r.started ? { until: iso } : {}) };
+  return (await saveConfig(row, { ...row.config, receptionist: next })) ? "ok" : "failed";
+}
+
+/** Remove an unpaid receptionist entirely (a spam draft, a finished test). */
+export async function removeReceptionist(slug: string): Promise<"ok" | "not-found" | "paid" | "failed"> {
+  const db = supabaseAdmin();
+  const row = await loadReceptionist(slug);
+  if (!db || !row) return "not-found";
+  if (row.config.receptionist?.paidAt || row.build_id) return "paid";
+  // The conditions again in the delete itself: never a row that got paid meanwhile.
+  const { error } = await db.from("client_sites").delete().eq("id", row.id).is("build_id", null);
+  return error ? "failed" : "ok";
 }
 
 /* ── the daily pass (cron/dunning) ─────────────────────────────────────── */
@@ -655,6 +742,7 @@ export async function completeReceptionistPurchase(a: {
   const link = (buildId: string) => {
     const r = row!.config.receptionist!;
     const next: ReceptionistState = { ...r, paidAt: (a.now ?? new Date()).toISOString(), plan: plan.key };
+    delete next.paying; // the claim is spent
     return saveConfig(row!, { ...row!.config, status: "published", receptionist: next }, { build_id: buildId, status: "published" });
   };
 
@@ -675,6 +763,38 @@ export async function completeReceptionistPurchase(a: {
   }
   // Paid already, under another subscription: two tabs, or an old link.
   const duplicate = Boolean(row?.config.receptionist?.paidAt);
+
+  /* THE CLAIM — two deliveries of one payment at the same instant.
+   * Both pass the lookup above before either has written its clients row,
+   * and clients.subscription_id has no unique index to stop the second
+   * (supabase/2026-09-22-clients-subscription-unique.sql adds one when it is
+   * run). So the receptionist row itself is claimed with ONE conditional
+   * update — a compare-and-swap on config.receptionist.paying: it succeeds
+   * only if that field still holds exactly what we read (nothing, or a claim
+   * over two minutes old from a delivery that died mid-way). Postgres
+   * re-checks the WHERE after a concurrent update commits, so exactly one
+   * delivery gets the row; the other answers "retry" and, when Stripe
+   * redelivers, finds the clients row the winner wrote. Plain `is null` /
+   * `eq` filters only: a filter PostgREST failed to parse would turn every
+   * payment into a retry loop, and those two cannot be mis-parsed. */
+  if (row && !duplicate) {
+    const r0 = row.config.receptionist!;
+    const held = r0.paying;
+    if (held) {
+      const at = Date.parse(held.split("|")[1] ?? "");
+      if (Number.isFinite(at) && Date.now() - at < 120_000) {
+        return { ok: false, reason: "another delivery of this payment is being recorded" };
+      }
+    }
+    const claim = `${a.subscriptionId ?? "?"}|${new Date().toISOString()}`;
+    let q = db.from("client_sites")
+      .update({ config: { ...row.config, receptionist: { ...r0, paying: claim } } })
+      .eq("id", row.id);
+    q = held ? q.eq("config->receptionist->>paying", held) : q.is("config->receptionist->>paying", null);
+    const { data: claimed, error: claimErr } = await q.select("id");
+    if (claimErr) return { ok: false, reason: `claim: ${claimErr.message}` };
+    if (!claimed?.length) return { ok: false, reason: "another delivery of this payment is being recorded" };
+  }
 
   const { data: build, error: buildErr } = await db.from("builds").insert({
     business,
@@ -702,6 +822,8 @@ export async function completeReceptionistPurchase(a: {
   }).select("id").single();
   if (clientErr || !client) {
     await db.from("builds").delete().eq("id", buildId);
+    // 23505 = the unique index (once run) caught a parallel delivery: it won, we retry.
+    if (clientErr?.code === "23505") return { ok: false, reason: "another delivery recorded this payment first" };
     return { ok: false, reason: `clients insert: ${clientErr?.message ?? "no row"}` };
   }
   const clientId = (client as { id: string }).id;

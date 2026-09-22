@@ -24,7 +24,7 @@ import type { ReceptionistState } from "@/lib/clientSites";
 export type Owner = "me" | "client";
 
 export interface TodayItem {
-  /** stable kind for scripts: lead-sla, lead-hot, build-intake, build-building, draft-send, draft-go, trial-ending, payment-failed, needs-setup, prospect, request-unpaid, reception-not-installed, reception-ending, reception-ended */
+  /** stable kind for scripts: lead-sla, lead-hot, build-intake, build-building, draft-send, draft-go, trial-ending, payment-failed, needs-setup, prospect, request-unpaid, reception-not-installed, reception-ending, reception-ended, reception-running */
   kind: string;
   title: string;
   detail?: string;
@@ -32,6 +32,9 @@ export interface TodayItem {
   owner: Owner;
   /** 2 = today, 1 = this week, 0 = when you get to it */
   urgency: 0 | 1 | 2;
+  /** A public receptionist trial's slug — the page offers End / Remove on it. */
+  trialSlug?: string;
+  trialEnded?: boolean;
 }
 
 export interface TodaySection {
@@ -83,18 +86,22 @@ export async function buildToday(now = Date.now()): Promise<Today> {
   const trials: TodayItem[] = [];
   for (const s of (receptionRes.data ?? []) as Array<{ slug: string; config: { businessName?: string; receptionist?: ReceptionistState } }>) {
     const r = s.config?.receptionist;
-    if (!r?.started || r.paidAt) continue;
+    if (!r?.started || r.paidAt || r.closedBy) continue;
     const title = `${s.config.businessName ?? s.slug} (${r.domain})`;
     const href = `${ADMIN}/sites`;
+    const act = { trialSlug: s.slug, trialEnded: Boolean(r.ended) };
     const left = daysUntil(r.until, now);
     const since = hrsAgo(r.started, now) ?? 0;
     if (r.ended) {
       const endedDays = Math.floor((hrsAgo(r.ended, now) ?? 0) / 24);
-      if (endedDays <= 14) trials.push({ kind: "reception-ended", title, detail: `trial ended ${endedDays}d ago, not paid — ${r.email ?? "?"}`, href, owner: "me", urgency: endedDays <= 2 ? 1 : 0 });
+      if (endedDays <= 14) trials.push({ kind: "reception-ended", title, detail: `trial ended ${endedDays}d ago, not paid — ${r.email ?? "?"}`, href, owner: "me", urgency: endedDays <= 2 ? 1 : 0, ...act });
     } else if (!r.installedAt && since >= 24) {
-      trials.push({ kind: "reception-not-installed", title, detail: `started ${Math.round(since / 24)}d ago, line NOT on their site — offer to help (${r.email ?? "?"})`, href, owner: "me", urgency: since >= 72 ? 2 : 1 });
+      trials.push({ kind: "reception-not-installed", title, detail: `started ${Math.round(since / 24)}d ago, line NOT on their site — offer to help (${r.email ?? "?"})`, href, owner: "me", urgency: since >= 72 ? 2 : 1, ...act });
     } else if (left !== null && left <= 2) {
-      trials.push({ kind: "reception-ending", title, detail: `trial ends in ${Math.max(left, 0)}d — ${r.email ?? "?"}`, href, owner: "me", urgency: left <= 1 ? 2 : 1 });
+      trials.push({ kind: "reception-ending", title, detail: `trial ends in ${Math.max(left, 0)}d — ${r.email ?? "?"}`, href, owner: "me", urgency: left <= 1 ? 2 : 1, ...act });
+    } else {
+      // Quiet, but visible: every running trial can be seen, and ended, from here.
+      trials.push({ kind: "reception-running", title, detail: `trial running${r.installedAt ? ", on their site" : ""} — ends in ${left ?? "?"}d · ${r.email ?? "?"}`, href, owner: "client", urgency: 0, ...act });
     }
   }
   if (trials.length) sections.push({ key: "trials", label: "Trials on their own site", items: trials });
