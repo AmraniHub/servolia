@@ -2,6 +2,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { sendEmail } from "@/lib/email";
 import { sendPushToClient } from "@/lib/push";
 import type { ClientSiteConfig } from "@/lib/clientSites";
+import { isAfterHours } from "@/lib/reportMetrics";
 
 /**
  * Instant lead alerts to the CLIENT (the clinic owner) — the felt-value core
@@ -37,19 +38,8 @@ export interface LeadAlert {
   source: "form" | "chat";
 }
 
-/** Typical business hours heuristic, in the client's own zone: Mon–Sat 08:00–19:00.
- *  Default Europe/Paris; a Moroccan client sets Africa/Casablanca on its config. */
-function isAfterHours(now = new Date(), timeZone = "Europe/Paris"): boolean {
-  let local: Date;
-  try {
-    local = new Date(now.toLocaleString("en-US", { timeZone }));
-  } catch {
-    local = new Date(now.toLocaleString("en-US", { timeZone: "Europe/Paris" }));
-  }
-  const day = local.getDay(); // 0 = Sunday
-  const hour = local.getHours();
-  return day === 0 || hour < 8 || hour >= 19;
-}
+// isAfterHours lives in reportMetrics.ts: the alert's badge and the monthly
+// report's "after hours" count use the same opening hours.
 
 const digits = (s: string) => s.replace(/[^\d+]/g, "").replace(/^00/, "+");
 

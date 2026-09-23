@@ -3,29 +3,23 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { listClientSites } from "@/lib/clientSites";
 import { sendEmail, monthlyReportEmail } from "@/lib/email";
 import { sendTelegramMessage } from "@/lib/telegram";
+import { reportMetrics, type ReportSession } from "@/lib/reportMetrics";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
 /**
- * Monthly client ROI report — runs on the 1st, covers the previous month.
- * For every published client site: aggregate its chat sessions, store a
- * snapshot in client_reports, and email the client their numbers.
+ * Monthly client report — runs on the 1st, covers the previous month.
+ * For every published client site: aggregate its chat sessions with
+ * reportMetrics() (src/lib/reportMetrics.ts — the one definition shared with
+ * the 5th's narrative and her portal), store a snapshot in client_reports,
+ * and email her the number that renews her: booking requests taken BY THE
+ * RECEPTIONIST, apart from what her contact form collected (C4).
  */
 
-interface SessionRow {
-  created_at: string;
-  qualified: boolean | null;
-  utm: Record<string, string> | null;
+interface SessionRow extends ReportSession {
+  session_id: string | null;
 }
-
-const AD_SOURCES = /facebook|instagram|fb|ig|meta|google|adwords|tiktok/i;
-
-// Fallback avg € per new client when the site config doesn't specify one.
-const NICHE_VALUE: Record<string, number> = {
-  dental: 800, aesthetic: 450, "med-spa": 450, "hair-transplant": 2500,
-  "real-estate": 3000, "home-services": 600, "law-firm": 2000,
-};
 
 export async function GET(req: NextRequest) {
   const auth = req.headers.get("authorization");
@@ -43,45 +37,42 @@ export async function GET(req: NextRequest) {
   const period = start.toISOString().slice(0, 7); // "2026-06"
 
   const sites = (await listClientSites()).filter((s) => s.status === "published");
-  const results: { slug: string; sent: boolean; enquiries: number }[] = [];
+  const results: { slug: string; sent: boolean; booked: number; conversations: number; forms: number }[] = [];
 
   for (const site of sites) {
     const { data } = await db
       .from("chat_sessions")
-      .select("created_at, qualified, utm")
+      .select("session_id, created_at, qualified, utm")
       .eq("site_slug", site.slug)
       .gte("created_at", start.toISOString())
       .lt("created_at", end.toISOString());
-
     const sessions = (data as SessionRow[] | null) ?? [];
-    const enquiries = sessions.length;
-    const bookings = sessions.filter((s) => s.qualified).length;
-    const afterHours = sessions.filter((s) => {
-      const h = new Date(s.created_at).getUTCHours() + 1; // ~CET
-      return h < 9 || h >= 19;
-    }).length;
-    const fromAds = sessions.filter((s) => {
-      const src = `${s.utm?.utm_source ?? ""} ${s.utm?.utm_medium ?? ""}`;
-      return AD_SOURCES.test(src);
-    }).length;
 
-    const perClient = site.avgTreatmentValue ?? NICHE_VALUE[site.niche] ?? 500;
-    const estValue = bookings * perClient;
-
-    const metrics = { enquiries, bookings, afterHours, fromAds, estValue, perClient };
-
-    // Find who to email: the client site's build → email
+    // Who to email (the build's address, the one her portal login works
+    // with) and what she pays (her active plan, for the cover line).
     let email = site.email ?? null;
+    let planEur: number | null = null;
     const { data: siteRow } = await db
       .from("client_sites").select("build_id").eq("slug", site.slug).maybeSingle();
     if (siteRow?.build_id) {
       const { data: build } = await db
         .from("builds").select("email").eq("id", siteRow.build_id).maybeSingle();
       if (build?.email) email = build.email;
+      const { data: plan } = await db
+        .from("clients").select("monthly_amount").eq("build_id", siteRow.build_id).eq("status", "active").limit(1);
+      const amount = Number((plan as { monthly_amount?: number }[] | null)?.[0]?.monthly_amount);
+      if (amount > 0) planEur = amount;
     }
 
+    const metrics = reportMetrics(sessions, {
+      timeZone: site.timezone,
+      planEur,
+      avgTreatmentValue: site.avgTreatmentValue,
+      niche: site.niche,
+    });
+
     let sent = false;
-    if (email && enquiries > 0) {
+    if (email && metrics.enquiries > 0) {
       const periodLabel = start.toLocaleDateString(site.language === "fr" ? "fr-FR" : "en-GB", {
         month: "long", year: "numeric",
       });
@@ -89,7 +80,7 @@ export async function GET(req: NextRequest) {
         businessName: site.businessName,
         period: periodLabel,
         lang: site.language,
-        enquiries, bookings, afterHours, fromAds, estValue,
+        metrics,
       });
       sent = await sendEmail(email, tpl.subject, tpl.html);
     }
@@ -99,10 +90,12 @@ export async function GET(req: NextRequest) {
       { onConflict: "site_slug,period" },
     );
 
-    results.push({ slug: site.slug, sent, enquiries });
+    results.push({ slug: site.slug, sent, booked: metrics.receptionistBookings, conversations: metrics.conversations, forms: metrics.formRequests });
   }
 
-  const summary = results.map((r) => `• ${r.slug}: ${r.enquiries} enquiries${r.sent ? " — report emailed ✅" : ""}`).join("\n");
+  const summary = results.map((r) =>
+    `• ${r.slug}: ${r.booked} booked by the receptionist / ${r.conversations} conversations${r.forms ? `, ${r.forms} via the form` : ""}${r.sent ? " — report emailed ✅" : ""}`,
+  ).join("\n");
   await sendTelegramMessage(`📊 *Monthly client reports — ${period}*\n${summary || "No published client sites yet."}`);
 
   return NextResponse.json({ ok: true, period, results });

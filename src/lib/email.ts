@@ -4,6 +4,7 @@ import { sendTelegramMessage } from "@/lib/telegram";
 import { rateLimited } from "@/lib/security";
 // Aliased: this file already uses `money` and `usd` as local names in templates.
 import { usd as usdFmt } from "@/lib/hosting";
+import type { ReportMetrics } from "@/lib/reportMetrics";
 
 /**
  * Email service — uses Resend (resend.com). Free up to 3,000 emails/month.
@@ -777,55 +778,77 @@ export const scopeAcceptedEmail = (businessName: string, acceptedName: string, a
   };
 };
 
-/** Monthly ROI report sent to each live client — the retention weapon. */
+/** The monthly report, on the 1st (C4). It leads with the number that renews
+ *  her: booking requests taken BY THE RECEPTIONIST — never mixed with what
+ *  her contact form collected, which needs no receptionist. The euro line
+ *  says how many new patients pay for her plan, not what her requests are
+ *  "worth": a request is not a patient. Metrics: src/lib/reportMetrics.ts. */
 export const monthlyReportEmail = (input: {
   businessName: string;
-  period: string; // "June 2026"
+  period: string; // "juin 2026" / "June 2026"
   lang: "en" | "fr";
-  enquiries: number;
-  bookings: number;
-  afterHours: number;
-  fromAds: number;
-  estValue: number;
+  metrics: ReportMetrics;
 }) => {
   const fr = input.lang === "fr";
-  const stat = (label: string, value: string, highlight = false) => `
-    <td style="padding:14px 10px;text-align:center;background:${highlight ? "#EEF5EA" : "#FAFAF7"};border-radius:12px;">
-      <div style="font-size:24px;font-weight:900;color:${highlight ? "#36671E" : "#18181B"};">${value}</div>
+  const m = input.metrics;
+  const name = escapeHtml(input.businessName);
+  const eur = (n: number) => (fr ? `${n.toLocaleString("fr-FR")} €` : `€${n.toLocaleString("en-GB")}`);
+  const s = (n: number) => (n > 1 ? "s" : "");
+  const stat = (label: string, value: string) => `
+    <td style="padding:14px 10px;text-align:center;background:#FAFAF7;border-radius:12px;">
+      <div style="font-size:22px;font-weight:900;color:#18181B;">${value}</div>
       <div style="font-size:11px;color:#71717A;margin-top:4px;">${label}</div>
     </td>`;
+
+  const booked = m.receptionistBookings;
+  const headline = fr
+    ? `Demande${s(booked)} de rendez-vous prise${s(booked)} par votre réceptionniste`
+    : `Booking request${booked === 1 ? "" : "s"} taken by your receptionist`;
+
+  const cover = m.coverNeeded && m.planEur
+    ? (fr
+      ? `Votre abonnement est de ${eur(m.planEur)} par mois. À ${eur(m.perClient)} par nouveau patient${m.perClientIsHers ? "" : " (moyenne estimée pour votre spécialité)"}, il suffit de <strong>${m.coverNeeded} nouveau${m.coverNeeded > 1 ? "x" : ""} patient${s(m.coverNeeded)}</strong> pour le couvrir. Votre réceptionniste vous a transmis ${booked} demande${s(booked)} ce mois-ci.`
+      : `Your plan is ${eur(m.planEur)} a month. At ${eur(m.perClient)} per new patient${m.perClientIsHers ? "" : " (an estimated average for your field)"}, <strong>${m.coverNeeded} new patient${m.coverNeeded === 1 ? "" : "s"}</strong> cover${m.coverNeeded === 1 ? "s" : ""} it. Your receptionist passed you ${booked} request${booked === 1 ? "" : "s"} this month.`)
+    : "";
+
   return {
-    subject: fr
-      ? `${input.businessName} — votre rapport Servolia de ${input.period}`
-      : `${input.businessName} — your Servolia report for ${input.period}`,
+    subject: booked > 0
+      ? (fr
+        ? `${input.businessName} — ${booked} demande${s(booked)} de rendez-vous prise${s(booked)} par votre réceptionniste en ${input.period}`
+        : `${input.businessName} — ${booked} booking request${booked === 1 ? "" : "s"} taken by your receptionist in ${input.period}`)
+      : (fr
+        ? `${input.businessName} — votre rapport de ${input.period}`
+        : `${input.businessName} — your report for ${input.period}`),
     html: wrapper(`
-      <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">${fr ? `Votre mois en chiffres — ${input.period}` : `Your month in numbers — ${input.period}`}</h1>
-      <p style="margin:0 0 20px;font-size:15px;line-height:1.6;color:#3F3F46;">
-        ${fr
-          ? `Voici ce que votre assistant Servolia a capté pour <strong>${input.businessName}</strong> ce mois-ci :`
-          : `Here's what your Servolia assistant captured for <strong>${input.businessName}</strong> this month:`}
-      </p>
-      <table style="width:100%;border-collapse:separate;border-spacing:6px;margin:0 0 20px;">
+      <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">${fr ? `Votre mois — ${input.period}` : `Your month — ${input.period}`}</h1>
+      <div style="background:#EEF5EA;border-radius:12px;padding:20px;text-align:center;margin:0 0 14px;">
+        <div style="font-size:40px;font-weight:900;color:#36671E;line-height:1;">${booked}</div>
+        <div style="font-size:14px;color:#36671E;font-weight:700;margin-top:8px;">${headline}</div>
+      </div>
+      <table style="width:100%;border-collapse:separate;border-spacing:6px;margin:0 0 18px;">
         <tr>
-          ${stat(fr ? "Demandes traitées" : "Enquiries handled", String(input.enquiries))}
-          ${stat(fr ? "Demandes de RDV" : "Booking requests", String(input.bookings), true)}
+          ${stat(fr ? "Conversations avec votre réceptionniste" : "Conversations with your receptionist", String(m.conversations))}
+          ${stat(fr ? "Dont hors horaires d'ouverture" : "Of which outside opening hours", String(m.afterHours))}
         </tr>
         <tr>
-          ${stat(fr ? "Hors horaires d'ouverture" : "After business hours", String(input.afterHours))}
-          ${stat(fr ? "Venant de vos publicités" : "From your ads", String(input.fromAds))}
+          ${stat(fr ? "Demandes via le formulaire du site" : "Requests via your site's form", String(m.formRequests))}
+          ${stat(fr ? "Venues de vos publicités" : "From your ads", String(m.fromAds))}
         </tr>
       </table>
-      ${input.estValue > 0 ? `
-      <div style="background:#0A1F14;border-radius:12px;padding:20px;text-align:center;margin:0 0 20px;">
-        <div style="font-size:12px;color:#ABDF90;font-weight:700;text-transform:uppercase;letter-spacing:1px;">${fr ? "Valeur estimée des RDV captés" : "Estimated value of captured bookings"}</div>
-        <div style="font-size:32px;font-weight:900;color:#FAFAF7;margin-top:6px;">€${input.estValue.toLocaleString()}</div>
-      </div>` : ""}
+      ${cover ? `<p style="margin:0 0 18px;font-size:15px;line-height:1.6;color:#3F3F46;">${cover}</p>` : ""}
+      <p style="margin:0 0 18px;font-size:15px;line-height:1.6;color:#3F3F46;">
+        ${fr
+          ? `Chaque demande de <strong>${name}</strong> est dans votre espace client, avec son statut et vos notes : <a href="https://servolia.com/portal" style="color:#36671E;">servolia.com/portal</a>.`
+          : `Every request for <strong>${name}</strong> is in your client portal, with its status and your notes: <a href="https://servolia.com/portal" style="color:#36671E;">servolia.com/portal</a>.`}
+      </p>
       <p style="margin:0;font-size:14px;line-height:1.6;color:#71717A;">
         ${fr
           ? "Une question sur ces chiffres ? Répondez simplement à cet email."
           : "Questions about these numbers? Just reply to this email."}
       </p>
-      `, { preheader: "Your numbers for the month, in one page.", lang: "en" }),
+      `, fr
+        ? { preheader: `${booked} demande${s(booked)} de rendez-vous prise${s(booked)} par votre réceptionniste.`, lang: "fr" }
+        : { preheader: `${booked} booking request${booked === 1 ? "" : "s"} taken by your receptionist.`, lang: "en" }),
   };
 };
 

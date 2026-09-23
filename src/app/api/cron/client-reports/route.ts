@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { sendEmail } from "@/lib/email";
 import { sendTelegramMessage, telegramConfigured } from "@/lib/telegram";
 import type { ClientSiteConfig } from "@/lib/clientSites";
+import { reportMetrics, isFormRequest } from "@/lib/reportMetrics";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -28,6 +29,7 @@ const MODEL = "claude-haiku-4-5-20251001";
  */
 
 interface ChatRow {
+  session_id: string | null;
   messages: { role: string; content: string }[];
   qualified: boolean | null;
   created_at: string;
@@ -68,7 +70,7 @@ async function writeNarrative(
         role: "user",
         content: `You write the monthly performance report for ${cfg.businessName} (${cfg.niche} business). Write in ${lang}.
 
-Last month their AI receptionist had ${stats.conversations} conversations, of which ${stats.qualified} became qualified leads (contact details captured).
+Last month their AI receptionist had ${stats.conversations} conversations, of which ${stats.qualified} became booking requests (the visitor asked for an appointment and left contact details).
 Sample visitor questions: ${stats.questions.slice(0, 6).join(" | ") || "none recorded"}
 
 Return ONLY JSON: {"narrative":"2-3 warm, factual sentences summarizing the month for the business owner — plain language, no hype, no invented numbers","recommendation":"ONE concrete improvement for next month based on the questions (e.g. add a price to a service, add an FAQ topic), one sentence"}`,
@@ -85,6 +87,8 @@ Return ONLY JSON: {"narrative":"2-3 warm, factual sentences summarizing the mont
   }
 }
 
+const esc = (t: string) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
 function reportHtml(
   cfg: ClientSiteConfig,
   monthLabel: string,
@@ -96,8 +100,8 @@ function reportHtml(
     ? `${cfg.businessName} — votre rapport ${monthLabel}`
     : `${cfg.businessName} — your ${monthLabel} report`;
   const rows = [
-    [fr ? "Conversations gérées par l'IA" : "Conversations handled by the AI", String(stats.conversations)],
-    [fr ? "Leads qualifiés capturés" : "Qualified leads captured", String(stats.qualified)],
+    [fr ? "Conversations avec votre réceptionniste" : "Conversations with your receptionist", String(stats.conversations)],
+    [fr ? "Demandes de rendez-vous prises par votre réceptionniste" : "Booking requests taken by your receptionist", String(stats.qualified)],
   ];
   const html = `
   <div style="font-family:system-ui,sans-serif;max-width:560px;margin:0 auto;color:#18181B">
@@ -105,7 +109,7 @@ function reportHtml(
       <p style="color:#BEF264;font-weight:800;font-size:18px;margin:0">Servolia</p>
       <p style="color:#FAFAF7;font-size:14px;margin:6px 0 0">${fr ? "Rapport mensuel" : "Monthly report"} · ${monthLabel}</p>
     </div>
-    ${ai ? `<p style="font-size:14px;line-height:1.6">${ai.narrative}</p>` : ""}
+    ${ai ? `<p style="font-size:14px;line-height:1.6">${esc(ai.narrative)}</p>` : ""}
     <table style="width:100%;border-collapse:collapse;margin:16px 0">
       ${rows.map(([k, v]) => `<tr>
         <td style="padding:10px 0;border-bottom:1px solid #E8E6E0;font-size:14px;color:#52525B">${k}</td>
@@ -113,7 +117,7 @@ function reportHtml(
       </tr>`).join("")}
     </table>
     ${ai?.recommendation ? `<div style="background:#EEF5EA;border-radius:10px;padding:14px;font-size:13px">
-      <strong style="color:#36671E">${fr ? "Amélioration prévue le mois prochain" : "Next month's improvement"} :</strong> ${ai.recommendation}
+      <strong style="color:#36671E">${fr ? "Une idée pour le mois prochain" : "An idea for next month"} :</strong> ${esc(ai.recommendation)}
     </div>` : ""}
     <p style="font-size:12px;color:#71717A;margin-top:20px">${
       fr ? "Une question ? Répondez simplement à cet email." : "Questions? Just reply to this email."
@@ -152,17 +156,21 @@ export async function POST(req: NextRequest) {
     // Aggregate last month's receptionist activity for this site.
     const { data: chats } = await db
       .from("chat_sessions")
-      .select("messages, qualified, created_at")
+      .select("session_id, messages, qualified, created_at")
       .eq("site_slug", row.slug)
       .gte("created_at", win.fromIso)
       .lt("created_at", win.toIso);
-    const chatRows = (chats as ChatRow[] | null) ?? [];
+    const rows = (chats as ChatRow[] | null) ?? [];
+    // The same split as the 1st's report (src/lib/reportMetrics.ts): the
+    // receptionist's conversations, never the contact form's requests.
+    const m = reportMetrics(rows, { timeZone: cfg.timezone });
+    const chatRows = rows.filter((r) => !isFormRequest(r));
     const questions = chatRows
       .flatMap((c) => (c.messages ?? []).filter((m) => m.role === "user").map((m) => m.content))
       .filter((q) => q.length > 8 && q.length < 160);
     const stats = {
-      conversations: chatRows.length,
-      qualified: chatRows.filter((c) => c.qualified).length,
+      conversations: m.conversations,
+      qualified: m.receptionistBookings,
       questions,
     };
 

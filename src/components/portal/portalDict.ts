@@ -103,6 +103,8 @@ export const T = {
     loading: "Loading…", noReports: "No reports yet — your first one lands after your first full month live.",
     emailed: (d: string) => `Emailed ${d}`,
     rEnq: "Enquiries", rBook: "Bookings", rAfter: "After-hours", rAds: "From ads", pipelineValue: "Estimated pipeline value:",
+    rReception: "Booked by your receptionist", rConv: "Conversations", rForm: "Via your form",
+    coverLine: (n: number, eur: number) => `${n} new patient${n === 1 ? "" : "s"} cover${n === 1 ? "s" : ""} your €${eur}/month plan.`,
     // messages
     messageUs: "Message us", messageUsSub: "— we usually reply within a few hours", delete: "Delete",
     confirmDelete: "Delete this conversation? It'll disappear from your view — Servolia can still see and restore it if needed.",
@@ -216,6 +218,8 @@ export const T = {
     loading: "Chargement…", noReports: "Pas encore de rapport — le premier arrive après votre premier mois complet en ligne.",
     emailed: (d: string) => `Envoyé le ${d}`,
     rEnq: "Demandes", rBook: "RDV", rAfter: "Hors horaires", rAds: "Via pubs", pipelineValue: "Valeur estimée du pipeline :",
+    rReception: "Pris par votre réceptionniste", rConv: "Conversations", rForm: "Via le formulaire",
+    coverLine: (n: number, eur: number) => `${n} nouveau${n > 1 ? "x" : ""} patient${n > 1 ? "s" : ""} couvre${n > 1 ? "nt" : ""} votre abonnement de ${eur} €/mois.`,
     messageUs: "Écrivez-nous", messageUsSub: "— nous répondons généralement en quelques heures", delete: "Supprimer",
     confirmDelete: "Supprimer cette conversation ? Elle disparaîtra de votre vue — Servolia peut toujours la voir et la restaurer si besoin.",
     noMessages: "Aucun message — dites bonjour 👋", imageReady: "Image prête — ajoutez une légende ou envoyez.", typeMsg: "Écrivez un message…",

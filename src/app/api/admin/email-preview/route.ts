@@ -70,11 +70,11 @@ function build(id: string, lang: "en" | "fr"): Built | null {
         businessName: "Cabinet Dentaire Metay",
         period: "July 2026",
         lang,
-        enquiries: 148,
-        bookings: 37,
-        afterHours: 52,
-        fromAds: 19,
-        estValue: 7400,
+        metrics: {
+          version: 2, conversations: 148, receptionistBookings: 37, formRequests: 9,
+          afterHours: 52, fromAds: 19, planEur: 249, perClient: 800, perClientIsHers: false,
+          coverNeeded: 1, enquiries: 157, bookings: 46,
+        },
       });
     case "live":
       return liveEmail("Amine", "https://servolia.com/sites/cabinet-metay", lang);

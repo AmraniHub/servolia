@@ -47,7 +47,13 @@ const STAGE_COLORS: Record<string, { color: string; bg: string }> = {
 };
 interface PortalStats { monthEnquiries: number; monthBookings: number; monthContacts: number }
 interface PortalLifetime { enquiries: number; bookings: number; afterHours: number; since: string | null }
-interface ReportMetrics { enquiries: number; bookings: number; afterHours: number; fromAds: number; estValue: number; perClient: number }
+// version 2 (C4, 2026-09-23) splits the receptionist's bookings from the form's requests;
+// older rows carry only enquiries/bookings/estValue and keep their old tiles.
+interface ReportMetrics {
+  enquiries: number; bookings: number; afterHours: number; fromAds: number; estValue?: number; perClient: number;
+  version?: number; conversations?: number; receptionistBookings?: number; formRequests?: number;
+  planEur?: number | null; coverNeeded?: number | null;
+}
 interface PortalReport { period: string; metrics: ReportMetrics; sent_at: string | null }
 
 function statusMeta(status: Build["status"], t: Dict): { label: string; color: string; bg: string } {
@@ -987,21 +993,28 @@ export default function PortalDashboard({
                       {r.sent_at && <span className="text-[10px] text-[var(--p-faint)]">{t.emailed(formatDate(r.sent_at, lang))}</span>}
                     </div>
                     <div className="grid grid-cols-2 min-[420px]:grid-cols-4 gap-2">
-                      {[
+                      {(r.metrics.version === 2 ? [
+                        { label: t.rReception, value: r.metrics.receptionistBookings ?? 0, accent: true },
+                        { label: t.rConv, value: r.metrics.conversations ?? 0 },
+                        { label: t.rAfter, value: r.metrics.afterHours },
+                        { label: t.rForm, value: r.metrics.formRequests ?? 0 },
+                      ] : [
                         { label: t.rEnq, value: r.metrics.enquiries },
                         { label: t.rBook, value: r.metrics.bookings, accent: true },
                         { label: t.rAfter, value: r.metrics.afterHours },
                         { label: t.rAds, value: r.metrics.fromAds },
-                      ].map((s) => (
+                      ]).map((s) => (
                         <div key={s.label} className="rounded-xl p-3" style={{ background: s.accent ? "var(--p-accent-soft)" : "var(--p-raised)" }}>
                           <p className={`text-lg font-black ${s.accent ? "text-[var(--p-accent)]" : "text-[var(--p-text)]"}`}>{s.value}</p>
                           <p className="text-[10px] text-[var(--p-muted)] mt-0.5">{s.label}</p>
                         </div>
                       ))}
                     </div>
-                    {r.metrics.estValue > 0 && (
+                    {r.metrics.version === 2 && r.metrics.coverNeeded && r.metrics.planEur ? (
+                      <p className="text-xs text-[var(--p-muted)] mt-3">{t.coverLine(r.metrics.coverNeeded, r.metrics.planEur)}</p>
+                    ) : r.metrics.version !== 2 && (r.metrics.estValue ?? 0) > 0 && (
                       <p className="text-xs text-[var(--p-muted)] mt-3">
-                        {t.pipelineValue} <span className="font-black text-[var(--p-text)]">€{r.metrics.estValue.toLocaleString()}</span>
+                        {t.pipelineValue} <span className="font-black text-[var(--p-text)]">€{(r.metrics.estValue ?? 0).toLocaleString()}</span>
                       </p>
                     )}
                   </div>

@@ -316,10 +316,13 @@ export async function POST(req: NextRequest) {
           const phoneMatch = allText.match(/\+?[\d\s().-]{8,}/);
           const { data: existing } = await db.from("chat_sessions")
             .select("id, qualified").eq("session_id", sessionId).maybeSingle();
+          // Once a booking, always a booking: a "merci" after the booking has
+          // no [BOOKING] in its reply, and writing isBooking alone un-counted
+          // it from her monthly report (C4, 2026-09-23).
           const row = {
             messages: fullMessages,
             message_count: fullMessages.length,
-            qualified: isBooking,
+            qualified: isBooking || !!(existing as { qualified?: boolean } | null)?.qualified,
             email_captured: emailMatch?.[0] ?? null,
             phone_captured: phoneMatch?.[0] ?? null,
             site_slug: siteSlug,
