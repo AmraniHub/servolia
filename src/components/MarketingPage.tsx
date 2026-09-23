@@ -3,7 +3,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import FrenchNav from "@/components/FrenchNav";
 import FrenchFooter from "@/components/FrenchFooter";
-import ChatWidget from "@/components/ChatWidget";
+import ServoliaChat from "@/components/ServoliaChat";
 import type { MarketingContent, IconName } from "@/lib/content/pages";
 import { FaqSchema } from "@/components/StructuredData";
 import ValueStack from "@/components/ValueStack";
@@ -197,7 +197,7 @@ export default function MarketingPage({ data, lang = "en", enHref }: { data: Mar
         </section>
       </main>
       {lang === "fr" ? <FrenchFooter /> : <Footer />}
-      <ChatWidget />
+      <ServoliaChat />
     </>
   );
 }

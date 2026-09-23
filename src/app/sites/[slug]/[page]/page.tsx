@@ -1,4 +1,4 @@
-import { notFound, permanentRedirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { headers } from "next/headers";
 import type { Metadata } from "next";
 import { customHostFrom, customHostMetadata } from "@/lib/siteHost";
@@ -57,7 +57,7 @@ export default async function ClientSubPage({ params }: { params: Promise<{ slug
   // C2: once her domain is live, this page lives there (see the home page).
   const host = customHostFrom(await headers());
   if (!host && access === "public" && config.customDomain && config.domainLiveAt) {
-    permanentRedirect(`https://${config.customDomain}/${page}`);
+    redirect(`https://${config.customDomain}/${page}`);
   }
   const viewer = access === "client" ? "client" : access === "admin" ? "admin" : null;
   return (

@@ -1,7 +1,12 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useSelectedLayoutSegment } from "next/navigation";
-import { OrgSchema, WebSiteSchema } from "@/components/StructuredData";
+
+/* On demand: still rendered on the server for every servolia.com page (so
+   crawlers read it in the HTML), but its code is a separate chunk that a
+   practice's page never loads. */
+const ServoliaTags = dynamic(() => import("@/components/ServoliaTags"));
 
 /**
  * Servolia's own head tags — its Organization and WebSite schema and Meta's
@@ -21,13 +26,5 @@ import { OrgSchema, WebSiteSchema } from "@/components/StructuredData";
 export default function ServoliaHead() {
   const segment = useSelectedLayoutSegment();
   if (segment === "sites") return null;
-  return (
-    <>
-      <OrgSchema />
-      <WebSiteSchema />
-      {/* Meta checks servolia.com's own pages for this; it was in the root
-          metadata, which Next merges into every page — hers included. */}
-      <meta name="facebook-domain-verification" content="y91x60qk6fueqiuz3ncnb295oepldu" />
-    </>
-  );
+  return <ServoliaTags />;
 }

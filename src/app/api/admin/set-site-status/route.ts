@@ -49,11 +49,14 @@ export async function POST(req: NextRequest) {
        with her address in it. Announcing servolia.com/sites/<slug> here
        would send her the wrong address, before it is true. */
     if (!cfg?.isDemo && !cfg?.customDomain) {
-      let to = cfg?.email ?? null;
-      if (!to && row.build_id) {
+      // The account holder first — the address her portal login works with —
+      // then the site's public contact address (review, 2026-09-22).
+      let to: string | null = null;
+      if (row.build_id) {
         const { data: build } = await db.from("builds").select("email").eq("id", row.build_id).maybeSingle();
         to = (build as { email?: string | null } | null)?.email ?? null;
       }
+      to = to || (cfg?.email ?? null);
       if (to) {
         const firstName = (cfg?.businessName ?? row.business ?? to.split("@")[0]).split(" ")[0];
         const lang = cfg?.language === "fr" ? "fr" : "en";

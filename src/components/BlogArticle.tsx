@@ -1,7 +1,7 @@
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import ChatWidget from "@/components/ChatWidget";
+import ServoliaChat from "@/components/ServoliaChat";
 import CoverImage from "@/components/CoverImage";
 import type { Post, Block } from "@/lib/content/posts";
 import { formatDate, getRelated } from "@/lib/content/posts";
@@ -133,7 +133,7 @@ export default function BlogArticle({ post }: { post: Post }) {
         )}
       </main>
       <Footer />
-      <ChatWidget />
+      <ServoliaChat />
     </>
   );
 }

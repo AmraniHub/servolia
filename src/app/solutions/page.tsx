@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import ChatWidget from "@/components/ChatWidget";
+import ServoliaChat from "@/components/ServoliaChat";
 import { SOLUTIONS, INDUSTRIES } from "@/lib/content/pages";
 import { Globe, Bot, Calendar, LayoutDashboard, ArrowRight } from "lucide-react";
 import ValueStack from "@/components/ValueStack";
@@ -110,7 +110,7 @@ export default function SolutionsHub() {
       <ValueStack />
       <Guarantee />
       <Footer />
-      <ChatWidget />
+      <ServoliaChat />
     </>
   );
 }

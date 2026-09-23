@@ -1,4 +1,4 @@
-import { notFound, permanentRedirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { headers } from "next/headers";
 import type { Metadata } from "next";
 import { customHostFrom, customHostMetadata } from "@/lib/siteHost";
@@ -41,7 +41,7 @@ export default async function ClientPrivacyPage({ params }: { params: Promise<{ 
   if (access === "hidden") notFound();
   const host = customHostFrom(await headers());
   if (!host && access === "public" && c.customDomain && c.domainLiveAt) {
-    permanentRedirect(`https://${c.customDomain}/confidentialite`);
+    redirect(`https://${c.customDomain}/confidentialite`);
   }
   const viewer = access === "client" ? "client" : access === "admin" ? "admin" : null;
   // Her own measurement tags, if she gave any — they wait for consent (ClientAnalytics).

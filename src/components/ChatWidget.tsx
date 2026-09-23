@@ -29,30 +29,31 @@ export interface ChatWidgetProps {
    *  /api/site-chat (proxied to /api/chat): a bare /api/chat there would be
    *  Servolia's own sales chat, one curl away at her address. */
   endpoint?: "/api/chat" | "/api/site-chat";
+  /** Opening line, chips, placeholder and subtitle for a non-client widget. */
+  ownCopy?: OwnChatCopy;
+  /** The address shown when the fallback form itself fails. */
+  fallbackEmail?: string;
+  /** The name after "Powered by", when poweredBy is on. */
+  poweredByLabel?: string;
 }
 
-/** Copy for Servolia's OWN widget — the one on servolia.com and /fr.
- *  It is deliberately not a generic "how can I help": a visitor talking to it
- *  is testing the exact product we sell, and the opening line says so. The
- *  chips are the three objections that actually block a booking, not a
- *  business-type menu — answering "what does it cost" beats classifying
- *  yourself before you have asked anything. */
-const OWN_COPY = {
-  en: {
-    greeting:
-      "Hi — I'm the same AI receptionist Servolia installs for its clients. This site is running it live, so you're testing the real thing. Ask me what we build, what it costs, or how quickly you'd be live.",
-    quickReplies: ["What does it cost?", "How fast would I be live?", "I already have a website"],
-    placeholder: "Ask about pricing, timing, anything…",
-    subtitle: "Replies instantly · a human reads every conversation",
-  },
-  fr: {
-    greeting:
-      "Bonjour — je suis la même réceptionniste IA que Servolia installe chez ses clients. Ce site la fait tourner en direct : vous testez donc le produit réel. Demandez-moi ce que nous construisons, combien ça coûte, ou en combien de temps vous seriez en ligne.",
-    quickReplies: ["Combien ça coûte ?", "En combien de temps je suis en ligne ?", "J'ai déjà un site"],
-    placeholder: "Tarifs, délais, questions…",
-    subtitle: "Réponse immédiate · un humain lit chaque conversation",
-  },
-} as const;
+/** The widget's own words when it is not a client site's receptionist.
+ *  Passed in (see ServoliaChat.tsx) rather than written here: this component
+ *  also runs on a practice's own domain, and whatever is written here ships
+ *  in her page's JavaScript (C2 review, 2026-09-22). */
+export interface OwnChatCopy {
+  greeting: string;
+  quickReplies: readonly string[];
+  placeholder: string;
+  subtitle: string;
+}
+
+const NEUTRAL_COPY: OwnChatCopy = {
+  greeting: "Hi 👋 How can I help you today?",
+  quickReplies: ["Book an appointment", "Opening hours", "Prices"],
+  placeholder: "Type a message…",
+  subtitle: "Online · replies instantly",
+};
 
 function getSessionId(scope: string): string {
   if (typeof window === "undefined") return "";
@@ -68,16 +69,20 @@ function getSessionId(scope: string): string {
 
 export default function ChatWidget({
   siteSlug,
-  brandName = "Solia by Servolia",
-  botName = "Solia",
+  brandName = "Assistant",
+  botName = "Assistant",
   accent = "#36671E",
   greeting,
   quickReplies: quickRepliesProp,
   poweredBy = true,
   lang = "en",
   endpoint = "/api/chat",
+  ownCopy,
+  fallbackEmail,
+  poweredByLabel = "",
 }: ChatWidgetProps = {}) {
-  const own = OWN_COPY[lang === "fr" ? "fr" : "en"];
+  void lang; // the copy arrives already in the caller's language
+  const own = ownCopy ?? NEUTRAL_COPY;
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -149,7 +154,7 @@ export default function ChatWidget({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           messages: newMessages,
-          sessionId: getSessionId(siteSlug ?? "servolia"),
+          sessionId: getSessionId(siteSlug ?? "own"),
           // Keep the query string — utm_* params drive ad attribution server-side.
           pageUrl: typeof window !== "undefined" ? window.location.pathname + window.location.search : "/",
           siteSlug,
@@ -181,7 +186,7 @@ export default function ChatWidget({
           name: fbName,
           contact: fbContact,
           siteSlug,
-          sessionId: getSessionId(siteSlug ?? "servolia"),
+          sessionId: getSessionId(siteSlug ?? "own"),
           pageUrl: typeof window !== "undefined" ? window.location.pathname + window.location.search : "/",
         }),
       });
@@ -334,7 +339,7 @@ export default function ChatWidget({
                 </button>
                 {fbState === "error" && (
                   <p className="text-[11px] text-[#B91C1C]">
-                    {siteSlug ? "Couldn't send — please call or email us directly." : "Couldn't send — please email hello@servolia.com"}
+                    {siteSlug || !fallbackEmail ? "Couldn't send — please call or email us directly." : `Couldn't send — please email ${fallbackEmail}`}
                   </p>
                 )}
               </div>
@@ -370,10 +375,10 @@ export default function ChatWidget({
           </div>
 
           {/* Footer */}
-          {poweredBy && (
+          {poweredBy && poweredByLabel && (
             <div className="bg-white text-center pb-2">
               <span className="text-[#A1A1AA] text-[10px]">
-                Powered by <span className="text-[#36671E] font-semibold">Servolia AI</span>
+                Powered by <span className="text-[#36671E] font-semibold">{poweredByLabel}</span>
               </span>
             </div>
           )}

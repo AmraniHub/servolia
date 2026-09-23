@@ -27,17 +27,30 @@ export async function GET(req: NextRequest) {
   const db = supabaseAdmin();
 
   for (const e of out.live) {
-    let to = e.email;
-    if (!to && e.buildId && db) {
+    if (!e.announce) {
+      // The same domain, detached and re-attached: announced before, not again.
+      await sendTelegramMessage(`Back live on her own domain - ${e.business}\nhttps://${e.domain}\n(announced before - no email this time)`, undefined, { plain: true, silent: true }).catch(() => {});
+      continue;
+    }
+    /* The ACCOUNT holder first: the address her portal login works with
+       (builds.email). The site's contact address (config.email) is often a
+       reception desk inbox, and the email tells her to sign in with the
+       address it arrived at (review, 2026-09-22). */
+    let to: string | null = null;
+    if (e.buildId && db) {
       const { data } = await db.from("builds").select("email").eq("id", e.buildId).maybeSingle();
       to = (data as { email?: string | null } | null)?.email ?? null;
     }
+    to = to || e.contactEmail;
+    let sent = false;
     if (to) {
-      const tpl = liveEmail(to.split("@")[0], `https://${e.domain}`, e.lang);
-      await sendEmail(to, tpl.subject, tpl.html).catch(() => false);
+      const greet = e.business.split(" ")[0] || to.split("@")[0];
+      const tpl = liveEmail(greet, `https://${e.domain}`, e.lang);
+      sent = await sendEmail(to, tpl.subject, tpl.html).catch(() => false);
     }
     await sendTelegramMessage(
-      `LIVE on her own domain - ${e.business}\nhttps://${e.domain}\n${to ? `Go-live email sent to ${to}.` : "No address on file - tell her yourself."}`,
+      `LIVE on her own domain - ${e.business}\nhttps://${e.domain}\n` +
+      (sent ? `Go-live email sent to ${to}.` : to ? `Go-live email to ${to} FAILED - tell her yourself.` : "No address on file - tell her yourself."),
       undefined, { plain: true },
     ).catch(() => {});
   }

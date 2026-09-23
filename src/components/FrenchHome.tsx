@@ -9,7 +9,7 @@ import ShowcaseSlider from "@/components/ShowcaseSlider";
 import LiveShowcase from "@/components/LiveShowcase";
 import ROICalculator from "@/components/ROICalculator";
 import StickyMobileCTA from "@/components/StickyMobileCTA";
-import ChatWidget from "@/components/ChatWidget";
+import ServoliaChat from "@/components/ServoliaChat";
 import FrenchNav from "@/components/FrenchNav";
 import FrenchFooter from "@/components/FrenchFooter";
 import { SETUP_PLAN, PLANS, PLAN_ORDER } from "@/lib/pricing";
@@ -699,7 +699,7 @@ export default function FrenchHome() {
       {/* ValueStack retiré ici — un 4e récap tarifaire APRÈS le CTA final ; passé le CTA, le visiteur a besoin du footer, pas d'un second pitch. */}
       <StickyMobileCTA label="Essayer sur mon site" sub="7 jours gratuits · sans carte · sans appel" href="/fr/essai" />
       {/* The product demo itself — French visitors could not test it before. */}
-      <ChatWidget lang="fr" />
+      <ServoliaChat lang="fr" />
       <FrenchFooter />
     </main>
   );

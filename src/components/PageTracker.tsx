@@ -10,8 +10,9 @@ import { Suspense } from "react";
  * traffic shows up in our OWN dashboards, for servolia.com and every client site.
  */
 
-const SESSION_KEY = "servolia_sid";
-const UTM_KEY = "servolia_utm";
+// Neutral names: these keys sit in a practice's visitors' browsers too (C2).
+const SESSION_KEY = "pt_sid";
+const UTM_KEY = "pt_utm";
 
 /** A client site lives at /sites/{slug}[/page] — anything else is servolia.com itself. */
 function siteSlugFrom(pathname: string): string | null {

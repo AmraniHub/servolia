@@ -53,7 +53,19 @@ export async function generateSiteForBuild(
     config.slug = slug;
 
     // Upsert by build_id so re-running updates the same site
-    const { data: existing } = await db.from("client_sites").select("id").eq("build_id", buildId).maybeSingle();
+    const { data: existing } = await db.from("client_sites").select("id, config").eq("build_id", buildId).maybeSingle();
+    /* Her own domain (C2) belongs to her, not to this draft: a regenerate
+       keeps it, or re-running the intake would silently detach her domain
+       and, on the next publish, announce servolia.com instead (review,
+       2026-09-22). */
+    const prev = (existing as { config?: ClientSiteConfig } | null)?.config;
+    if (prev?.customDomain) {
+      config.customDomain = prev.customDomain;
+      if (prev.domainAttachedAt) config.domainAttachedAt = prev.domainAttachedAt;
+      if (prev.domainLiveAt) config.domainLiveAt = prev.domainLiveAt;
+      if (prev.domainDns) config.domainDns = prev.domainDns;
+      if (prev.liveNotifiedFor) config.liveNotifiedFor = prev.liveNotifiedFor;
+    }
     const row = {
       slug,
       build_id: buildId,

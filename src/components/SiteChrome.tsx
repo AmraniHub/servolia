@@ -1,11 +1,15 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { usePathname, useSelectedLayoutSegments } from "next/navigation";
-import CookieBanner from "@/components/CookieBanner";
-import ScrollToTop from "@/components/ScrollToTop";
-import Analytics from "@/components/Analytics";
 import PageTracker from "@/components/PageTracker";
-import { editorMountPaths } from "@/lib/siteEditor";
+
+/* Loaded on demand, not bundled with every page: a practice's site at her
+   own domain never renders these, so her visitors never download Servolia's
+   consent banner or its analytics ids (C2 review, 2026-09-22). */
+const CookieBanner = dynamic(() => import("@/components/CookieBanner"));
+const ScrollToTop = dynamic(() => import("@/components/ScrollToTop"));
+const Analytics = dynamic(() => import("@/components/Analytics"));
 
 /**
  * Servolia's own furniture — cookie banner, back-to-top, analytics — on every
@@ -34,9 +38,9 @@ import { editorMountPaths } from "@/lib/siteEditor";
  * The mount paths are therefore read from the same config that defines the
  * mounts, never listed by hand here.
  */
-const BARE = ["/client-editor", ...editorMountPaths()];
 
-export default function SiteChrome() {
+export default function SiteChrome({ editorPaths = [] }: { editorPaths?: string[] }) {
+  const BARE = ["/client-editor", ...editorPaths];
   const pathname = usePathname() || "";
   const segments = useSelectedLayoutSegments();
   if (BARE.some((p) => pathname === p || pathname.startsWith(`${p}/`))) return null;

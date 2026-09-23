@@ -1,5 +1,5 @@
-import NotFoundView from "@/components/NotFoundView";
+import NotFoundLazy from "@/components/NotFoundLazy";
 
 export default function NotFound() {
-  return <NotFoundView />;
+  return <NotFoundLazy />;
 }

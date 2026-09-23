@@ -13,12 +13,13 @@ interface DnsLine { type: string; name: string; value: string }
  * her domain serves the site.
  */
 export default function SiteDomainControl({
-  slug, customDomain, domainLiveAt, wanted,
-}: { slug: string; customDomain?: string; domainLiveAt?: string; wanted?: string }) {
+  slug, customDomain, domainLiveAt, wanted, savedDns,
+}: { slug: string; customDomain?: string; domainLiveAt?: string; wanted?: string; savedDns?: DnsLine[] }) {
   const router = useRouter();
   const [domain, setDomain] = useState(customDomain ?? wanted ?? "");
   const [busy, setBusy] = useState(false);
-  const [dns, setDns] = useState<DnsLine[] | null>(null);
+  // The lines she was sent stay on the card until her domain answers (stored at attach time).
+  const [dns, setDns] = useState<DnsLine[] | null>(domainLiveAt ? null : savedDns ?? null);
   const [error, setError] = useState("");
 
   async function call(action: "attach" | "detach") {
@@ -34,7 +35,7 @@ export default function SiteDomainControl({
     setBusy(false);
     if (!res.ok) {
       const why: Record<string, string> = {
-        invalid: "Not a domain.", ours: "That is one of ours.", platform: "A shared platform (Doctolib, Google…) — she needs her own domain.",
+        invalid: "Not a domain.", subdomain: "A subdomain — attach her main domain (cabinet-dupont.fr), not rdv.cabinet-dupont.fr.", ours: "That is one of ours.", platform: "A shared platform (Doctolib, Google…) — she needs her own domain.",
         taken: "Another site here already has that domain.", "in-use-elsewhere": "Attached to another Vercel account — she must release it there, or add the TXT line Vercel asks for.",
         "not-configured": "VERCEL_TOKEN / VERCEL_TEAM_ID missing.", vercel: `Vercel refused: ${json.detail ?? ""}`,
       };

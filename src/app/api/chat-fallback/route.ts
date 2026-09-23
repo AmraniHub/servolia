@@ -34,13 +34,16 @@ export async function POST(req: NextRequest) {
   const origin = req.headers.get("origin");
   let cors: Record<string, string> = {};
   try {
-    const { name, contact, siteSlug, sessionId, pageUrl } = await req.json() as {
+    const body = await req.json() as {
       name?: string;
       contact?: string;
       siteSlug?: string;
       sessionId?: string;
       pageUrl?: string;
     };
+    const { name, contact, sessionId, pageUrl } = body;
+    // Pinned by the proxy on a practice's own domain (see /api/chat): wins over the body.
+    const siteSlug = req.nextUrl.searchParams.get("site") || body.siteSlug;
 
     const config = siteSlug ? await getClientSite(siteSlug) : undefined;
     if (siteSlug) {

@@ -38,8 +38,8 @@ export function isOurHost(host: string | null | undefined): boolean {
   return OUR_HOSTS.has(h) || h.endsWith(".servolia.com") || h.endsWith(".vercel.app");
 }
 
-/** The site pages a generated site has, besides its home (sites/[slug]/[page]). */
-export const SITE_PAGES = ["cabinet", "expertise", "services", "conseils", "confidentialite"] as const;
+/** The pages a MULTI-page generated site has besides its home (sites/[slug]/[page]). */
+export const SITE_PAGES = ["cabinet", "expertise", "services", "conseils"] as const;
 
 export type HostRoute =
   | { kind: "rewrite"; to: string }
@@ -51,62 +51,94 @@ export type HostRoute =
  * Where a path on her domain goes. Pure, so the whole table is testable
  * without a request: every route not listed here is a 404, never a page of
  * servolia.com wearing her domain.
+ *
+ * Sub-pages exist only when her site is multi-page: rewriting /cabinet on a
+ * single-page site would reach notFound() and render the ROOT 404, which is
+ * Servolia's branded page (review, 2026-09-22). Here it is a plain 404.
  */
-export function hostRoute(pathname: string, slug: string): HostRoute {
-  const p = pathname.replace(/\/+$/, "") || "/";
+export function hostRoute(pathname: string, slug: string, opts: { multiPage?: boolean } = {}): HostRoute {
+  // Collapse runs of slashes first: "/sites/x//evil.com" must never become a
+  // protocol-relative redirect target.
+  const p = pathname.replace(/\/{2,}/g, "/").replace(/\/+$/, "") || "/";
   if (p === "/") return { kind: "rewrite", to: `/sites/${slug}` };
+  if (p === "/confidentialite") return { kind: "rewrite", to: `/sites/${slug}/confidentialite` };
   const first = p.split("/")[1] ?? "";
-  if ((SITE_PAGES as readonly string[]).includes(first) && p.split("/").length === 2) {
+  if (opts.multiPage && (SITE_PAGES as readonly string[]).includes(first) && p.split("/").length === 2) {
     return { kind: "rewrite", to: `/sites/${slug}/${first}` };
   }
   if (p === "/robots.txt") return { kind: "rewrite", to: `/api/sites/${slug}/robots` };
   if (p === "/sitemap.xml") return { kind: "rewrite", to: `/api/sites/${slug}/sitemap` };
-  if (p === "/api/site-chat") return { kind: "rewrite", to: "/api/chat" };
-  if (p === "/api/site-chat-fallback") return { kind: "rewrite", to: "/api/chat-fallback" };
+  /* The chat, pinned to HER site: the slug rides in the rewritten query and
+     /api/chat takes it over whatever the body says, so her domain can never
+     answer as Servolia's own sales chat or as another client's receptionist. */
+  if (p === "/api/site-chat") return { kind: "rewrite", to: `/api/chat?site=${slug}` };
+  if (p === "/api/site-chat-fallback") return { kind: "rewrite", to: `/api/chat-fallback?site=${slug}` };
   if (p === `/api/sites/${slug}/lead` || p === "/api/track") return { kind: "pass" };
   if (p.startsWith("/_next/")) return { kind: "pass" };
   // An old servolia.com/sites/<slug> link opened on her domain: send it home.
   if (p === `/sites/${slug}` || p.startsWith(`/sites/${slug}/`)) {
     const rest = p.slice(`/sites/${slug}`.length) || "/";
-    return { kind: "redirect", to: rest };
+    return { kind: "redirect", to: rest.startsWith("/") ? rest : `/${rest}` };
   }
   return { kind: "not-found" };
 }
 
 /* ── which site answers for a host ─────────────────────────────────────── */
 
+export interface HostSite { slug: string; published: boolean; multiPage: boolean; lang: "fr" | "en" }
+
 /* A small cache per instance. Sixty seconds: a domain the founder just
    attached answers within a minute, and a busy site costs one query a minute,
    not one per page view. Misses are cached too, so a scan of random hosts
    pointed at us cannot turn into a query per request. */
 const TTL_MS = 60_000;
-const cache = new Map<string, { slug: string | null; at: number }>();
+const cache = new Map<string, { site: HostSite | null; at: number }>();
 
-export async function slugForHost(host: string | null | undefined): Promise<string | null> {
+/**
+ * The site a foreign host belongs to — in ANY state, not only published: a
+ * domain attached to a practice must never fall through to servolia.com's own
+ * pages because her site is a draft, unpublished, or being regenerated
+ * (review, 2026-09-22). "error" when the database could not answer: the proxy
+ * then says "try again", it does not guess.
+ */
+export async function siteForHost(host: string | null | undefined): Promise<HostSite | null | "error"> {
   const apex = apexOf(host);
   // Local testing only: DEV_SITE_HOSTS="cabinet-test.fr=demo-metay" maps a
   // Host header to a site without a database. Never read in production.
   if (process.env.NODE_ENV !== "production" && process.env.DEV_SITE_HOSTS) {
     for (const pair of process.env.DEV_SITE_HOSTS.split(",")) {
-      const [h, s] = pair.split("=").map((x) => x.trim());
-      if (h && s && apexOf(h) === apex) return s;
+      const [h, s, flag] = pair.split("=").map((x) => x.trim());
+      if (h && s && apexOf(h) === apex) return { slug: s, published: flag !== "draft", multiPage: true, lang: "fr" };
     }
   }
   if (!apex || isOurHost(apex)) return null;
   const hit = cache.get(apex);
-  if (hit && Date.now() - hit.at < TTL_MS) return hit.slug;
-  let slug: string | null = null;
+  if (hit && Date.now() - hit.at < TTL_MS) return hit.site;
   const db = supabaseAdmin();
-  if (db) {
-    const { data, error } = await db.from("client_sites").select("slug")
-      .eq("config->>customDomain", apex).eq("status", "published").limit(1);
-    if (!error) slug = ((data ?? [])[0] as { slug?: string } | undefined)?.slug ?? null;
-    else console.error("[siteHost] lookup failed:", error.message);
-    if (error) return null; // not cached: the next request tries again
+  if (!db) return "error";
+  const { data, error } = await db.from("client_sites").select("slug, status, config")
+    .eq("config->>customDomain", apex).limit(1);
+  if (error) {
+    console.error("[siteHost] lookup failed:", error.message);
+    return "error"; // not cached: the next request tries again
   }
+  const row = (data ?? [])[0] as { slug: string; status: string; config?: { multiPage?: boolean; language?: string } } | undefined;
+  const site: HostSite | null = row
+    ? { slug: row.slug, published: row.status === "published", multiPage: Boolean(row.config?.multiPage), lang: row.config?.language === "en" ? "en" : "fr" }
+    : null;
   if (cache.size > 2000) cache.clear();
-  cache.set(apex, { slug, at: Date.now() });
-  return slug;
+  cache.set(apex, { site, at: Date.now() });
+  return site;
+}
+
+/** What her domain shows while her site is not published: her own words, no one else's. */
+export function notReadyPage(lang: "fr" | "en"): string {
+  const t = lang === "en"
+    ? { title: "Coming soon", body: "This site is being prepared and will be online shortly." }
+    : { title: "Bientôt en ligne", body: "Ce site est en cours de préparation et sera en ligne très prochainement." };
+  return `<!doctype html><html lang="${lang}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>${t.title}</title></head>` +
+    `<body style="margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;font-family:system-ui,sans-serif;background:#fafaf7;color:#18181b">` +
+    `<div style="text-align:center;padding:24px"><h1 style="font-size:22px;margin:0 0 8px">${t.title}</h1><p style="margin:0;color:#52525b">${t.body}</p></div></body></html>`;
 }
 
 /** Her public address once it answers; until then, the servolia.com preview. */

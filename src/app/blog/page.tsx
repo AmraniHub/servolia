@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import ChatWidget from "@/components/ChatWidget";
+import ServoliaChat from "@/components/ServoliaChat";
 import CoverImage from "@/components/CoverImage";
 import { formatDate } from "@/lib/content/posts";
 import { getAllPosts } from "@/lib/content/dynamicPosts";
@@ -126,7 +126,7 @@ export default async function BlogIndex() {
       </main>
       <ValueStack />
       <Footer />
-      <ChatWidget />
+      <ServoliaChat />
     </>
   );
 }

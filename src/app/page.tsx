@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import ChatWidget from "@/components/ChatWidget";
+import ServoliaChat from "@/components/ServoliaChat";
 import HeroProduct from "@/components/HeroProduct";
 import AIReceptionistDemo from "@/components/AIReceptionistDemo";
 import ShowcaseSlider from "@/components/ShowcaseSlider";
@@ -785,7 +785,7 @@ export default function HomePage() {
           second pitch. It still runs on the pages where it's the only one. */}
       <StickyMobileCTA />
       <Footer />
-      <ChatWidget />
+      <ServoliaChat />
     </main>
   );
 }

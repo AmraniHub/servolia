@@ -46,6 +46,7 @@ export default async function AdminSitesPage() {
           serviceCount: r.config?.services?.length ?? 0,
           customDomain: r.config?.customDomain,
           domainLiveAt: r.config?.domainLiveAt,
+          domainDns: r.config?.domainDns,
           wantedDomain: r.build_id ? wanted.get(r.build_id) : undefined,
           canHaveDomain: !r.config?.assistantOnly && !r.config?.isDemo && !r.config?.receptionist,
         };

@@ -50,7 +50,7 @@ export function dnsLinesFrom(
     if (Array.isArray(val) && typeof val[0] === "string") return val[0];
     return typeof val === "string" ? val : null;
   };
-  const a = pick(config?.recommendedIPv4) ?? pick(config?.aValues) ?? DEFAULT_A;
+  const a = pick(config?.recommendedIPv4) ?? DEFAULT_A;
   const cname = (pick(config?.recommendedCNAME) ?? DEFAULT_CNAME).replace(/\.$/, "");
   const lines: DnsLine[] = [
     { type: "A", name: "@", value: a },
@@ -66,7 +66,22 @@ export function dnsLinesFrom(
 
 export type AttachResult =
   | { ok: true; domain: string; dns: DnsLine[]; verified: boolean }
-  | { ok: false; reason: "invalid" | "ours" | "platform" | "taken" | "not-found" | "no-db" | "not-configured" | "in-use-elsewhere" | "vercel" | "write-failed"; detail?: string };
+  | { ok: false; reason: "invalid" | "subdomain" | "ours" | "platform" | "taken" | "not-found" | "no-db" | "not-configured" | "in-use-elsewhere" | "vercel" | "write-failed"; detail?: string };
+
+/* Second-level suffixes where the registrable name has three labels. */
+const TWO_LEVEL = ["co.uk", "org.uk", "me.uk", "com.au", "net.au", "co.nz", "co.za", "com.br", "co.jp", "com.mx", "co.ma", "net.ma", "org.ma", "com.tr", "com.tn", "com.dz"];
+
+/**
+ * A registrable domain (cabinet-dupont.fr), not a subdomain of one
+ * (rdv.cabinet-dupont.fr). The DNS lines and the www redirect are written for
+ * an apex: sent for a subdomain they would tell her to repoint her main site.
+ */
+export function isApexDomain(domain: string): boolean {
+  const labels = domain.toLowerCase().split(".");
+  if (labels.length <= 2) return true;
+  const suffix = labels.slice(-2).join(".");
+  return labels.length === 3 && TWO_LEVEL.includes(suffix);
+}
 
 interface SiteRow { id: string; slug: string; config: ClientSiteConfig }
 
@@ -102,6 +117,7 @@ async function addToProject(name: string, redirectTo?: string): Promise<{ ok: tr
 export async function attachSiteDomain(slug: string, input: string, now = new Date()): Promise<AttachResult> {
   const apex = normalizeDomainInput(input);
   if (!apex) return { ok: false, reason: "invalid" };
+  if (!isApexDomain(apex)) return { ok: false, reason: "subdomain" };
   if (isOurHost(apex)) return { ok: false, reason: "ours" };
   if (isSharedPlatform(apex)) return { ok: false, reason: "platform" };
   const db = supabaseAdmin();
@@ -115,36 +131,60 @@ export async function attachSiteDomain(slug: string, input: string, now = new Da
   if (othersErr) return { ok: false, reason: "no-db" };
   if ((others ?? []).length) return { ok: false, reason: "taken" };
 
+  /* All or nothing. A domain Vercel holds with no row behind it would pass
+     through to servolia.com's own pages at her address (review, 2026-09-22),
+     so a half-finished attach is rolled back rather than left standing. */
+  const rollback = async (names: string[]) => {
+    for (const n of names) await removeFromProject(n);
+  };
   const main = await addToProject(apex);
   if (!main.ok) {
     return { ok: false, reason: main.code === "domain_already_in_use" ? "in-use-elsewhere" : "vercel", detail: [main.code, main.message].filter(Boolean).join(": ") };
   }
   const www = await addToProject(`www.${apex}`, apex);
-  if (!www.ok) return { ok: false, reason: "vercel", detail: `www: ${[www.code, www.message].filter(Boolean).join(": ")}` };
+  if (!www.ok) {
+    await rollback([apex]);
+    return { ok: false, reason: "vercel", detail: `www: ${[www.code, www.message].filter(Boolean).join(": ")}` };
+  }
 
   const cfg = await registrar<Record<string, unknown>>(`/v6/domains/${encodeURIComponent(apex)}/config?projectIdOrName=${encodeURIComponent(projectRef())}`);
   const dns = dnsLinesFrom(apex, cfg.ok ? cfg.data : null, [...main.verification, ...www.verification]);
 
-  const next: ClientSiteConfig = { ...row.config, customDomain: apex, domainAttachedAt: now.toISOString() };
+  const next: ClientSiteConfig = { ...row.config, customDomain: apex, domainAttachedAt: now.toISOString(), domainDns: dns };
   delete next.domainLiveAt; // a new domain is live only when it answers
   const { error } = await db.from("client_sites").update({ config: next }).eq("id", row.id);
-  if (error) return { ok: false, reason: "write-failed", detail: error.message };
+  if (error) {
+    await rollback([`www.${apex}`, apex]);
+    return { ok: false, reason: "write-failed", detail: error.message };
+  }
   return { ok: true, domain: apex, dns, verified: main.verified && www.verified };
 }
 
-/** Undo: the site goes back to servolia.com/sites/<slug>. Vercel removal is best effort. */
+/** Remove one hostname from the project. Already gone counts as removed. */
+async function removeFromProject(name: string): Promise<boolean> {
+  const res = await registrar(`/v9/projects/${encodeURIComponent(projectRef())}/domains/${encodeURIComponent(name)}`, { method: "DELETE" });
+  return res.ok || res.status === 404;
+}
+
+/**
+ * Undo: the site goes back to servolia.com/sites/<slug>. The row is cleared
+ * only once Vercel has let go of BOTH names: a domain still attached with no
+ * row behind it would show servolia.com's own pages at her address.
+ */
 export async function detachSiteDomain(slug: string): Promise<boolean> {
   const db = supabaseAdmin();
   const row = await siteRow(slug);
   if (!db || !row?.config.customDomain) return false;
   const apex = row.config.customDomain;
-  for (const name of [`www.${apex}`, apex]) {
-    await registrar(`/v9/projects/${encodeURIComponent(projectRef())}/domains/${encodeURIComponent(name)}`, { method: "DELETE" });
-  }
+  const wwwGone = await removeFromProject(`www.${apex}`);
+  const apexGone = wwwGone && await removeFromProject(apex);
+  if (!apexGone) return false;
   const next: ClientSiteConfig = { ...row.config };
   delete next.customDomain;
   delete next.domainAttachedAt;
   delete next.domainLiveAt;
+  delete next.domainDns;
+  // liveNotifiedFor stays: re-attaching the same domain must not re-announce it.
   const { error } = await db.from("client_sites").update({ config: next }).eq("id", row.id);
   return !error;
 }
@@ -156,15 +196,23 @@ export function servesSite(html: string, slug: string): boolean {
   return re.test(html) || re2.test(html);
 }
 
-export interface LiveEvent { slug: string; domain: string; business: string; email: string | null; lang: "fr" | "en"; buildId: string | null }
+export interface LiveEvent {
+  slug: string; domain: string; business: string; contactEmail: string | null;
+  lang: "fr" | "en"; buildId: string | null;
+  /** False when this very domain was announced before (a detach and re-attach). */
+  announce: boolean;
+}
 
 /**
  * The quarter-hourly check: every published site with a domain attached but
- * not yet live. Stamps domainLiveAt the first time her domain serves her site
- * and returns it, so the caller emails once. Waiting sites are returned too,
- * with how long they have waited, for the founder's list.
+ * not yet live. The first time her domain serves her site, domainLiveAt is
+ * stamped with a CONDITIONAL update — only while it is still empty — so two
+ * runs overlapping (Vercel may deliver a cron twice) cannot both announce it.
+ * Unverified domains are nudged to re-check their TXT. Fetches run a few at a
+ * time inside a time budget, so one slow host cannot starve the rest; what is
+ * not reached is checked on the next run.
  */
-export async function checkPendingDomains(now = new Date()): Promise<{ live: LiveEvent[]; waiting: { slug: string; domain: string; hours: number }[]; errors: string[] }> {
+export async function checkPendingDomains(now = new Date(), budgetMs = 40_000): Promise<{ live: LiveEvent[]; waiting: { slug: string; domain: string; hours: number }[]; errors: string[] }> {
   const live: LiveEvent[] = [];
   const waiting: { slug: string; domain: string; hours: number }[] = [];
   const errors: string[] = [];
@@ -174,19 +222,36 @@ export async function checkPendingDomains(now = new Date()): Promise<{ live: Liv
     .not("config->>customDomain", "is", null).eq("status", "published");
   if (error) return { live, waiting, errors: [error.message] };
 
-  for (const r of (data ?? []) as (SiteRow & { build_id: string | null })[]) {
+  const pending = ((data ?? []) as (SiteRow & { build_id: string | null })[]).filter((r) => r.config.customDomain && !r.config.domainLiveAt);
+  const until = Date.now() + budgetMs;
+
+  const one = async (r: SiteRow & { build_id: string | null }) => {
     const c = r.config;
-    if (!c.customDomain || c.domainLiveAt) continue;
-    const page = await fetchPublic(`https://${c.customDomain}/`, 400_000, 8000);
+    const domain = c.customDomain!;
+    // A domain waiting on its ownership TXT is only re-checked when asked to.
+    await registrar(`/v9/projects/${encodeURIComponent(projectRef())}/domains/${encodeURIComponent(domain)}/verify`, { method: "POST" }).catch(() => null);
+    const page = await fetchPublic(`https://${domain}/`, 400_000, 8000);
     if (page && servesSite(page.text, r.slug)) {
-      const next: ClientSiteConfig = { ...c, domainLiveAt: now.toISOString() };
-      const { error: upErr } = await db.from("client_sites").update({ config: next }).eq("id", r.id);
-      if (upErr) { errors.push(`${r.slug}: ${upErr.message}`); continue; }
-      live.push({ slug: r.slug, domain: c.customDomain, business: c.businessName, email: c.email ?? null, lang: c.language === "fr" ? "fr" : "en", buildId: r.build_id });
+      const stamp = now.toISOString();
+      const next: ClientSiteConfig = { ...c, domainLiveAt: stamp, liveNotifiedFor: domain };
+      const { data: won, error: upErr } = await db.from("client_sites").update({ config: next })
+        .eq("id", r.id).is("config->>domainLiveAt", null).select("id");
+      if (upErr) { errors.push(`${r.slug}: ${upErr.message}`); return; }
+      if (!won?.length) return; // another run stamped it first — it announces, not us
+      live.push({
+        slug: r.slug, domain, business: c.businessName, contactEmail: c.email ?? null,
+        lang: c.language === "fr" ? "fr" : "en", buildId: r.build_id,
+        announce: c.liveNotifiedFor !== domain,
+      });
     } else {
       const since = c.domainAttachedAt ? Date.parse(c.domainAttachedAt) : now.getTime();
-      waiting.push({ slug: r.slug, domain: c.customDomain, hours: Math.round((now.getTime() - since) / 3_600_000) });
+      waiting.push({ slug: r.slug, domain, hours: Math.round((now.getTime() - since) / 3_600_000) });
     }
+  };
+
+  for (let i = 0; i < pending.length; i += 5) {
+    if (Date.now() > until) break;
+    await Promise.all(pending.slice(i, i + 5).map((r) => one(r).catch((e) => { errors.push(`${r.slug}: ${e instanceof Error ? e.message : e}`); })));
   }
   return { live, waiting, errors };
 }

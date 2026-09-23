@@ -215,6 +215,11 @@ export interface ClientSiteConfig {
   /** When her domain first served THIS site over HTTPS — the go-live email
    *  goes then, and servolia.com/sites/<slug> starts redirecting to it. */
   domainLiveAt?: string;
+  /** The DNS lines she was sent at attach time — shown again on /admin/sites. */
+  domainDns?: { type: "A" | "CNAME" | "TXT"; name: string; value: string }[];
+  /** The domain the go-live email already announced. A detach and re-attach
+   *  of the same domain must not send it twice. */
+  liveNotifiedFor?: string;
   /** A receptionist a practice found, tried and put on its OWN site from the
    *  public trial (src/lib/receptionistTrial.ts). Its presence is what makes
    *  this config follow the EUR plans rather than the hosting table. */

@@ -17,6 +17,8 @@ export interface SiteRow {
   domainLiveAt?: string;
   /** The domain she gave at intake, offered as the default. */
   wantedDomain?: string;
+  /** The DNS lines she was sent. */
+  domainDns?: { type: string; name: string; value: string }[];
   /** A real generated site (not a demo, not an assistant-only config). */
   canHaveDomain?: boolean;
 }
@@ -132,7 +134,7 @@ export default function ClientSitesManager({
                     </button>
                   </div>
                   {s.canHaveDomain ? (
-                    <SiteDomainControl slug={s.slug} customDomain={s.customDomain} domainLiveAt={s.domainLiveAt} wanted={s.wantedDomain} />
+                    <SiteDomainControl slug={s.slug} customDomain={s.customDomain} domainLiveAt={s.domainLiveAt} wanted={s.wantedDomain} savedDns={s.domainDns} />
                   ) : null}
                 </div>
               );

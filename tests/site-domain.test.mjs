@@ -27,17 +27,20 @@ test("which hosts are ours, and what her domain is called", () => {
 
 test("her domain serves her pages and nothing of servolia.com", () => {
   const s = "cabinet-dupont-fr";
+  const multi = { multiPage: true };
   assert.deepEqual(H.hostRoute("/", s), { kind: "rewrite", to: `/sites/${s}` });
-  assert.deepEqual(H.hostRoute("/cabinet", s), { kind: "rewrite", to: `/sites/${s}/cabinet` });
+  assert.deepEqual(H.hostRoute("/cabinet", s, multi), { kind: "rewrite", to: `/sites/${s}/cabinet` });
+  assert.deepEqual(H.hostRoute("/cabinet", s), { kind: "not-found" }, "a single-page site has no /cabinet — a plain 404, never Servolia's branded one");
   assert.deepEqual(H.hostRoute("/confidentialite/", s), { kind: "rewrite", to: `/sites/${s}/confidentialite` });
   assert.deepEqual(H.hostRoute("/robots.txt", s), { kind: "rewrite", to: `/api/sites/${s}/robots` });
   assert.deepEqual(H.hostRoute("/sitemap.xml", s), { kind: "rewrite", to: `/api/sites/${s}/sitemap` });
-  assert.deepEqual(H.hostRoute("/api/site-chat", s), { kind: "rewrite", to: "/api/chat" });
+  assert.deepEqual(H.hostRoute("/api/site-chat", s), { kind: "rewrite", to: `/api/chat?site=${s}` }, "the chat is pinned to HER slug");
   assert.deepEqual(H.hostRoute(`/api/sites/${s}/lead`, s), { kind: "pass" });
   assert.deepEqual(H.hostRoute("/api/track", s), { kind: "pass" });
   assert.deepEqual(H.hostRoute(`/sites/${s}/cabinet`, s), { kind: "redirect", to: "/cabinet" });
+  assert.deepEqual(H.hostRoute(`/sites/${s}//evil.com`, s), { kind: "redirect", to: "/evil.com" }, "no protocol-relative redirect");
   for (const p of ["/pricing", "/admin", "/portal", "/api/chat", "/api/admin/today", "/fr", "/sites/other-site", "/favicon.ico", "/cabinet/x", "/dashboard"]) {
-    assert.deepEqual(H.hostRoute(p, s), { kind: "not-found" }, p);
+    assert.deepEqual(H.hostRoute(p, s, multi), { kind: "not-found" }, p);
   }
 });
 
@@ -82,7 +85,17 @@ test("the proxy: our hosts untouched, a spoofed x-site-host stripped, dotted pat
 test("nothing on her page names Servolia: head tags, 404 payload, chrome, footer, storage", () => {
   assert.ok(!src("src/app/layout.tsx").includes("facebook-domain-verification\":"), "not in root metadata, which merges into every page");
   const head = src("src/components/ServoliaOnly.tsx");
-  assert.ok(head.includes('if (segment === "sites") return null;') && head.includes("<OrgSchema />"), "schema rendered by the client gate, not passed as children");
+  assert.ok(head.includes('if (segment === "sites") return null;') && head.includes("<ServoliaTags />"), "schema rendered by the client gate, not passed as children");
+  assert.ok(head.includes('dynamic(() => import("@/components/ServoliaTags"))'), "…and loaded on demand, never in her page's bundle");
+  assert.ok(src("src/components/ServoliaTags.tsx").includes("<OrgSchema />"));
+  const chrome = src("src/components/SiteChrome.tsx");
+  for (const c of ["CookieBanner", "Analytics", "ScrollToTop"]) {
+    assert.ok(chrome.includes(`const ${c} = dynamic(() => import("@/components/${c}"))`), `${c} on demand`);
+  }
+  assert.ok(src("src/components/NotFoundLazy.tsx").includes('dynamic(() => import("@/components/NotFoundView"))'), "the 404's Navbar/Footer on demand");
+  const w = code("src/components/ChatWidget.tsx");
+  assert.ok(!/servolia/i.test(w), "the neutral chat widget names nobody");
+  assert.ok(src("src/components/ServoliaChat.tsx").includes('brandName="Solia by Servolia"'), "Servolia's words live in its own wrapper");
   assert.ok(!/<ServoliaHead>[\s\S]*<\/ServoliaHead>/.test(src("src/app/layout.tsx")), "no server children to leak into the payload");
   assert.ok(src("src/components/NotFoundView.tsx").startsWith('"use client"'), "the 404 boundary travels as a reference, not as Servolia's footer");
   assert.ok(src("src/components/SiteChrome.tsx").includes('if (segments[0] === "sites") return <PageTracker'), "no Servolia banner or analytics on a client site");
@@ -104,7 +117,7 @@ test("the go-live email goes once, when it is true, with her address", () => {
   const build = code("src/app/api/admin/builds/[id]/route.ts");
   assert.ok(build.includes("if (!site?.slug)"), "no second go-live email from the build");
   const cron = code("src/app/api/cron/domain-live/route.ts");
-  assert.ok(cron.includes("liveEmail(to.split(\"@\")[0], `https://${e.domain}`"), "her domain in the email");
+  assert.ok(cron.includes("liveEmail(greet, `https://${e.domain}`"), "her domain in the email");
   const lib = code("src/lib/siteDomain.ts");
   assert.ok(lib.indexOf('update({ config: next })') < lib.indexOf("live.push("), "stamped before the caller emails");
   const vc = JSON.parse(src("vercel.json"));
@@ -116,4 +129,59 @@ test("a live domain takes over from the servolia.com copy, never for a draft pre
     const s = code(f);
     assert.ok(/!host && access === "public" && \w+\.customDomain && \w+\.domainLiveAt/.test(s), `${f} redirects only public views`);
   }
+});
+
+/* ── the C2 review (2026-09-22), each finding held ─────────────────────── */
+
+test("a domain attached to a practice never falls through to servolia.com", () => {
+  const p = code("src/proxy.ts");
+  assert.ok(p.includes('if (site === "error")') && p.includes("status: 503"), "a database error is 'try again', not our homepage");
+  assert.ok(p.includes("if (site && !site.published)") && p.includes("notReadyPage(site.lang)"), "a draft or unpublished site shows her 'coming soon', not ours");
+  const host = code("src/lib/siteHost.ts");
+  assert.ok(!/eq\("status", "published"\)/.test(host.slice(host.indexOf("export async function siteForHost"))), "the lookup finds her site in ANY state");
+  assert.ok(!H.notReadyPage("fr").toLowerCase().includes("servolia"));
+  const gen = code("src/lib/generateSite.ts");
+  assert.ok(gen.includes("config.customDomain = prev.customDomain"), "a regenerate keeps her domain");
+  const dom = code("src/lib/siteDomain.ts");
+  assert.ok(dom.includes("await rollback([apex])") && dom.includes("await rollback([`www.${apex}`, apex])"), "a half-finished attach is undone");
+  assert.ok(dom.includes("if (!apexGone) return false;"), "the row is cleared only once Vercel let go");
+});
+
+test("the chat on her domain answers only as her receptionist", () => {
+  const chat = code("src/app/api/chat/route.ts");
+  assert.ok(/const pinned = req\.nextUrl\.searchParams\.get\("site"\);\s*const siteSlug = pinned \?/.test(chat), "the pinned slug wins over the body");
+  assert.ok(code("src/app/api/chat-fallback/route.ts").includes('req.nextUrl.searchParams.get("site") || body.siteSlug'));
+});
+
+test("no other client's details ship in the JavaScript every page loads", () => {
+  const chrome = code("src/components/SiteChrome.tsx");
+  assert.ok(!chrome.includes("siteEditor"), "SiteChrome no longer imports the client configs");
+  assert.ok(code("src/app/layout.tsx").includes("<SiteChrome editorPaths={editorMountPaths()} />"), "the server passes only the paths");
+  const tracker = code("src/components/PageTracker.tsx");
+  assert.ok(!tracker.includes("servolia_sid") && !tracker.includes("servolia_utm"), "neutral storage keys");
+  assert.ok(!code("src/app/layout.tsx").includes("GOOGLE_SITE_VERIFICATION"), "no verification token merged into her pages");
+});
+
+test("the go-live email: once, to the account holder, and honest about whether it went", () => {
+  const dom = code("src/lib/siteDomain.ts");
+  assert.ok(dom.includes('.is("config->>domainLiveAt", null).select("id")'), "the stamp is conditional: two runs cannot both announce");
+  assert.ok(dom.includes("announce: c.liveNotifiedFor !== domain"), "a re-attached domain is not re-announced");
+  const cron = code("src/app/api/cron/domain-live/route.ts");
+  assert.ok(cron.indexOf('from("builds").select("email")') < cron.indexOf("to = to || e.contactEmail"), "the account address first");
+  assert.ok(cron.includes("sent = await sendEmail(") && cron.includes("FAILED - tell her yourself"), "a failed send is reported as failed");
+  assert.ok(code("src/app/api/admin/set-site-status/route.ts").includes("to = to || (cfg?.email ?? null);"), "publishing emails the account address first too");
+});
+
+test("her domain gets what is hers: no includeSubDomains, a temporary redirect, apex only", () => {
+  const cfg = src("next.config.ts");
+  assert.ok(cfg.includes('{ key: "Strict-Transport-Security", value: "max-age=31536000" }'), "no includeSubDomains by default");
+  // The source holds `\\.` (a backslash-escaped dot in a TS string): four here.
+  assert.ok(cfg.includes('has: [{ type: "host", value: "(www\\\\.)?servolia\\\\.com" }]'), "includeSubDomains only on our own host");
+  for (const f of ["src/app/sites/[slug]/page.tsx", "src/app/sites/[slug]/[page]/page.tsx", "src/app/sites/[slug]/confidentialite/page.tsx"]) {
+    assert.ok(!code(f).includes("permanentRedirect("), `${f}: a browser must not cache the move forever`);
+  }
+  assert.equal(D.isApexDomain("cabinet-dupont.fr"), true);
+  assert.equal(D.isApexDomain("cabinet.co.uk"), true);
+  assert.equal(D.isApexDomain("rdv.cabinet-dupont.fr"), false, "a subdomain would get apex DNS lines");
+  assert.deepEqual(D.dnsLinesFrom("d.fr", { aValues: ["1.2.3.4"] }).map((l) => l.value)[0], "76.76.21.21", "her CURRENT A record is not the one to set");
 });

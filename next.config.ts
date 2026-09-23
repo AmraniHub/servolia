@@ -24,8 +24,12 @@ const nextConfig: NextConfig = {
       {
         source: "/(.*)",
         headers: [
-          // Force HTTPS for a year incl. subdomains (site is HTTPS-only on Vercel).
-          { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
+          /* Force HTTPS for a year. includeSubDomains ONLY on our own domain
+             (the rule below): since C2 a practice's site is served here at her
+             own domain, and on her apex it would force HTTPS on every one of
+             her subdomains — her webmail, an intranet — for a year, which is
+             not ours to decide (review, 2026-09-22). */
+          { key: "Strict-Transport-Security", value: "max-age=31536000" },
           // Never sniff content types.
           { key: "X-Content-Type-Options", value: "nosniff" },
           // No embedding in third-party iframes (clickjacking) — same-origin ok.
@@ -35,6 +39,11 @@ const nextConfig: NextConfig = {
           // We use none of these — deny by default.
           { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=()" },
         ],
+      },
+      {
+        source: "/(.*)",
+        has: [{ type: "host", value: "(www\\.)?servolia\\.com" }],
+        headers: [{ key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" }],
       },
     ];
   },

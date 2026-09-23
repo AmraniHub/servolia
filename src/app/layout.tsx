@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import SiteChrome from "@/components/SiteChrome";
 import ServoliaHead from "@/components/ServoliaOnly";
+import { editorMountPaths } from "@/lib/siteEditor";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
@@ -35,9 +36,10 @@ export const metadata: Metadata = {
     follow: true,
     googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1, "max-video-preview": -1 },
   },
-  verification: process.env.GOOGLE_SITE_VERIFICATION
-    ? { google: process.env.GOOGLE_SITE_VERIFICATION }
-    : undefined,
+  /* No google-site-verification here (removed 2026-09-22): root metadata is
+     merged into every page, a practice's own domain included, and the same
+     token on every client domain would tie them all to Servolia. It was never
+     set in production; verify Search Console by DNS TXT if it is ever needed. */
   // facebook-domain-verification lives in ServoliaHead: metadata here is
   // merged into every page, a practice's own site included (C2).
   alternates: {
@@ -63,7 +65,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         {/* Not rendered on a page served at a client's own domain — see
             SiteChrome. A consent banner over the Save button of a tool the
             client was given a password for is the wrong furniture entirely. */}
-        <SiteChrome />
+        {/* Computed HERE, on the server: SiteChrome receives only the paths,
+            never the client configs they come from. */}
+        <SiteChrome editorPaths={editorMountPaths()} />
       </body>
     </html>
   );

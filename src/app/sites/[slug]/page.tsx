@@ -1,4 +1,4 @@
-import { notFound, permanentRedirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { headers } from "next/headers";
 import type { Metadata } from "next";
 import { customHostFrom, customHostMetadata } from "@/lib/siteHost";
@@ -58,7 +58,7 @@ export default async function ClientSitePage({
      so the site is never indexed twice. A draft preview never redirects. */
   const host = customHostFrom(await headers());
   if (!host && access === "public" && config.customDomain && config.domainLiveAt) {
-    permanentRedirect(`https://${config.customDomain}`);
+    redirect(`https://${config.customDomain}`);
   }
 
   // Suspended for non-payment: the site goes offline until the invoice clears.

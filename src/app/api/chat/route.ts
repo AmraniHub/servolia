@@ -213,7 +213,13 @@ export async function POST(req: NextRequest) {
       preview?: unknown;
     };
     const { sessionId, pageUrl } = body;
-    const siteSlug = typeof body.siteSlug === "string" ? body.siteSlug.trim().slice(0, 64) : undefined;
+    /* On a practice's own domain the proxy rewrites /api/site-chat to
+       /api/chat?site=<her slug> (src/lib/siteHost.ts). That pinned slug wins
+       over the body, so her domain cannot be made to answer as Servolia's
+       sales chat (no slug) or as another client's receptionist. */
+    const pinned = req.nextUrl.searchParams.get("site");
+    const siteSlug = pinned ? pinned.trim().slice(0, 64)
+      : typeof body.siteSlug === "string" ? body.siteSlug.trim().slice(0, 64) : undefined;
     /* True only once the showroom rule below has accepted it. Read as "this
        conversation is nobody's customer": the model answers, nothing is
        stored, nobody is notified. */
