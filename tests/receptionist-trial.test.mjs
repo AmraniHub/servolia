@@ -325,3 +325,16 @@ test("the founder can end or remove a trial, never a paid one", () => {
   assert.ok(route.indexOf("isAdminAuthed()") < route.indexOf("endReceptionistTrial("), "admin session first");
   assert.ok(src("src/lib/today.ts").includes("r.closedBy) continue;"), "an ended-by-hand trial leaves the list");
 });
+
+test("the first real payment is checked by a person: a 5-point row on Today for two weeks", () => {
+  const t = src("src/lib/today.ts");
+  assert.ok(t.includes('kind: "reception-paid-check"') && t.includes("paidDays <= 14"), "the row appears when a practice pays");
+  for (const check of ["NEW CLIENT", "reste en ligne", "after her trial date", "/portal", "ONE subscription"]) {
+    assert.ok(t.includes(check), `checklist names: ${check}`);
+  }
+});
+
+test("the terms say a domain she already owns stays hers, at her cost — in both languages", () => {
+  assert.ok(src("src/app/legal/cgv/page.tsx").includes("A domain the client already owns</strong> stays with the client&apos;s own registrar"));
+  assert.ok(src("src/app/fr/legal/cgv/page.tsx").includes("Un domaine dont le client est déjà titulaire</strong> reste chez son propre bureau d&apos;enregistrement"));
+});

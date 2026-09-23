@@ -104,7 +104,23 @@ export async function buildToday(now = Date.now()): Promise<Today> {
   const trials: TodayItem[] = [];
   for (const s of (receptionRes.data ?? []) as Array<{ slug: string; config: { businessName?: string; receptionist?: ReceptionistState } }>) {
     const r = s.config?.receptionist;
-    if (!r?.started || r.paidAt || r.closedBy) continue;
+    /* THE FIRST REAL PAYMENT IS THE PROOF (decided 2026-09-23). No live-mode
+       purchase has ever gone through this path — Stripe's livemode gate makes
+       test purchases create nothing. So for two weeks after any practice pays,
+       the checklist of what that payment must have done sits here, where he
+       looks every morning, until he has seen each item with his own eyes. */
+    if (r?.paidAt) {
+      const paidDays = Math.floor((hrsAgo(r.paidAt, now) ?? 0) / 24);
+      if (paidDays <= 14) {
+        trials.push({
+          kind: "reception-paid-check", title: `PAID — verify the payment path: ${s.config.businessName ?? s.slug} (${r.domain})`,
+          detail: "① Telegram said 'NEW CLIENT … Linked' ② she got the 'Elle reste en ligne' email ③ the widget still answers on her site after her trial date ④ /portal with her email shows her enquiries and the conversation meter ⑤ Stripe shows ONE subscription for her",
+          href: `${ADMIN}/clients`, owner: "me", urgency: paidDays <= 1 ? 2 : 1,
+        });
+      }
+      continue;
+    }
+    if (!r?.started || r.closedBy) continue;
     const title = `${s.config.businessName ?? s.slug} (${r.domain})`;
     const href = `${ADMIN}/sites`;
     const act = { trialSlug: s.slug, trialEnded: Boolean(r.ended) };

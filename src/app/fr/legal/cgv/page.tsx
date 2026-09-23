@@ -24,7 +24,7 @@ export default function CgvFrPage() {
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
           <p className="text-sm font-bold text-[#36671E] uppercase tracking-widest mb-3">Légal</p>
           <h1 className="text-4xl font-black text-[#18181B]">Conditions Générales de Vente</h1>
-          <p className="text-[#52525B] mt-2">Dernière mise à jour : juillet 2026</p>
+          <p className="text-[#52525B] mt-2">Dernière mise à jour : septembre 2026</p>
         </div>
       </section>
       <section className="py-14 bg-white">
@@ -73,7 +73,8 @@ export default function CgvFrPage() {
             <div>
               <h2 className="text-lg font-black text-[#18181B] mb-3">7 bis. Propriété du nom de domaine</h2>
               <p>Lorsque Servolia enregistre un nom de domaine dans le cadre de la prestation, <strong>le client en est le titulaire — le propriétaire légal du domaine.</strong> Servolia figure uniquement comme contact technique et gère les DNS pour le compte du client. Servolia ne devient à aucun moment propriétaire du nom de domaine d&apos;un client.</p>
-              <p className="mt-3">Les frais d&apos;enregistrement et de renouvellement d&apos;un domaine standard sont inclus dans l&apos;abonnement mensuel tant que celui-ci est actif. Servolia assure les renouvellements pendant la durée de l&apos;abonnement, et le bureau d&apos;enregistrement, le titulaire et la date d&apos;expiration sont consultables à tout moment par le client dans son espace client.</p>
+              <p className="mt-3">Pour un domaine enregistré par Servolia, les frais d&apos;enregistrement et de renouvellement d&apos;un domaine standard sont inclus dans l&apos;abonnement mensuel tant que celui-ci est actif. Servolia assure les renouvellements des domaines qu&apos;elle enregistre pendant la durée de l&apos;abonnement, et communique au client, sur simple demande, le bureau d&apos;enregistrement, le titulaire et la date d&apos;expiration.</p>
+              <p className="mt-3"><strong>Un domaine dont le client est déjà titulaire</strong> reste chez son propre bureau d&apos;enregistrement, à son nom. Le client continue d&apos;en régler le renouvellement auprès de ce bureau ; ces frais ne sont pas inclus dans l&apos;abonnement. Servolia demande seulement au client de le faire pointer vers le site (deux enregistrements DNS) et ne le reprend jamais à son compte.</p>
               <p className="mt-3">En cas de résiliation, le client conserve son domaine. Servolia fournit le code d&apos;autorisation (code de transfert) et libère le domaine vers le client ou le bureau d&apos;enregistrement de son choix, sans frais, dans les 5 jours ouvrés suivant une demande écrite. Servolia ne retiendra jamais un domaine, ni un code de transfert, comme moyen de pression dans un litige commercial. À la fin de l&apos;abonnement, les frais de renouvellement incombent au client.</p>
               <p className="mt-3">Les domaines premium ou à tarification particulière, ainsi que tout domaine supplémentaire, sont chiffrés séparément avant achat.</p>
             </div>

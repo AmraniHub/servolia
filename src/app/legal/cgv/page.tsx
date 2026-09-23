@@ -16,7 +16,7 @@ export default function CGVPage() {
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
           <p className="text-sm font-bold text-[#36671E] uppercase tracking-widest mb-3">Legal</p>
           <h1 className="text-4xl font-black text-[#18181B]">Terms & Conditions</h1>
-          <p className="text-[#52525B] mt-2">Conditions Générales de Vente (CGV) — Last updated: July 2026</p>
+          <p className="text-[#52525B] mt-2">Conditions Générales de Vente (CGV) — Last updated: September 2026</p>
         </div>
       </section>
       <section className="py-14 bg-white">
@@ -65,7 +65,8 @@ export default function CGVPage() {
             <div>
               <h2 className="text-lg font-black text-[#18181B] mb-3">7 bis. Domain name ownership</h2>
               <p>Where Servolia registers a domain name as part of the service, <strong>the client is the registrant — the legal owner of that domain.</strong> Servolia is listed only as the technical contact and manages DNS on the client&apos;s behalf. Servolia does not, at any point, take ownership of a client&apos;s domain name.</p>
-              <p className="mt-3">The registration and renewal fees for one standard domain are included in the monthly plan for as long as that plan is active. Servolia manages renewals while the plan is running, and the current registrar, registrant and expiry date are visible to the client at any time in their client portal.</p>
+              <p className="mt-3">For a domain Servolia registers, the registration and renewal fees for one standard domain are included in the monthly plan for as long as that plan is active. Servolia manages the renewals of the domains it registers while the plan is running, and gives the client the registrar, registrant and expiry date on request.</p>
+              <p className="mt-3"><strong>A domain the client already owns</strong> stays with the client&apos;s own registrar, in the client&apos;s name. The client keeps paying its renewal to that registrar; its fees are not included in the plan. Servolia only asks the client to point it at the site (two DNS records) and never takes it over.</p>
               <p className="mt-3">On cancellation the client keeps the domain. Servolia will provide the authorisation (transfer) code and release the domain to the client or to a registrar of their choosing, at no charge, within 5 business days of a written request. Servolia will never withhold a domain, or a transfer code, as leverage in a commercial dispute. After the plan ends, responsibility for renewal fees passes to the client.</p>
               <p className="mt-3">Premium or unusually priced domains, and any second or subsequent domain, are quoted separately before purchase.</p>
             </div>
