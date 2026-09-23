@@ -53,7 +53,7 @@ export async function generateSiteForBuild(
     config.slug = slug;
 
     // Upsert by build_id so re-running updates the same site
-    const { data: existing } = await db.from("client_sites").select("id, config").eq("build_id", buildId).maybeSingle();
+    const { data: existing } = await db.from("client_sites").select("id, config, notes").eq("build_id", buildId).maybeSingle();
     /* Her own domain (C2) belongs to her, not to this draft: a regenerate
        keeps it, or re-running the intake would silently detach her domain
        and, on the next publish, announce servolia.com instead (review,
@@ -79,8 +79,12 @@ export async function generateSiteForBuild(
     // without this check a failed write (RLS, constraint, missing column)
     // would still report "draft ready" to the founder for a row that was
     // never persisted.
+    // A regenerated draft answers her change request (C3): the request leaves /admin/today.
+    const prevNotes = (existing as { notes?: string | null } | null)?.notes ?? null;
+    const notes = prevNotes === null ? undefined
+      : prevNotes.split("\n").filter((l) => !l.startsWith("servolia-change-request:")).join("\n");
     const { error: writeError } = existing
-      ? await db.from("client_sites").update(row).eq("id", (existing as { id: string }).id)
+      ? await db.from("client_sites").update(notes === undefined ? row : { ...row, notes }).eq("id", (existing as { id: string }).id)
       : await db.from("client_sites").insert(row);
     if (writeError) {
       console.error("generateSiteForBuild write failed:", writeError);

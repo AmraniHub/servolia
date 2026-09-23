@@ -84,7 +84,7 @@ export default async function ClientPrivacyPage({ params }: { params: Promise<{ 
 
   return (
     <main className="min-h-screen bg-white text-[#18181B]">
-      {viewer && <DraftPreviewRibbon lang={fr ? "fr" : "en"} viewer={viewer} />}
+      {viewer && <DraftPreviewRibbon lang={fr ? "fr" : "en"} viewer={viewer} slug={c.slug} hasDomain={Boolean(c.customDomain)} />}
       <div className="max-w-2xl mx-auto px-4 sm:px-6 py-14">
         <Link href={host ? "/" : `/sites/${c.slug}`} className="text-sm font-semibold text-[#71717A] hover:text-[#18181B]">{S.back}</Link>
         <h1 className="text-3xl font-black mt-4 mb-1">{S.title}</h1>

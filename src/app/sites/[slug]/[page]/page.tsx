@@ -62,7 +62,7 @@ export default async function ClientSubPage({ params }: { params: Promise<{ slug
   const viewer = access === "client" ? "client" : access === "admin" ? "admin" : null;
   return (
     <>
-      {viewer && <DraftPreviewRibbon lang={config.language === "fr" ? "fr" : "en"} viewer={viewer} />}
+      {viewer && <DraftPreviewRibbon lang={config.language === "fr" ? "fr" : "en"} viewer={viewer} slug={config.slug} hasDomain={Boolean(config.customDomain)} />}
       <ClientSite config={config} page={which} basePath={host ? "" : undefined} customHost={Boolean(host)} />
       {/* No analytics on a draft — see the home page for why. */}
       {!viewer && <ClientAnalytics ga4Id={config.ga4Id} metaPixelId={config.metaPixelId} slug={config.slug} lang={config.language === "fr" ? "fr" : "en"} />}

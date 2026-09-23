@@ -1,13 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { isAdminAuthed } from "@/lib/auth";
-import { archiveSite } from "@/lib/siteArchive";
-import { sendEmail, liveEmail } from "@/lib/email";
-import type { ClientSiteConfig } from "@/lib/clientSites";
+import { publishSite } from "@/lib/publishSite";
 
 export const runtime = "nodejs";
 
-/** Toggle a client site between draft and published. POST { slug, status }. Admin-only. */
+/**
+ * Toggle a client site between draft and published. POST { slug, status }. Admin-only.
+ * Publishing goes through src/lib/publishSite.ts — the same function the
+ * client's own "go" uses (C3), so the archive, the go-live email and its
+ * once-only rule are one piece of code, not two.
+ */
 export async function POST(req: NextRequest) {
   if (!(await isAdminAuthed())) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -20,52 +23,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "slug and valid status required" }, { status: 400 });
   }
 
-  // Read the site BEFORE flipping it, so we can tell a first publish from a
-  // re-publish and only congratulate the client once.
-  const { data: before } = await db.from("client_sites")
-    .select("status, config, build_id, business").eq("slug", slug).maybeSingle();
-  const wasPublished = (before as { status?: string } | null)?.status === "published";
-
-  await db.from("client_sites").update({ status }).eq("slug", slug);
-
-  // Publishing = delivery → snapshot the site to the GitHub archive.
-  // Fire-and-forget: archiving must never block or fail a publish.
   if (status === "published") {
-    archiveSite(slug).then((r) => {
-      if (!r.ok) console.warn(`Archive on publish skipped for ${slug}: ${r.reason}`);
-    }).catch(() => {});
+    const out = await publishSite(slug, { by: "admin" });
+    if (!out.ok) return NextResponse.json({ error: out.reason }, { status: out.reason === "not-found" ? 404 : 500 });
+    return NextResponse.json({ ok: true, slug, status, goLiveEmailed: out.goLiveEmailed });
   }
 
-  // ── Go-live email: the moment the client has been waiting for ──────────
-  // Only on the FIRST publish (a re-publish after an edit is not a launch),
-  // never for demo sites, and never without a real recipient. Fire-and-forget
-  // for the same reason as the archive: a mail outage must not fail a launch.
-  let goLiveEmailed = false;
-  if (status === "published" && !wasPublished && before) {
-    const row = before as { config?: ClientSiteConfig; build_id?: string | null; business?: string | null };
-    const cfg = row.config;
-    /* C2: a site going onto her own domain is announced by
-       /api/cron/domain-live, the first time her domain actually serves it,
-       with her address in it. Announcing servolia.com/sites/<slug> here
-       would send her the wrong address, before it is true. */
-    if (!cfg?.isDemo && !cfg?.customDomain) {
-      // The account holder first — the address her portal login works with —
-      // then the site's public contact address (review, 2026-09-22).
-      let to: string | null = null;
-      if (row.build_id) {
-        const { data: build } = await db.from("builds").select("email").eq("id", row.build_id).maybeSingle();
-        to = (build as { email?: string | null } | null)?.email ?? null;
-      }
-      to = to || (cfg?.email ?? null);
-      if (to) {
-        const firstName = (cfg?.businessName ?? row.business ?? to.split("@")[0]).split(" ")[0];
-        const lang = cfg?.language === "fr" ? "fr" : "en";
-        const tpl = liveEmail(firstName, `https://servolia.com/sites/${slug}`, lang);
-        sendEmail(to, tpl.subject, tpl.html).catch(() => {});
-        goLiveEmailed = true;
-      }
-    }
-  }
-
-  return NextResponse.json({ ok: true, slug, status, goLiveEmailed });
+  const { error } = await db.from("client_sites").update({ status }).eq("slug", slug);
+  if (error) return NextResponse.json({ error: "write-failed" }, { status: 500 });
+  return NextResponse.json({ ok: true, slug, status, goLiveEmailed: false });
 }

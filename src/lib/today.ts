@@ -172,6 +172,15 @@ export async function buildToday(now = Date.now()): Promise<Today> {
     }
     if (site) {
       const emailed = readDraftEmailed(site.notes);
+      /* C3: she asked for a change from the draft itself (/sites/<slug>/go).
+         Her words, here, until the draft is regenerated or she says go. */
+      const change = (site.notes ?? "").split("\n").find((l) => l.startsWith("servolia-change-request:"));
+      if (change) {
+        const [at, ...rest] = change.slice("servolia-change-request:".length).trim().split(" | ");
+        const waited = hrsAgo(at, now) ?? 0;
+        delivery.push({ kind: "draft-change", title: b.business, detail: `she asked for a change ${Math.round(waited)}h ago: "${rest.join(" | ").slice(0, 160)}"`, href: `${ADMIN}/builds/${b.id}`, owner: "me", urgency: 2 });
+        continue;
+      }
       if (!emailed) {
         delivery.push({ kind: "draft-send", title: b.business, detail: "draft exists, client has NOT been sent it — press Regenerate", href: `${ADMIN}/builds/${b.id}`, owner: "me", urgency: 2 });
       } else {

@@ -112,7 +112,7 @@ test("her own trackers wait for her visitors' consent, and only clean ids reach 
 });
 
 test("the go-live email goes once, when it is true, with her address", () => {
-  const status = code("src/app/api/admin/set-site-status/route.ts");
+  const status = code("src/lib/publishSite.ts");
   assert.ok(status.includes("!cfg?.customDomain"), "publishing a site with her domain does not announce servolia.com");
   const build = code("src/app/api/admin/builds/[id]/route.ts");
   assert.ok(build.includes("if (!site?.slug)"), "no second go-live email from the build");
@@ -169,7 +169,7 @@ test("the go-live email: once, to the account holder, and honest about whether i
   const cron = code("src/app/api/cron/domain-live/route.ts");
   assert.ok(cron.indexOf('from("builds").select("email")') < cron.indexOf("to = to || e.contactEmail"), "the account address first");
   assert.ok(cron.includes("sent = await sendEmail(") && cron.includes("FAILED - tell her yourself"), "a failed send is reported as failed");
-  assert.ok(code("src/app/api/admin/set-site-status/route.ts").includes("to = to || (cfg?.email ?? null);"), "publishing emails the account address first too");
+  assert.ok(code("src/lib/publishSite.ts").includes("to = to || (cfg?.email ?? null);"), "publishing emails the account address first too");
 });
 
 test("her domain gets what is hers: no includeSubDomains, a temporary redirect, apex only", () => {
