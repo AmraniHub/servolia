@@ -84,6 +84,16 @@ test("no page promises a domain or an email the terms and the code do not cover"
   assert.ok(src("src/app/pricing/page.tsx").includes("1 pro email address and your domain (a new one is on us)"));
 });
 
+test("the terms say who holds a domain Servolia registers — what the code does", () => {
+  // domainSales.ts registers with DOMAIN_CONTACT_JSON, Servolia's own contact.
+  const fr = src("src/app/fr/legal/cgv/page.tsx");
+  const en = src("src/app/legal/cgv/page.tsx");
+  assert.ok(fr.includes("elle l&apos;enregistre à son nom, pour le compte du client"));
+  assert.ok(en.includes("Servolia registers it in its own name, on the client&apos;s behalf"));
+  assert.ok(!fr.includes("le client en est le titulaire") && !en.includes("the client is the registrant"), "no promise the registrar record contradicts");
+  assert.match(src("src/app/hosting/terms/page.tsx"), /is registered\s+by Servolia on your behalf/, "the hosting terms say the same");
+});
+
 test("the terms say what the one address is", () => {
   assert.ok(src("src/app/fr/legal/cgv/page.tsx").includes("<strong>Adresse email professionnelle.</strong> L&apos;abonnement comprend une adresse email"));
   assert.ok(src("src/app/legal/cgv/page.tsx").includes("<strong>Professional email address.</strong> The plan includes one email address"));
