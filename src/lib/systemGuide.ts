@@ -230,7 +230,7 @@ export const FEATURES: SystemFeature[] = [
       "Pay-per-booking (€990 + €60/attended consultation, aesthetic-only) was RETIRED 2026-08-13 by operator decision: one model for every niche — the client pays the installation, Servolia delivers, the subscription runs. No results-contingent billing. /api/checkout-ppb, the webhook's ppb_setup branch, the monthly invoicing cron and the eligibility gate were all removed; the DB tables/columns stay (harmless, empty).",
     ],
     use: [
-      "Changing a price: edit pricing.ts, then grep the repo for the old number — marketing pages hard-code display strings and cf-worker/ is a separate deploy that can't import the file.",
+      "Changing a price: edit pricing.ts, then grep the repo for the old number — marketing pages hard-code display strings.",
       "Selling: lead with annual. Two months free is real value for them, and for you it's a year of cash on day one plus twelve months locked against churn — the single most valuable thing a solo founder can get from a deal.",
       "Never unbundle domain, hosting and email from the plan. Bundled, leaving means losing their whole presence; itemised, each one becomes a line to cancel.",
     ],
@@ -493,16 +493,16 @@ export const FEATURES: SystemFeature[] = [
     ],
     cost: "None.",
     value: "Before this, a Monday morning delivered up to 6 pushes before 10am — several of them config nags or empty reports. A bot you mute is a bot that can't tell you a €990 lead just came in at 23:00.",
-    code: "src/lib/telegram.ts (SendOptions) · /api/cron/daily-brief · daily-stats · weekly-seo · follow-up · client-reports",
+    code: "src/lib/telegram.ts (SendOptions) · /api/cron/daily-brief · daily-stats · weekly-seo · follow-up",
   },
   {
     name: "Scheduled jobs map (Vercel crons vs GitHub Actions)",
     summary: "Every automated job, where it's scheduled, and why there are two systems — so nobody 'rediscovers' this topology again.",
     how: [
       "VERCEL CRONS (vercel.json, GET, Authorization auto-injected from CRON_SECRET): daily-brief 07:00 · monthly-report 08:00 on the 1st · monthly-invoice 09:00 on the 1st (plan-overage watch — pings Telegram when a client outgrows their tier; never bills).",
-      "GITHUB ACTIONS (.github/workflows/*.yml, POST via curl with the CRON_SECRET repo secret — set 2026-07-15): follow-up daily 09:30 UTC (48h lead nudge) · daily-stats 07:15 (GA4 → Telegram) · weekly-seo Monday 08:15 · client-reports 5th 08:00 (AI narrative per subscribed client) · zero-miss daily 07:00 (the 60s response guarantee — silent unless a client is owed a refund) · blog-generator Mon/Wed/Fri 08:00 · linkedin-generator Mon/Wed/Fri 07:00 · uptime every ~2h (independent of Vercel, alerts even if the site is down).",
+      "GITHUB ACTIONS (.github/workflows/*.yml, POST via curl with the CRON_SECRET repo secret — set 2026-07-15): follow-up daily 09:30 UTC (48h lead nudge) · daily-stats 07:15 (GA4 → Telegram) · weekly-seo Monday 08:15 · zero-miss daily 07:00 (the 60s response guarantee — silent unless a client is owed a refund) · blog-generator Mon/Wed/Fri 08:00 · linkedin-generator Mon/Wed/Fri 07:00 · uptime every ~2h (independent of Vercel, alerts even if the site is down).",
       "Why two systems: Actions workflows POST (Vercel crons can only GET), give a manual 'Run workflow' button, survive a Vercel outage (uptime), and don't count against Vercel's cron limits.",
-      "monthly-report (1st) and client-reports (5th) are NOT duplicates: the 1st sends the metrics snapshot; the 5th sends the Claude-written narrative + recommendation for active care clients.",
+      "monthly-report (1st) is the ONE monthly email: her numbers, then a few Claude-written sentences and one idea. The 5th's separate narrative email (client-reports) was folded into it on 2026-09-23 — two emails a month with overlapping numbers read as noise.",
     ],
     use: [
       "Check a failing job: GitHub → Actions tab → the workflow's runs (blog-generator now prints the HTTP status + body on failure).",
@@ -519,7 +519,7 @@ export const FEATURES: SystemFeature[] = [
     how: [
       "Why: results-contingent billing meant Servolia carried the delivery risk and the revenue arrived late and unpredictably. The doctrine is pay → deliver — cash up front, one price list, no per-niche variants, nothing to legally re-check per client.",
       "What was removed: /api/checkout-ppb (the checkout), the webhook's ppb_setup branch, the pay-per-booking half of /api/cron/monthly-invoice (its plan-overage watch survives), PAY_PER_BOOKING + payPerBookingEligible() in pricing.ts, and every marketing mention (/fr/esthetique, frGeo FAQs, onboarding).",
-      "What deliberately stays: the DB tables/columns from the schema block (pay_per_booking_invoices, billing_mode, per_booking_rate_eur) — empty and harmless, dropping them risks a live DB for zero gain. The compérage note in pricing.ts also stays: it justifies the conversation meter itself.",
+      "What deliberately stays: the columns billing_mode and per_booking_rate_eur (removed with the client-table merge, D1). The pay_per_booking_invoices table is dropped by supabase/2026-09-23-drop-pay-per-booking.sql, which refuses to run if the table holds a single row. The compérage note in pricing.ts also stays: it justifies the conversation meter itself.",
     ],
     use: [
       "If a prospect asks for performance-based pricing, the answer is no — point to the fixed subscription and the annual deal (installation waived). Predictability is the pitch, not apology.",

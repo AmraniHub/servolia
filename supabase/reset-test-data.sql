@@ -30,7 +30,6 @@ begin;
 
 -- Children of leads / clients / builds first
 delete from lead_activities;
-delete from pay_per_booking_invoices;
 delete from client_reports;
 delete from scope_acceptances;
 delete from custom_requests;

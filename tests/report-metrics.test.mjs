@@ -1,13 +1,13 @@
 /**
  * C4 — the number that renews her: booking requests taken by the
  * receptionist, counted apart from the site form's requests, identically in
- * the 1st's email, the 5th's narrative and her portal.
+ * the monthly email (the 5th's narrative folded into it) and her portal.
  *
  *   node --import ./tests/register.mjs --test tests/report-metrics.test.mjs
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { reportMetrics, isAfterHours, isFormRequest } from "../src/lib/reportMetrics.ts";
@@ -76,16 +76,25 @@ test("her email leads with the receptionist's number, in her language", () => {
   assert.match(en.subject, /1 booking request taken by your receptionist/);
   const none = monthlyReportEmail({ businessName: "Clinic", period: "August 2026", lang: "en", metrics: { ...m, receptionistBookings: 0 } });
   assert.equal(none.subject, "Clinic — your report for August 2026");
+  const told = monthlyReportEmail({
+    businessName: "Clinic", period: "August 2026", lang: "fr", metrics: m,
+    narrative: { narrative: "Un mois <calme>.", idea: "Ajoutez le prix du détartrage." },
+  });
+  assert.ok(told.html.includes("Un mois &lt;calme&gt;."), "Claude's text is escaped");
+  assert.ok(told.html.includes("Une idée pour le mois prochain"), "an idea, never a promised change");
+  assert.ok(!told.html.includes("Amélioration prévue"));
 });
 
-test("one definition for the 1st, the 5th and the alert badge", () => {
+test("one definition for the monthly email, her portal and the alert badge", () => {
   const first = code("src/app/api/cron/monthly-report/route.ts");
-  assert.ok(first.includes("reportMetrics(sessions,") && first.includes('.select("session_id, created_at, qualified, utm")'));
+  assert.ok(first.includes("reportMetrics(sessions,") && first.includes('.select("session_id, created_at, qualified, utm, messages")'));
   assert.ok(first.includes("timeZone: site.timezone"));
   assert.ok(!first.includes("getUTCHours"), "no more UTC+1 guess");
-  const fifth = code("src/app/api/cron/client-reports/route.ts");
-  assert.ok(fifth.includes("reportMetrics(rows,") && fifth.includes("qualified: m.receptionistBookings"));
-  assert.ok(!fifth.includes("Amélioration prévue"), "a suggestion is not a promised change");
+  // Phase D: the 5th's narrative email is folded into the 1st — one email a month.
+  assert.ok(!existsSync(path.join(ROOT, "src/app/api/cron/client-reports/route.ts")), "no second monthly email");
+  assert.ok(!existsSync(path.join(ROOT, ".github/workflows/client-reports.yml")), "and nothing still calls it");
+  assert.ok(first.includes("writeReportNarrative({") && first.includes("narrative,"), "the narrative rides in the 1st's email");
+  assert.ok(first.includes("visitorQuestions(sessions.filter((s) => !isFormRequest(s)))"), "from the receptionist's conversations only");
   assert.ok(code("src/lib/clientNotify.ts").includes('import { isAfterHours } from "@/lib/reportMetrics"'));
 });
 

@@ -3,22 +3,26 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { listClientSites } from "@/lib/clientSites";
 import { sendEmail, monthlyReportEmail } from "@/lib/email";
 import { sendTelegramMessage } from "@/lib/telegram";
-import { reportMetrics, type ReportSession } from "@/lib/reportMetrics";
+import { reportMetrics, isFormRequest, type ReportSession } from "@/lib/reportMetrics";
+import { writeReportNarrative, visitorQuestions } from "@/lib/reportNarrative";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 /**
  * Monthly client report — runs on the 1st, covers the previous month.
  * For every published client site: aggregate its chat sessions with
  * reportMetrics() (src/lib/reportMetrics.ts — the one definition shared with
- * the 5th's narrative and her portal), store a snapshot in client_reports,
- * and email her the number that renews her: booking requests taken BY THE
- * RECEPTIONIST, apart from what her contact form collected (C4).
+ * her portal), store a snapshot in client_reports, and email her the number
+ * that renews her: booking requests taken BY THE RECEPTIONIST, apart from
+ * what her contact form collected (C4). A few sentences Claude writes from
+ * her month and one idea for the next ride along in the same email; they
+ * were a second email on the 5th until 2026-09-23 (Phase D).
  */
 
 interface SessionRow extends ReportSession {
   session_id: string | null;
+  messages: { role: string; content: string }[] | null;
 }
 
 export async function GET(req: NextRequest) {
@@ -42,7 +46,7 @@ export async function GET(req: NextRequest) {
   for (const site of sites) {
     const { data } = await db
       .from("chat_sessions")
-      .select("session_id, created_at, qualified, utm")
+      .select("session_id, created_at, qualified, utm, messages")
       .eq("site_slug", site.slug)
       .gte("created_at", start.toISOString())
       .lt("created_at", end.toISOString());
@@ -76,11 +80,20 @@ export async function GET(req: NextRequest) {
       const periodLabel = start.toLocaleDateString(site.language === "fr" ? "fr-FR" : "en-GB", {
         month: "long", year: "numeric",
       });
+      const narrative = await writeReportNarrative({
+        businessName: site.businessName,
+        niche: site.niche,
+        language: site.language,
+        conversations: metrics.conversations,
+        receptionistBookings: metrics.receptionistBookings,
+        questions: visitorQuestions(sessions.filter((s) => !isFormRequest(s))),
+      });
       const tpl = monthlyReportEmail({
         businessName: site.businessName,
         period: periodLabel,
         lang: site.language,
         metrics,
+        narrative,
       });
       sent = await sendEmail(email, tpl.subject, tpl.html);
     }

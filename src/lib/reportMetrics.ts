@@ -1,7 +1,7 @@
 /**
  * THE NUMBER THAT RENEWS HER (C4) — one definition of "what the receptionist
- * did this month", used by the monthly email (1st), the narrative email (5th)
- * and her portal, so the three never disagree.
+ * did this month", used by the monthly email (1st, with its narrative folded in since Phase D)
+ * and her portal, so the two never disagree.
  *
  * Until 2026-09-23 the 1st counted every qualified chat_sessions row as a
  * "booking request". Rows written by the site's contact form

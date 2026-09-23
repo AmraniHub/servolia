@@ -5,6 +5,7 @@ import { rateLimited } from "@/lib/security";
 // Aliased: this file already uses `money` and `usd` as local names in templates.
 import { usd as usdFmt } from "@/lib/hosting";
 import type { ReportMetrics } from "@/lib/reportMetrics";
+import type { ReportNarrative } from "@/lib/reportNarrative";
 
 /**
  * Email service — uses Resend (resend.com). Free up to 3,000 emails/month.
@@ -788,6 +789,8 @@ export const monthlyReportEmail = (input: {
   period: string; // "juin 2026" / "June 2026"
   lang: "en" | "fr";
   metrics: ReportMetrics;
+  /** Claude's few sentences and one idea (src/lib/reportNarrative.ts); optional. */
+  narrative?: ReportNarrative | null;
 }) => {
   const fr = input.lang === "fr";
   const m = input.metrics;
@@ -821,6 +824,7 @@ export const monthlyReportEmail = (input: {
         : `${input.businessName} — your report for ${input.period}`),
     html: wrapper(`
       <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">${fr ? `Votre mois — ${input.period}` : `Your month — ${input.period}`}</h1>
+      ${input.narrative ? `<p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#3F3F46;">${escapeHtml(input.narrative.narrative)}</p>` : ""}
       <div style="background:#EEF5EA;border-radius:12px;padding:20px;text-align:center;margin:0 0 14px;">
         <div style="font-size:40px;font-weight:900;color:#36671E;line-height:1;">${booked}</div>
         <div style="font-size:14px;color:#36671E;font-weight:700;margin-top:8px;">${headline}</div>
@@ -836,6 +840,7 @@ export const monthlyReportEmail = (input: {
         </tr>
       </table>
       ${cover ? `<p style="margin:0 0 18px;font-size:15px;line-height:1.6;color:#3F3F46;">${cover}</p>` : ""}
+      ${input.narrative?.idea ? `<div style="background:#FAFAF7;border:1px solid #E8E6E0;border-radius:12px;padding:14px 16px;margin:0 0 18px;font-size:14px;line-height:1.6;color:#3F3F46;"><strong style="color:#36671E;">${fr ? "Une idée pour le mois prochain" : "An idea for next month"} :</strong> ${escapeHtml(input.narrative.idea)}</div>` : ""}
       <p style="margin:0 0 18px;font-size:15px;line-height:1.6;color:#3F3F46;">
         ${fr
           ? `Chaque demande de <strong>${name}</strong> est dans votre espace client, avec son statut et vos notes : <a href="https://servolia.com/portal" style="color:#36671E;">servolia.com/portal</a>.`

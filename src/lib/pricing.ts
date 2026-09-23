@@ -7,8 +7,7 @@
  * value and update the display strings too:
  *   pricing/page.tsx · fr/tarifs · page.tsx · FrenchHome.tsx · contact pages ·
  *   niches/* · dentists · fr/dentistes · fr/esthetique · fr/solutions ·
- *   frGeo.ts · ROICalculator · cf-worker/src/index.ts (separate deploy —
- *   cannot import this file).
+ *   frGeo.ts · ROICalculator.
  *
  * NOTE: "never invent a price" is a guard on a CLIENT's own service prices
  * (dental treatments etc.), NOT on Servolia's own prices — those live here.

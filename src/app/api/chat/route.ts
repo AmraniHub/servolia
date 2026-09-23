@@ -64,7 +64,7 @@ function rateLimited(key: string): boolean {
 // 2026-09-05: this id routes to @cf/meta/infire-llama-3.1-8b-instruct,
 // DEPRECATED 2026-05-30 - so the Claude fallback was a trapdoor, not a
 // safety net: when Claude failed this threw AiError 5028 and took the whole
-// request with it. Same bug killed the cf-worker chatbot for three months.
+// request with it. Same bug killed the old cf-worker chatbot (removed 2026-09-23) for three months.
 // Verify with `wrangler ai models` before changing this.
 const MODEL = "@cf/meta/llama-3.1-8b-instruct-fp8";
 
