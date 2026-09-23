@@ -130,7 +130,7 @@ const steps = [
     title: "Your monthly plan runs the system",
     who: "Servolia",
     time: "From launch",
-    desc: "Your monthly plan starts the day you go live — not 30 days later. It covers hosting, domain, SSL, professional email, uptime monitoring, the client portal and your included AI conversations. It renews automatically via Stripe and you can cancel any time with 30 days notice.",
+    desc: "Your monthly plan starts the day you go live — not 30 days later. It covers hosting, your domain (a new one is on us), SSL, 1 professional email address, uptime monitoring, the client portal and your included AI conversations. It renews automatically via Stripe and you can cancel any time with 30 days notice.",
     detail: `Included conversations depend on your tier: ${PLANS.essentiel.conversations} on ${PLANS.essentiel.name} (€${PLANS.essentiel.monthlyEur}/mo), ${PLANS.croissance.conversations} on ${PLANS.croissance.name} (€${PLANS.croissance.monthlyEur}/mo), ${PLANS.performance.conversations} on ${PLANS.performance.name} (€${PLANS.performance.monthlyEur}/mo). Go over and we simply move you up a tier — never a surprise overage bill. From ${PLANS.croissance.name} up you also receive a 1-page ROI report on the 5th of each month: leads captured, bookings made, top traffic source, AI conversations, and one improvement recommendation.`,
     color: "from-[#36671E] to-[#295115]",
   },
@@ -220,7 +220,7 @@ export default function HowItWorksPage() {
                 { q: "What if I don't have a logo?", a: "That's fine. We'll work with what you have or suggest a simple wordmark that matches your style." },
                 { q: "Can I request changes after seeing the draft?", a: "Yes — one full round of revisions is included in every package. Major scope additions are quoted separately." },
                 { q: "What language is the site built in?", a: "Your choice: French, English, or both. We're bilingual and have delivered sites in both." },
-                { q: "Who hosts the website?", a: "We host it on Vercel (the same infrastructure powering major global platforms) — hosting is included in your monthly plan, along with your domain, SSL and professional email." },
+                { q: "Who hosts the website?", a: "We host it on Vercel (the same infrastructure powering major global platforms) — hosting is included in your monthly plan, along with your domain, SSL and 1 professional email address on it." },
                 { q: "What if you miss the deadline?", a: "Our CGV guarantees 10% of the price back per day late, capped at 50%, if we miss through our own fault. Delays caused on your side don't count." },
               ].map((faq, i) => (
                 <div key={i} className="p-5 rounded-2xl bg-[#FAFAF7] border border-[#E8E6E0]">

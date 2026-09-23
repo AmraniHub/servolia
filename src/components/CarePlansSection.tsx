@@ -30,7 +30,7 @@ const T = {
   en: {
     eyebrow: "Plans — all-in-one",
     title: "One vendor for your entire online presence",
-    sub: "Domain, hosting, professional email, your 24/7 AI receptionist and your reporting — one monthly plan. Nothing to juggle, nothing to install.",
+    sub: "Your domain, hosting, a professional email address on it, your 24/7 AI receptionist and your reporting — one monthly plan. Nothing to juggle, nothing to install.",
     monthly: "Monthly", annual: "Annual", twoFree: "2 months free",
     perMo: "/mo", perYr: "/yr",
     effMo: (n: number) => `≈ €${n}/mo · 2 months free`,
@@ -59,7 +59,7 @@ const T = {
           "Instant lead alerts — email + one-tap WhatsApp reply",
           "Client portal: every enquiry, with status and private notes",
           "Visitor analytics and a monthly results report",
-          "Hosting, domain, SSL and pro email included",
+          "Hosting, SSL, 1 pro email address and your domain (a new one is on us)",
         ],
       },
       croissance: {
@@ -83,7 +83,7 @@ const T = {
   fr: {
     eyebrow: "Formules — tout-en-un",
     title: "Un seul prestataire pour toute votre présence en ligne",
-    sub: "Nom de domaine, hébergement, email professionnel, votre assistante IA 24 h/24 et vos rapports — un seul abonnement mensuel. Rien à gérer, rien à installer.",
+    sub: "Votre nom de domaine, l'hébergement, une adresse email pro à ce domaine, votre assistante IA 24 h/24 et vos rapports — un seul abonnement mensuel. Rien à gérer, rien à installer.",
     monthly: "Mensuel", annual: "Annuel", twoFree: "2 mois offerts",
     perMo: "/mois", perYr: "/an",
     effMo: (n: number) => `≈ ${n} €/mois · 2 mois offerts`,
@@ -106,7 +106,7 @@ const T = {
           "Alerte immédiate — email + réponse WhatsApp en un clic",
           "Espace client : chaque demande, avec statut et notes privées",
           "Statistiques de visite et rapport mensuel de résultats",
-          "Hébergement, nom de domaine, SSL et email pro inclus",
+          "Hébergement, SSL, 1 adresse email pro et votre domaine (un nouveau est offert)",
         ],
       },
       croissance: {

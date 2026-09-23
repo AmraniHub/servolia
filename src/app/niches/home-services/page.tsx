@@ -52,7 +52,7 @@ export default function HomeServicesPage() {
         "AI receptionist (qualifies service, urgency, budget)",
         `${PLANS.essentiel.conversations} AI conversations per month`,
         "Instant lead alerts to your phone",
-        "Hosting, domain and pro email included",
+        "Hosting, SSL, 1 pro email address and your domain (a new one is on us)",
       ],
     },
     {

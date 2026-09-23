@@ -54,7 +54,7 @@ const packages = [
       "Alertes de demandes instantanées + espace client",
       "Site clinique rédigé pour vos soins, si vous en voulez un",
       "Pages RGPD conformes",
-      "Hébergement, domaine et email pro inclus",
+      "Hébergement, SSL, 1 adresse email pro et votre domaine (un nouveau est offert)",
       "Rapport mensuel de résultats",
     ],
     cta: `Choisir ${PLANS.essentiel.nameFr}`,

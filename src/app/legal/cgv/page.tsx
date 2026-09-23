@@ -69,6 +69,7 @@ export default function CGVPage() {
               <p className="mt-3"><strong>A domain the client already owns</strong> stays with the client&apos;s own registrar, in the client&apos;s name. The client keeps paying its renewal to that registrar; its fees are not included in the plan. Servolia only asks the client to point it at the site (two DNS records) and never takes it over.</p>
               <p className="mt-3">On cancellation the client keeps the domain. Servolia will provide the authorisation (transfer) code and release the domain to the client or to a registrar of their choosing, at no charge, within 5 business days of a written request. Servolia will never withhold a domain, or a transfer code, as leverage in a commercial dispute. After the plan ends, responsibility for renewal fees passes to the client.</p>
               <p className="mt-3">Premium or unusually priced domains, and any second or subsequent domain, are quoted separately before purchase.</p>
+              <p className="mt-3"><strong>Professional email address.</strong> The plan includes one email address on the client&apos;s domain (for example contact@yourpractice.com), created by Servolia with the mail provider of its choosing, together with the DNS records it needs. Email the client already has on that domain is kept as it is. Any further mailbox is a paid option. On cancellation, Servolia hands the address over to the client on written request.</p>
             </div>
             <div>
               <h2 className="text-lg font-black text-[#18181B] mb-3">8. Refunds</h2>

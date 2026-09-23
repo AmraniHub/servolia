@@ -13,7 +13,7 @@ import { CheckCircle, ArrowRight, Shield, Clock, Globe, Bot, Lock } from "lucide
 export const metadata: Metadata = {
   title: "Tarifs — Servolia",
   description:
-    "Une mise en place à 690 €, puis 149 à 449 €/mois tout compris : site, assistante IA 24 h/24, hébergement, domaine et email pro. Deux mois offerts en annuel.",
+    "Une mise en place à 690 €, puis 149 à 449 €/mois tout compris : site, assistante IA 24 h/24, hébergement, votre domaine et 1 adresse email pro. Deux mois offerts en annuel.",
   alternates: {
     canonical: "https://servolia.com/fr/tarifs",
     languages: {
@@ -96,7 +96,7 @@ export default async function FrenchPricingPage() {
                 {[
                   "Votre site, rédigé et construit pour votre cabinet",
                   "Votre assistante IA formée sur vos prestations",
-                  "Nom de domaine, hébergement, SSL et email pro configurés",
+                  "Votre domaine connecté, hébergement, SSL et 1 adresse email pro créée",
                   "Pages RGPD et bandeau cookies inclus",
                   "Un tour de modifications avant la mise en ligne",
                 ].map((f, j) => (
@@ -135,7 +135,7 @@ export default async function FrenchPricingPage() {
                 <ul className="flex flex-col gap-2 mb-6 flex-1">
                   {[
                     "Assistante IA 24 h/24 dans toutes les formules",
-                    "Hébergement, domaine et email pro inclus",
+                    "Hébergement, SSL, 1 adresse email pro et votre domaine (un nouveau est offert)",
                     "Alertes immédiates + espace client",
                     "Deux mois offerts en paiement annuel",
                   ].map((f, j) => (

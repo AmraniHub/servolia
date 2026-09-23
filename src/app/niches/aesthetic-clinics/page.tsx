@@ -43,7 +43,7 @@ export default function AestheticClinicsPage() {
         "AI receptionist trained on your treatments",
         `${PLANS.essentiel.conversations} AI conversations per month`,
         "Instant lead alerts + client portal",
-        "Hosting, domain and pro email included",
+        "Hosting, SSL, 1 pro email address and your domain (a new one is on us)",
       ],
     },
     {

@@ -14,7 +14,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Pricing — Servolia",
-  description: "One €690 installation, then €149–€449/month all-in: site, 24/7 AI receptionist, hosting, domain and pro email. Pay yearly and get two months free.",
+  description: "One €690 installation, then €149–€449/month all-in: site, 24/7 AI receptionist, hosting, your domain and 1 pro email address. Pay yearly and get two months free.",
   alternates: {
     canonical: "https://servolia.com/pricing",
     languages: {
@@ -95,7 +95,7 @@ export default async function PricingPage() {
                 {[
                   "Your site, written and built for your practice",
                   "Your AI receptionist trained on your services",
-                  "Domain, hosting, SSL and pro email set up",
+                  "Your domain connected, hosting, SSL and 1 pro email address created",
                   "GDPR pages and cookie consent included",
                   "One round of revisions before launch",
                 ].map((f, j) => (
@@ -134,7 +134,7 @@ export default async function PricingPage() {
                 <ul className="flex flex-col gap-2.5 mb-6 flex-1">
                   {[
                     "24/7 AI receptionist in every plan",
-                    "Hosting, domain and pro email included",
+                    "Hosting, SSL, 1 pro email address and your domain (a new one is on us)",
                     "Instant lead alerts + client portal",
                     "Two months free when you pay yearly",
                   ].map((f, j) => (

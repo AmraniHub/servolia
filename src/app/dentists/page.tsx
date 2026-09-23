@@ -52,7 +52,7 @@ export default function DentistsPage() {
         "Instant lead alerts + client portal",
         "Dental website, written for your practice, if you want one",
         "GDPR compliant pages",
-        "Hosting, domain and pro email included",
+        "Hosting, SSL, 1 pro email address and your domain (a new one is on us)",
         "Monthly results report",
       ],
       cta: `Start ${PLANS.essentiel.name}`,

@@ -645,7 +645,7 @@ export default function HomePage() {
                   <span className="text-xs font-semibold text-[#36671E]">Live in {SETUP_PLAN.delivery}</span>
                 </div>
                 <ul className="space-y-2 mb-7 flex-1">
-                  {["Your site, written for you", "AI receptionist trained on your services", "Domain, hosting & pro email set up", "One round of revisions before launch", "Nothing owed on delivery day"].map((f, j) => (
+                  {["Your site, written for you", "AI receptionist trained on your services", "Your domain connected and 1 pro email address created", "One round of revisions before launch", "Nothing owed on delivery day"].map((f, j) => (
                     <li key={j} className="flex items-center gap-2 text-sm text-[#52525B]">
                       <CheckCircle className="w-4 h-4 text-[#36671E] shrink-0" />{f}
                     </li>

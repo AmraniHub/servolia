@@ -15,7 +15,7 @@ const WHATS_INCLUDED: Record<string, string[]> = {
     "Conversion-focused multi-page website, written for your practice",
     "Your 24/7 AI receptionist, trained on your services and hours",
     "Online booking / enquiry capture, wired to instant alerts",
-    "Domain, hosting, SSL and professional email set up for you",
+    "Your domain connected (or a new one registered for you, fees included), hosting, SSL and 1 professional email address on it",
     "GDPR pages and cookie consent included",
     "One round of revisions before we go live",
   ],
@@ -87,8 +87,8 @@ ${isSetup
   Balance (50%, due on delivery): €${balance}${plan.monthlyEur ? `\n  Recurring platform fee: €${plan.monthlyEur}/month` : ""}`}
 ${care ? `\nYOUR PLAN — ${care.name}
   €${care.monthlyEur}/month, or €${care.annualEur.toLocaleString()}/year (two months free).
-  Includes ${care.conversations} AI conversations per month, plus hosting, domain,
-  professional email, your client portal and ongoing support. Go over the included
+  Includes ${care.conversations} AI conversations per month, plus hosting, your domain,
+  1 professional email address on it, your client portal and ongoing support. Go over the included
   conversations and we simply move you up a plan — never a surprise bill.
   Cancel any time with 30 days' notice.\n` : ""}
 DELIVERY

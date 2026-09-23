@@ -3,6 +3,7 @@ import { computeLeadScore } from "@/lib/scoring";
 import { HOSTING_TIERS } from "@/lib/hosting";
 import { readDraftEmailed } from "@/lib/draftPreview";
 import type { ReceptionistState } from "@/lib/clientSites";
+import { mailDomainFor, mailState, whatIsOwed, type OwedSite, type MailState } from "@/lib/owedToPractice";
 
 /**
  * TODAY — one list of what needs a human, assembled from everything that
@@ -24,7 +25,7 @@ import type { ReceptionistState } from "@/lib/clientSites";
 export type Owner = "me" | "client";
 
 export interface TodayItem {
-  /** stable kind for scripts: lead-sla, lead-hot, build-intake, build-building, draft-send, draft-go, trial-ending, payment-failed, needs-setup, prospect, request-unpaid, reception-not-installed, reception-ending, reception-ended, reception-running, domain-waiting */
+  /** stable kind for scripts: lead-sla, lead-hot, build-intake, build-building, draft-send, draft-go, trial-ending, payment-failed, needs-setup, prospect, request-unpaid, reception-not-installed, reception-ending, reception-ended, reception-running, domain-waiting, domain-owed, mailbox-owed, mailbox-unchecked */
   kind: string;
   title: string;
   detail?: string;
@@ -72,7 +73,7 @@ export async function buildToday(now = Date.now()): Promise<Today> {
     db.from("builds").select("id, business, email, status, deadline, created_at, started_at").not("status", "in", '("live","delivered")'),
     db.from("client_sites").select("slug, business, status, notes, build_id, updated_at").eq("status", "draft").not("build_id", "is", null),
     db.from("hosting_clients").select("id, business, email, plan, status, notes, site_url, repo, suspend_at, payment_status"),
-    db.from("clients").select("id, business, email, plan, status, payment_status, suspend_at").in("status", ["active", "paused"]),
+    db.from("clients").select("id, business, email, plan, status, payment_status, suspend_at, build_id, started_at").in("status", ["active", "paused"]),
     db.from("prospects").select("id, business, city, niche, status, next_action_at, touch_count, demo_slug")
       .eq("status", "to_contact").order("next_action_at", { ascending: true, nullsFirst: true }).limit(3),
     db.from("custom_requests").select("id, title, email, amount_eur, created_at, build_id").eq("status", "quoted"),
@@ -96,6 +97,51 @@ export async function buildToday(now = Date.now()): Promise<Today> {
     });
   }
   if (domains.length) sections.push({ key: "domains", label: "Domains not answering", items: domains });
+
+  /* ── What a paying practice was promised and does not have yet ───────
+     Every plan says "your domain (a new one is on us) and 1 pro email
+     address". src/lib/owedToPractice.ts decides what is still owed; the row
+     clears itself the day her domain answers and publishes MX records. */
+  const owed: TodayItem[] = [];
+  const paying = ((clientsRes.data ?? []) as Array<{ business: string; status: string; build_id?: string | null; started_at?: string | null }>)
+    .filter((c) => c.status === "active" && c.build_id);
+  if (paying.length) {
+    const { data: paidSites } = await db.from("client_sites")
+      .select("slug, status, config, build_id").in("build_id", paying.map((c) => c.build_id as string));
+    const rows = (paidSites ?? []) as Array<OwedSite & { build_id: string }>;
+    const mail = new Map<string, MailState>();
+    await Promise.all(rows.map(async (s) => {
+      const d = mailDomainFor(s);
+      if (d) mail.set(s.slug, await mailState(d));
+    }));
+    for (const s of rows) {
+      const o = whatIsOwed(s, mail.get(s.slug));
+      if (!o) continue;
+      const c = paying.find((x) => x.build_id === s.build_id);
+      const days = Math.floor((hrsAgo(c?.started_at, now) ?? 0) / 24);
+      const name = s.config?.businessName ?? c?.business ?? s.slug;
+      if (o.kind === "domain-owed") {
+        owed.push({
+          kind: "domain-owed", title: name,
+          detail: `paying ${days}d, site still at servolia.com/sites/${s.slug} — attach her own domain on /admin/sites, or register a new one for her (fees on us, CGV 7 bis)`,
+          href: `${ADMIN}/sites`, owner: "me", urgency: days >= 3 ? 2 : 1,
+        });
+      } else if (o.kind === "mailbox-owed") {
+        owed.push({
+          kind: "mailbox-owed", title: `${name} (${o.domain})`,
+          detail: `her 1 pro email address is owed — ${o.domain} has no MX records. Create the mailbox (e.g. contact@${o.domain}) and send her the MX lines`,
+          href: `${ADMIN}/sites`, owner: "me", urgency: days >= 3 ? 2 : 1,
+        });
+      } else {
+        owed.push({
+          kind: "mailbox-unchecked", title: `${name} (${o.domain})`,
+          detail: "could not read the domain's MX records this time — her pro email is unverified, not missing",
+          href: `${ADMIN}/sites`, owner: "me", urgency: 0,
+        });
+      }
+    }
+  }
+  if (owed.length) sections.push({ key: "owed", label: "Owed to a paying practice", items: owed });
 
   /* ── Practices trying the receptionist on their own site ─────────────
      The public trial (receptionistTrial.ts). The three moments a human

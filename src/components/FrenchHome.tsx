@@ -567,7 +567,7 @@ export default function FrenchHome() {
                   <span className="text-xs font-semibold text-[#36671E]">En ligne en 7 jours</span>
                 </div>
                 <ul className="space-y-2 mb-7 flex-1">
-                  {["Votre site, rédigé pour vous", "Réceptionniste IA entraînée sur vos actes", "Domaine, hébergement & email pro configurés", "Une série de révisions avant la mise en ligne", "Rien à payer le jour de la livraison"].map((f, j) => (
+                  {["Votre site, rédigé pour vous", "Réceptionniste IA entraînée sur vos actes", "Votre domaine connecté et 1 adresse email pro créée", "Une série de révisions avant la mise en ligne", "Rien à payer le jour de la livraison"].map((f, j) => (
                     <li key={j} className="flex items-center gap-2 text-sm text-[#52525B]">
                       <CheckCircle className="w-4 h-4 text-[#36671E] shrink-0" />{f}
                     </li>

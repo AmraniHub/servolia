@@ -255,7 +255,7 @@ export function pricingPromptLines(): string {
   return [
     `Servolia is sold as a one-time installation plus a monthly plan. The monthly plan IS the product.`,
     `1. Installation — €${s.totalEur} once (${s.delivery}). Site built, AI receptionist trained, everything live. Waived when paying a year up front.`,
-    `Every plan includes the same product: a multi-page site, the 24/7 AI receptionist trained on their services, instant lead alerts, the client portal with every enquiry and its status, visitor analytics, a monthly results report, hosting, domain, SSL and professional email.`,
+    `Every plan includes the same product: a multi-page site, the 24/7 AI receptionist trained on their services, instant lead alerts, the client portal with every enquiry and its status, visitor analytics, a monthly results report, hosting, SSL, their domain (a new one is registered at no charge; one they already own is connected and stays theirs, at their cost) and one professional email address on it.`,
     `2. ${p.essentiel.name} — €${p.essentiel.monthlyEur}/month, ${p.essentiel.conversations} conversations/month. ${p.essentiel.audience}`,
     `3. ${p.croissance.name} — €${p.croissance.monthlyEur}/month (most chosen), ${p.croissance.conversations} conversations/month. ${p.croissance.audience}`,
     `4. ${p.performance.name} — €${p.performance.monthlyEur}/month, ${p.performance.conversations} conversations/month, plus priority support and a quarterly strategy call. ${p.performance.audience}`,

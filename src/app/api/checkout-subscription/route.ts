@@ -64,8 +64,8 @@ export async function POST(req: NextRequest) {
               ? `Servolia ${fr ? p.nameFr : p.name} — ${fr ? "Annuel (2 mois offerts)" : "Annual (2 months free)"}`
               : `Servolia ${fr ? p.nameFr : p.name} — ${fr ? "Mensuel" : "Monthly"}`,
             description: fr
-              ? "Tout compris : domaine, hébergement, email pro, votre réceptionniste IA et vos rapports mensuels."
-              : "All-in: domain, hosting, professional email, your AI receptionist, and monthly reports.",
+              ? "Tout compris : votre domaine (un nouveau est offert), l'hébergement, 1 adresse email pro, votre réceptionniste IA et vos rapports mensuels."
+              : "All-in: your domain (a new one is on us), hosting, 1 professional email address, your AI receptionist, and monthly reports.",
           },
           unit_amount: amount,
           recurring: { interval },
@@ -83,8 +83,8 @@ export async function POST(req: NextRequest) {
           product_data: {
             name: fr ? `${SETUP_PLAN.nameFr} (une seule fois)` : `${SETUP_PLAN.name} (one-time)`,
             description: fr
-              ? "Site construit et rédigé pour votre cabinet, réceptionniste IA entraînée, domaine et email configurés. Offerte en paiement annuel."
-              : "Your site built and written for your practice, AI receptionist trained, domain and email set up. Waived when you pay yearly.",
+              ? "Site construit et rédigé pour votre cabinet, réceptionniste IA entraînée, votre domaine connecté et votre adresse email pro créée. Offerte en paiement annuel."
+              : "Your site built and written for your practice, AI receptionist trained, your domain connected and your pro email address created. Waived when you pay yearly.",
           },
           unit_amount: installationCents,
         },

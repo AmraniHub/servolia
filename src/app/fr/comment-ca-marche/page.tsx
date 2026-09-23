@@ -131,7 +131,7 @@ const steps = [
     title: "Votre formule mensuelle fait tourner le système",
     who: "Servolia",
     time: "Dès le lancement",
-    desc: "Votre formule mensuelle démarre le jour de la mise en ligne — pas 30 jours plus tard. Elle couvre l'hébergement, le domaine, le SSL, l'email professionnel, la surveillance, l'espace client et vos conversations IA incluses. Prélèvement automatique via Stripe, résiliable à tout moment avec 30 jours de préavis.",
+    desc: "Votre formule mensuelle démarre le jour de la mise en ligne — pas 30 jours plus tard. Elle couvre l'hébergement, votre domaine (un nouveau est offert), le SSL, 1 adresse email pro, la surveillance, l'espace client et vos conversations IA incluses. Prélèvement automatique via Stripe, résiliable à tout moment avec 30 jours de préavis.",
     detail: `Les conversations incluses dépendent de votre formule : ${PLANS.essentiel.conversations} avec ${PLANS.essentiel.nameFr} (${PLANS.essentiel.monthlyEur} €/mois), ${PLANS.croissance.conversations} avec ${PLANS.croissance.nameFr} (${PLANS.croissance.monthlyEur} €/mois), ${PLANS.performance.conversations} avec ${PLANS.performance.nameFr} (${PLANS.performance.monthlyEur} €/mois). Au-delà, vous passez simplement à la formule supérieure — jamais de facture surprise. À partir de ${PLANS.croissance.nameFr}, vous recevez aussi un rapport ROI d'une page le 5 de chaque mois : leads capturés, rendez-vous pris, principale source de trafic, conversations IA et une recommandation d'amélioration.`,
     color: "from-[#36671E] to-[#295115]",
   },
@@ -216,7 +216,7 @@ export default function FrenchHowItWorksPage() {
                 { q: "Et si je n'ai pas de logo ?", a: "Aucun problème. Nous travaillons avec ce que vous avez, ou proposons un logotype simple qui correspond à votre style." },
                 { q: "Puis-je demander des modifications après avoir vu la maquette ?", a: "Oui — une série complète de révisions est incluse dans chaque formule. Les ajouts majeurs sont chiffrés séparément." },
                 { q: "Dans quelle langue le site est-il construit ?", a: "Au choix : français, anglais ou les deux. Nous sommes bilingues et avons livré des sites dans les deux langues." },
-                { q: "Qui héberge le site ?", a: "Nous l'hébergeons sur Vercel (la même infrastructure que de grandes plateformes mondiales) — l'hébergement est inclus dans votre formule mensuelle, avec le domaine, le SSL et l'email professionnel." },
+                { q: "Qui héberge le site ?", a: "Nous l'hébergeons sur Vercel (la même infrastructure que de grandes plateformes mondiales) — l'hébergement est inclus dans votre formule mensuelle, avec votre domaine, le SSL et 1 adresse email pro à ce domaine." },
                 { q: "Et si vous manquez la date de livraison ?", a: "Nos CGV garantissent 10 % du prix remboursés par jour de retard, plafonnés à 50 %, si le retard vient de nous. Les retards de votre côté ne comptent pas." },
               ].map((faq, i) => (
                 <div key={i} className="p-5 rounded-2xl bg-[#FAFAF7] border border-[#E8E6E0]">
