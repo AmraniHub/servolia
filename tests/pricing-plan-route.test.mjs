@@ -70,6 +70,20 @@ test("the receipt's intake button reaches the paid build", () => {
   assert.match(subscriptionBranch(), /sessionId: session\.id, plan: planKey, billing/);
 });
 
+test("every caller of /api/billing-portal has a handler for its method", () => {
+  const route = src("src/app/api/billing-portal/route.ts");
+  for (const f of ["src/components/PortalDashboard.tsx", "src/app/billing/page.tsx"]) {
+    if (src(f).includes('fetch("/api/billing-portal", { method: "POST" })')) {
+      assert.match(route, /export async function POST\(/, `${f} POSTs; without a POST handler every click answers 405`);
+    }
+  }
+  assert.match(route, /export async function GET\(/, "the emailed link is a GET");
+  // The logged-in client's email comes from the signed cookie, and is matched exactly.
+  const post = route.slice(route.indexOf("export async function POST("));
+  assert.match(post, /getClientEmail\(\)/);
+  assert.doesNotMatch(post, /\.ilike\(/, "ilike treats _ as a wildcard: marie_dubois@ would match another client");
+});
+
 test("the receipt says what the checkout did: 7-day trial monthly, the year paid annually", () => {
   const monthly = installationPaidEmail("amine", "Essentiel", 690, "en", { billing: "monthly" }).html;
   assert.match(monthly, /starts 7 days after your payment/);
