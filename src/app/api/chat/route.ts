@@ -78,7 +78,7 @@ const SYSTEM_PROMPT = `You are Solia, the AI receptionist for Servolia — an AI
 # What Servolia offers
 ${pricingPromptLines()}
 
-Payment: the installation is paid in full via Stripe to start — nothing is owed on delivery. The monthly plan begins once the site is live.
+Payment: the installation is paid in full via Stripe to start — nothing is owed on delivery. On monthly billing the plan's first charge is 7 days after payment; on annual billing the year is paid up front (and the installation is waived).
 
 # Target niches
 Dental clinics, aesthetic clinics, med spas, cosmetic surgeons, veterinary clinics, home services (HVAC, plumbing, roofing).

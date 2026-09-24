@@ -71,7 +71,7 @@ const steps = [
     who: "You",
     time: "2 minutes",
     desc: `Pay the €${SETUP_PLAN.totalEur} installation through our Stripe checkout. You get an instant receipt, and the build starts the next working day. Start on an annual plan and the installation is waived entirely.`,
-    detail: "We accept all major cards. EUR and USD supported. Your payment is protected by Stripe — the most trusted payment infrastructure in the world. Nothing is owed on delivery day: your monthly plan simply starts when you go live.",
+    detail: "We accept all major cards. EUR and USD supported. Your payment is protected by Stripe — the most trusted payment infrastructure in the world. Nothing is owed on delivery day: on monthly billing your plan's first charge is 7 days after you pay; on annual, the year is paid up front.",
     color: "from-[#6366F1] to-[#8B5CF6]",
   },
   {
@@ -130,8 +130,8 @@ const steps = [
     title: "Your monthly plan runs the system",
     who: "Servolia",
     time: "From launch",
-    desc: "Your monthly plan starts the day you go live — not 30 days later. It covers hosting, your domain (a new one is on us), SSL, 1 professional email address, uptime monitoring, the client portal and your included AI conversations. It renews automatically via Stripe and you can cancel any time with 30 days notice.",
-    detail: `Included conversations depend on your tier: ${PLANS.essentiel.conversations} on ${PLANS.essentiel.name} (€${PLANS.essentiel.monthlyEur}/mo), ${PLANS.croissance.conversations} on ${PLANS.croissance.name} (€${PLANS.croissance.monthlyEur}/mo), ${PLANS.performance.conversations} on ${PLANS.performance.name} (€${PLANS.performance.monthlyEur}/mo). Go over and we simply move you up a tier — never a surprise overage bill. From ${PLANS.croissance.name} up you also receive a 1-page ROI report on the 5th of each month: leads captured, bookings made, top traffic source, AI conversations, and one improvement recommendation.`,
+    desc: "On monthly billing your plan's first charge is 7 days after you pay — the length of the build; on annual, the year is paid up front. It covers hosting, your domain (a new one is on us), SSL, 1 professional email address, uptime monitoring, the client portal and your included AI conversations. It renews automatically via Stripe and you can cancel any time with 30 days notice.",
+    detail: `Included conversations depend on your tier: ${PLANS.essentiel.conversations} on ${PLANS.essentiel.name} (€${PLANS.essentiel.monthlyEur}/mo), ${PLANS.croissance.conversations} on ${PLANS.croissance.name} (€${PLANS.croissance.monthlyEur}/mo), ${PLANS.performance.conversations} on ${PLANS.performance.name} (€${PLANS.performance.monthlyEur}/mo). Go over and we move you up a tier ourselves, after telling you first — never a surprise overage bill. From ${PLANS.croissance.name} up you also receive a 1-page ROI report on the 5th of each month: leads captured, bookings made, top traffic source, AI conversations, and one improvement recommendation.`,
     color: "from-[#36671E] to-[#295115]",
   },
 ];

@@ -89,7 +89,8 @@ export const SETUP_PLAN = BUILD_PLANS.setup;
  * enormously for a solo founder.
  *
  * `conversations` is the included monthly AI-receptionist volume. Going over
- * auto-upgrades to the next tier (see planForConversations) rather than
+ * moves them to the next tier — BY HAND, after the overage watch in
+ * cron/monthly-invoice flags it (see planForConversations) — rather than
  * charging surprise overage — predictable for them, expansion revenue for you.
  */
 export interface SubscriptionPlan {
@@ -272,7 +273,8 @@ export function pricingPromptLines(): string {
     `Every plan includes the same product: a multi-page site, the 24/7 AI receptionist trained on their services, instant lead alerts, the client portal with every enquiry and its status, visitor analytics, a monthly results report, hosting, SSL, their domain (a new one is registered at no charge; one they already own is connected and stays theirs, at their cost) and one professional email address on it.`,
     `2. ${p.essentiel.name} — €${p.essentiel.monthlyEur}/month, ${p.essentiel.conversations} conversations/month. ${p.essentiel.audience}`,
     `3. ${p.croissance.name} — €${p.croissance.monthlyEur}/month (most chosen), ${p.croissance.conversations} conversations/month. ${p.croissance.audience}`,
-    `4. ${p.performance.name} — €${p.performance.monthlyEur}/month, ${p.performance.conversations} conversations/month, plus priority support and a quarterly strategy call. ${p.performance.audience}`,
-    `The plans differ by included conversations, not by features. Pay yearly and get two months free. Going over the included conversations moves you to the next plan, or a one-off pack of extra conversations can be bought from the portal — never a surprise bill.`,
+    `4. ${p.performance.name} — €${p.performance.monthlyEur}/month, ${p.performance.conversations} conversations/month, plus their requests handled first and a strategy call every quarter that Servolia books with them. ${p.performance.audience}`,
+    `The plans differ by included conversations, not by features. Pay yearly and get two months free. Going over the included conversations: Servolia moves the client up a plan by hand, after telling them first, or a one-off pack of extra conversations can be bought from the portal — never a surprise bill.`,
+    `Timing: on monthly billing the plan's first charge is 7 days after payment (the installation is paid that day); on annual billing the year is paid up front.`,
   ].join("\n");
 }

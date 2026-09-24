@@ -77,7 +77,7 @@ const packages = [
     features: [
       `Tout ${PLANS.croissance.nameFr}`,
       "800 conversations par mois — prévu pour le trafic publicitaire",
-      "Support prioritaire + point stratégique trimestriel",
+      "Vos demandes traitées en premier, et un point stratégique chaque trimestre, que nous planifions avec vous",
     ],
     cta: `Choisir ${PLANS.performance.nameFr}`,
     popular: false,

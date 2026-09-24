@@ -78,7 +78,7 @@ export default function DentistsPage() {
       features: [
         `Everything in ${PLANS.croissance.name}`,
         "800 conversations a month — built for ad traffic",
-        "Priority support + quarterly strategy call",
+        "Your requests handled first, and a strategy call every quarter that we book with you",
       ],
       cta: `Start ${PLANS.performance.name}`,
       popular: false,
@@ -248,7 +248,7 @@ export default function DentistsPage() {
           <h2 className="text-3xl font-black text-[#18181B] mb-4">
             Ready to fill your <span className="gradient-text">appointment calendar?</span>
           </h2>
-          <p className="text-[#52525B] mb-6">Get a free clinic audit. We'll show you exactly what's missing and how to fix it in 7 days.</p>
+          <p className="text-[#52525B] mb-6">Get a free clinic audit. We&apos;ll show you exactly what&apos;s missing and how to fix it in 7 days.</p>
           <Link href="/free-audit"
             className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl bg-gradient-to-r from-[#36671E] to-[#295115] text-[#FAFAF7] font-bold hover:opacity-90 glow-button">
             Get My Free Clinic Audit <ArrowRight className="w-4 h-4" />

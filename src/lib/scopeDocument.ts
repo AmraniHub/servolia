@@ -89,7 +89,8 @@ ${care ? `\nYOUR PLAN — ${care.name}
   €${care.monthlyEur}/month, or €${care.annualEur.toLocaleString()}/year (two months free).
   Includes ${care.conversations} AI conversations per month, plus hosting, your domain,
   1 professional email address on it, your client portal and ongoing support. Go over the included
-  conversations and we simply move you up a plan — never a surprise bill.
+  conversations and we move you up a plan ourselves, after telling you first —
+  never a surprise bill.
   Cancel any time with 30 days' notice.\n` : ""}
 DELIVERY
   Live within ${plan.delivery} of ${isSetup ? "the installation fee" : "the deposit"} being received + your completed intake form.

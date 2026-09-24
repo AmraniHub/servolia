@@ -8,10 +8,10 @@ export const runtime = "nodejs";
  * THE ONLY WAY TO BUY. One checkout collects everything a new client owes:
  *
  *   MONTHLY  → €690 installation charged now (one-time line item)
- *              + the monthly plan, first charge after a 7-day trial so the
- *              recurring clock starts when the site goes live, exactly as
- *              /how-it-works promises ("your monthly plan starts the day you
- *              go live — not 30 days later").
+ *              + the monthly plan, first charge after a FIXED 7-day trial —
+ *              the length of the build. It does not wait for go-live (nothing
+ *              extends the trial if a build runs late), so every page says
+ *              "7 days after payment", never "when you go live".
  *   ANNUAL   → the yearly fee only. The installation is genuinely waived,
  *              which is what both pricing pages say.
  *
@@ -95,8 +95,8 @@ export async function POST(req: NextRequest) {
     const submitMsg = annual
       ? (fr ? "Facturé à l'année · 2 mois offerts · mise en place offerte" : "Billed yearly · two months free · installation waived")
       : (fr
-          ? `Mise en place réglée aujourd'hui · votre abonnement démarre dans ${DELIVERY_TRIAL_DAYS} jours, à la mise en ligne`
-          : `Installation paid today · your monthly plan starts in ${DELIVERY_TRIAL_DAYS} days, when you go live`);
+          ? `Mise en place réglée aujourd'hui · votre abonnement démarre dans ${DELIVERY_TRIAL_DAYS} jours`
+          : `Installation paid today · your monthly plan starts in ${DELIVERY_TRIAL_DAYS} days`);
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],

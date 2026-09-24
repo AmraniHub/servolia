@@ -38,7 +38,9 @@ const T = {
     setupLineAnnual: "Installation waived — you're paying yearly",
     subscribe: "Get started →", popular: "MOST CHOSEN",
     convo: (n: number) => `${n} AI conversations / month`,
-    convoNote: "One conversation = one patient's whole exchange, not one message. Go over and we simply move you up a plan — never a surprise bill.",
+    /* The move is done BY HAND: the overage watch (cron/monthly-invoice)
+       only pings Telegram, and nothing changes a subscription on its own. */
+    convoNote: "One conversation = one patient's whole exchange, not one message. Go over and we move you up a plan ourselves, after telling you first — never a surprise bill.",
     roi: "Take your own average case value and compare it to €149/month. If one recovered enquiry a month clears it, the rest is upside — your numbers, not ours.",
     foot: "Secure payment via Stripe · cancel with 30 days notice, no penalty · annual plans renew yearly",
     addonsTitle: "Optional extras",
@@ -75,7 +77,8 @@ const T = {
         inc: [
           "Everything in Croissance",
           "800 conversations a month — built for ad traffic",
-          "Priority support + quarterly strategy call",
+          /* Both are a person's time, not code: said as what happens. */
+          "Your requests handled first, and a strategy call every quarter that we book with you",
         ],
       },
     } as Record<string, { tag: string; inc: string[] }>,
@@ -91,7 +94,7 @@ const T = {
     setupLineAnnual: "Mise en place offerte — vous payez à l'année",
     subscribe: "Démarrer →", popular: "LE PLUS CHOISI",
     convo: (n: number) => `${n} conversations IA / mois`,
-    convoNote: "Une conversation = tout l'échange d'un patient, pas un message. Si vous dépassez, on vous fait simplement passer à la formule au-dessus — jamais de facture surprise.",
+    convoNote: "Une conversation = tout l'échange d'un patient, pas un message. Si vous dépassez, nous vous passons nous-mêmes à la formule au-dessus, après vous avoir prévenu — jamais de facture surprise.",
     roi: "Prenez votre panier moyen et comparez-le à 149 €/mois. Si une seule demande récupérée par mois le couvre, le reste est du gain — vos chiffres, pas les nôtres.",
     foot: "Paiement sécurisé via Stripe · résiliable avec 30 jours de préavis, sans pénalité · les formules annuelles se renouvellent chaque année",
     addonsTitle: "Options",
@@ -122,7 +125,7 @@ const T = {
         inc: [
           "Tout Croissance",
           "800 conversations par mois — prévu pour le trafic publicitaire",
-          "Support prioritaire + point stratégique trimestriel",
+          "Vos demandes traitées en premier, et un point stratégique chaque trimestre, que nous planifions avec vous",
         ],
       },
     } as Record<string, { tag: string; inc: string[] }>,

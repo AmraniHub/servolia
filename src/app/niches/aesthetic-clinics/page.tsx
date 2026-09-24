@@ -65,7 +65,7 @@ export default function AestheticClinicsPage() {
       features: [
         `Everything in ${PLANS.croissance.name}`,
         `${PLANS.performance.conversations} AI conversations per month — built for ad traffic`,
-        "Priority support + quarterly strategy call",
+        "Your requests handled first, and a strategy call every quarter that we book with you",
       ],
     },
   ];

@@ -14,7 +14,7 @@ import { sendTelegramMessage } from "@/lib/telegram";
  * client up a plan by hand. Three tiers, one product.
  *
  * WHAT "ENFORCED" MEANS HERE — AND WHAT IT DOES NOT. The pricing page
- * promises "go over and we simply move you up a plan — never a surprise
+ * promises "go over and we move you up a plan ourselves — never a surprise
  * bill". A receptionist that stops answering a practice's patients on the
  * 24th because the practice was popular would break the one thing the
  * practice pays for. So the cap is not a cut-off. It is:

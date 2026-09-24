@@ -72,7 +72,7 @@ const steps = [
     who: "Vous",
     time: "2 minutes",
     desc: `Réglez la mise en place de ${SETUP_PLAN.totalEur} € via notre paiement Stripe. Reçu immédiat, et la construction démarre le jour ouvré suivant. Si vous démarrez sur une formule annuelle, la mise en place est offerte.`,
-    detail: "Toutes les cartes principales acceptées. EUR et USD. Votre paiement est protégé par Stripe — l'infrastructure de paiement la plus fiable au monde. Rien n'est dû le jour de la livraison : votre formule mensuelle démarre simplement à la mise en ligne.",
+    detail: "Toutes les cartes principales acceptées. EUR et USD. Votre paiement est protégé par Stripe — l'infrastructure de paiement la plus fiable au monde. Rien n'est dû le jour de la livraison : en mensuel, le premier prélèvement de votre formule a lieu 7 jours après votre paiement ; en annuel, l'année est réglée d'avance.",
     color: "from-[#6366F1] to-[#8B5CF6]",
   },
   {
@@ -131,8 +131,8 @@ const steps = [
     title: "Votre formule mensuelle fait tourner le système",
     who: "Servolia",
     time: "Dès le lancement",
-    desc: "Votre formule mensuelle démarre le jour de la mise en ligne — pas 30 jours plus tard. Elle couvre l'hébergement, votre domaine (un nouveau est offert), le SSL, 1 adresse email pro, la surveillance, l'espace client et vos conversations IA incluses. Prélèvement automatique via Stripe, résiliable à tout moment avec 30 jours de préavis.",
-    detail: `Les conversations incluses dépendent de votre formule : ${PLANS.essentiel.conversations} avec ${PLANS.essentiel.nameFr} (${PLANS.essentiel.monthlyEur} €/mois), ${PLANS.croissance.conversations} avec ${PLANS.croissance.nameFr} (${PLANS.croissance.monthlyEur} €/mois), ${PLANS.performance.conversations} avec ${PLANS.performance.nameFr} (${PLANS.performance.monthlyEur} €/mois). Au-delà, vous passez simplement à la formule supérieure — jamais de facture surprise. À partir de ${PLANS.croissance.nameFr}, vous recevez aussi un rapport ROI d'une page le 5 de chaque mois : leads capturés, rendez-vous pris, principale source de trafic, conversations IA et une recommandation d'amélioration.`,
+    desc: "En mensuel, le premier prélèvement de votre formule a lieu 7 jours après votre paiement — la durée de la construction ; en annuel, l'année est réglée d'avance. Elle couvre l'hébergement, votre domaine (un nouveau est offert), le SSL, 1 adresse email pro, la surveillance, l'espace client et vos conversations IA incluses. Prélèvement automatique via Stripe, résiliable à tout moment avec 30 jours de préavis.",
+    detail: `Les conversations incluses dépendent de votre formule : ${PLANS.essentiel.conversations} avec ${PLANS.essentiel.nameFr} (${PLANS.essentiel.monthlyEur} €/mois), ${PLANS.croissance.conversations} avec ${PLANS.croissance.nameFr} (${PLANS.croissance.monthlyEur} €/mois), ${PLANS.performance.conversations} avec ${PLANS.performance.nameFr} (${PLANS.performance.monthlyEur} €/mois). Au-delà, nous vous passons nous-mêmes à la formule supérieure, après vous avoir prévenu — jamais de facture surprise. À partir de ${PLANS.croissance.nameFr}, vous recevez aussi un rapport ROI d'une page le 5 de chaque mois : leads capturés, rendez-vous pris, principale source de trafic, conversations IA et une recommandation d'amélioration.`,
     color: "from-[#36671E] to-[#295115]",
   },
 ];

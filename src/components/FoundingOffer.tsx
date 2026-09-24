@@ -24,8 +24,17 @@ import { SETUP_PLAN } from "@/lib/pricing";
  *
  * Set to false once the ten places are gone, and every mention disappears
  * together.
+ *
+ * OFF SINCE 2026-09-24: NO CHECKOUT CAN APPLY THE WAIVER. The banner said it
+ * is "applied at scope stage, before any payment is taken", but
+ * /api/checkout-subscription always adds the installation line on monthly
+ * and does not accept promotion codes, and /api/checkout charges the
+ * installation in full. An offer only a refund could honour is not an offer.
+ * To reopen it: add `allow_promotion_codes: true` to checkout-subscription,
+ * create a EUR 690 "once" coupon + code in Stripe, reword the banner to
+ * "applied by us, with a code we send you", then flip this back.
  */
-export const FOUNDING_PLACES_OPEN = true;
+export const FOUNDING_PLACES_OPEN = false;
 export const FOUNDING_PLACES = 10;
 
 export default function FoundingOffer({ lang = "en" }: { lang?: "en" | "fr" }) {

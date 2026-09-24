@@ -135,6 +135,33 @@ test("a Business client's mailbox is owed until their domain publishes MX, and l
   assert.ok(today.includes("hostingMailboxOwed(h, hostMail.get(h.id))") && today.includes('kind: "hosting-mailbox-owed"'));
 });
 
+/* ── 5. EUR plans: timing, plan moves, the founding offer ───────────────── */
+
+test("the EUR plan copy says what the checkout does: 7 days after payment, moves made by hand", () => {
+  const route = src("src/app/api/checkout-subscription/route.ts");
+  assert.ok(/const DELIVERY_TRIAL_DAYS = 7;/.test(route) && /trial_period_days: DELIVERY_TRIAL_DAYS/.test(route), "the fixed 7-day trial this copy describes");
+  const pages = [
+    "src/components/CarePlansSection.tsx", "src/app/pricing/page.tsx", "src/app/fr/tarifs/page.tsx", "src/app/how-it-works/page.tsx",
+    "src/app/fr/comment-ca-marche/page.tsx", "src/app/page.tsx", "src/components/FrenchHome.tsx", "src/app/legal/refund/page.tsx",
+    "src/app/fr/legal/remboursement/page.tsx", "src/app/api/chat/route.ts", "src/lib/scopeDocument.ts", "src/app/api/checkout-subscription/route.ts",
+  ];
+  const claims = [/simply move you/i, /simplement passer/i, /passez simplement/i, /starts? (the day|when) you go live/i, /begins once the site is live/i,
+    /plan simply starts/i, /démarre (simplement )?(à|le jour de) la mise en ligne/i, /Une fois en ligne, votre abonnement/i, /Once you're live, your monthly plan/i,
+    /never charged for work you haven/i, /jamais facturé pour un travail/i, /, à la mise en ligne`/];
+  const bad = [];
+  for (const f of pages) {
+    const code = src(f).replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+    for (const c of claims) if (c.test(code)) bad.push(`${f}: ${c}`);
+  }
+  assert.deepEqual(bad, []);
+});
+
+test("the founding waiver is only offered when a checkout can apply it", () => {
+  const open = /export const FOUNDING_PLACES_OPEN = true;/.test(src("src/components/FoundingOffer.tsx"));
+  const codes = /allow_promotion_codes: true/.test(src("src/app/api/checkout-subscription/route.ts"));
+  assert.ok(!open || codes, "FOUNDING_PLACES_OPEN needs promotion codes on /api/checkout-subscription");
+});
+
 /* ── 4. no uptime monitor is promised for a client's site ──────────────── */
 
 test("nothing tells a hosting client they hear about downtime from us first", () => {

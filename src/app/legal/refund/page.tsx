@@ -41,7 +41,7 @@ export default function RefundPolicyPage() {
             </div>
             <div>
               <h2 className="text-lg font-black text-[#18181B] mb-3">4. Delivery day</h2>
-              <p>Nothing is owed on delivery day — there is no balance payment. Once your site is live and you&apos;ve reviewed and approved it, your monthly plan simply starts. You are never charged for work you haven&apos;t approved.</p>
+              <p>Nothing is owed on delivery day — there is no balance payment. On monthly billing, your plan&apos;s first charge is 7 days after your payment, the length of the build; on annual billing, the year is paid up front at checkout.</p>
             </div>
             <div>
               <h2 className="text-lg font-black text-[#18181B] mb-3">5. Monthly plans</h2>

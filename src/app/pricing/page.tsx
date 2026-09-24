@@ -31,7 +31,9 @@ const process = [
   { num: "02", title: "Scope in writing", desc: "Your full scope is written down and waiting in your portal before we build a thing." },
   { num: "03", title: "€690 installation", desc: "Pay the installation via Stripe to start — waived if you pay the first year up front." },
   { num: "04", title: "We build", desc: "7-day build. Your first draft by email within minutes, then progress at every step." },
-  { num: "05", title: "Review + launch", desc: "You review, approve, and your monthly plan starts. We go live and hand over everything." },
+  /* The plan's clock is the checkout's (checkout-subscription: a fixed
+     7-day trial on monthly), not the approval — so this step says so. */
+  { num: "05", title: "Review + launch", desc: "You review and approve; we go live and hand over everything. On monthly billing your plan's first charge is 7 days after you paid; on annual, the year is already paid." },
 ];
 
 // Live capacity is read per request — the scarcity line must never be stale.
@@ -201,7 +203,7 @@ export default async function PricingPage() {
               { q: "Are there any hidden fees?", a: "Never. The price quoted is the price you pay. Third-party tools (hosting, domain, Stripe fees) are extra and disclosed upfront. Our service fee has no surprises." },
               { q: "Do you offer refunds?", a: "If we miss the agreed delivery deadline, we refund 10% per day of delay, up to 50% of the installation. If we fail to deliver at all, the installation is refunded in full. See our full refund policy in the CGV." },
               { q: "Does the AI receptionist give medical advice?", a: "Never. It answers on your hours, services, pricing and how to reach you, takes the message and alerts you. Anything clinical is handed straight back to you, and a stated emergency is flagged immediately with an instruction to call. You review and approve what it is allowed to say before it goes live." },
-              { q: "Can I change plan later?", a: "Any time, up or down. If you go over your included conversations we simply move you to the next plan — you never get a surprise overage bill." },
+              { q: "Can I change plan later?", a: "Any time, up or down. If you go over your included conversations we move you to the next plan ourselves, after telling you first — you never get a surprise overage bill." },
             ].map((f, i) => (
               <div key={i} className="bg-white rounded-xl border border-[#E8E6E0] p-5 shadow-sm">
                 <h3 className="font-bold text-[#18181B] text-sm mb-2">{f.q}</h3>
@@ -217,7 +219,7 @@ export default async function PricingPage() {
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-3xl font-black text-[#18181B] mb-4">Not sure which plan?</h2>
           <p className="text-[#52525B] mb-6 leading-relaxed">
-            Get a free audit first. We'll recommend the right system based on your business, budget, and goals — no pressure.
+            Get a free audit first. We&apos;ll recommend the right system based on your business, budget, and goals — no pressure.
           </p>
           <Link href="/contact" className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl bg-gradient-to-r from-[#36671E] to-[#295115] text-[#FAFAF7] font-bold hover:opacity-90 transition-opacity glow-button">
             Get Free Audit <ArrowRight className="w-4 h-4" />

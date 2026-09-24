@@ -23,7 +23,7 @@ import { SETUP_PLAN, PLANS, PLAN_ORDER, POPULAR_PLAN_KEY } from "@/lib/pricing";
 const BLURBS: Record<string, string> = {
   essentiel: "Site pro + assistante IA — pour ne plus perdre une demande, même la nuit.",
   croissance: "Tout Essentiel, avec trois fois plus de conversations — pour 2 à 3 praticiens.",
-  performance: "800 conversations par mois pour le trafic publicitaire, support prioritaire.",
+  performance: "800 conversations par mois pour le trafic publicitaire, vos demandes traitées en premier et un point stratégique chaque trimestre, planifié avec vous.",
 };
 
 const packages = PLAN_ORDER.map((k) => ({
@@ -174,7 +174,7 @@ export default async function FrGeoPage({ params }: { params: Promise<{ niche: s
             </p>
             <p className="text-[#18181B] text-base leading-relaxed">{c.hook}</p>
             <p className="text-[#52525B] text-sm leading-relaxed mt-3">
-              Le problème n°1 des {n.labelPlural} {c.nameWithArticle} : {n.problemSlug}. C'est exactement ce qu'un site + assistant IA Servolia règle.
+              Le problème n°1 des {n.labelPlural} {c.nameWithArticle} : {n.problemSlug}. C&apos;est exactement ce qu&apos;un site + assistant IA Servolia règle.
             </p>
           </div>
         </div>
@@ -277,7 +277,7 @@ export default async function FrGeoPage({ params }: { params: Promise<{ niche: s
       <section className="py-16 bg-[#FAFAF7]">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-3xl font-black text-[#18181B] mb-4">
-            Prêt à remplir l'agenda de votre {n.labelSingular} {c.nameWithArticle} ?
+            Prêt à remplir l&apos;agenda de votre {n.labelSingular} {c.nameWithArticle} ?
           </h2>
           <p className="text-[#52525B] mb-6">
             Recevez un audit gratuit personnalisé. On regarde votre présence en ligne actuelle et on vous montre ce qui manque — sans appel obligatoire.

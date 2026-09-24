@@ -14,8 +14,8 @@ export const maxDuration = 60;
  * up front, then a flat subscription. The route keeps its path so the
  * vercel.json cron entry stays valid; only the overage watch remains.)
  *
- * Backs the pricing page's promise "go over and we simply move you up a plan —
- * never a surprise bill". For each active flat-plan client it counts last
+ * Backs the pricing page's promise "go over and we move you up a plan
+ * ourselves, after telling you first — never a surprise bill". For each active flat-plan client it counts last
  * month's AI conversations against the plan's included volume and pings
  * Telegram when someone is over. Deliberately operator-in-loop rather than
  * auto-charging: the client's card must never move without a human deciding

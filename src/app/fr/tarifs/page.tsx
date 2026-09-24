@@ -30,7 +30,7 @@ const processus = [
   { num: "02", title: "Validation du périmètre", desc: "Nous rédigeons le périmètre complet par écrit. Vous relisez et validez." },
   { num: "03", title: "Mise en place 690 €", desc: "Réglez la mise en place via Stripe pour lancer la production — offerte si vous payez la première année." },
   { num: "04", title: "Nous construisons", desc: "7 jours de production. Votre première version par email en quelques minutes, puis l'avancement à chaque étape." },
-  { num: "05", title: "Validation + mise en ligne", desc: "Vous validez et votre formule mensuelle démarre. Nous mettons en ligne et vous remettons tout." },
+  { num: "05", title: "Validation + mise en ligne", desc: "Vous validez ; nous mettons en ligne et vous remettons tout. En mensuel, le premier prélèvement de votre formule a lieu 7 jours après votre paiement ; en annuel, l'année est déjà réglée." },
 ];
 
 const faqs = [
@@ -38,7 +38,7 @@ const faqs = [
   { q: "Y a-t-il des frais cachés ?", a: "Jamais. Le prix annoncé est le prix payé. Les outils tiers (hébergement, domaine, frais Stripe) sont en supplément et annoncés dès le départ. Nos honoraires ne réservent aucune surprise." },
   { q: "Proposez-vous des remboursements ?", a: "Si nous manquons la date de livraison convenue, nous remboursons 10 % par jour de retard, jusqu'à 50 % de la mise en place. Si nous ne livrons pas du tout, remboursement intégral de la mise en place. Voir la politique complète dans les CGV." },
   { q: "L'assistante IA donne-t-elle des conseils médicaux ?", a: "Jamais. Elle répond sur vos horaires, vos prestations, vos tarifs et l'accès au cabinet, prend le message et vous alerte. Toute question clinique est renvoyée vers vous, et une urgence déclarée est signalée immédiatement avec la consigne d'appeler. Vous relisez et validez ce qu'elle sait dire avant la mise en ligne." },
-  { q: "Puis-je changer de formule ?", a: "À tout moment, vers le haut comme vers le bas. Si vous dépassez vos conversations incluses, nous vous faisons simplement passer à la formule au-dessus — jamais de facture surprise." },
+  { q: "Puis-je changer de formule ?", a: "À tout moment, vers le haut comme vers le bas. Si vous dépassez vos conversations incluses, nous vous passons nous-mêmes à la formule au-dessus, après vous avoir prévenu — jamais de facture surprise." },
 ];
 
 // La capacité est lue à chaque requête — la rareté affichée ne doit jamais
@@ -63,7 +63,7 @@ export default async function FrenchPricingPage() {
             Le prix est convenu par écrit avant de commencer. Mise en place via Stripe, puis votre formule mensuelle. Si un seul client récupéré par mois couvre le système, le calcul est vite fait.
           </p>
           <div className="flex flex-wrap justify-center gap-6 text-sm text-[#52525B]">
-            <span className="flex items-center gap-1.5"><Clock className="w-4 h-4 text-[#36671E]" /> Livraison en 7 jours ou 10 % remboursés/jour (jusqu'à 50 %)</span>
+            <span className="flex items-center gap-1.5"><Clock className="w-4 h-4 text-[#36671E]" /> Livraison en 7 jours ou 10 % remboursés/jour (jusqu&apos;à 50 %)</span>
             <span className="flex items-center gap-1.5"><Lock className="w-4 h-4 text-[#36671E]" /> Prix fixe par écrit</span>
             <span className="flex items-center gap-1.5"><Shield className="w-4 h-4 text-[#36671E]" /> Paiement sécurisé Stripe</span>
           </div>
@@ -199,7 +199,7 @@ export default async function FrenchPricingPage() {
             <h2 className="text-2xl font-black text-[#18181B] mb-3">La garantie de livraison Servolia</h2>
             <p className="text-[#52525B] text-sm leading-relaxed max-w-xl mx-auto">
               Si nous manquons la date de livraison convenue par notre faute, vous récupérez{" "}
-              <strong className="text-[#18181B]">10 % de la mise en place par jour de retard, jusqu'à 50 %</strong> — automatiquement.
+              <strong className="text-[#18181B]">10 % de la mise en place par jour de retard, jusqu&apos;à 50 %</strong> — automatiquement.
               Prix fixe par écrit avant tout paiement. Tous les fichiers vous appartiennent au paiement final.
             </p>
           </div>

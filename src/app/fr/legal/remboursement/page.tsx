@@ -49,7 +49,7 @@ export default function RemboursementPage() {
             </div>
             <div>
               <h2 className="text-lg font-black text-[#18181B] mb-3">4. Le jour de la livraison</h2>
-              <p>Rien n&apos;est dû le jour de la livraison : il n&apos;y a pas de solde à régler. Une fois votre site en ligne, relu et validé par vos soins, votre abonnement mensuel démarre simplement. Vous n&apos;êtes jamais facturé pour un travail que vous n&apos;avez pas approuvé.</p>
+              <p>Rien n&apos;est dû le jour de la livraison : il n&apos;y a pas de solde à régler. En paiement mensuel, le premier prélèvement de votre abonnement a lieu 7 jours après votre paiement, la durée de la construction ; en paiement annuel, l&apos;année est réglée d&apos;avance lors du paiement.</p>
             </div>
             <div>
               <h2 className="text-lg font-black text-[#18181B] mb-3">5. Abonnements mensuels</h2>
