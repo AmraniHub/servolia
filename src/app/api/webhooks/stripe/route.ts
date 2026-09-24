@@ -36,6 +36,8 @@ import { TOPUP_PACKS, monthKey, writeTopup } from "@/lib/conversationCap";
 import { topupReceiptEmail, oneOffServicePaidEmail, receptionistPaidEmail } from "@/lib/email";
 import { completeReceptionistPurchase, loadReceptionist } from "@/lib/receptionistTrial";
 import { startBuildFromIntake } from "@/lib/intakeBuild";
+import { stripeFor } from "@/lib/stripeMode";
+import { runAsTest, inTestContext, testTag, testPrefixed, excludeTest, isTestRow } from "@/lib/testContext";
 
 export const runtime = "nodejs";
 // A subscriber whose intake beat this event has their draft generated after
@@ -51,6 +53,14 @@ export const maxDuration = 120;
  *   3. Events: checkout.session.completed, customer.subscription.deleted,
  *              invoice.payment_failed, invoice.paid, invoice.payment_succeeded
  *   4. Copy "Signing secret" → STRIPE_WEBHOOK_SECRET env var
+ *
+ * FOUNDER TEST MODE (src/lib/testMode.ts): a SECOND endpoint, created in
+ * Stripe's TEST mode at the same URL with the same events, signs with
+ * STRIPE_TEST_WEBHOOK_SECRET. Events verified with that secret are handled
+ * like live ones, inside runAsTest(true): every row written is tagged
+ * is_test, alerts say "TEST —", and nothing real happens (no domain bought,
+ * no client repository touched, no Meta conversion). Without that secret a
+ * test-mode event is acknowledged and ignored, exactly as before.
  */
 
 const GRACE_DAYS = 14; // Vercel-style: banner immediately, hard suspend after this many days.
@@ -67,11 +77,28 @@ export async function POST(req: NextRequest) {
   if (!sig) return NextResponse.json({ error: "No signature" }, { status: 400 });
 
   let event: Stripe.Event;
+  let signedByTestEndpoint = false;
   try {
     const body = await req.text();
-    event = stripe.webhooks.constructEvent(body, sig, whSecret);
+    try {
+      event = stripe.webhooks.constructEvent(body, sig, whSecret);
+    } catch (liveErr) {
+      /* Not the live endpoint's signature. The founder's TEST-mode endpoint
+         signs with its own secret; only that secret is tried, and only when
+         it is configured — otherwise this is the same rejection as before. */
+      const testSecret = process.env.STRIPE_TEST_WEBHOOK_SECRET;
+      if (!testSecret) throw liveErr;
+      event = stripe.webhooks.constructEvent(body, sig, testSecret);
+      signedByTestEndpoint = true;
+    }
   } catch (err) {
     console.error("Webhook signature verification failed:", err);
+    return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
+  }
+
+  // Stripe's test endpoint never sends a live event: one that claims to be
+  // live under the test secret is not from Stripe.
+  if (signedByTestEndpoint && event.livemode) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
 
@@ -83,14 +110,66 @@ export async function POST(req: NextRequest) {
   // leads, builds or clients behind: a dashboard showing invented pipeline is
   // worse than an empty one, because you start trusting it. Acknowledged with
   // 200 so Stripe does not retry.
-  if (!event.livemode) {
+  //
+  // FOUNDER TEST MODE is the one exception: an event signed by the test
+  // endpoint's own secret was started from the admin's test browser, and is
+  // handled below — tagged, excluded from every number, and kept away from
+  // anything real.
+  if (!event.livemode && !signedByTestEndpoint) {
     console.info(`[stripe] test-mode ${event.type} acknowledged — no CRM rows written`);
     return NextResponse.json({ received: true, testMode: true, skipped: "crm-writes" });
+  }
+
+  let modeStripe = stripe;
+  if (!event.livemode) {
+    const testStripe = stripeFor(false);
+    if (!testStripe) {
+      console.info(`[stripe] test-mode ${event.type} acknowledged — STRIPE_TEST_SECRET_KEY missing`);
+      return NextResponse.json({ received: true, testMode: true, skipped: "no-test-key" });
+    }
+    modeStripe = testStripe;
   }
 
   const db = supabaseAdmin();
   if (!db) return NextResponse.json({ received: true });
 
+  /* NEVER A TEST ROW UNTAGGED. Until supabase/2026-09-24-test-mode.sql has
+     been run there is no is_test column to tag with, so a test event is
+     refused whole — before anything is written — and the founder is told. */
+  if (!event.livemode) {
+    const missing: string[] = [];
+    for (const table of TEST_TABLES) {
+      const { error } = await db.from(table).select("is_test").limit(1);
+      if (error) missing.push(`${table}: ${error.message}`);
+    }
+    if (missing.length) {
+      console.error("[stripe] test event refused — is_test not readable:", missing.join("; "));
+      await sendTelegramMessage(
+        `TEST MODE: run supabase/2026-09-24-test-mode.sql first.\n` +
+        `A test ${event.type} (${event.id}) was refused and nothing was written: ${missing.join("; ")}\n` +
+        `After running it, resend the event from Stripe (test mode > Developers > Events).`,
+        undefined, { plain: true },
+      ).catch(() => {});
+      return NextResponse.json({ received: true, testMode: true, refused: "is_test column missing" });
+    }
+  }
+
+  return runAsTest(!event.livemode, () => handleEvent(event, modeStripe, db));
+}
+
+/** The tables a purchase writes that carry the is_test tag. */
+const TEST_TABLES = ["clients", "builds", "hosting_clients", "leads"] as const;
+
+type Db = NonNullable<ReturnType<typeof supabaseAdmin>>;
+
+/**
+ * Everything after verification. `stripe` is the client for THIS event's
+ * mode (live key for live events, test key for founder test events), so an
+ * id read here is read in the mode it was created in. Runs inside
+ * runAsTest(!event.livemode): see src/lib/testContext.ts.
+ */
+async function handleEvent(event: Stripe.Event, stripe: Stripe, db: Db): Promise<NextResponse> {
+  const test = inTestContext();
   try {
     if (event.type === "checkout.session.completed") {
       const session = event.data.object as Stripe.Checkout.Session;
@@ -172,9 +251,13 @@ export async function POST(req: NextRequest) {
            the normal shape for a client the operator set up in advance. */
         let hostRow: { id: string; notes: string | null } | null = known ?? null;
         if (!hostRow && customerEmail) {
-          const { data: pre } = await db.from("hosting_clients")
+          let preQ = db.from("hosting_clients")
             .select("id, notes")
-            .ilike("email", customerEmail).eq("plan", planKey).is("subscription_id", null)
+            .ilike("email", customerEmail).eq("plan", planKey).is("subscription_id", null);
+          // A test purchase may only ever complete a TEST row, never a real
+          // client's pre-created one.
+          if (test) preQ = preQ.eq("is_test", true);
+          const { data: pre } = await preQ
             .order("created_at", { ascending: false }).limit(1).maybeSingle();
           if (pre) hostRow = pre;
         }
@@ -194,6 +277,7 @@ export async function POST(req: NextRequest) {
           status: "active",
           customer_id: (session.customer as string) ?? null,
           subscription_id: subId,
+          ...testTag(),
         };
         if (hostRow) {
           /* Only overwrite what the payment actually knows. A pre-created
@@ -232,7 +316,8 @@ export async function POST(req: NextRequest) {
          * returns false when the file already said what we wanted, so a client
          * who was never suspended is not told they were just reinstated. */
         let restored = false;
-        if (session.metadata?.gate_widget && session.metadata?.repo) {
+        // Never on a test purchase: the gate lives in a real client's repo.
+        if (session.metadata?.gate_widget && session.metadata?.repo && !test) {
           restored = await setShopifyGate(
             {
               repo: session.metadata.repo,
@@ -268,7 +353,7 @@ export async function POST(req: NextRequest) {
          * is awaited and loud on failure for the same reasons. A site that
          * was never gated comes back changed=false and is left alone. */
         let activated = false;
-        if (isTier && hostRef?.repo && !hostRef.gateWidget) {
+        if (isTier && hostRef?.repo && !hostRef.gateWidget && !test) {
           const outcome = await applyGate(
             { repo: hostRef.repo, branch: hostRef.branch, siteRoot: hostRef.siteRoot ?? null, gateWidget: null },
             false,
@@ -298,7 +383,9 @@ export async function POST(req: NextRequest) {
         let assistantInstalled = false;
         let assistantDetail: string | null = null;
         const assistantSlug = isAssistant ? assistantSlugFor(session.metadata?.ref, session.metadata?.business) : "";
-        if (isAssistant && hostRef?.repo && !hostRef.gateWidget) {
+        if (isAssistant && test) {
+          assistantDetail = "TEST: not committed to the client's site";
+        } else if (isAssistant && hostRef?.repo && !hostRef.gateWidget) {
           const brief = ASSISTANT_SITES[assistantSlug];
           const outcome = await installAssistantTag(
             { repo: hostRef.repo, branch: hostRef.branch, siteRoot: hostRef.siteRoot ?? null },
@@ -340,7 +427,12 @@ export async function POST(req: NextRequest) {
           domainBought = true;
         } else if (domainWanted) {
           const retail = Number(session.metadata?.domain_retail_usd ?? 0);
-          const outcome = await purchaseDomainForClient(domainWanted, retail);
+          /* A test purchase never buys a domain: the name is recorded as
+             pending with the note "TEST: domain not bought", and nobody is
+             alerted to buy it by hand. */
+          const outcome = test
+            ? { ok: false as const, reason: "error" as const, detail: "TEST: domain not bought" }
+            : await purchaseDomainForClient(domainWanted, retail);
           domainBought = outcome.ok;
           if (hostRow?.id) {
             const { data: fresh } = await db.from("hosting_clients").select("notes").eq("id", hostRow.id).maybeSingle();
@@ -361,7 +453,7 @@ export async function POST(req: NextRequest) {
             await db.from("hosting_clients").update({ site_url: `https://${domainWanted}`, notes }).eq("id", hostRow.id);
             hostRow = { ...hostRow, notes };
           }
-          if (!outcome.ok) {
+          if (!outcome.ok && !test) {
             console.error("[stripe] domain purchase failed:", domainWanted, outcome.reason, outcome.detail);
             sendTelegramMessage(
               [
@@ -500,7 +592,7 @@ export async function POST(req: NextRequest) {
                       `\n[Open](${adminUrl})`;
           fetch(`https://api.telegram.org/bot${hostTgToken}/sendMessage`, {
             method: "POST", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ chat_id: hostTgChatId, text: msg, parse_mode: "Markdown" }),
+            body: JSON.stringify({ chat_id: hostTgChatId, text: testPrefixed(msg), parse_mode: "Markdown" }),
           }).catch(() => {});
         }
 
@@ -559,7 +651,10 @@ export async function POST(req: NextRequest) {
           const notes = (row as { notes?: string | null } | null)?.notes ?? null;
 
           if (row && !hasExtraDomain(notes, domain)) {
-            const outcome = await purchaseDomainForClient(domain, retail);
+            // Never bought on a test purchase (recorded as failed: TEST).
+            const outcome = test
+              ? { ok: false as const, reason: "TEST: domain not bought" }
+              : await purchaseDomainForClient(domain, retail);
             const next = new Date(Date.now() + 365 * 86400000).toISOString().slice(0, 10);
             const rec = outcome.ok
               ? { domain, retailUsd: retail, orderId: outcome.orderId, boughtAt: new Date().toISOString().slice(0, 10), nextChargeAt: next }
@@ -632,7 +727,7 @@ export async function POST(req: NextRequest) {
           const msg = `💵 *Arrears settled — $${amount}*\n${siteLabel || "unnamed site"}\n${customerEmail ?? "no email"}`;
           fetch(`https://api.telegram.org/bot${tgToken}/sendMessage`, {
             method: "POST", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ chat_id: tgChatId, text: msg, parse_mode: "Markdown" }),
+            body: JSON.stringify({ chat_id: tgChatId, text: testPrefixed(msg), parse_mode: "Markdown" }),
           }).catch(() => {});
         }
 
@@ -761,10 +856,16 @@ export async function POST(req: NextRequest) {
              plan. Decided by ownership, never by status: status alone opened
              a second, empty build for a scope client whose site was already
              built. (Reviews of 2db729c, 2026-09-24.) */
-          const { data: candidates } = await db.from("builds")
-            .select("id, status, checkout_session_id, deposit_paid")
-            .in("email", Array.from(new Set([customerEmail, customerEmail.toLowerCase()])))
-            .order("created_at", { ascending: false }).limit(5);
+          /* Test and live never share a build: a test purchase adopts only a
+             test build, and a live one never adopts a test build (is_test is
+             not true — every pre-existing row qualifies, as before). */
+          const { data: candidates } = await excludeTest((live) => {
+            const q = db.from("builds")
+              .select("id, status, checkout_session_id, deposit_paid")
+              .in("email", Array.from(new Set([customerEmail, customerEmail.toLowerCase()])));
+            return (test ? q.eq("is_test", true) : live(q))
+              .order("created_at", { ascending: false }).limit(5);
+          });
           for (const c of (candidates ?? []) as { id: string; status: string; checkout_session_id: string | null; deposit_paid: number | null }[]) {
             const { data: owner } = await db.from("clients")
               .select("id").eq("build_id", c.id).limit(1).maybeSingle();
@@ -792,6 +893,7 @@ export async function POST(req: NextRequest) {
               status: "intake",
               customer_id: (session.customer as string) ?? null,
               checkout_session_id: session.id,
+              ...testTag(),
             }).select("id").single();
             // A paid client with no build is the failure this branch exists to
             // prevent: answer 500 so Stripe delivers the event again.
@@ -819,6 +921,7 @@ export async function POST(req: NextRequest) {
           status: "active",
           customer_id: (session.customer as string) ?? null,
           subscription_id: subscriptionId,
+          ...testTag(),
         }).select("id").single();
         if (clientErr || !client) {
           // Undo our own build so a retry starts clean.
@@ -866,10 +969,12 @@ export async function POST(req: NextRequest) {
         // already does this; this (the main path) didn't, so paying
         // clients sat in awaiting_response and polluted every funnel number.
         if (customerEmail) {
-          await db.from("leads")
+          const moved = db.from("leads")
             .update({ stage: "deposit_paid" })
             .eq("email", customerEmail)
             .in("stage", ["new", "audit_sent", "qualified"]);
+          // A test purchase moves only test leads.
+          await (test ? moved.eq("is_test", true) : moved);
         }
 
         /* The plan checkout charges the installation on every monthly purchase; a
@@ -893,7 +998,7 @@ export async function POST(req: NextRequest) {
           fetch(`https://api.telegram.org/bot${tgToken}/sendMessage`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ chat_id: tgChatId, text: msg, parse_mode: "Markdown" }),
+            body: JSON.stringify({ chat_id: tgChatId, text: testPrefixed(msg), parse_mode: "Markdown" }),
           }).catch(() => {});
         }
 
@@ -922,8 +1027,10 @@ export async function POST(req: NextRequest) {
         let credited = false;
         let business = customerEmail;
         if (customerEmail && conversations > 0) {
-          const { data: row } = await db.from("clients").select("id, business, notes")
-            .ilike("email", customerEmail).in("status", ["active", "past_due", "paused"])
+          const rowQ = db.from("clients").select("id, business, notes")
+            .ilike("email", customerEmail).in("status", ["active", "past_due", "paused"]);
+          // A test pack is credited only to a test client.
+          const { data: row } = await (test ? rowQ.eq("is_test", true) : rowQ)
             .order("created_at", { ascending: false }).limit(1).maybeSingle();
           const c = row as { id: string; business: string; notes: string | null } | null;
           if (c) {
@@ -957,7 +1064,8 @@ export async function POST(req: NextRequest) {
       if (session.metadata?.kind === "custom_request") {
         const requestId = session.metadata?.requestId;
         const amount = (session.amount_total ?? 0) / 100;
-        if (requestId) {
+        // A test payment marks a request paid only on a TEST build.
+        if (requestId && (!test || await isTestRow(db, "builds", session.metadata?.buildId ?? ""))) {
           try {
             await db.from("custom_requests")
               .update({ status: "paid", paid_at: new Date().toISOString() })
@@ -971,7 +1079,7 @@ export async function POST(req: NextRequest) {
             (session.metadata?.buildId ? `\n\n[Open build](https://servolia.com/admin/builds/${session.metadata.buildId})` : "");
           fetch(`https://api.telegram.org/bot${tgToken}/sendMessage`, {
             method: "POST", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ chat_id: tgChatId, text: msg, parse_mode: "Markdown" }),
+            body: JSON.stringify({ chat_id: tgChatId, text: testPrefixed(msg), parse_mode: "Markdown" }),
           }).catch(() => {});
         }
         return NextResponse.json({ received: true });
@@ -1011,6 +1119,7 @@ export async function POST(req: NextRequest) {
             stage: "deposit_paid",       // they have paid — this is not a guess
             plan_interest: planMeta,
             value_estimate: estimateLeadValue(null, planMeta),
+            ...testTag(),
           }).select("id").single();
           leadId = (newLead as { id: string } | null)?.id ?? null;
         }
@@ -1029,6 +1138,7 @@ export async function POST(req: NextRequest) {
           status: "intake",
           checkout_session_id: sessionId,
           customer_id: (session.customer as string) ?? null,
+          ...testTag(),
         }).select("*").single();
         build = newBuild;
       } else {
@@ -1096,7 +1206,7 @@ export async function POST(req: NextRequest) {
         fetch(`https://api.telegram.org/bot${tgToken}/sendMessage`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ chat_id: tgChatId, text: msg, parse_mode: "Markdown" }),
+          body: JSON.stringify({ chat_id: tgChatId, text: testPrefixed(msg), parse_mode: "Markdown" }),
         }).catch(() => {});
       }
     }
@@ -1146,7 +1256,7 @@ export async function POST(req: NextRequest) {
             const biz = (b?.business as string | null) ?? "";
             if (biz && biz !== "Pending intake" && !biz.includes("@")) siteLabel = biz;
           }
-          const portalUrl = await billingPortalUrl(subscriptionId, { locale: lang, returnUrl: "https://servolia.com/portal" });
+          const portalUrl = await billingPortalUrl(subscriptionId, { locale: lang, returnUrl: "https://servolia.com/portal", livemode: event.livemode });
           const tpl = paymentFailedEmail({
             productName: `Servolia ${plan ? (lang === "fr" ? plan.nameFr : plan.name) : ""}`.trim(),
             productNoun: lang === "fr" ? "abonnement" : "plan",
@@ -1167,7 +1277,7 @@ export async function POST(req: NextRequest) {
           const msg = `🔴 *Payment failed*\n${existing.business ?? existing.email ?? "Unknown client"}\nGrace ends: ${new Date(suspendAt).toLocaleDateString()}\n${told}\n\n[Open in CRM](https://servolia.com/admin/clients)`;
           fetch(`https://api.telegram.org/bot${tgToken}/sendMessage`, {
             method: "POST", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ chat_id: tgChatId, text: msg, parse_mode: "Markdown" }),
+            body: JSON.stringify({ chat_id: tgChatId, text: testPrefixed(msg), parse_mode: "Markdown" }),
           }).catch(() => {});
         }
       }
@@ -1217,10 +1327,11 @@ export async function POST(req: NextRequest) {
            * dunning by machine gun. */
           if (!host.past_due_since && host.email && host.subscription_id) {
             const failedPlan = resolveHostingPlan(host.plan);
-            const ctx = await subscriptionContext(host.subscription_id);
+            const ctx = await subscriptionContext(host.subscription_id, event.livemode);
             const failLang = ctx?.lang ?? "en";
             const failCopy = failedPlan ? productCopy(failedPlan, failLang) : null;
             const portalUrl = await billingPortalUrl(host.subscription_id, {
+              livemode: event.livemode,
               locale: failLang,
               returnUrl: `https://servolia.com/hosting/billing?done=1${failLang === "fr" ? "&lang=fr" : ""}`,
             });
@@ -1247,7 +1358,7 @@ export async function POST(req: NextRequest) {
             const msg = `🔴 *Hosting payment failed*\n${host.business}\nGrace ends: ${new Date(suspendAt).toLocaleDateString()}\n\n[Open](https://servolia.com/admin/hosting)`;
             fetch(`https://api.telegram.org/bot${tgToken}/sendMessage`, {
               method: "POST", headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ chat_id: tgChatId, text: msg, parse_mode: "Markdown" }),
+              body: JSON.stringify({ chat_id: tgChatId, text: testPrefixed(msg), parse_mode: "Markdown" }),
             }).catch(() => {});
           }
         }
@@ -1300,8 +1411,9 @@ export async function POST(req: NextRequest) {
            gate on an add-on payment would switch on a website whose own
            hosting may still be unpaid. */
         const wasTier = HOSTING_TIERS.includes(String(wasHost?.plan ?? "").toLowerCase());
-        if (wasHost?.status === "suspended" && wasHost.subscription_id && wasTier) {
-          const ctx = await subscriptionContext(wasHost.subscription_id);
+        // Never on a test event: lifting a gate commits to a real client repo.
+        if (wasHost?.status === "suspended" && wasHost.subscription_id && wasTier && !test) {
+          const ctx = await subscriptionContext(wasHost.subscription_id, event.livemode);
           const ref = clientRefFor(ctx?.ref);
           const outcome = await applyGate(
             {
@@ -1350,7 +1462,7 @@ export async function POST(req: NextRequest) {
        * theirs until it expires, and a transfer is theirs for the asking;
        * what ends is us paying Vercel every year for a client who left. */
       const churnedDomain = readDomainRecord(churnedHost?.notes);
-      if (churnedDomain?.status === "bought") {
+      if (churnedDomain?.status === "bought" && !test) {
         const res = await setDomainAutoRenew(churnedDomain.domain, false);
         sendTelegramMessage(
           `Hosting cancelled - ${churnedHost?.business ?? "client"}\n` +
@@ -1369,7 +1481,7 @@ export async function POST(req: NextRequest) {
         fetch(`https://api.telegram.org/bot${tgToken}/sendMessage`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ chat_id: tgChatId, text: msg, parse_mode: "Markdown" }),
+          body: JSON.stringify({ chat_id: tgChatId, text: testPrefixed(msg), parse_mode: "Markdown" }),
         }).catch(() => {});
       }
     }

@@ -14,6 +14,7 @@
 
 import { createHash } from "crypto";
 import type { NextRequest } from "next/server";
+import { inTestContext } from "@/lib/testContext";
 
 const DEFAULT_PIXEL = "1394909005810177"; // Servolia Meta Pixel / dataset id
 
@@ -46,6 +47,9 @@ export function metaCapiConfigured(): boolean {
 
 /** Send a server-side conversion event to Meta. Fire-and-forget — never throws, never blocks callers. */
 export async function sendMetaCapiEvent(input: CapiEventInput): Promise<void> {
+  // Never for a founder test purchase (src/lib/testContext.ts): a fake buyer
+  // would train the ad account's optimisation on money that never moved.
+  if (inTestContext()) return;
   const token = input.accessToken ?? process.env.META_CAPI_ACCESS_TOKEN;
   const datasetId = input.pixelId ?? (process.env.NEXT_PUBLIC_META_PIXEL_ID || DEFAULT_PIXEL);
   if (!token || !datasetId) return;

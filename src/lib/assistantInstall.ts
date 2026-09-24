@@ -1,5 +1,6 @@
 import { withAssistantTag, hasAssistantTag } from "@/lib/assistant";
 import { sitePath } from "@/lib/hostingGate";
+import { inTestContext } from "@/lib/testContext";
 
 /**
  * PUT THE ASSISTANT ON A SITE WE HOST, WITHOUT A HUMAN IN THE LOOP.
@@ -36,6 +37,8 @@ export type InstallOutcome =
   | { ok: false; reason: "no-token" | "no-pages" | "error"; detail?: string };
 
 async function gh<T>(path: string, init: RequestInit = {}): Promise<T> {
+  // Founder test mode (src/lib/testContext.ts): no commit to a client repo.
+  if (inTestContext()) throw new Error("TEST: client repository not touched");
   const token = process.env.GH_TOKEN;
   if (!token) throw new Error("GH_TOKEN is not set");
   const res = await fetch(`${GITHUB_API}${path}`, {

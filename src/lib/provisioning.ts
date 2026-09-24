@@ -1,4 +1,5 @@
 import { ADDONS } from "@/lib/pricing";
+import { testPrefixed } from "@/lib/testContext";
 
 /**
  * Add-on provisioning dispatch.
@@ -77,7 +78,8 @@ async function notifyFounder(ctx: ProvisionContext, r: ProvisionResult): Promise
   const chatId = process.env.TELEGRAM_CHAT_ID;
   if (!token || !chatId) return;
   const icon = r.automated ? "✅" : "🧩";
-  const msg =
+  // "TEST — " first when a founder test purchase is being handled.
+  const msg = testPrefixed("") +
     `${icon} *Add-on ${r.automated ? "provisioned" : "to fulfil"}*\n` +
     `${ADDONS[ctx.addonKey]?.name ?? ctx.addonKey}${ctx.amountEur ? ` — €${ctx.amountEur}` : ""}\n` +
     `${ctx.email ?? "no email"}${ctx.siteSlug ? ` · ${ctx.siteSlug}` : ""}\n\n${r.message}`;

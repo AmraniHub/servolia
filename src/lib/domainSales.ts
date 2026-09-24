@@ -31,6 +31,8 @@
  * purchases wait for the operator.
  */
 
+import { inTestContext } from "@/lib/testContext";
+
 const API = "https://api.vercel.com";
 
 /** What Abdelali keeps per domain per year, after Stripe. */
@@ -104,6 +106,9 @@ export type ApiResult<T> =
 
 /** Exported for C2 (src/lib/siteDomain.ts): the same client, token and team. */
 export async function registrar<T>(path: string, init: RequestInit = {}): Promise<ApiResult<T>> {
+  // Founder test mode (src/lib/testContext.ts): no registrar call at all — a
+  // test purchase must never buy, renew or attach a real domain.
+  if (inTestContext()) return { ok: false, status: 0, code: "test_mode", message: "TEST: domain not bought" };
   const token = process.env.VERCEL_TOKEN;
   const team = process.env.VERCEL_TEAM_ID;
   if (!token || !team) return { ok: false, status: 0, code: "not_configured" };

@@ -19,6 +19,8 @@
  * Requires GH_TOKEN with contents:write on the client repo.
  */
 
+import { inTestContext } from "@/lib/testContext";
+
 const GITHUB_API = "https://api.github.com";
 
 export interface GateTarget {
@@ -52,6 +54,9 @@ function statusSource(suspended: boolean): string {
 }
 
 async function gh(path: string, init: RequestInit = {}) {
+  // Founder test mode (src/lib/testContext.ts): a test purchase never touches
+  // a client's repository, not even to read it.
+  if (inTestContext()) throw new Error("TEST: client repository not touched");
   const token = process.env.GH_TOKEN;
   if (!token) throw new Error("GH_TOKEN is not set");
   const res = await fetch(`${GITHUB_API}${path}`, {

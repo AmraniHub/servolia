@@ -5,6 +5,8 @@
  * that handles button taps.
  */
 
+import { testPrefixed } from "@/lib/testContext";
+
 export interface InlineButton {
   text: string;
   callback_data: string;
@@ -65,7 +67,9 @@ export async function sendTelegramMessage(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         chat_id: chatId,
-        text,
+        // "TEST — " in front while a founder test purchase is handled
+        // (src/lib/testContext.ts); unchanged otherwise.
+        text: testPrefixed(text),
         ...(opts?.plain === true ? {} : { parse_mode: "Markdown" }),
         disable_notification: opts?.silent === true,
         reply_markup: buttons ? { inline_keyboard: buttons } : undefined,

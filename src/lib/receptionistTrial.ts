@@ -43,6 +43,7 @@ import { slugify, getClientSite, type ClientSiteConfig, type ReceptionistState }
 import { probeBrand, fetchPublic, normalizeDomainInput, type BrandProbe } from "@/lib/brandProbe";
 import { conversationCount } from "@/lib/assistantAccess";
 import { resolvePlan, planAmountCents, SETUP_PLAN } from "@/lib/pricing";
+import { testTag } from "@/lib/testContext";
 
 export const RECEPTIONIST_TRIAL_DAYS = 7;
 /** The day-5 note: two days before the end. */
@@ -806,6 +807,7 @@ export async function completeReceptionistPurchase(a: {
     balance_due: 0,
     status: "live",
     customer_id: a.customerId,
+    ...testTag(), // is_test on a founder test purchase; nothing otherwise
   }).select("id").single();
   if (buildErr || !build) return { ok: false, reason: `build insert: ${buildErr?.message ?? "no row"}` };
   const buildId = (build as { id: string }).id;
@@ -819,6 +821,7 @@ export async function completeReceptionistPurchase(a: {
     status: "active",
     customer_id: a.customerId,
     subscription_id: a.subscriptionId,
+    ...testTag(),
   }).select("id").single();
   if (clientErr || !client) {
     await db.from("builds").delete().eq("id", buildId);
