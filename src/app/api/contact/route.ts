@@ -32,8 +32,14 @@ export async function POST(req: NextRequest) {
   /* Founder test mode (src/lib/testMode.ts): a form sent from the admin's
      test browser — the intake after a test purchase — writes a lead tagged
      is_test, its alert says TEST, and nothing goes to Meta or the Sheets
-     backup. Every other request runs exactly as before. */
-  return runAsTest(isTestRequest(req), () => handleContact(req));
+     backup. Every other request runs exactly as before.
+     A form carrying a LIVE Stripe session (cs_live_) is a real client's
+     intake -- say the founder fills it in for them from his own browser --
+     and always runs live: tagging it test would hide their lead, send their
+     draft email to the founder, and let the cleanup delete their answers. */
+  const peek = await req.clone().json().catch(() => null) as { sessionId?: unknown } | null;
+  const liveSession = String(peek?.sessionId ?? "").startsWith("cs_live_");
+  return runAsTest(isTestRequest(req) && !liveSession, () => handleContact(req));
 }
 
 async function handleContact(req: NextRequest) {

@@ -33,17 +33,16 @@ export async function POST(req: NextRequest) {
   if (!db) return same;
 
   /* `is_test is not true` (founder test rows are visible only to the
-     founder's own test browser), and the newest row rather than
-     maybeSingle(): two rows under one address made that error, and the
-     client silently got no link. */
+     founder's own test browser). maybeSingle() is kept ON PURPOSE: a client
+     with two monthly subscriptions under one address (hosting + the
+     assistant add-on) gets no link rather than one for whichever is newest --
+     exactly the live behaviour before test mode (owner's rule, 2026-09-24). */
   const { data: client } = await excludeTest(db, (live) => live(db
     .from("hosting_clients")
     .select("subscription_id, business, plan")
     .eq("email", email)
     .eq("billing_period", "monthly")
     .eq("status", "active"))
-    .order("created_at", { ascending: false })
-    .limit(1)
     .maybeSingle(), { keepTest: await founderTestBrowser() });
 
   if (!client?.subscription_id) return same;

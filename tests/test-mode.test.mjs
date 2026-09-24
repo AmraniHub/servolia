@@ -648,8 +648,13 @@ test("every number, list, cron and by-email lookup that must not see test rows e
     const count = (src(f).match(/excludeTest\(db, \((live|only)\) =>/g) ?? []).length;
     assert.ok(count >= n, `${f}: ${count} excluded queries, expected ${n}`);
   }
-  // The upgrade-link lookup no longer errors on two rows.
-  assert.doesNotMatch(src("src/app/api/hosting-upgrade/link/route.ts"), /\.eq\("status", "active"\)\n\s*\.maybeSingle\(\)/);
+  // A real client's intake (a cs_live_ session) always runs live, even from the founder's test browser.
+  assert.match(src("src/app/api/contact/route.ts"), /runAsTest\(isTestRequest\(req\) && !liveSession,/);
+  // The upgrade-link lookup keeps maybeSingle(): live behaviour exactly as
+  // before test mode (two monthly rows -> no link), by the owner's rule.
+  const upgrade = src("src/app/api/hosting-upgrade/link/route.ts");
+  assert.match(upgrade, /\.eq\("status", "active"\)\)\s*\.maybeSingle\(\)/);
+  assert.doesNotMatch(upgrade, /\.limit\(1\)/);
   assert.match(src("src/app/api/cron/monthly-report/route.ts"), /if \(siteRow\?\.build_id && testBuilds\.has\(siteRow\.build_id\)\) continue;/);
   assert.match(src("src/lib/conversationCap.ts"), /if \(level === 100 && !\(db && \(await isTestRow\(db, "clients", s\.clientId\)\)\)\)/);
   assert.match(src("src/app/admin/clients/page.tsx"), /const real = \(clients \?\? \[\]\)\.filter\(c => c\.is_test !== true\);/);
