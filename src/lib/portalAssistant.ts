@@ -1,5 +1,5 @@
 import { supabaseAdmin, type Build, type Client } from "@/lib/supabase";
-import { resolvePlan, PLANS, PLAN_ORDER, SETUP_PLAN, ADDONS } from "@/lib/pricing";
+import { resolvePlan, PLANS, PLAN_ORDER, SETUP_PLAN, SELLABLE_ADDONS } from "@/lib/pricing";
 import { complianceFor, monthKey } from "@/lib/zeroMiss";
 
 /**
@@ -110,7 +110,8 @@ export function buildAssistantPrompt(ctx: AssistantContext): string {
     const p = PLANS[k];
     return `${p.name}: €${p.monthlyEur}/mo, ${p.conversations} AI conversations/mo`;
   }).join(" | ");
-  const addons = Object.values(ADDONS)
+  // Only what is for sale: the assistant must not offer a retired add-on.
+  const addons = SELLABLE_ADDONS
     .map((a) => `${a.name} €${a.priceEur}/${a.interval}${a.includedFrom ? ` (included from ${a.includedFrom})` : ""}`)
     .join(" | ");
 

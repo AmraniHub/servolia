@@ -17,6 +17,7 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 
 const { CLIENT_PRODUCTS } = await import("../src/lib/hosting.ts");
+const { ADDONS, addonForSale } = await import("../src/lib/pricing.ts");
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const src = (p) => readFileSync(path.join(ROOT, p), "utf8");
@@ -65,4 +66,32 @@ test("the checkout sends a one-off buyer to the thanks page without setup=1", ()
   const route = src("src/app/api/hosting-checkout/route.ts");
   assert.ok(/: oneOff\s*\n\s*\? `\$\{origin\}\/hosting\/thanks\?product=\$\{hostingPlan\.key\}&lang=\$\{lang\}`/.test(route),
     "the one-off success_url must carry no setup/session flags");
+});
+
+/* ── 2. a retired add-on cannot be bought ──────────────────────────────── */
+
+test("the add-on checkout sells only what is available", () => {
+  for (const [key, a] of Object.entries(ADDONS)) {
+    const sale = addonForSale(key);
+    if (a.available === false) assert.deepEqual(sale, { error: "retired" }, `${key} is retired and must be refused`);
+    else assert.equal(sale.addon, a, `${key} is for sale`);
+  }
+  assert.deepEqual(addonForSale("sms"), { error: "retired" });
+  assert.deepEqual(addonForSale("reviews"), { error: "retired" });
+  assert.deepEqual(addonForSale("constructor"), { error: "unknown" }, "not Object's constructor");
+  assert.deepEqual(addonForSale(""), { error: "unknown" });
+  assert.deepEqual(addonForSale(undefined), { error: "unknown" });
+});
+
+test("the add-on route asks addonForSale and answers a retired add-on with a 4xx", () => {
+  const route = src("src/app/api/checkout-addon/route.ts");
+  assert.ok(route.includes("addonForSale(addon)"), "the route must go through addonForSale");
+  assert.ok(!/ADDONS\[/.test(route), "the route must not index ADDONS directly");
+  assert.ok(/status: 410/.test(route), "a retired add-on gets a clear 4xx");
+});
+
+test("neither the portal assistant nor the city pages offer a retired add-on", () => {
+  assert.ok(!/Object\.values\(ADDONS\)/.test(src("src/lib/portalAssistant.ts")), "the portal assistant lists SELLABLE_ADDONS");
+  assert.ok(!/avis Google/i.test(src("src/lib/content/frGeo.ts").replace(/hook: "[^"]*"/g, "")),
+    "no city-page answer says a plan includes Google reviews");
 });

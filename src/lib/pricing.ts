@@ -199,6 +199,21 @@ export const ADDONS: Record<string, AddOn> = {
 /** Every add-on that is actually for sale today. */
 export const SELLABLE_ADDONS = Object.values(ADDONS).filter((a) => a.available !== false);
 
+/**
+ * The add-on a checkout may charge for, or why it may not.
+ *
+ * Hiding a retired add-on from every page did not stop it being bought: the
+ * checkout route indexed ADDONS directly, so a stale portal tab or a hand-made
+ * POST for "sms" still opened a €19/month subscription that nothing performs.
+ * The route asks here instead. hasOwn, so `constructor` is unknown rather
+ * than Object's constructor with a NaN price.
+ */
+export function addonForSale(key?: string | null): { addon: AddOn } | { error: "unknown" | "retired" } {
+  if (!key || !Object.hasOwn(ADDONS, key)) return { error: "unknown" };
+  const addon = ADDONS[key];
+  return addon.available === false ? { error: "retired" } : { addon };
+}
+
 /** Add-ons still worth selling to a client on this plan — and only the ones
  *  that exist. */
 export function addonsFor(planKey?: string | null): AddOn[] {

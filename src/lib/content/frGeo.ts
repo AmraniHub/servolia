@@ -94,7 +94,7 @@ export const FR_GEO_NICHES: FrGeoNiche[] = [
       { q: `Que se passe-t-il si un patient pose une question médicale ?`,
         a: `L'assistante répond aux questions administratives (soins proposés, tarifs de base, horaires, préparation à un RDV) mais renvoie systématiquement vers un praticien pour tout diagnostic ou avis médical — RGPD-friendly et conforme au code de déontologie.` },
       { q: `Combien coûte un site + assistante IA pour cabinet dentaire ${c} ?`,
-        a: `Une mise en place unique de ${SETUP_PLAN.totalEur} € (site construit, IA entraînée sur vos soins, tout mis en ligne), puis une formule mensuelle : ${PLANS.essentiel.nameFr} ${PLANS.essentiel.monthlyEur} €/mois, ${PLANS.croissance.nameFr} ${PLANS.croissance.monthlyEur} €/mois (la plus choisie ${c} — elle ajoute le pipeline, les avis Google et le rapport mensuel), ${PLANS.performance.nameFr} ${PLANS.performance.monthlyEur} €/mois pour les cabinets à plusieurs praticiens. Rien n'est dû à la livraison, et en paiement annuel la mise en place est offerte avec deux mois gratuits.` },
+        a: `Une mise en place unique de ${SETUP_PLAN.totalEur} € (site construit, IA entraînée sur vos soins, tout mis en ligne), puis une formule mensuelle : ${PLANS.essentiel.nameFr} ${PLANS.essentiel.monthlyEur} €/mois, ${PLANS.croissance.nameFr} ${PLANS.croissance.monthlyEur} €/mois (la plus choisie ${c} — trois fois plus de conversations incluses), ${PLANS.performance.nameFr} ${PLANS.performance.monthlyEur} €/mois pour les cabinets à plusieurs praticiens. Rien n'est dû à la livraison, et en paiement annuel la mise en place est offerte avec deux mois gratuits.` },
     ],
   },
   {

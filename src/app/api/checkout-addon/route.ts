@@ -1,6 +1,6 @@
 import Stripe from "stripe";
 import { NextRequest, NextResponse } from "next/server";
-import { ADDONS } from "@/lib/pricing";
+import { addonForSale } from "@/lib/pricing";
 import { getClientEmail } from "@/lib/clientAuth";
 import { supabaseAdmin } from "@/lib/supabase";
 
@@ -41,8 +41,15 @@ export async function POST(req: NextRequest) {
 
   try {
     const { addon, siteSlug } = await req.json() as { addon: string; siteSlug?: string };
-    const a = ADDONS[addon];
-    if (!a) return NextResponse.json({ error: "Unknown add-on" }, { status: 400 });
+    // Retired add-ons (SMS, reviews) are refused here, not only hidden on the
+    // pages: nothing performs them, so taking the money would be the bug.
+    const sale = addonForSale(addon);
+    if ("error" in sale) {
+      return sale.error === "retired"
+        ? NextResponse.json({ error: "This add-on is no longer offered." }, { status: 410 })
+        : NextResponse.json({ error: "Unknown add-on" }, { status: 400 });
+    }
+    const a = sale.addon;
 
     // A slug may be supplied, but only one of the client's own.
     let slug = "";
