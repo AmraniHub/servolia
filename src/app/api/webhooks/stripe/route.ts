@@ -1108,9 +1108,9 @@ export async function POST(req: NextRequest) {
       const customerId = typeof invoice.customer === "string" ? invoice.customer : null;
       const reason = invoice.last_finalization_error?.message ?? "Card declined or expired";
 
-      const { data: existing } = await db.from("clients").select("id, past_due_since, business, email")
+      const { data: existing } = await db.from("clients").select("id, past_due_since, business, email, plan, build_id")
         .or([subscriptionId ? `subscription_id.eq.${subscriptionId}` : null, customerId ? `customer_id.eq.${customerId}` : null].filter(Boolean).join(","))
-        .maybeSingle();
+        .order("created_at", { ascending: false }).limit(1).maybeSingle();
 
       if (existing) {
         const now = new Date();
@@ -1124,10 +1124,47 @@ export async function POST(req: NextRequest) {
           open_invoice_url: invoice.hosted_invoice_url ?? null,
         }).eq("id", existing.id);
 
+        /* TELL THE CLIENT (Step 6 map, 2026-09-24). An EUR plan client whose
+           card failed was never emailed -- only Telegram heard -- and found
+           out when something stopped. Same template and the same once-only
+           guard as the hosting branch below: `past_due_since` null before the
+           update above means this is the FIRST failure; Stripe's retries
+           land here again and are silent. No stop date is promised: nothing
+           suspends an EUR client automatically today. */
+        let emailed = "no";
+        if (!existing.past_due_since && existing.email && subscriptionId) {
+          const plan = resolvePlan(existing.plan as string | null);
+          let lang: "en" | "fr" = "fr";
+          try {
+            const s = await stripe.checkout.sessions.list({ subscription: subscriptionId, limit: 1 });
+            const l = s.data[0]?.metadata?.lang;
+            if (l === "en" || l === "fr") lang = l;
+          } catch { /* French: the market these plans are sold to */ }
+          let siteLabel = "";
+          if (existing.build_id) {
+            const { data: b } = await db.from("builds").select("business").eq("id", existing.build_id).maybeSingle();
+            const biz = (b?.business as string | null) ?? "";
+            if (biz && biz !== "Pending intake" && !biz.includes("@")) siteLabel = biz;
+          }
+          const portalUrl = await billingPortalUrl(subscriptionId, { locale: lang, returnUrl: "https://servolia.com/portal" });
+          const tpl = paymentFailedEmail({
+            productName: `Servolia ${plan ? (lang === "fr" ? plan.nameFr : plan.name) : ""}`.trim(),
+            productNoun: lang === "fr" ? "abonnement" : "plan",
+            siteLabel,
+            portalUrl,
+            invoiceUrl: invoice.hosted_invoice_url ?? null,
+            graceEndsIso: null,
+            attempt: "first",
+            lang,
+          });
+          emailed = (await sendEmail(existing.email as string, tpl.subject, tpl.html).then(() => "yes").catch(() => "FAILED"));
+        }
+
         const tgToken = process.env.TELEGRAM_BOT_TOKEN;
         const tgChatId = process.env.TELEGRAM_CHAT_ID;
         if (tgToken && tgChatId) {
-          const msg = `🔴 *Payment failed*\n${existing.business ?? existing.email ?? "Unknown client"}\nGrace ends: ${new Date(suspendAt).toLocaleDateString()}\n\n[Open in CRM](https://servolia.com/admin/clients)`;
+          const told = emailed === "yes" ? "Client emailed (first failure)." : emailed === "FAILED" ? "CLIENT EMAIL FAILED - tell them by hand." : "Client already told on the first failure.";
+          const msg = `🔴 *Payment failed*\n${existing.business ?? existing.email ?? "Unknown client"}\nGrace ends: ${new Date(suspendAt).toLocaleDateString()}\n${told}\n\n[Open in CRM](https://servolia.com/admin/clients)`;
           fetch(`https://api.telegram.org/bot${tgToken}/sendMessage`, {
             method: "POST", headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ chat_id: tgChatId, text: msg, parse_mode: "Markdown" }),

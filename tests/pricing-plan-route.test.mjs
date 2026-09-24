@@ -155,6 +155,17 @@ test("the intake's thank-you screen says what the plan checkout did", () => {
   assert.doesNotMatch(form, /plus rien à régler"/);
 });
 
+test("an EUR plan client whose card fails is emailed once, with no stop date promised", () => {
+  const w = src("src/app/api/webhooks/stripe/route.ts");
+  const start = w.indexOf('await db.from("clients").select("id, past_due_since, business, email, plan, build_id")');
+  const branch = w.slice(start, w.indexOf("// ── Same for a hosting client", start));
+  assert.ok(start > 0, "the EUR failed-payment branch moved");
+  assert.match(branch, /!existing\.past_due_since && existing\.email && subscriptionId/, "first failure only: Stripe's retries are silent");
+  assert.match(branch, /paymentFailedEmail\(/);
+  assert.match(branch, /graceEndsIso: null/, "nothing suspends an EUR client automatically, so no date is promised");
+  assert.match(branch, /\.limit\(1\)\.maybeSingle\(\)/, "two rows on one customer must not error the lookup away");
+});
+
 test("every caller of /api/billing-portal has a handler for its method", () => {
   const route = src("src/app/api/billing-portal/route.ts");
   for (const f of ["src/components/PortalDashboard.tsx", "src/app/billing/page.tsx"]) {
