@@ -115,7 +115,7 @@ export interface ClientProduct extends ClientProductCopy {
   annualUsd: number;
   /**
    * A one-time charge on the first invoice, for work the plan's monthly
-   * price cannot carry. Business: three mailboxes plus SPF/DKIM/DMARC is
+   * price cannot carry. Business: one mailbox plus SPF/DKIM/DMARC is
    * about an hour at the cost floor, against +$3/month over Complete --
    * twelve months to recover without this line.
    */

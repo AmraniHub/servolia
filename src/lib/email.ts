@@ -1157,7 +1157,7 @@ export const clientServicePaidEmail = (input: {
             <strong>${money(amountUsd)}</strong> ${L.per}${saving > 0 ? ` &middot; ${L.saved}` : ""}
           </p>
           ${domainUsd ? `<p style="margin:4px 0 0;font-size:14px;color:${BODY};">+ ${money(domainUsd)} ${fr ? "par an" : "per year"} &middot; ${fr ? "domaine" : "domain"}${domainName ? ` ${domainName}` : ""}</p>` : ""}
-          ${oneTimeUsd ? `<p style="margin:4px 0 0;font-size:14px;color:${BODY};">+ ${money(oneTimeUsd)} ${fr ? "une fois" : "once"} &middot; ${fr ? "mise en place des boîtes email" : "mailbox setup"}</p>` : ""}
+          ${oneTimeUsd ? `<p style="margin:4px 0 0;font-size:14px;color:${BODY};">+ ${money(oneTimeUsd)} ${fr ? "une fois" : "once"} &middot; ${fr ? "mise en place de la boîte email" : "mailbox setup"}</p>` : ""}
           ${totalPaidUsd && Math.abs(totalPaidUsd - amountUsd) > 0.005 ? `<p style="margin:8px 0 0;font-size:14px;font-weight:700;color:${INK};">${fr ? "Total prélevé aujourd'hui" : "Total charged today"} : ${money(totalPaidUsd)}</p>` : ""}
           <p style="margin:10px 0 0;font-size:14px;color:${MUTED};">${nextCharge ? L.renewsOn(nextCharge) : L.renewsEach}</p>
           ${domainName ? `<p style="margin:12px 0 0;padding-top:12px;border-top:1px solid ${LINE};font-size:14px;line-height:1.6;color:${BODY};">

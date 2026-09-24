@@ -18,6 +18,7 @@ import path from "node:path";
 
 const { CLIENT_PRODUCTS } = await import("../src/lib/hosting.ts");
 const { ADDONS, addonForSale } = await import("../src/lib/pricing.ts");
+const { hostOf, hostingMailDomain, hostingMailboxOwed } = await import("../src/lib/owedToPractice.ts");
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const src = (p) => readFileSync(path.join(ROOT, p), "utf8");
@@ -94,4 +95,42 @@ test("neither the portal assistant nor the city pages offer a retired add-on", (
   assert.ok(!/Object\.values\(ADDONS\)/.test(src("src/lib/portalAssistant.ts")), "the portal assistant lists SELLABLE_ADDONS");
   assert.ok(!/avis Google/i.test(src("src/lib/content/frGeo.ts").replace(/hook: "[^"]*"/g, "")),
     "no city-page answer says a plan includes Google reviews");
+});
+
+/* ── 3. Business hosting: ONE mailbox, everywhere it is counted ────────── */
+
+test("the Stripe line and the terms count the Business mailboxes the way the product does", () => {
+  const biz = CLIENT_PRODUCTS.hosting_business;
+  assert.ok(biz.includes.includes("Business email on your domain — 1 mailbox included"));
+  assert.ok(biz.fr.includes.includes("Messagerie professionnelle à votre domaine — 1 boîte incluse"));
+
+  const route = src("src/app/api/hosting-checkout/route.ts");
+  assert.ok(!/Up to 3 mailboxes|Jusqu'à 3 boîtes/i.test(route), "the invoice line must not promise three");
+  assert.ok(route.includes('"1 mailbox on your domain, with SPF, DKIM and DMARC set up. Charged once."'));
+  assert.ok(route.includes('"1 boîte sur votre domaine, avec SPF, DKIM et DMARC configurés. Facturé une seule fois."'));
+
+  const terms = src("src/app/hosting/terms/page.tsx");
+  assert.ok(!/up to three\s+mailboxes/i.test(terms), "the terms must not promise three");
+  assert.ok(/one mailbox\s+included/.test(terms) && /\$\{BUSINESS\.setupUsd\}/.test(terms), "one included, the fee imported, not typed");
+
+  for (const f of ["src/components/ProductCheckout.tsx", "src/components/PlanChooser.tsx"]) {
+    assert.ok(!/mailboxes set up|boîtes email mises en place/.test(src(f)), `${f}: the setup line is for one mailbox`);
+  }
+});
+
+test("a Business client's mailbox is owed until their domain publishes MX, and lands on /admin/today", () => {
+  const row = (o) => ({ plan: "hosting_business", status: "active", site_url: "https://www.acme.com/", ...o });
+  assert.equal(hostOf("https://www.Acme.com:443/contact?x=1"), "acme.com");
+  assert.equal(hostOf("acme.co.uk"), "acme.co.uk");
+  assert.equal(hostOf(""), null);
+  assert.equal(hostingMailDomain(row()), "acme.com");
+  assert.equal(hostingMailDomain(row({ plan: "hosting" })), null, "only Business includes a mailbox");
+  assert.equal(hostingMailDomain(row({ status: "past_due" })), null);
+  assert.equal(hostingMailDomain(row({ site_url: null })), null, "no site yet is the needs-setup row's business");
+  assert.deepEqual(hostingMailboxOwed(row(), { state: "none" }), { kind: "mailbox-owed", domain: "acme.com" });
+  assert.equal(hostingMailboxOwed(row(), { state: "ready", hosts: ["mx.zoho.eu"] }), null, "clears the morning MX appears");
+  assert.deepEqual(hostingMailboxOwed(row(), { state: "unknown" }), { kind: "mailbox-unchecked", domain: "acme.com" });
+
+  const today = src("src/lib/today.ts");
+  assert.ok(today.includes("hostingMailboxOwed(h, hostMail.get(h.id))") && today.includes('kind: "hosting-mailbox-owed"'));
 });

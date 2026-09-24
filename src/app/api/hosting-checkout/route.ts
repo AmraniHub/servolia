@@ -182,10 +182,14 @@ export async function POST(req: NextRequest) {
         price_data: {
           currency: "usd",
           product_data: {
-            name: lang === "fr" ? "Mise en place des boîtes email — une fois" : "Mailbox setup — one time",
+            name: lang === "fr" ? "Mise en place de la boîte email — une fois" : "Mailbox setup — one time",
+            /* The count the product states (hosting.ts): ONE mailbox
+               included, extras USD 2/month each. This line said "up to 3"
+               after the product had moved to one, so the invoice promised
+               two mailboxes the price does not cover. */
             description: lang === "fr"
-              ? "Jusqu'à 3 boîtes sur votre domaine, avec SPF, DKIM et DMARC configurés. Facturé une seule fois."
-              : "Up to 3 mailboxes on your domain, with SPF, DKIM and DMARC set up. Charged once.",
+              ? "1 boîte sur votre domaine, avec SPF, DKIM et DMARC configurés. Facturé une seule fois."
+              : "1 mailbox on your domain, with SPF, DKIM and DMARC set up. Charged once.",
           },
           unit_amount: hostingPlan.setupUsd * 100,
         },

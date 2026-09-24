@@ -3,7 +3,7 @@ import { computeLeadScore } from "@/lib/scoring";
 import { HOSTING_TIERS } from "@/lib/hosting";
 import { readDraftEmailed } from "@/lib/draftPreview";
 import type { ReceptionistState } from "@/lib/clientSites";
-import { mailDomainFor, mailState, whatIsOwed, type OwedSite, type MailState } from "@/lib/owedToPractice";
+import { mailDomainFor, mailState, whatIsOwed, hostingMailDomain, hostingMailboxOwed, type OwedSite, type MailState } from "@/lib/owedToPractice";
 
 /**
  * TODAY — one list of what needs a human, assembled from everything that
@@ -25,7 +25,7 @@ import { mailDomainFor, mailState, whatIsOwed, type OwedSite, type MailState } f
 export type Owner = "me" | "client";
 
 export interface TodayItem {
-  /** stable kind for scripts: lead-sla, lead-hot, build-intake, build-building, draft-send, draft-go, trial-ending, payment-failed, needs-setup, prospect, request-unpaid, reception-not-installed, reception-ending, reception-ended, reception-running, domain-waiting, domain-owed, mailbox-owed, mailbox-unchecked */
+  /** stable kind for scripts: lead-sla, lead-hot, build-intake, build-building, draft-send, draft-go, trial-ending, payment-failed, needs-setup, prospect, request-unpaid, reception-not-installed, reception-ending, reception-ended, reception-running, domain-waiting, domain-owed, mailbox-owed, mailbox-unchecked, hosting-mailbox-owed, hosting-mailbox-unchecked */
   kind: string;
   title: string;
   detail?: string;
@@ -258,6 +258,22 @@ export async function buildToday(now = Date.now()): Promise<Today> {
     if (h.status === "active" && HOSTING_TIERS.includes(h.plan) && !h.site_url && !h.repo) {
       money.push({ kind: "needs-setup", title: h.business, detail: "paid for hosting — not hosted yet, no site on record", href: `${ADMIN}/hosting/${h.id}`, owner: "me", urgency: 2 });
     }
+  }
+  /* Hosting Business: "1 mailbox included" is created by hand. Owed until the
+     client's domain publishes MX records (owedToPractice.ts, same rule as a
+     practice's mailbox), so the row clears the morning the mailbox exists. */
+  const hostRows = (hostRes.data ?? []) as Array<{ id: string; business: string; plan: string; status: string; site_url: string | null }>;
+  const hostMail = new Map<string, MailState>();
+  await Promise.all(hostRows.map(async (h) => {
+    const d = hostingMailDomain(h);
+    if (d) hostMail.set(h.id, await mailState(d));
+  }));
+  for (const h of hostRows) {
+    const o = hostingMailboxOwed(h, hostMail.get(h.id));
+    if (!o || o.kind === "domain-owed") continue;
+    money.push(o.kind === "mailbox-owed"
+      ? { kind: "hosting-mailbox-owed", title: `${h.business} (${o.domain})`, detail: `Hosting Business — their 1 included mailbox is owed: ${o.domain} has no MX records. Create it by hand (Zoho), with SPF/DKIM/DMARC, and send them the login`, href: `${ADMIN}/hosting/${h.id}`, owner: "me", urgency: 2 }
+      : { kind: "hosting-mailbox-unchecked", title: `${h.business} (${o.domain})`, detail: "could not read the domain's MX records this time — their Business mailbox is unverified, not missing", href: `${ADMIN}/hosting/${h.id}`, owner: "me", urgency: 0 });
   }
   for (const c of (clientsRes.data ?? []) as Array<{ id: string; business: string; payment_status?: string | null; suspend_at: string | null }>) {
     if (c.payment_status === "past_due" || c.payment_status === "past_due_final") {

@@ -31,6 +31,7 @@ export const metadata: Metadata = {
  */
 
 const HOSTING = CLIENT_PRODUCTS.hosting;
+const BUSINESS = CLIENT_PRODUCTS.hosting_business;
 
 function Section({ n, title, children }: { n: string; title: string; children: React.ReactNode }) {
   return (
@@ -132,9 +133,10 @@ export default function HostingTerms() {
                 buying a set number of changes.
               </p>
               <p>
-                Email on your domain is part of the Business plan — up to three
-                mailboxes, set up once for a one-time $39 and then included. On the
-                other plans it is separate. Paid advertising is separate on every plan.
+                Email on your domain is part of the Business plan — one mailbox
+                included, set up once for a one-time ${BUSINESS.setupUsd}; each extra
+                mailbox is $2 a month. On the other plans it is separate. Paid
+                advertising is separate on every plan.
               </p>
             </Section>
 

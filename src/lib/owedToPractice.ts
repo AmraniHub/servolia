@@ -58,6 +58,40 @@ export function whatIsOwed(site: OwedSite, mail?: MailState): Owed {
   return mail.state === "none" ? { kind: "mailbox-owed", domain } : null;
 }
 
+/* ── THE HOSTING LINE (2026-09-24) ─────────────────────────────────────────
+ * Hosting Business says "Business email on your domain — 1 mailbox
+ * included". The mailbox is created BY HAND and nothing reminded anyone, so a
+ * client could pay for an address that bounces. Same rule as a practice's
+ * mailbox above: owed until the domain publishes MX records, and a domain
+ * that already had mail is done on day one. */
+
+export interface OwedHostingRow {
+  plan: string;
+  status: string;
+  site_url: string | null;
+}
+
+/** The apex host of a hosting client's site_url, whatever shape it was typed in. */
+export function hostOf(siteUrl: string | null | undefined): string | null {
+  const h = String(siteUrl ?? "").trim().toLowerCase()
+    .replace(/^[a-z]+:\/\//, "").split(/[/?#]/)[0].replace(/:\d+$/, "");
+  const a = apex(h);
+  return /^[a-z0-9.-]+\.[a-z]{2,}$/.test(a) ? a : null;
+}
+
+/** The domain whose MX decides whether a Business client's mailbox exists. */
+export function hostingMailDomain(h: OwedHostingRow): string | null {
+  if (h.status !== "active" || String(h.plan).toLowerCase() !== "hosting_business") return null;
+  return hostOf(h.site_url);
+}
+
+export function hostingMailboxOwed(h: OwedHostingRow, mail?: MailState): Owed {
+  const domain = hostingMailDomain(h);
+  if (!domain) return null;
+  if (!mail || mail.state === "unknown") return { kind: "mailbox-unchecked", domain };
+  return mail.state === "none" ? { kind: "mailbox-owed", domain } : null;
+}
+
 /**
  * The domain's MX hosts, asked fresh (no cache: the row must clear the same
  * morning the mailbox is created). A failed lookup is "unknown", never "none"
