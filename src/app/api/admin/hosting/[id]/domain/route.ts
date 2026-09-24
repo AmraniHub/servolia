@@ -6,6 +6,7 @@ import {
   readDomainRecord, writeDomainRecord,
 } from "@/lib/domainSales";
 import { nextChargeDate } from "@/lib/hosting";
+import { isTestRow } from "@/lib/testContext";
 
 export const runtime = "nodejs";
 
@@ -27,6 +28,11 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   if (!row) return NextResponse.json({ error: "not-found" }, { status: 404 });
   const rec = readDomainRecord(row.notes);
   if (!rec) return NextResponse.json({ error: "no-domain-on-record" }, { status: 400 });
+  /* A founder TEST row (src/lib/testMode.ts) never gets a real domain: no
+     purchase, no attach. Its record says "TEST: domain not bought". */
+  if ((action === "buy" || action === "attach") && (await isTestRow(db, "hosting_clients", id))) {
+    return NextResponse.json({ error: "test-row", hint: "This is a founder test purchase: no domain is bought or attached for it." }, { status: 409 });
+  }
 
   if (action === "buy") {
     if (rec.status === "bought") return NextResponse.json({ error: "already-bought", record: rec }, { status: 409 });

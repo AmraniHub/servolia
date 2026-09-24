@@ -94,7 +94,12 @@ export default async function HostingClientPage({ params }: { params: Promise<{ 
 
       <div className="flex items-start justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-black text-[#18181B]">{c.business}</h1>
+          <h1 className="text-2xl font-black text-[#18181B]">
+            {c.business}
+            {c.is_test === true && (
+              <span title="Founder test purchase: excluded from every number; no domain is bought or attached for it." className="ml-2 align-middle text-[10px] font-black px-2 py-0.5 rounded-full bg-[#92400E] text-white">TEST</span>
+            )}
+          </h1>
           <p className="text-sm text-[#71717A] mt-1">
             {c.email ?? "no email"} · ref <span className="font-mono font-bold text-[#18181B]">{reference}</span>
           </p>

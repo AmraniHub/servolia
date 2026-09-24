@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import Stripe from "stripe";
 import { supabaseAdmin } from "@/lib/supabase";
-import { checkoutStripe } from "@/lib/testMode";
 import { isAdminAuthed } from "@/lib/auth";
 
 export const runtime = "nodejs";
@@ -13,6 +13,9 @@ export const runtime = "nodejs";
  * Stripe webhook flips status → "paid" when the client pays.
  *
  * Admin-only. Needs the `custom_requests` table (supabase/schema.sql).
+ *
+ * ALWAYS LIVE, deliberately ignoring founder test mode (src/lib/testMode.ts):
+ * the payment link is for a real client, who could never pay a test one.
  */
 
 export async function GET(req: NextRequest) {
@@ -36,10 +39,6 @@ export async function POST(req: NextRequest) {
   if (!(await isAdminAuthed())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const db = supabaseAdmin();
   if (!db) return NextResponse.json({ error: "Supabase not configured" }, { status: 503 });
-  // Founder test mode (src/lib/testMode.ts): refused before anything is
-  // recorded when no test key exists; otherwise live exactly as before.
-  const co = checkoutStripe(req);
-  if (co.refused) return co.refused;
 
   const { buildId, title, description, amountEur } = (await req.json().catch(() => ({}))) as {
     buildId?: string; title?: string; description?: string; amountEur?: number;
@@ -68,9 +67,10 @@ export async function POST(req: NextRequest) {
 
   // 2. Create a one-off payment link so it can be billed immediately.
   let paymentUrl: string | null = null;
-  if (co.stripe && amount > 0) {
+  const key = process.env.STRIPE_SECRET_KEY;
+  if (key && amount > 0) {
     try {
-      const stripe = co.stripe;
+      const stripe = new Stripe(key);
       const origin = req.headers.get("origin") ?? "https://servolia.com";
       const session = await stripe.checkout.sessions.create({
         mode: "payment",
@@ -89,7 +89,7 @@ export async function POST(req: NextRequest) {
         }],
         success_url: `${origin}/portal?custom=paid`,
         cancel_url: `${origin}/portal`,
-        metadata: { kind: "custom_request", requestId: row.id, buildId, ...co.tag },
+        metadata: { kind: "custom_request", requestId: row.id, buildId },
       });
       paymentUrl = session.url ?? null;
       await db.from("custom_requests")
@@ -101,7 +101,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({ request: { ...row, payment_url: paymentUrl }, ...(co.test ? { testMode: true } : {}) });
+  return NextResponse.json({ request: { ...row, payment_url: paymentUrl } });
 }
 
 /** Mark a request done (or back to quoted). */

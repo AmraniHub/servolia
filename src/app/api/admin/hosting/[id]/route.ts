@@ -3,6 +3,7 @@ import { isAdminAuthed } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { probeGate } from "@/lib/hostingGate";
 import { attachDomainToProject, readDomainRecord, writeDomainRecord } from "@/lib/domainSales";
+import { isTestRow } from "@/lib/testContext";
 
 export const runtime = "nodejs";
 
@@ -83,7 +84,8 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   if (vercelProject) {
     const { data: fresh } = await db.from("hosting_clients").select("notes").eq("id", id).maybeSingle();
     const rec = readDomainRecord(fresh?.notes);
-    if (rec?.status === "bought" && rec.attached !== vercelProject) {
+    // Never for a founder TEST row: no domain is attached for a test.
+    if (rec?.status === "bought" && rec.attached !== vercelProject && !(await isTestRow(db, "hosting_clients", id))) {
       const res = await attachDomainToProject(vercelProject, rec.domain);
       if (res.ok) {
         await db.from("hosting_clients")
