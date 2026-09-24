@@ -34,5 +34,9 @@ export async function resolve(specifier, context, next) {
     const hit = withExtension(path.resolve(from, specifier));
     if (hit && hit !== path.resolve(from, specifier)) return next(pathToFileURL(hit).href, context);
   }
+  // `next/server`, `next/headers`: Next ships these as bare .js files with no
+  // exports map, which the app's bundler resolves and Node's ESM loader does
+  // not. Lets a test import a route handler as it is written.
+  if (/^next\/[a-z-]+$/.test(specifier)) return next(`${specifier}.js`, context);
   return next(specifier, context);
 }
