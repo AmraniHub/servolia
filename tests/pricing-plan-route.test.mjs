@@ -109,6 +109,7 @@ test("the subscription's own intake finds a reused build through Stripe's record
   const contact = src("src/app/api/contact/route.ts");
   assert.match(contact, /checkout\.sessions\.retrieve\(String\(sessionId\)\)/);
   assert.match(contact, /s\.status === "complete"/, "only a paid session");
+  assert.match(contact, /s\.metadata\?\.kind === "care_plan"/, "only a plan session, never a top-up paid with her address");
   assert.match(contact, /s\.customer_details\?\.email/, "Stripe's email, never the form's");
 });
 

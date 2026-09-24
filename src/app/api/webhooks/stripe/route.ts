@@ -781,7 +781,9 @@ export async function POST(req: NextRequest) {
           if (!buildId) {
             const { data: opened, error: buildErr } = await db.from("builds").insert({
               business: "Pending intake",
-              email: customerEmail,
+              // Lowercase, like the clients row: the portal lists builds by the
+              // lowercase login cookie, exactly.
+              email: customerEmail.toLowerCase(),
               plan: SETUP_PLAN.key,
               plan_name: SETUP_PLAN.name,
               total_price: installationPaid,

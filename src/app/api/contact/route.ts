@@ -119,7 +119,10 @@ export async function POST(req: NextRequest) {
         if (!build && /^cs_(live|test)_/.test(String(sessionId)) && process.env.STRIPE_SECRET_KEY) {
           try {
             const s = await new Stripe(process.env.STRIPE_SECRET_KEY).checkout.sessions.retrieve(String(sessionId));
-            const paidEmail = s.status === "complete" ? (s.customer_details?.email ?? s.customer_email ?? null) : null;
+            // A completed PLAN session only (checkout-subscription): a top-up or
+            // add-on paid with her address typed in must not aim at her build.
+            const planSession = s.status === "complete" && s.mode === "subscription" && s.metadata?.kind === "care_plan";
+            const paidEmail = planSession ? (s.customer_details?.email ?? s.customer_email ?? null) : null;
             if (paidEmail) {
               ({ data: build } = await db.from("builds")
                 .select("id, lead_id, status")
