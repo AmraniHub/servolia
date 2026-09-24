@@ -1,4 +1,4 @@
-import Stripe from "stripe";
+import { inEitherMode } from "@/lib/stripeMode";
 
 /**
  * PAYING FOR AN EXTRA DOMAIN, FROM INSIDE THE PANEL.
@@ -37,16 +37,19 @@ export async function domainCheckoutUrl({
   email: string | null;
   origin: string;
 }): Promise<string | null> {
-  const key = process.env.STRIPE_SECRET_KEY;
-  if (!key) return null;
-  const stripe = new Stripe(key);
-
   try {
     /* Billed to the customer already on the subscription, so it lands on the
        card they expect and appears in the same billing history as everything
        else. A new customer for an add-on is how one client becomes two rows
        that never reconcile. */
-    const sub = await stripe.subscriptions.retrieve(subscriptionId);
+    /* FOUNDER TEST MODE follows the SUBSCRIPTION, not a cookie: a test
+       subscription (bought in test mode) exists only under the test key,
+       and the extra domain is charged on that same test customer, tagged
+       `test`. A live subscription is found under the live key first, exactly
+       as before (src/lib/stripeMode.ts inEitherMode). */
+    const found = await inEitherMode((s) => s.subscriptions.retrieve(subscriptionId));
+    if (!found) return null;
+    const { stripe, value: sub, livemode } = found;
     const customer = typeof sub.customer === "string" ? sub.customer : sub.customer?.id;
     if (!customer) return null;
 
@@ -72,6 +75,7 @@ export async function domainCheckoutUrl({
         domain_retail_usd: String(retailUsd),
         ref,
         subscription_id: subscriptionId,
+        ...(livemode ? {} : { test: "1" }),
       },
       ...(email ? { customer_update: { address: "auto" as const } } : {}),
       success_url: `${origin}/hosting/account?page=domains&bought=${encodeURIComponent(domain)}`,

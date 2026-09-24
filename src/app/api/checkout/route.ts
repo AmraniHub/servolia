@@ -1,6 +1,6 @@
-import Stripe from "stripe";
 import { NextRequest, NextResponse } from "next/server";
 import { sendMetaCapiEvent } from "@/lib/metaCapi";
+import { checkoutStripe } from "@/lib/testMode";
 import { SELLABLE_BUILD_PLANS } from "@/lib/pricing";
 
 // One-time amounts in cents (EUR) — prices come from src/lib/pricing.ts.
@@ -16,11 +16,14 @@ const PLANS: Record<string, { name: string; nameFr: string; delivery: string; am
   );
 
 export async function POST(req: NextRequest) {
-  const key = process.env.STRIPE_SECRET_KEY;
-  if (!key) {
+  // Founder test mode (src/lib/testMode.ts): the test key and a `test` tag,
+  // or a refusal; otherwise the live key exactly as before.
+  const co = checkoutStripe(req);
+  if (co.refused) return co.refused;
+  if (!co.stripe) {
     return NextResponse.json({ error: "Stripe not configured — add STRIPE_SECRET_KEY to Vercel env vars" }, { status: 503 });
   }
-  const stripe = new Stripe(key);
+  const stripe = co.stripe;
 
   try {
     const { plan, leadId, lang } = await req.json() as { plan: string; leadId?: string; lang?: "en" | "fr" };
@@ -57,7 +60,7 @@ export async function POST(req: NextRequest) {
       // the language their generated site comes out in.
       success_url: `${origin}${fr ? "/fr/demarrage" : "/onboarding"}?plan=${plan}&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}${fr ? "/fr/tarifs" : "/pricing"}`,
-      metadata: { plan, source: "servolia-website", lead_id: leadId ?? "", lang: fr ? "fr" : "en" },
+      metadata: { plan, source: "servolia-website", lead_id: leadId ?? "", lang: fr ? "fr" : "en", ...co.tag },
       custom_text: {
         submit: {
           message: fr
@@ -79,8 +82,9 @@ export async function POST(req: NextRequest) {
     // checkout.session.completed — i.e. when money actually moved. The leadId
     // travels in metadata so a lead that already exists still gets linked.
 
-    // Meta Conversions API — checkout started (fire and forget)
-    sendMetaCapiEvent({
+    // Meta Conversions API — checkout started (fire and forget). Never for
+    // a founder test: it would train the ad account on a fake buyer.
+    if (!co.test) sendMetaCapiEvent({
       eventName: "InitiateCheckout",
       value: p.amount / 100,
       currency: "EUR",

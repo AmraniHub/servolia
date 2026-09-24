@@ -1,4 +1,4 @@
-import Stripe from "stripe";
+import { inEitherMode } from "@/lib/stripeMode";
 
 /**
  * THE BILLING PORTAL IS STRIPE'S, NOT OURS.
@@ -50,14 +50,16 @@ export const PORTAL_LOGIN_URL =
  */
 export async function billingPortalUrl(
   subscriptionId: string,
-  opts: { returnUrl?: string; locale?: PortalLocale } = {},
+  opts: { returnUrl?: string; locale?: PortalLocale; livemode?: boolean } = {},
 ): Promise<string | null> {
-  const key = process.env.STRIPE_SECRET_KEY;
-  if (!key) return null;
-  const stripe = new Stripe(key);
-
   try {
-    const sub = await stripe.subscriptions.retrieve(subscriptionId);
+    /* The subscription's own mode: `livemode` from the webhook's event, or —
+       from a link — live first, then a founder test subscription
+       (src/lib/stripeMode.ts inEitherMode). The portal session is opened on
+       the key that found it. */
+    const found = await inEitherMode((s) => s.subscriptions.retrieve(subscriptionId), opts.livemode);
+    if (!found) return null;
+    const { stripe, value: sub } = found;
     const customer = typeof sub.customer === "string" ? sub.customer : sub.customer.id;
 
     const session = await stripe.billingPortal.sessions.create({

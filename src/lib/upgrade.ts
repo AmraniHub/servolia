@@ -1,6 +1,7 @@
 import { SignJWT, jwtVerify } from "jose";
-import Stripe from "stripe";
+import type Stripe from "stripe";
 import { clientRefFor } from "@/lib/clientRefs";
+import { inEitherMode, stripeForSessionId } from "@/lib/stripeMode";
 import { resolveHostingPlan, productCopy, type ClientProduct } from "@/lib/hosting";
 
 /**
@@ -132,10 +133,12 @@ export async function assistantLinkFor(subscriptionId: string, origin = "https:/
 
 /** The same link from the checkout session id on Stripe's return URL. */
 export async function assistantLinkForSession(sessionId: string, origin = "https://servolia.com"): Promise<string | null> {
-  const key = process.env.STRIPE_SECRET_KEY;
-  if (!key || !sessionId.startsWith("cs_")) return null;
+  // The session id says its mode (cs_test_ / cs_live_): a founder test
+  // purchase is read with the test key (src/lib/stripeMode.ts).
+  const stripe = sessionId.startsWith("cs_") ? stripeForSessionId(sessionId) : null;
+  if (!stripe) return null;
   try {
-    const session = await new Stripe(key).checkout.sessions.retrieve(sessionId);
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
     const sub = typeof session.subscription === "string" ? session.subscription : null;
     return sub ? assistantLinkFor(sub, origin) : null;
   } catch {
@@ -157,10 +160,10 @@ export async function setupLinkForSession(
   sessionId: string,
   origin = "https://servolia.com",
 ): Promise<string | null> {
-  const key = process.env.STRIPE_SECRET_KEY;
-  if (!key || !sessionId.startsWith("cs_")) return null;
+  const stripe = sessionId.startsWith("cs_") ? stripeForSessionId(sessionId) : null;
+  if (!stripe) return null;
   try {
-    const session = await new Stripe(key).checkout.sessions.retrieve(sessionId);
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
     const sub = typeof session.subscription === "string" ? session.subscription : null;
     return sub ? setupLinkFor(sub, origin) : null;
   } catch {
@@ -235,11 +238,14 @@ function annualPriceData(productId: string, plan: ClientProduct): Stripe.Subscri
  * and product but has nothing to quote yet — and calling buildUpgradeQuote for
  * it would fire a preview request whose answer is thrown away.
  */
-export async function subscriptionContext(subscriptionId: string) {
-  const key = process.env.STRIPE_SECRET_KEY;
-  if (!key) return null;
+export async function subscriptionContext(subscriptionId: string, livemode?: boolean) {
   try {
-    const sub = await new Stripe(key).subscriptions.retrieve(subscriptionId);
+    /* `livemode` from the webhook's event; unknown from an emailed link, where
+       the live key is tried first and a founder test subscription is found
+       under the test key (src/lib/stripeMode.ts inEitherMode). */
+    const found = await inEitherMode((s) => s.subscriptions.retrieve(subscriptionId), livemode);
+    if (!found) return null;
+    const sub = found.value;
     const plan = resolveHostingPlan(sub.metadata?.plan);
     if (!plan) return null;
     const lang = (sub.metadata?.lang === "fr" ? "fr" : "en") as "en" | "fr";
@@ -279,13 +285,13 @@ export async function subscriptionContext(subscriptionId: string) {
 export async function buildUpgradeQuote(
   subscriptionId: string,
 ): Promise<{ quote: UpgradeQuote } | { problem: QuoteProblem }> {
-  const key = process.env.STRIPE_SECRET_KEY;
-  if (!key) return { problem: "no-stripe" };
-  const stripe = new Stripe(key);
-
+  let stripe: Stripe;
   let sub: Stripe.Subscription;
   try {
-    sub = await stripe.subscriptions.retrieve(subscriptionId);
+    // Live key first, then a founder test subscription (src/lib/stripeMode.ts).
+    const found = await inEitherMode((s) => s.subscriptions.retrieve(subscriptionId));
+    if (!found) return { problem: "no-stripe" };
+    ({ stripe, value: sub } = found);
   } catch {
     return { problem: "not-found" };
   }
@@ -357,13 +363,13 @@ export async function buildUpgradeQuote(
 export async function applyUpgrade(
   subscriptionId: string,
 ): Promise<{ ok: true; plan: ClientProduct; lang: "en" | "fr"; siteLabel: string } | { problem: QuoteProblem }> {
-  const key = process.env.STRIPE_SECRET_KEY;
-  if (!key) return { problem: "no-stripe" };
-  const stripe = new Stripe(key);
-
+  let stripe: Stripe;
   let sub: Stripe.Subscription;
   try {
-    sub = await stripe.subscriptions.retrieve(subscriptionId);
+    // Live key first, then a founder test subscription (src/lib/stripeMode.ts).
+    const found = await inEitherMode((s) => s.subscriptions.retrieve(subscriptionId));
+    if (!found) return { problem: "no-stripe" };
+    ({ stripe, value: sub } = found);
   } catch {
     return { problem: "not-found" };
   }

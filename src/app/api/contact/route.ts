@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import Stripe from "stripe";
 import { supabaseAdmin, estimateLeadValue, type LeadSource } from "@/lib/supabase";
+import { stripeForSessionId } from "@/lib/stripeMode";
+import { isTestRequest } from "@/lib/testMode";
+import { runAsTest, testTag, testPrefixed, inTestContext } from "@/lib/testContext";
 import { sendEmail, auditConfirmationEmail } from "@/lib/email";
 import { sendMetaCapiEvent } from "@/lib/metaCapi";
 import { startBuildFromIntake } from "@/lib/intakeBuild";
@@ -27,6 +29,14 @@ export const maxDuration = 120;
  */
 
 export async function POST(req: NextRequest) {
+  /* Founder test mode (src/lib/testMode.ts): a form sent from the admin's
+     test browser — the intake after a test purchase — writes a lead tagged
+     is_test, its alert says TEST, and nothing goes to Meta or the Sheets
+     backup. Every other request runs exactly as before. */
+  return runAsTest(isTestRequest(req), () => handleContact(req));
+}
+
+async function handleContact(req: NextRequest) {
   try {
     const body = await req.json();
     const { name, email, phone, business, businessName, industry, niche, plan, planName,
@@ -85,6 +95,7 @@ export async function POST(req: NextRequest) {
         stage:          type === "intake" ? "deposit_paid" : "new",
         value_estimate: valueEstimate,
         raw_data:       body,
+        ...testTag(),
       }).select("id").single();
 
       if (!error && lead) {
@@ -116,19 +127,23 @@ export async function POST(req: NextRequest) {
            Stripe says whose session it is: a paid session's own email finds
            the build that is still waiting for its intake. The email is
            Stripe's, never the form's, so a stranger cannot aim this. */
-        if (!build && /^cs_(live|test)_/.test(String(sessionId)) && process.env.STRIPE_SECRET_KEY) {
+        const sessionStripe = /^cs_(live|test)_/.test(String(sessionId)) ? stripeForSessionId(String(sessionId)) : null;
+        if (!build && sessionStripe) {
           try {
-            const s = await new Stripe(process.env.STRIPE_SECRET_KEY).checkout.sessions.retrieve(String(sessionId));
+            // The session's own key: a cs_test_ session exists only in test mode.
+            const s = await sessionStripe.checkout.sessions.retrieve(String(sessionId));
             // A completed PLAN session only (checkout-subscription): a top-up or
             // add-on paid with her address typed in must not aim at her build.
             const planSession = s.status === "complete" && s.mode === "subscription" && s.metadata?.kind === "care_plan";
             const paidEmail = planSession ? (s.customer_details?.email ?? s.customer_email ?? null) : null;
             if (paidEmail) {
-              ({ data: build } = await db.from("builds")
+              let q = db.from("builds")
                 .select("id, lead_id, status")
                 .in("email", Array.from(new Set([paidEmail, paidEmail.toLowerCase()])))
-                .eq("status", "intake")
-                .order("created_at", { ascending: false }).limit(1).maybeSingle());
+                .eq("status", "intake");
+              // A TEST session may only ever aim at a test build.
+              if (String(sessionId).startsWith("cs_test_")) q = q.eq("is_test", true);
+              ({ data: build } = await q.order("created_at", { ascending: false }).limit(1).maybeSingle());
             }
           } catch {
             /* Stripe unreachable: the answers are on the lead row, as before. */
@@ -158,7 +173,7 @@ export async function POST(req: NextRequest) {
     const tgToken  = process.env.TELEGRAM_BOT_TOKEN;
     const tgChatId = process.env.TELEGRAM_CHAT_ID;
     if (tgToken && tgChatId) {
-      const msg =
+      const msg = testPrefixed("") +
         `🔔 *New ${type === "free-audit" ? "Free Audit Request" : type === "intake" ? "Client Intake (PAID)" : "Contact"}*\n` +
         `*${business || businessName || name || "—"}*\n\n` +
         `📧 ${email || "no email"}\n` +
@@ -184,7 +199,7 @@ export async function POST(req: NextRequest) {
 
     // ── 3. Mirror to Google Sheets (backup) ───────────────────────────────
     const sheetsUrl = process.env.GOOGLE_SHEETS_WEBHOOK_URL;
-    if (sheetsUrl) {
+    if (sheetsUrl && !inTestContext()) {
       fetch(sheetsUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

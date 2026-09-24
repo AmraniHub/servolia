@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import Stripe from "stripe";
 import { isAdminAuthed } from "@/lib/auth";
+import { checkoutStripe } from "@/lib/testMode";
 import {
   resolveHostingPlan,
   hostingAmountCents,
@@ -24,10 +24,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const key = process.env.STRIPE_SECRET_KEY;
-  if (!key) {
+  // Founder test mode (src/lib/testMode.ts): the admin's own browser can
+  // mint a TEST link to walk the hosting purchase; otherwise live as before.
+  const co = checkoutStripe(req);
+  if (co.refused) return co.refused;
+  if (!co.stripe) {
     return NextResponse.json({ error: "STRIPE_SECRET_KEY is not set" }, { status: 503 });
   }
+  const key = co.test ? "sk_test_" : (process.env.STRIPE_SECRET_KEY ?? "");
 
   const body = await req.json().catch(() => ({}));
   const {
@@ -69,7 +73,7 @@ export async function POST(req: NextRequest) {
   const origin = req.nextUrl.origin;
 
   try {
-    const stripe = new Stripe(key);
+    const stripe = co.stripe;
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       customer_email: email,
@@ -100,6 +104,7 @@ export async function POST(req: NextRequest) {
         branch,
         site_root: siteRoot,
         vercel_project: vercelProject,
+        ...co.tag,
       },
       success_url: `${origin}/portal?hosting=active`,
       cancel_url: `${origin}/`,

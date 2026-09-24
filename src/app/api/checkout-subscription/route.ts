@@ -1,6 +1,7 @@
 import Stripe from "stripe";
 import { NextRequest, NextResponse } from "next/server";
 import { resolvePlan, planAmountCents, SETUP_PLAN } from "@/lib/pricing";
+import { checkoutStripe } from "@/lib/testMode";
 
 export const runtime = "nodejs";
 
@@ -32,11 +33,13 @@ export const runtime = "nodejs";
 const DELIVERY_TRIAL_DAYS = 7;
 
 export async function POST(req: NextRequest) {
-  const key = process.env.STRIPE_SECRET_KEY;
-  if (!key) {
+  // Founder test mode (src/lib/testMode.ts), else the live key as before.
+  const co = checkoutStripe(req);
+  if (co.refused) return co.refused;
+  if (!co.stripe) {
     return NextResponse.json({ error: "Stripe not configured — add STRIPE_SECRET_KEY to Vercel env vars" }, { status: 503 });
   }
-  const stripe = new Stripe(key);
+  const stripe = co.stripe;
 
   try {
     const { plan, email, billing, lang } = await req.json() as {
@@ -107,6 +110,8 @@ export async function POST(req: NextRequest) {
       // Monthly: hold the recurring charge until go-live. Annual is paid in
       // full today — there is no installation to offset and no promise to keep.
       ...(annual ? {} : { subscription_data: { trial_period_days: DELIVERY_TRIAL_DAYS } }),
+      // A test subscription says so on the subscription object too.
+      ...(co.test ? { subscription_data: { ...(annual ? {} : { trial_period_days: DELIVERY_TRIAL_DAYS }), metadata: co.tag } } : {}),
       // Land them on the intake form: the build cannot start without it.
       success_url: `${origin}${fr ? "/fr/demarrage" : "/onboarding"}?subscribed=1&plan=${plan}&billing=${annual ? "annual" : "monthly"}&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}${fr ? "/fr/tarifs" : "/pricing"}`,
@@ -119,6 +124,7 @@ export async function POST(req: NextRequest) {
         installation_cents: String(installationCents),
         lang: fr ? "fr" : "en",
         source: "servolia-website",
+        ...co.tag,
       },
       custom_text: { submit: { message: submitMsg } },
     });

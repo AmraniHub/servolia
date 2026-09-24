@@ -1,7 +1,7 @@
-import Stripe from "stripe";
 import { NextRequest, NextResponse } from "next/server";
 import { TOPUP_PACKS } from "@/lib/conversationCap";
 import { getClientEmail } from "@/lib/clientAuth";
+import { checkoutStripe } from "@/lib/testMode";
 
 export const runtime = "nodejs";
 
@@ -18,9 +18,11 @@ export async function POST(req: NextRequest) {
   const email = await getClientEmail();
   if (!email) return NextResponse.json({ error: "Please log in first", login: true }, { status: 401 });
 
-  const key = process.env.STRIPE_SECRET_KEY;
-  if (!key) return NextResponse.json({ error: "Stripe not configured" }, { status: 503 });
-  const stripe = new Stripe(key);
+  // Founder test mode (src/lib/testMode.ts), else the live key as before.
+  const co = checkoutStripe(req);
+  if (co.refused) return co.refused;
+  if (!co.stripe) return NextResponse.json({ error: "Stripe not configured" }, { status: 503 });
+  const stripe = co.stripe;
 
   try {
     const { pack, lang } = (await req.json().catch(() => ({}))) as { pack?: string; lang?: string };
@@ -48,7 +50,7 @@ export async function POST(req: NextRequest) {
       mode: "payment",
       success_url: `${origin}/portal?topup=done`,
       cancel_url: `${origin}/portal`,
-      metadata: { kind: "topup", pack: p.key, conversations: String(p.conversations), email, lang: fr ? "fr" : "en", source: "servolia-portal" },
+      metadata: { kind: "topup", pack: p.key, conversations: String(p.conversations), email, lang: fr ? "fr" : "en", source: "servolia-portal", ...co.tag },
     });
     return NextResponse.json({ url: session.url });
   } catch (err) {

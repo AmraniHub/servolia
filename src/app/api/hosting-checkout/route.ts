@@ -9,6 +9,7 @@ import {
   HOSTING_METADATA_KIND,
 } from "@/lib/hosting";
 import { domainQuote, isDomainSalesConfigured, normalizeDomain } from "@/lib/domainSales";
+import { checkoutStripe } from "@/lib/testMode";
 
 /**
  * PUBLIC hosting checkout — the client picks a plan and pays, no admin step.
@@ -27,10 +28,13 @@ import { domainQuote, isDomainSalesConfigured, normalizeDomain } from "@/lib/dom
  * never trusted for anything.
  */
 export async function POST(req: NextRequest) {
-  const key = process.env.STRIPE_SECRET_KEY;
-  if (!key) {
+  // Founder test mode (src/lib/testMode.ts), else the live key as before.
+  const co = checkoutStripe(req);
+  if (co.refused) return co.refused;
+  if (!co.stripe) {
     return NextResponse.json({ error: "Payments are not configured" }, { status: 503 });
   }
+  const stripeClient = co.stripe;
 
   const body = await req.json().catch(() => ({}));
   const {
@@ -73,7 +77,7 @@ export async function POST(req: NextRequest) {
     if (owed <= 0) {
       return NextResponse.json({ error: "Nothing outstanding" }, { status: 400 });
     }
-    const stripeOnce = new Stripe(key);
+    const stripeOnce = stripeClient;
     const once = await stripeOnce.checkout.sessions.create({
       mode: "payment",
       locale: lang,
@@ -102,6 +106,7 @@ export async function POST(req: NextRequest) {
         ref,
         lang,
         label: client?.arrearsLabel || (lang === "fr" ? "Solde impayé" : "Outstanding balance"),
+        ...co.tag,
       },
       success_url: `${origin}/hosting/thanks?product=arrears&lang=${lang}`,
       cancel_url: `${origin}/hosting${ref ? `?ref=${encodeURIComponent(ref)}` : ""}`,
@@ -198,7 +203,7 @@ export async function POST(req: NextRequest) {
     : null;
 
   try {
-    const stripe = new Stripe(key);
+    const stripe = stripeClient;
     /* The copy Stripe's own page will show. It used to be the literal string
      * "Website hosting" for every product, so an AI assistant purchase was
      * headed "Website hosting — temghid.ma" on the one screen where the buyer
@@ -256,6 +261,7 @@ export async function POST(req: NextRequest) {
         ...(client?.gateWidget ? { gate_widget: client.gateWidget } : {}),
         ...domainMeta,
         ...(hostingPlan.setupUsd ? { setup_usd: String(hostingPlan.setupUsd) } : {}),
+        ...co.tag,
       },
       /* The SAME metadata on the subscription, not only on the session.
        * Stripe does not copy one to the other, and the session is a record of
@@ -277,6 +283,7 @@ export async function POST(req: NextRequest) {
                 ref,
                 lang,
                 ...domainMeta,
+                ...co.tag,
               },
             },
           }),

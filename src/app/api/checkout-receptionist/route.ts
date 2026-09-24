@@ -1,7 +1,7 @@
-import Stripe from "stripe";
 import { NextRequest, NextResponse } from "next/server";
 import { resolvePlan, planAmountCents, SETUP_PLAN } from "@/lib/pricing";
 import { readReceptionistToken, loadReceptionist, receptionistPhase } from "@/lib/receptionistTrial";
+import { checkoutStripe } from "@/lib/testMode";
 
 export const runtime = "nodejs";
 
@@ -23,8 +23,10 @@ export const runtime = "nodejs";
  * client on that very receptionist.
  */
 export async function POST(req: NextRequest) {
-  const key = process.env.STRIPE_SECRET_KEY;
-  if (!key) return NextResponse.json({ error: "Stripe not configured" }, { status: 503 });
+  // Founder test mode (src/lib/testMode.ts), else the live key as before.
+  const co = checkoutStripe(req);
+  if (co.refused) return co.refused;
+  if (!co.stripe) return NextResponse.json({ error: "Stripe not configured" }, { status: 503 });
 
   const body = await req.json().catch(() => ({})) as { token?: string; plan?: string; billing?: string };
   const claim = await readReceptionistToken(typeof body.token === "string" ? body.token.slice(0, 2000) : "");
@@ -55,10 +57,11 @@ export async function POST(req: NextRequest) {
     lang: claim.lang,
     installation_cents: "0",
     source: "receptionist-trial",
+    ...co.tag,
   };
 
   try {
-    const stripe = new Stripe(key);
+    const stripe = co.stripe;
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       mode: "subscription",

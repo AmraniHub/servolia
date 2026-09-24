@@ -1,8 +1,8 @@
-import Stripe from "stripe";
 import { NextRequest, NextResponse } from "next/server";
 import { addonForSale } from "@/lib/pricing";
 import { getClientEmail } from "@/lib/clientAuth";
 import { supabaseAdmin } from "@/lib/supabase";
+import { checkoutStripe } from "@/lib/testMode";
 
 /** The slugs this client actually owns: builds by email -> client_sites.
  *  Same scoping the portal's leads route uses. */
@@ -33,11 +33,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Please log in first", login: true }, { status: 401 });
   }
 
-  const key = process.env.STRIPE_SECRET_KEY;
-  if (!key) {
+  // Founder test mode (src/lib/testMode.ts), else the live key as before.
+  const co = checkoutStripe(req);
+  if (co.refused) return co.refused;
+  if (!co.stripe) {
     return NextResponse.json({ error: "Stripe not configured" }, { status: 503 });
   }
-  const stripe = new Stripe(key);
+  const stripe = co.stripe;
 
   try {
     const { addon, siteSlug } = await req.json() as { addon: string; siteSlug?: string };
@@ -84,7 +86,7 @@ export async function POST(req: NextRequest) {
       mode: "subscription",
       success_url: `${origin}/portal?addon=${addon}&enabled=1`,
       cancel_url: `${origin}/portal`,
-      metadata: { kind: "addon", addon, siteSlug: slug, email, source: "servolia-portal" },
+      metadata: { kind: "addon", addon, siteSlug: slug, email, source: "servolia-portal", ...co.tag },
     });
 
     return NextResponse.json({ url: session.url });
