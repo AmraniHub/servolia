@@ -1,9 +1,8 @@
 import { supabaseAdmin } from "@/lib/supabase";
 import { computeLeadScore } from "@/lib/scoring";
-import { HOSTING_TIERS } from "@/lib/hosting";
 import { readDraftEmailed } from "@/lib/draftPreview";
 import type { ReceptionistState } from "@/lib/clientSites";
-import { mailDomainFor, mailState, whatIsOwed, hostingMailDomain, hostingMailboxOwed, type OwedSite, type MailState } from "@/lib/owedToPractice";
+import { mailDomainFor, mailState, whatIsOwed, hostingMailDomain, hostingMailboxOwed, hostingSetupOwed, type OwedSite, type MailState } from "@/lib/owedToPractice";
 
 /**
  * TODAY — one list of what needs a human, assembled from everything that
@@ -72,7 +71,7 @@ export async function buildToday(now = Date.now()): Promise<Today> {
       .not("stage", "in", '("live","lost")').eq("status", "active"),
     db.from("builds").select("id, business, email, status, deadline, created_at, started_at").not("status", "in", '("live","delivered")'),
     db.from("client_sites").select("slug, business, status, notes, build_id, updated_at").eq("status", "draft").not("build_id", "is", null),
-    db.from("hosting_clients").select("id, business, email, plan, status, notes, site_url, repo, suspend_at, payment_status"),
+    db.from("hosting_clients").select("id, business, email, plan, status, notes, site_url, repo, vercel_project, suspend_at, payment_status"),
     db.from("clients").select("id, business, email, plan, status, payment_status, suspend_at, build_id, started_at").in("status", ["active", "paused"]),
     db.from("prospects").select("id, business, city, niche, status, next_action_at, touch_count, demo_slug")
       .eq("status", "to_contact").order("next_action_at", { ascending: true, nullsFirst: true }).limit(3),
@@ -245,7 +244,7 @@ export async function buildToday(now = Date.now()): Promise<Today> {
 
   /* ── Money and hosting: both lines ──────────────────────────────────── */
   const money: TodayItem[] = [];
-  for (const h of (hostRes.data ?? []) as Array<{ id: string; business: string; plan: string; status: string; notes: string | null; site_url: string | null; repo: string | null; suspend_at: string | null }>) {
+  for (const h of (hostRes.data ?? []) as Array<{ id: string; business: string; plan: string; status: string; notes: string | null; site_url: string | null; repo: string | null; vercel_project: string | null; suspend_at: string | null }>) {
     if (h.status === "trial") {
       const until = trialUntil(h.notes);
       const d = daysUntil(until, now);
@@ -255,8 +254,14 @@ export async function buildToday(now = Date.now()): Promise<Today> {
       const d = daysUntil(h.suspend_at, now);
       money.push({ kind: "payment-failed", title: h.business, detail: `card failed — ${d !== null ? `suspends in ${d}d` : "grace running"} (hosting, USD)`, href: `${ADMIN}/hosting/${h.id}`, owner: "me", urgency: d !== null && d <= 3 ? 2 : 1 });
     }
-    if (h.status === "active" && HOSTING_TIERS.includes(h.plan) && !h.site_url && !h.repo) {
-      money.push({ kind: "needs-setup", title: h.business, detail: "paid for hosting — not hosted yet, no site on record", href: `${ADMIN}/hosting/${h.id}`, owner: "me", urgency: 2 });
+    /* Keyed on the setup being RECORDED (repo or Vercel project), not on
+       site_url — which the handover form and a domain purchase both set, so
+       the reminder used to disappear before any migration had happened. */
+    const setup = hostingSetupOwed(h);
+    if (setup) {
+      money.push(setup.handover
+        ? { kind: "needs-setup", title: h.business, detail: `handover received${setup.submitted ? ` ${setup.submitted}` : ""} — we promised to write within one working day. Migrate the site, then record the repo or Vercel project on their page (that clears this row)`, href: `${ADMIN}/hosting/${h.id}`, owner: "me", urgency: 2 }
+        : { kind: "needs-setup", title: h.business, detail: `paid for hosting — not hosted yet, no handover from them${h.site_url ? ` (site on record: ${h.site_url})` : ""}. Nudge them to say where the site lives`, href: `${ADMIN}/hosting/${h.id}`, owner: "me", urgency: 2 });
     }
   }
   /* Hosting Business: "1 mailbox included" is created by hand. Owed until the

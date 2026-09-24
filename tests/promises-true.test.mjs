@@ -18,7 +18,7 @@ import path from "node:path";
 
 const { CLIENT_PRODUCTS } = await import("../src/lib/hosting.ts");
 const { ADDONS, addonForSale } = await import("../src/lib/pricing.ts");
-const { hostOf, hostingMailDomain, hostingMailboxOwed } = await import("../src/lib/owedToPractice.ts");
+const { hostOf, hostingMailDomain, hostingMailboxOwed, hostingSetupOwed } = await import("../src/lib/owedToPractice.ts");
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const src = (p) => readFileSync(path.join(ROOT, p), "utf8");
@@ -210,4 +210,28 @@ test("nothing tells a hosting client they hear about downtime from us first", ()
     for (const l of p.includes) assert.ok(p.explain[l], `${k}: "${l}" has an explanation`);
     for (const l of p.fr.includes) assert.ok(p.fr.explain[l], `${k} fr: "${l}" has an explanation`);
   }
+});
+
+/* ── 7. the migration reminder stays until the migration is recorded ───── */
+
+test("a paid hosting client stays on /admin/today until a repo or Vercel project is recorded", () => {
+  const row = (o) => ({ plan: "hosting", status: "active", site_url: null, repo: null, vercel_project: null, notes: null, ...o });
+  assert.deepEqual(hostingSetupOwed(row()), { handover: false, submitted: null }, "paid, nothing yet");
+  // The two things that used to clear it: the handover form, a domain bought with the plan.
+  const handover = "Platform: Wix\nRegistrar: OVH\nSubmitted 2026-09-24";
+  assert.deepEqual(hostingSetupOwed(row({ site_url: "https://acme.com", notes: handover })), { handover: true, submitted: "2026-09-24" });
+  assert.deepEqual(hostingSetupOwed(row({ site_url: "https://acme.com" })), { handover: false, submitted: null }, "a domain purchase alone is not a migration");
+  // What clears it: the setup recorded by the founder.
+  assert.equal(hostingSetupOwed(row({ site_url: "https://acme.com", notes: handover, repo: "AmraniHub/acme" })), null);
+  assert.equal(hostingSetupOwed(row({ vercel_project: "acme" })), null);
+  // Not a hosting tier, or not active: not this row's business.
+  assert.equal(hostingSetupOwed(row({ plan: "chatbot" })), null);
+  assert.equal(hostingSetupOwed(row({ plan: "seo_multilingual" })), null);
+  assert.equal(hostingSetupOwed(row({ status: "past_due" })), null);
+  assert.deepEqual(hostingSetupOwed(row({ plan: "HOSTING_BUSINESS" })), { handover: false, submitted: null });
+
+  const today = src("src/lib/today.ts");
+  assert.ok(today.includes("hostingSetupOwed(h)"), "today.ts asks hostingSetupOwed");
+  assert.ok(!/needs-setup[^\n]*!h\.site_url|!h\.site_url && !h\.repo/.test(today), "site_url no longer clears the reminder");
+  assert.ok(/select\("id, business, email, plan, status, notes, site_url, repo, vercel_project,/.test(today), "vercel_project is read");
 });

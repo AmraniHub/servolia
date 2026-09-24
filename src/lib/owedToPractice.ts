@@ -18,7 +18,9 @@
  * her own site, domain and mail; nothing here was ever hers to be owed.
  */
 
-export type MailState = { state: "ready"; hosts: string[] } | { state: "none" } | { state: "unknown" };
+import { HOSTING_TIERS } from "@/lib/hosting";
+
+export type MailState ={ state: "ready"; hosts: string[] } | { state: "none" } | { state: "unknown" };
 
 export interface OwedSite {
   slug: string;
@@ -83,6 +85,32 @@ export function hostOf(siteUrl: string | null | undefined): string | null {
 export function hostingMailDomain(h: OwedHostingRow): string | null {
   if (h.status !== "active" || String(h.plan).toLowerCase() !== "hosting_business") return null;
   return hostOf(h.site_url);
+}
+
+/**
+ * A self-serve hosting client whose site we have not taken over yet.
+ *
+ * "Set up" is the admin page's own test: a repo or a Vercel project recorded
+ * on the row. Only two things write those — the setup form on
+ * /admin/hosting/<id>, which probes the gate before it saves, and a row
+ * pre-created for a client we already host. NOT site_url: the handover form
+ * and a domain bought with the plan both set it, and the row used to vanish
+ * the moment the client said where the site lives, while the migration
+ * SetupForm promises "within one working day" had not happened.
+ */
+export interface HostingSetupRow extends OwedHostingRow {
+  repo?: string | null;
+  vercel_project?: string | null;
+  notes?: string | null;
+}
+
+export function hostingSetupOwed(h: HostingSetupRow): { handover: boolean; submitted: string | null } | null {
+  if (h.status !== "active" || !HOSTING_TIERS.includes(String(h.plan).toLowerCase())) return null;
+  if (h.repo || h.vercel_project) return null;
+  // /api/hosting-setup writes "Platform: …" and "Submitted YYYY-MM-DD" into notes.
+  const notes = h.notes ?? "";
+  const handover = /^Platform: /m.test(notes);
+  return { handover, submitted: handover ? notes.match(/^Submitted (\d{4}-\d{2}-\d{2})/m)?.[1] ?? null : null };
 }
 
 export function hostingMailboxOwed(h: OwedHostingRow, mail?: MailState): Owed {
