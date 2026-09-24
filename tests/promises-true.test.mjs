@@ -162,6 +162,28 @@ test("the founding waiver is only offered when a checkout can apply it", () => {
   assert.ok(!open || codes, "FOUNDING_PLACES_OPEN needs promotion codes on /api/checkout-subscription");
 });
 
+/* ── 6. the portal's domain panel agrees with CGV 7 bis ────────────────── */
+
+test("the domain panel states both cases of CGV 7 bis, in both languages", () => {
+  const panel = src("src/components/portal/DomainPanel.tsx");
+  const copy = panel.replace(/\/\*[\s\S]*?\*\//g, "");
+  // The old line was true only for a domain she already owned.
+  assert.ok(!/Nothing to transfer/i.test(copy) && !/Rien à transférer/i.test(copy), "leaving can mean a transfer");
+  assert.ok(!/"In your name, at your own registrar/.test(copy), "not every domain is at her own registrar");
+  // Case 1: her own domain stays hers, at her registrar.
+  assert.ok(/A domain you already owned stays in your name, at your own registrar/.test(copy));
+  assert.ok(/Un domaine que vous possédiez déjà reste à votre nom, chez votre propre bureau d'enregistrement/.test(copy));
+  // Case 2: one Servolia registered is in Servolia's name, on her behalf, transferred on request.
+  assert.ok(/held in Servolia's name on your behalf/.test(copy) && /détenu au nom de Servolia pour votre compte/.test(copy));
+  assert.ok(/within 5 business days of your written request/.test(copy) && /dans les 5 jours ouvrés suivant votre demande écrite/.test(copy));
+  assert.ok(/\{t\.cases\}/.test(panel), "the two cases are rendered");
+  // …which is what the CGV says, EN and FR.
+  assert.ok(src("src/app/legal/cgv/page.tsx").includes("Servolia registers it in its own name, on the client&apos;s behalf"));
+  assert.ok(src("src/app/fr/legal/cgv/page.tsx").includes("elle l&apos;enregistre à son nom, pour le compte du client"));
+  assert.ok(src("src/app/legal/cgv/page.tsx").includes("within 5 business days of a written request"));
+  assert.ok(src("src/app/fr/legal/cgv/page.tsx").includes("dans les 5 jours ouvrés suivant une demande écrite"));
+});
+
 /* ── 4. no uptime monitor is promised for a client's site ──────────────── */
 
 test("nothing tells a hosting client they hear about downtime from us first", () => {
