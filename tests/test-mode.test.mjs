@@ -85,11 +85,24 @@ function withEnv(vars, fn) {
   return Promise.resolve().then(fn).finally(restore);
 }
 
-const validCookie = () => TM.signTestCookie(Date.now() + 3600_000);
+const FOUNDER = "founder@example.com";
+process.env.FOUNDER_EMAIL = FOUNDER;
 
-function post(url, body, cookie) {
+/** An admin-session-shaped JWT whose payload carries `exp` (seconds). The
+ *  test cookie is bound to it, and reads it only for its expiry. */
+const b64 = (o) => Buffer.from(JSON.stringify(o)).toString("base64url");
+function adminToken(expSec = Math.floor(Date.now() / 1000) + 3600, salt = "a") {
+  return `${b64({ alg: "HS256" })}.${b64({ role: "admin", exp: expSec, salt })}.sig-${salt}`;
+}
+const ADMIN = adminToken();
+const validCookie = () => TM.signTestCookie(Date.now() + 3600_000, ADMIN);
+
+function post(url, body, cookie, admin = ADMIN) {
   const headers = { "content-type": "application/json", origin: "https://servolia.com" };
-  if (cookie) headers.cookie = `sv_test=${cookie}`;
+  const jar = [];
+  if (cookie) jar.push(`sv_test=${cookie}`);
+  if (cookie && admin) jar.push(`servolia_admin=${admin}`);
+  if (jar.length) headers.cookie = jar.join("; ");
   return new NextRequest(url, { method: "POST", body: JSON.stringify(body), headers });
 }
 
@@ -97,31 +110,45 @@ function post(url, body, cookie) {
 
 test("a signed, unexpired cookie is test mode; expired, forged, tampered or garbage is live", () => {
   const exp = Date.now() + 60_000;
-  const good = TM.signTestCookie(exp);
-  assert.equal(TM.verifyTestCookie(good), exp);
-  assert.equal(TM.verifyTestCookie(good, exp + 1), null, "expired");
+  const good = TM.signTestCookie(exp, ADMIN);
+  assert.equal(TM.verifyTestCookie(good, ADMIN), exp);
+  assert.equal(TM.verifyTestCookie(good, ADMIN, exp + 1), null, "expired");
   const [v, e, mac] = good.split(".");
-  assert.equal(TM.verifyTestCookie(`${v}.${e}.${mac.slice(0, -2)}${mac.endsWith("AA") ? "BB" : "AA"}`), null, "forged MAC");
-  assert.equal(TM.verifyTestCookie(`${v}.${Number(e) + 3600_000}.${mac}`), null, "expiry pushed out without re-signing");
+  assert.equal(TM.verifyTestCookie(`${v}.${e}.${mac.slice(0, -2)}${mac.endsWith("AA") ? "BB" : "AA"}`, ADMIN), null, "forged MAC");
+  assert.equal(TM.verifyTestCookie(`${v}.${Number(e) + 3600_000}.${mac}`, ADMIN), null, "expiry pushed out without re-signing");
   for (const junk of ["", "1", "v1.abc.def", "v2." + e + "." + mac, null, undefined]) {
-    assert.equal(TM.verifyTestCookie(junk), null, `garbage ${junk}`);
+    assert.equal(TM.verifyTestCookie(junk, ADMIN), null, `garbage ${junk}`);
   }
-  assert.equal(TM.isTestRequest({ cookies: { get: () => ({ value: good }) } }), true);
-  assert.equal(TM.isTestRequest({ cookies: { get: () => undefined } }), false);
+  const jar = (m) => ({ cookies: { get: (n) => (m[n] ? { value: m[n] } : undefined) } });
+  assert.equal(TM.isTestRequest(jar({ sv_test: good, servolia_admin: ADMIN })), true);
+  assert.equal(TM.isTestRequest(jar({})), false);
+});
+
+test("the test cookie dies with its admin session: logged out, another session, or an expired one", () => {
+  const good = TM.signTestCookie(Date.now() + 3600_000, ADMIN);
+  const jar = (m) => ({ cookies: { get: (n) => (m[n] ? { value: m[n] } : undefined) } });
+  assert.equal(TM.isTestRequest(jar({ sv_test: good })), false, "admin logged out (cookie cleared)");
+  assert.equal(TM.isTestRequest(jar({ sv_test: good, servolia_admin: adminToken(undefined, "b") })), false, "a different admin session");
+  const old = adminToken(Math.floor(Date.now() / 1000) - 5, "c");
+  const bound = TM.signTestCookie(Date.now() + 3600_000, old);
+  assert.equal(TM.isTestRequest(jar({ sv_test: bound, servolia_admin: old })), false, "the admin session has expired");
 });
 
 test("a cookie signed with another secret is not test mode", () => withEnv({ UPGRADE_TOKEN_SECRET: "a-different-secret" }, () => {
-  const other = TM.signTestCookie(Date.now() + 60_000);
+  const other = TM.signTestCookie(Date.now() + 60_000, ADMIN);
   return withEnv({ UPGRADE_TOKEN_SECRET: "harness-upgrade-secret" }, () => {
-    assert.equal(TM.verifyTestCookie(other), null);
+    assert.equal(TM.verifyTestCookie(other, ADMIN), null);
   });
 }));
 
-test("the admin route sets the cookie httpOnly + SameSite=Lax for 8 hours, behind the admin login", () => {
+test("the admin route sets the cookie httpOnly + SameSite=Lax for 8 hours, bound to the admin session; the pill asks the server", () => {
   const r = src("src/app/api/admin/test-mode/route.ts");
   assert.match(r, /if \(!\(await isAdminAuthed\(\)\)\) return NextResponse\.json\(\{ error: "Unauthorized" \}, \{ status: 401 \}\);\n  const \{ on \}/, "POST checks the admin session first");
-  assert.match(r, /res\.cookies\.set\(TEST_COOKIE, signTestCookie\(exp\), \{ httpOnly: true, secure, sameSite: "lax"/);
+  assert.match(r, /const adminToken = req\.cookies\.get\(getCookieName\(\)\)\?\.value \?\? "";\n\s*res\.cookies\.set\(TEST_COOKIE, signTestCookie\(exp, adminToken\), \{ httpOnly: true, secure, sameSite: "lax"/);
   assert.equal(TM.TEST_HOURS, 8);
+  const pill = src("src/components/TestModeNote.tsx");
+  assert.match(pill, /fetch\("\/api\/admin\/test-mode"/, "the pill is verified by the same server check");
+  assert.match(pill, /setOn\(s\?\.on === true\)/);
 });
 
 /* ══ 2. Which Stripe key ═══════════════════════════════════════════════════ */
@@ -163,56 +190,72 @@ const CHECKOUT_FILES = [
   "src/app/api/checkout-topup/route.ts",
   "src/app/api/checkout-addon/route.ts",
   "src/app/api/hosting-checkout/route.ts",
+];
+/** Payment links the ADMIN makes are for real clients: always live. */
+const ADMIN_LINK_FILES = [
   "src/app/api/admin/hosting/checkout/route.ts",
   "src/app/api/admin/custom-requests/route.ts",
 ];
 
-test("every file that creates a Checkout session is on the list and goes through checkoutStripe", () => {
+test("every file that creates a Checkout session is on a list; buyer routes go through checkoutStripe, admin links never do", () => {
   // The inventory: a NEW checkout route must be added here, or this fails.
   const found = execFileSync("git", ["grep", "-l", "checkout.sessions.create", "--", "src"], { cwd: ROOT, encoding: "utf8" })
     .split("\n").filter(Boolean).map((f) => f.trim()).sort();
-  assert.deepEqual(found, [...CHECKOUT_FILES, "src/lib/domainCheckout.ts"].sort());
+  assert.deepEqual(found, [...CHECKOUT_FILES, ...ADMIN_LINK_FILES, "src/lib/domainCheckout.ts"].sort());
   for (const f of CHECKOUT_FILES) {
     const s = src(f);
     assert.match(s, /const co = checkoutStripe\(req\);\n\s*if \(co\.refused\) return co\.refused;/, `${f}: refuses before anything else`);
     assert.doesNotMatch(s, /new Stripe\(/, `${f}: no Stripe client of its own`);
     assert.match(s, /\.\.\.co\.tag/, `${f}: tags the session metadata`);
+    if (f.includes("receptionist")) assert.match(s, /if \(co\.test && !isFounderEmail\(r\.email\)\)/, `${f}: only the founder's own trial`);
+    else assert.match(s, /co\.buyer/, `${f}: a test purchase is made in the founder's name`);
+  }
+  for (const f of ADMIN_LINK_FILES) {
+    const s = src(f);
+    assert.doesNotMatch(s, /checkoutStripe|testMode"|isTestRequest/, `${f}: must ignore the test cookie`);
+    assert.match(s, /new Stripe\(key\)/, `${f}: the live key, always`);
   }
 });
 
-async function routeCase(file, body, { cookie, testKey }) {
+async function routeCase(file, body, { cookie, testKey, admin }) {
   const mod = await import(`../${file}`);
   stripeCalls.length = 0;
   const res = await withEnv({ STRIPE_TEST_SECRET_KEY: testKey }, () =>
-    mod.POST(post(`https://servolia.com/${file}`, body, cookie)));
+    mod.POST(post(`https://servolia.com/${file}`, body, cookie, admin)));
   return { res, calls: stripeCalls.filter((c) => c.op === "sessions.create") };
 }
 
 const PUBLIC_ROUTES = [
-  ["src/app/api/checkout/route.ts", () => ({ plan: SELLABLE_KEY })],
-  ["src/app/api/checkout-subscription/route.ts", () => ({ plan: "essentiel", billing: "monthly" })],
-  ["src/app/api/hosting-checkout/route.ts", () => ({ plan: "hosting", billing: "monthly", email: "me@example.com" })],
+  ["src/app/api/checkout/route.ts", () => ({ plan: SELLABLE_KEY, leadId: "real-lead-1" })],
+  ["src/app/api/checkout-subscription/route.ts", () => ({ plan: "essentiel", billing: "monthly", email: "someone@client.fr" })],
+  ["src/app/api/hosting-checkout/route.ts", () => ({ plan: "hosting", billing: "monthly", email: "someone@client.fr" })],
 ];
 const { SELLABLE_BUILD_PLANS } = await import("../src/lib/pricing.ts");
 const SELLABLE_KEY = SELLABLE_BUILD_PLANS[0].key;
 
 for (const [file, body] of PUBLIC_ROUTES) {
-  test(`${file}: test cookie + test key -> TEST session tagged test=1; no cookie -> live, untagged`, async () => {
+  test(`${file}: test cookie -> TEST session, tagged, in the founder's name; no cookie -> live, untouched`, async () => {
     const t = await routeCase(file, body(), { cookie: validCookie(), testKey: TEST_KEY });
     assert.equal(t.res.status, 200);
     assert.equal(t.calls.length, 1);
     assert.equal(t.calls[0].key, TEST_KEY);
     assert.equal(t.calls[0].params.metadata.test, "1");
+    assert.equal(t.calls[0].params.customer_email, FOUNDER, "a test purchase never carries anyone else's address");
     if (t.calls[0].params.subscription_data) assert.equal(t.calls[0].params.subscription_data.metadata?.test, "1");
+    if ("lead_id" in t.calls[0].params.metadata) assert.equal(t.calls[0].params.metadata.lead_id, "", "never linked to a real lead");
 
     const l = await routeCase(file, body(), { cookie: null, testKey: TEST_KEY });
     assert.equal(l.calls.length, 1);
     assert.equal(l.calls[0].key, LIVE_KEY);
     assert.equal("test" in l.calls[0].params.metadata, false, "live metadata exactly as before");
+    assert.notEqual(l.calls[0].params.customer_email, FOUNDER);
     if (l.calls[0].params.subscription_data?.metadata) assert.equal("test" in l.calls[0].params.subscription_data.metadata, false);
+    if ("lead_id" in l.calls[0].params.metadata) assert.equal(l.calls[0].params.metadata.lead_id, "real-lead-1");
 
     const forged = await routeCase(file, body(), { cookie: validCookie().replace(/.$/, (c) => (c === "A" ? "B" : "A")), testKey: TEST_KEY });
     assert.equal(forged.calls[0].key, LIVE_KEY, "a forged cookie is live");
+    const loggedOut = await routeCase(file, body(), { cookie: validCookie(), testKey: TEST_KEY, admin: null });
+    assert.equal(loggedOut.calls[0].key, LIVE_KEY, "no admin session, no test mode");
   });
 }
 
@@ -221,25 +264,64 @@ const REFUSAL_ROUTES = [
   ["src/app/api/checkout-receptionist/route.ts", () => ({ token: "x", plan: "essentiel" })],
 ];
 for (const [file, body] of REFUSAL_ROUTES) {
-  test(`${file}: test cookie WITHOUT a test key -> 503, and no session at all`, async () => {
+  test(`${file}: test cookie WITHOUT a test key, or without a founder address -> 503, and no session at all`, async () => {
     const r = await routeCase(file, body(), { cookie: validCookie(), testKey: undefined });
     assert.equal(r.res.status, 503);
     assert.equal((await r.res.json()).error, "Test mode is on but no Stripe test key is configured");
     assert.equal(r.calls.length, 0, "never a live session instead");
+    await withEnv({ FOUNDER_EMAIL: undefined, EMAIL_REPLY_TO: undefined }, async () => {
+      const n = await routeCase(file, body(), { cookie: validCookie(), testKey: TEST_KEY });
+      assert.equal(n.res.status, 503);
+      assert.match((await n.res.json()).error, /FOUNDER_EMAIL/);
+      assert.equal(n.calls.length, 0);
+    });
   });
 }
 
-test("checkoutStripe itself: refusal, test client + tag, or live exactly as before", () => withEnv({ STRIPE_TEST_SECRET_KEY: TEST_KEY }, async () => {
-  const cookies = (v) => ({ cookies: { get: () => (v ? { value: v } : undefined) } });
-  const t = TM.checkoutStripe(cookies(validCookie()));
+test("hosting checkout refuses test mode on a REAL client's ?ref= page; live on that page is unchanged", async () => {
+  const body = { plan: "hosting", billing: "monthly", ref: "goodscochina" };
+  const t = await routeCase("src/app/api/hosting-checkout/route.ts", body, { cookie: validCookie(), testKey: TEST_KEY });
+  assert.equal(t.res.status, 503);
+  assert.equal((await t.res.json()).error, "Test mode: use a test ref, not a real client's page");
+  assert.equal(t.calls.length, 0);
+  const l = await routeCase("src/app/api/hosting-checkout/route.ts", body, { cookie: null, testKey: TEST_KEY });
+  assert.equal(l.calls.length, 1);
+  assert.equal(l.calls[0].params.metadata.ref, "goodscochina");
+});
+
+test("receptionist checkout in test mode: only the founder's own trial can be bought", async () => {
+  const { mintReceptionistToken } = await import("../src/lib/receptionistTrial.ts");
+  const until = new Date(Date.now() + 5 * 86400000).toISOString();
+  const trial = (email) => [{ id: "cs-row", slug: "cabinet-x", build_id: null, notes: "", config: { businessName: "Cabinet X", receptionist: { domain: "cabinet-x.fr", email, started: new Date().toISOString(), until, lang: "fr" } } }];
+  for (const [email, expectOk] of [["prospect@cabinet-x.fr", false], [FOUNDER, true]]) {
+    H.reset();
+    H.reads.client_sites = trial(email);
+    const token = await mintReceptionistToken({ slug: "cabinet-x", email, lang: "fr" });
+    const r = await routeCase("src/app/api/checkout-receptionist/route.ts", { token, plan: "essentiel" }, { cookie: validCookie(), testKey: TEST_KEY });
+    if (expectOk) {
+      assert.equal(r.res.status, 200, "the founder's own trial");
+      assert.equal(r.calls[0].key, TEST_KEY);
+    } else {
+      assert.equal(r.res.status, 403, "a prospect's trial is never bought in test mode");
+      assert.equal(r.calls.length, 0);
+    }
+  }
+  H.reset();
+});
+
+test("checkoutStripe itself: refusal, test client + tag + founder buyer, or live exactly as before", () => withEnv({ STRIPE_TEST_SECRET_KEY: TEST_KEY }, async () => {
+  const jar = (v) => ({ cookies: { get: (n) => (n === "sv_test" && v ? { value: v } : n === "servolia_admin" ? { value: ADMIN } : undefined) } });
+  const t = TM.checkoutStripe(jar(validCookie()));
   assert.equal(t.refused, null);
   assert.equal(t.stripe.key, TEST_KEY);
   assert.deepEqual(t.tag, { test: "1" });
-  const l = TM.checkoutStripe(cookies(null));
+  assert.equal(t.buyer, FOUNDER);
+  const l = TM.checkoutStripe(jar(null));
   assert.equal(l.stripe.key, LIVE_KEY);
   assert.deepEqual(l.tag, {});
+  assert.equal(l.buyer, null);
   await withEnv({ STRIPE_TEST_SECRET_KEY: undefined }, () => {
-    const r = TM.checkoutStripe(cookies(validCookie()));
+    const r = TM.checkoutStripe(jar(validCookie()));
     assert.equal(r.refused.status, 503);
   });
 }));
@@ -342,6 +424,97 @@ test("a test hosting purchase with a ref and a domain: no domain bought, no repo
     assert.ok(!texts.some((t) => t.includes("DOMAIN NOT BOUGHT")), "nobody is told to buy a test domain by hand");
   }));
 
+function evt(type, object) {
+  return { id: `evt_d_${Math.random().toString(36).slice(2)}`, object: "event", type, livemode: false, created: 1790000000, api_version: "2025-01-01", data: { object } };
+}
+const resendMails = () => H.outbound.filter((o) => o.url.includes("api.resend.com")).map((o) => JSON.parse(o.body));
+
+test("every email sent during a test event goes to the founder, subject [TEST]; live emails are untouched", () =>
+  withEnv({ STRIPE_TEST_SECRET_KEY: TEST_KEY, STRIPE_TEST_WEBHOOK_SECRET: H.TEST_WH, RESEND_API_KEY: "re_harness" }, async () => {
+    H.reset();
+    await webhookPOST(request(H.planPurchase(false, "real.client@cabinet.fr"), H.TEST_WH));
+    await new Promise((r) => setTimeout(r, 50));
+    const t = resendMails();
+    assert.ok(t.length > 0, "the test buyer's receipt was sent");
+    for (const m of t) {
+      assert.deepEqual([m.to].flat(), [FOUNDER], "a test email reached someone other than the founder");
+      assert.ok(m.subject.startsWith("[TEST] "));
+    }
+    H.reset();
+    await webhookPOST(request(H.planPurchase(true, "real.client@cabinet.fr"), H.LIVE_WH));
+    await new Promise((r) => setTimeout(r, 50));
+    const l = resendMails();
+    assert.deepEqual([l[0].to].flat(), ["real.client@cabinet.fr"]);
+    assert.ok(!l[0].subject.startsWith("[TEST]"));
+  }));
+
+test("with no founder address, a test email is not sent at all — the founder is told on Telegram", () =>
+  withEnv({ STRIPE_TEST_SECRET_KEY: TEST_KEY, STRIPE_TEST_WEBHOOK_SECRET: H.TEST_WH, RESEND_API_KEY: "re_harness", FOUNDER_EMAIL: undefined, EMAIL_REPLY_TO: undefined }, async () => {
+    H.reset();
+    await webhookPOST(request(H.planPurchase(false, "real.client@cabinet.fr"), H.TEST_WH));
+    await new Promise((r) => setTimeout(r, 50));
+    assert.equal(resendMails().length, 0);
+    const tg = H.outbound.filter((o) => o.url.includes("telegram")).map((o) => JSON.parse(o.body).text);
+    assert.ok(tg.some((x) => x.includes("TEST MODE: email NOT sent")));
+  }));
+
+test("a test receptionist payment never claims or links a trial that is not the founder's", () =>
+  withEnv({ STRIPE_TEST_SECRET_KEY: TEST_KEY, STRIPE_TEST_WEBHOOK_SECRET: H.TEST_WH }, async () => {
+    const until = new Date(Date.now() + 5 * 86400000).toISOString();
+    const session = (email) => evt("checkout.session.completed", {
+      id: "cs_test_rec", object: "checkout.session", mode: "subscription", payment_status: "paid", amount_total: 14900,
+      customer: "cus_r", subscription: `sub_r_${email.length}`, customer_details: { email: FOUNDER },
+      metadata: { kind: "receptionist", slug: "cabinet-x", plan: "essentiel", billing: "monthly", email: FOUNDER, lang: "fr", test: "1" },
+    });
+    for (const [owner, linked] of [["prospect@cabinet-x.fr", false], [FOUNDER, true]]) {
+      H.reset();
+      H.reads.client_sites = [{ id: "cs-row", slug: "cabinet-x", build_id: null, notes: "", config: { businessName: "Cabinet X", receptionist: { domain: "cabinet-x.fr", email: owner, started: new Date().toISOString(), until, lang: "fr" } } }];
+      const res = await webhookPOST(request(session(owner), H.TEST_WH));
+      assert.equal(res.status, 200);
+      const siteWrites = H.writes.filter((w) => w.table === "client_sites");
+      if (linked) assert.ok(siteWrites.length > 0, "the founder's own trial is linked");
+      else assert.equal(siteWrites.length, 0, "a prospect's trial was touched by a test purchase");
+      for (const w of H.writes.filter((x) => x.method === "POST")) assert.equal(w.body.is_test, true);
+    }
+    H.reset();
+  }));
+
+test("a test build payment never links to (or writes a scope for) a real lead from its metadata", () =>
+  withEnv({ STRIPE_TEST_SECRET_KEY: TEST_KEY, STRIPE_TEST_WEBHOOK_SECRET: H.TEST_WH }, async () => {
+    H.reset();
+    const res = await webhookPOST(request(evt("checkout.session.completed", {
+      id: "cs_test_build", object: "checkout.session", mode: "payment", payment_status: "paid", amount_total: 69000,
+      customer: "cus_b", customer_details: { email: FOUNDER },
+      metadata: { plan: SELLABLE_KEY, lead_id: "real-lead-1", lang: "fr", test: "1" },
+    }), H.TEST_WH));
+    assert.equal(res.status, 200);
+    assert.ok(!JSON.stringify(H.writes).includes("real-lead-1"), "the real lead was linked or written to");
+    const lead = H.writes.find((w) => w.method === "POST" && w.table === "leads");
+    assert.equal(lead?.body.is_test, true, "a fresh tagged lead instead");
+    H.reset();
+  }));
+
+test("cleanup reverts a paid trial row that points at a test build, and only that", async () => {
+  const until = "2026-10-01T00:00:00.000Z";
+  const site = { id: "s1", slug: "cabinet-x", status: "published", build_id: "b1", config: { status: "published", receptionist: { email: FOUNDER, started: "x", until, paidAt: "2026-09-24", plan: "essentiel", paying: "sub|t" } } };
+  const draft = { id: "s2", slug: "draft-site", status: "draft", build_id: "b1", config: { status: "draft" } };
+  const r = await runCleanup({ builds: [{ id: "b1", is_test: true }], client_sites: [site, draft] }, ["--apply"]);
+  assert.equal(r.code, 0, r.text);
+  const patches = r.requests.filter((q) => q.method === "PATCH");
+  assert.equal(patches.length, 1, "only the paid receptionist row is reverted");
+  assert.equal(patches[0].table, "client_sites");
+  assert.match(patches[0].query, /^\?id=eq\.s1&build_id=eq\.b1$/);
+  const body = JSON.parse(patches[0].body);
+  assert.equal(body.build_id, null);
+  assert.equal(body.status, "draft");
+  assert.equal(body.config.status, "draft");
+  assert.deepEqual(body.config.receptionist, { email: FOUNDER, started: "x", until }, "paidAt, plan and paying removed; the trial itself kept");
+  assert.match(r.text, /REVERT receptionist trial cabinet-x/);
+  // The revert happens before the build it was found through is deleted.
+  const order = r.requests.filter((q) => q.method !== "GET").map((q) => q.method);
+  assert.deepEqual(order, ["PATCH", "DELETE"]);
+});
+
 test("before the SQL has run, a test event is refused whole: nothing written, founder told", () =>
   withEnv({ STRIPE_TEST_SECRET_KEY: TEST_KEY, STRIPE_TEST_WEBHOOK_SECRET: H.TEST_WH }, async () => {
     H.reset();
@@ -404,26 +577,44 @@ test("inside a test context: registrar, GitHub and Meta refuse; Telegram is pref
 
 /* ══ 6. Exclusion: `is_test is not true`, tolerant of the column not existing ═ */
 
-test("excludeTest adds `is_test is not true`, and drops it when the column does not exist yet", async () => {
+/** A db whose is_test probe answers `probeError`, recording each probe. */
+function probeDb(probeError) {
+  const probes = [];
+  return {
+    probes,
+    from: (t) => ({ select: (c) => ({ limit: async () => { probes.push(`${t}.${c}`); return { error: probeError }; } }) }),
+  };
+}
+
+test("excludeTest: the column is detected ONCE by a probe (not by parsing errors); `is_test is not true` when it exists", async () => {
+  TC.__resetTestColumnCacheForTests();
+  const db = probeDb(null);
   const seen = [];
-  const builder = (missingCol) => ({
-    not(col, op, val) {
-      seen.push([col, op, val]);
-      return { then: (r) => r(missingCol ? { data: null, error: { code: "42703", message: "column clients.is_test does not exist" } } : { data: ["filtered"], error: null }) };
-    },
-    then: (r) => r({ data: ["unfiltered"], error: null }),
-  });
-  const a = await TC.excludeTest((live) => live(builder(false)));
-  assert.deepEqual(seen, [["is_test", "is", true]], "NOT eq(false): null rows must stay counted");
-  assert.deepEqual(a.data, ["filtered"]);
-  const b = await TC.excludeTest((live) => live(builder(true)));
-  assert.deepEqual(b.data, ["unfiltered"], "column missing -> the query as it always ran");
-  // Any other error is returned, not swallowed.
-  const c = await TC.excludeTest(() => Promise.resolve({ data: null, error: { code: "57014", message: "timeout" } }));
-  assert.equal(c.error.message, "timeout");
+  const builder = { not(col, op, val) { seen.push([col, op, val]); return this; }, then: (r) => r({ data: ["rows"], error: null }) };
+  await TC.excludeTest(db, (live) => live(builder));
+  await TC.excludeTest(db, (live) => live(builder));
+  assert.deepEqual(seen, [["is_test", "is", true], ["is_test", "is", true]], "NOT eq(false): null rows must stay counted");
+  assert.deepEqual(db.probes, ["clients.is_test", "builds.is_test", "hosting_clients.is_test", "leads.is_test"], "probed once, cached");
+  // keepTest (the founder's own test browser): unfiltered.
+  seen.length = 0;
+  await TC.excludeTest(db, (live) => live(builder), { keepTest: true });
+  assert.deepEqual(seen, []);
+  TC.__resetTestColumnCacheForTests();
 });
 
-test("every number, list and cron that must not see test rows excludes them", () => {
+test("excludeTest before the SQL: a head/count query runs unfiltered and its count survives (it read 0 before)", async () => {
+  TC.__resetTestColumnCacheForTests();
+  const db = probeDb({ code: "42703", message: "" });
+  let filtered = false;
+  // A head:true count query: PostgREST answers errors on it with an EMPTY message.
+  const headQuery = { not() { filtered = true; return { then: (r) => r({ count: null, error: { message: "" } }) }; }, then: (r) => r({ count: 7, error: null }) };
+  const res = await TC.excludeTest(db, (live) => live(headQuery));
+  assert.equal(filtered, false, "never filtered on a column that does not exist");
+  assert.equal(res.count, 7);
+  TC.__resetTestColumnCacheForTests();
+});
+
+test("every number, list, cron and by-email lookup that must not see test rows excludes them", () => {
   const needs = {
     "src/lib/today.ts": 4,
     "src/app/admin/page.tsx": 4,
@@ -432,17 +623,66 @@ test("every number, list and cron that must not see test rows excludes them", ()
     "src/lib/economics.ts": 2,
     "src/lib/crmSnapshot.ts": 3,
     "src/app/api/cron/monthly-invoice/route.ts": 1,
-    "src/app/api/cron/dunning/route.ts": 2,
+    "src/app/api/cron/dunning/route.ts": 3,
     "src/app/api/cron/domain-billing/route.ts": 3,
+    // by-email lookups: a client must never be answered with a test row
+    "src/app/hosting/page.tsx": 1,
+    "src/app/api/hosting-account/link/route.ts": 1,
+    "src/app/api/hosting-upgrade/link/route.ts": 1,
+    "src/app/portal/page.tsx": 2,
+    "src/lib/portalAssistant.ts": 2,
+    "src/app/api/billing-portal/route.ts": 1,
+    "src/app/api/assistant-invite/route.ts": 1,
+    "src/app/api/portal/leads/route.ts": 2,
+    "src/app/api/portal/messages/route.ts": 1,
+    "src/app/api/portal/reports/route.ts": 1,
+    "src/app/api/portal/traffic/route.ts": 1,
+    "src/app/api/checkout-addon/route.ts": 1,
+    "src/lib/assistantAccess.ts": 1,
+    "src/lib/assistantTrial.ts": 2,
+    "src/lib/hostingRow.ts": 1,
+    "src/app/api/contact/route.ts": 1,
+    "src/app/api/webhooks/stripe/route.ts": 3,
   };
   for (const [f, n] of Object.entries(needs)) {
-    const count = (src(f).match(/excludeTest\(\(live\) =>/g) ?? []).length;
+    const count = (src(f).match(/excludeTest\(db, \((live|only)\) =>/g) ?? []).length;
     assert.ok(count >= n, `${f}: ${count} excluded queries, expected ${n}`);
   }
+  // The upgrade-link lookup no longer errors on two rows.
+  assert.doesNotMatch(src("src/app/api/hosting-upgrade/link/route.ts"), /\.eq\("status", "active"\)\n\s*\.maybeSingle\(\)/);
   assert.match(src("src/app/api/cron/monthly-report/route.ts"), /if \(siteRow\?\.build_id && testBuilds\.has\(siteRow\.build_id\)\) continue;/);
   assert.match(src("src/lib/conversationCap.ts"), /if \(level === 100 && !\(db && \(await isTestRow\(db, "clients", s\.clientId\)\)\)\)/);
   assert.match(src("src/app/admin/clients/page.tsx"), /const real = \(clients \?\? \[\]\)\.filter\(c => c\.is_test !== true\);/);
   assert.match(src("src/app/admin/hosting/page.tsx"), /const real = clients\.filter\(\(c\) => c\.is_test !== true\);/);
+});
+
+test("inventory: no by-email lookup of clients / hosting_clients / builds outside an exclusion", () => {
+  const files = execFileSync("git", ["grep", "-lE", "(eq|ilike|in)\\(\"email\"", "--", "src"], { cwd: ROOT, encoding: "utf8" }).split("\n").filter(Boolean);
+  const offenders = [];
+  for (const f of files) {
+    const s = src(f);
+    const re = /\.(eq|ilike|in)\("email"/g;
+    let m;
+    while ((m = re.exec(s))) {
+      const before = s.slice(Math.max(0, m.index - 500), m.index);
+      const table = [...before.matchAll(/from\("([a-z_]+)"\)/g)].pop()?.[1];
+      if (!["clients", "hosting_clients", "builds"].includes(table)) continue;
+      const fromAt = before.lastIndexOf(`from("${table}")`);
+      const lead = before.slice(Math.max(0, fromAt - 260), fromAt);
+      const after = s.slice(m.index, m.index + 400);
+      if (/excludeTest\(db, \(live\) =>|excludeTest\(db, \(only\) =>/.test(lead) || /eq\("is_test", true\)/.test(after)) continue;
+      offenders.push(`${f}: ${s.slice(m.index, m.index + 40)}`);
+    }
+  }
+  assert.deepEqual(offenders, []);
+});
+
+test("admin domain buy/attach refuse a test row; the detail page marks it TEST", () => {
+  const r = src("src/app/api/admin/hosting/[id]/domain/route.ts");
+  const guard = r.indexOf('if ((action === "buy" || action === "attach") && (await isTestRow(db, "hosting_clients", id)))');
+  assert.ok(guard > 0 && guard < r.indexOf("purchaseDomainForClient(rec.domain"), "refused before any purchase");
+  assert.match(src("src/app/api/admin/hosting/[id]/route.ts"), /rec\.attached !== vercelProject && !\(await isTestRow\(db, "hosting_clients", id\)\)/);
+  assert.match(src("src/app/admin/hosting/[id]/page.tsx"), /c\.is_test === true && \(/);
 });
 
 /* ══ 7. The SQL: adds a column, touches no row ═════════════════════════════ */
@@ -463,12 +703,16 @@ test("the SQL only adds is_test (default false) and redefines the KPI view — n
 async function runCleanup(rowsByTable, args) {
   const requests = [];
   const server = createServer((req, res) => {
-    const u = new URL(req.url, "http://x");
-    const table = u.pathname.replace("/rest/v1/", "");
-    requests.push({ method: req.method, table, query: decodeURIComponent(u.search) });
-    const rows = rowsByTable[table] ?? [];
-    res.setHeader("content-type", "application/json");
-    res.end(JSON.stringify(req.method === "DELETE" ? rows.filter((r) => r.is_test === true) : rows));
+    let body = "";
+    req.on("data", (d) => (body += d));
+    req.on("end", () => {
+      const u = new URL(req.url, "http://x");
+      const table = u.pathname.replace("/rest/v1/", "");
+      requests.push({ method: req.method, table, query: decodeURIComponent(u.search), body });
+      const rows = rowsByTable[table] ?? [];
+      res.setHeader("content-type", "application/json");
+      res.end(JSON.stringify(req.method === "DELETE" ? rows.filter((r) => r.is_test === true) : rows));
+    });
   });
   await new Promise((r) => server.listen(0, "127.0.0.1", r));
   const port = server.address().port;

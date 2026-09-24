@@ -75,7 +75,8 @@ export const FEATURES: SystemFeature[] = [
     name: "Founder test mode (Stripe test purchases on the live site)",
     summary: "Your own browser can buy any product on servolia.com with a Stripe TEST card and receive exactly what a client receives — emails, portal, receipts — while nothing is counted and nothing real happens.",
     how: [
-      "/admin/settings > Test mode > Turn on sets an httpOnly cookie (sv_test) on THIS browser for 8 hours, HMAC-signed with the upgrade-token secret. A forged or expired cookie reads as live.",
+      "/admin/settings > Test mode > Turn on sets an httpOnly cookie (sv_test) on THIS browser for 8 hours, HMAC-signed with the upgrade-token secret over a hash of the admin session: logging out or the session expiring ends test mode. A forged or expired cookie reads as live.",
+      "A test purchase can never take on a real client's identity: it is always made in the founder's name, a real client's ?ref= page refuses test checkout, a real lead's scope link is not linked, only the founder's own receptionist trial can be bought, and every lookup by email ignores test rows except in the founder's own test browser. Payment links made from the admin (hosting checkout, custom requests) are always live.",
       "Every checkout route asks src/lib/testMode.ts checkoutStripe(): with the cookie it creates the session on STRIPE_TEST_SECRET_KEY and tags metadata test=1; with the cookie but no test key it REFUSES (503) — it never falls back to a live charge. Without the cookie nothing changes.",
       "The Stripe webhook tries the live signing secret first, then STRIPE_TEST_WEBHOOK_SECRET. An event verified by the test secret runs inside runAsTest (src/lib/testContext.ts): every clients/builds/hosting_clients/leads row it writes carries is_test = true, every Telegram alert starts 'TEST —', and every Stripe call uses the test key.",
       "Never on a test event: no domain bought or renewed (the Vercel registrar refuses in test context), no commit to a client repository (the GitHub writers refuse), no Meta conversion, no gate lifted, no custom request of a real build marked paid. A domain wanted with a test plan is recorded as pending, 'TEST: domain not bought'.",
@@ -85,7 +86,7 @@ export const FEATURES: SystemFeature[] = [
     use: [
       "Turn it on, buy a plan / hosting / top-up / add-on with 4242 4242 4242 4242, and follow the emails and the portal as the client would. A small 'TEST MODE' pill shows on every page of that browser.",
       "When done: node scripts/test-mode-cleanup.mjs prints every is_test row it would delete (and what the foreign keys cascade); --apply deletes exactly those, and only rows tagged is_test.",
-      "Emails DO go to the buyer's address — use your own.",
+      "Every test purchase is made in FOUNDER_EMAIL's name (the checkout locks it), and every email sent while a test event is handled goes to FOUNDER_EMAIL with '[TEST] ' in the subject — never to anyone else.",
     ],
     cost: "None. Test-mode Stripe charges no money. A test plan purchase can generate a draft site, which costs one Claude call like any draft.",
     value: "Every product can be walked end to end on the real deployment before a client does it, without a staging copy that drifts from production and without a single invented euro in the numbers.",
