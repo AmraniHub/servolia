@@ -1,7 +1,11 @@
 import Link from "next/link";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { AlertCircle, CreditCard, Database, ShieldCheck, Plug, Wallet, ListChecks, ArrowRight } from "lucide-react";
+import { cookies } from "next/headers";
 import { costBreakdown, integrationStatus, openRoadmap, stripeMode } from "./_data";
+import { testModeAvailable } from "@/lib/stripeMode";
+import { testModeUntil } from "@/lib/testMode";
+import TestModeToggle from "@/components/admin/TestModeToggle";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +17,8 @@ export const dynamic = "force-dynamic";
  * alerts that mean money isn't moving, whether the database is connected, and
  * a way into each section with the number that says whether it's worth opening.
  */
-export default function SettingsOverview() {
+export default async function SettingsOverview() {
+  const testUntil = testModeUntil(await cookies());
   const { requiredMissing, unsetCount } = integrationStatus();
   const roadmap = openRoadmap();
   const stripe = stripeMode();
@@ -82,6 +87,9 @@ export default function SettingsOverview() {
           </div>
         )}
       </div>
+
+      {/* Founder test mode (src/lib/testMode.ts) */}
+      <TestModeToggle until={testUntil ? new Date(testUntil).toISOString() : null} available={testModeAvailable()} />
 
       {/* Database */}
       <div className="flex items-start gap-3 p-5 rounded-xl bg-white border border-[#E8E6E0] mb-8">

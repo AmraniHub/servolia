@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import SiteChrome from "@/components/SiteChrome";
+import TestModeNote from "@/components/TestModeNote";
 import ServoliaHead from "@/components/ServoliaOnly";
 import { editorMountPaths } from "@/lib/siteEditor";
 
@@ -68,6 +69,8 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         {/* Computed HERE, on the server: SiteChrome receives only the paths,
             never the client configs they come from. */}
         <SiteChrome editorPaths={editorMountPaths()} />
+        {/* Founder test mode only: invisible to everyone else. */}
+        <TestModeNote />
       </body>
     </html>
   );
