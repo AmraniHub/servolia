@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
+import { excludeTest } from "@/lib/testContext";
 import { sendTelegramMessage } from "@/lib/telegram";
 import { resolvePlan, planForConversations } from "@/lib/pricing";
 
@@ -38,9 +39,10 @@ export async function GET(req: NextRequest) {
   const period = monthStart.toISOString().slice(0, 7); // "2026-06"
 
   const overages: { client: string; used: number; included: number; move: string }[] = [];
-  const { data: flatRows, error: clientsErr } = await db.from("clients")
+  // `is_test is not true`: no overage alert for a founder test client.
+  const { data: flatRows, error: clientsErr } = await excludeTest((live) => live(db.from("clients")
     .select("id, business, plan, build_id, billing_mode, status")
-    .eq("status", "active");
+    .eq("status", "active")));
   if (clientsErr) {
     // Most likely the schema block hasn't been run yet — report, don't crash.
     return NextResponse.json({ ok: false, reason: clientsErr.message });

@@ -3,6 +3,7 @@ import { resolvePlan, planForConversations, type SubscriptionPlan } from "@/lib/
 import { getClientSite } from "@/lib/clientSites";
 import { sendEmail, conversationsEmail } from "@/lib/email";
 import { sendTelegramMessage } from "@/lib/telegram";
+import { isTestRow } from "@/lib/testContext";
 
 /**
  * THE CONVERSATION CAP, MADE REAL.
@@ -198,7 +199,9 @@ export async function checkConversationCap(slug: string, origin = "https://servo
         await db.from("clients").update({ notes: writeCapNotified(s.notes, s.month, level) }).eq("id", s.clientId);
       }
     }
-    if (level === 100) {
+    /* The founder's billing alert, never for a founder TEST client — the
+       client email above still goes: that is what is being tested. */
+    if (level === 100 && !(db && (await isTestRow(db, "clients", s.clientId)))) {
       await sendTelegramMessage(
         `Conversation cap reached - ${s.business}\n` +
         `${s.used} of ${s.included + s.topups} this month (${s.plan.name}${s.topups ? ` + ${s.topups} top-up` : ""}).\n` +

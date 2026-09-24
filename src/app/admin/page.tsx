@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { supabaseAdmin, type Lead, type Build, type CrmKpis } from "@/lib/supabase";
+import { excludeTest } from "@/lib/testContext";
 import { ArrowRight, Users, Hammer, UserCircle, TrendingUp, Sparkles, Plus, CreditCard, MessageSquare, Clock, CheckCircle, Coins, Layers, MapPin, Wand2, Globe, Send, BarChart3, CalendarDays, Target, Kanban } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -28,7 +29,8 @@ async function fetchKpis(): Promise<CrmKpis> {
 async function fetchHostingKpis(): Promise<{ clients: number; monthlyUsd: number; trials: number }> {
   const db = supabaseAdmin();
   if (!db) return { clients: 0, monthlyUsd: 0, trials: 0 };
-  const { data } = await db.from("hosting_clients").select("status, monthly_usd").in("status", ["active", "past_due", "trial"]);
+  // `is_test is not true`: founder test purchases never count (src/lib/testContext.ts).
+  const { data } = await excludeTest((live) => live(db.from("hosting_clients").select("status, monthly_usd").in("status", ["active", "past_due", "trial"])));
   const rows = (data ?? []) as { status: string; monthly_usd: number | null }[];
   const paying = rows.filter((r) => r.status !== "trial");
   return {
@@ -41,15 +43,15 @@ async function fetchHostingKpis(): Promise<{ clients: number; monthlyUsd: number
 async function fetchRecentLeads(): Promise<Lead[]> {
   const db = supabaseAdmin();
   if (!db) return [];
-  const { data } = await db.from("leads").select("*").order("created_at", { ascending: false }).limit(8);
+  const { data } = await excludeTest((live) => live(db.from("leads").select("*")).order("created_at", { ascending: false }).limit(8));
   return (data as Lead[]) ?? [];
 }
 
 async function fetchRecentPayments(): Promise<Build[]> {
   const db = supabaseAdmin();
   if (!db) return [];
-  const { data } = await db.from("builds").select("*")
-    .gt("deposit_paid", 0).order("created_at", { ascending: false }).limit(6);
+  const { data } = await excludeTest((live) => live(db.from("builds").select("*")
+    .gt("deposit_paid", 0)).order("created_at", { ascending: false }).limit(6));
   return (data as Build[]) ?? [];
 }
 
@@ -68,7 +70,7 @@ async function fetchStageCounts(): Promise<Record<string, number>> {
   if (!db) return {};
   const counts: Record<string, number> = {};
   for (const s of STAGES) {
-    const { count } = await db.from("leads").select("*", { count: "exact", head: true }).eq("stage", s.key);
+    const { count } = await excludeTest((live) => live(db.from("leads").select("*", { count: "exact", head: true }).eq("stage", s.key)));
     counts[s.key] = count ?? 0;
   }
   return counts;

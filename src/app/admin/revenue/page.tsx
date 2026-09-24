@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase";
+import { excludeTest } from "@/lib/testContext";
 import { TrendingUp } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -24,8 +25,9 @@ interface Client {
 export default async function RevenuePage() {
   const db = supabaseAdmin();
   const [clients, builds] = await Promise.all([
-    db ? db.from("clients").select("*") : Promise.resolve({ data: [] }),
-    db ? db.from("builds").select("*").gte("created_at", new Date(Date.now() - 1000 * 60 * 60 * 24 * 180).toISOString()) : Promise.resolve({ data: [] }),
+    // `is_test is not true`: founder test purchases are never revenue.
+    db ? excludeTest((live) => live(db.from("clients").select("*"))) : Promise.resolve({ data: [] }),
+    db ? excludeTest((live) => live(db.from("builds").select("*").gte("created_at", new Date(Date.now() - 1000 * 60 * 60 * 24 * 180).toISOString()))) : Promise.resolve({ data: [] }),
   ]);
 
   const allClients = (clients.data ?? []) as Client[];

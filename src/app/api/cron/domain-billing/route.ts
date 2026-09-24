@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { supabaseAdmin } from "@/lib/supabase";
+import { excludeTest } from "@/lib/testContext";
 import { sendTelegramMessage } from "@/lib/telegram";
 import {
   readDomainRecord, writeDomainRecord, currentRenewalUsd, netProfitUsd, DOMAIN_TARGET_PROFIT_USD,
@@ -39,12 +40,14 @@ export async function GET(req: NextRequest) {
   if (!db || !key) return NextResponse.json({ error: "not-configured" }, { status: 503 });
   const stripe = new Stripe(key);
 
-  const { data: rows, error } = await db
+  // `is_test is not true` on all three reads: a founder test row is never
+  // charged, renewed or margin-watched (src/lib/testContext.ts).
+  const { data: rows, error } = await excludeTest((live) => live(db
     .from("hosting_clients")
     .select("id, business, customer_id, billing_period, status, notes")
     .in("status", ["active", "past_due"])
     .eq("billing_period", "monthly")
-    .like("notes", "%servolia-domain:%");
+    .like("notes", "%servolia-domain:%")));
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   const horizon = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
@@ -85,11 +88,11 @@ export async function GET(req: NextRequest) {
    *
    * Without this the client pays once, keeps the domain, and we renew it at
    * our own cost every year afterwards. */
-  const { data: addonRows } = await db
+  const { data: addonRows } = await excludeTest((live) => live(db
     .from("hosting_clients")
     .select("id, business, customer_id, status, notes")
     .in("status", ["active", "past_due"])
-    .like("notes", "%servolia-extra-domain:%");
+    .like("notes", "%servolia-extra-domain:%")));
 
   for (const row of addonRows ?? []) {
     for (const rec of readExtraDomains(row.notes)) {
@@ -126,11 +129,11 @@ export async function GET(req: NextRequest) {
    * price does not stay fixed. When the gap closes to within a few dollars
    * of the profit target, the operator is told once -- with the numbers --
    * so the next renewal can be repriced with notice, never mid-term. */
-  const { data: held } = await db
+  const { data: held } = await excludeTest((live) => live(db
     .from("hosting_clients")
     .select("id, business, notes")
     .in("status", ["active", "past_due"])
-    .like("notes", "%servolia-domain:%");
+    .like("notes", "%servolia-domain:%")));
   const warnings: string[] = [];
   for (const row of held ?? []) {
     const rec = readDomainRecord(row.notes);

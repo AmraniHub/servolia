@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
+import { testIds } from "@/lib/testContext";
 import { listClientSites } from "@/lib/clientSites";
 import { sendEmail, monthlyReportEmail } from "@/lib/email";
 import { sendTelegramMessage } from "@/lib/telegram";
@@ -41,6 +42,8 @@ export async function GET(req: NextRequest) {
   const period = start.toISOString().slice(0, 7); // "2026-06"
 
   const sites = (await listClientSites()).filter((s) => s.status === "published");
+  // Sites on a founder TEST build get no report (src/lib/testContext.ts).
+  const testBuilds = await testIds(db, "builds");
   const results: { slug: string; sent: boolean; booked: number; conversations: number; forms: number }[] = [];
 
   for (const site of sites) {
@@ -58,6 +61,7 @@ export async function GET(req: NextRequest) {
     let planEur: number | null = null;
     const { data: siteRow } = await db
       .from("client_sites").select("build_id").eq("slug", site.slug).maybeSingle();
+    if (siteRow?.build_id && testBuilds.has(siteRow.build_id)) continue;
     if (siteRow?.build_id) {
       const { data: build } = await db
         .from("builds").select("email").eq("id", siteRow.build_id).maybeSingle();

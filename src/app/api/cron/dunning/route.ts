@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
+import { excludeTest } from "@/lib/testContext";
 import { sendEmail, paymentFailedEmail } from "@/lib/email";
 import { sendTelegramMessage } from "@/lib/telegram";
 import { subscriptionContext } from "@/lib/upgrade";
@@ -91,12 +92,14 @@ export async function GET(req: NextRequest) {
   const dayMs = 86_400_000;
   const olderThan = new Date(now - NUDGE_AFTER_DAYS * dayMs).toISOString();
 
-  const { data: overdue, error } = await db
+  // `is_test is not true`: founder test rows are never dunned or suspended —
+  // suspension commits to a client repository (src/lib/testContext.ts).
+  const { data: overdue, error } = await excludeTest((live) => live(db
     .from("hosting_clients")
     .select("id, business, email, plan, subscription_id, past_due_since, suspend_at, open_invoice_url")
     .eq("payment_status", "past_due")
     .not("email", "is", null)
-    .lte("past_due_since", olderThan);
+    .lte("past_due_since", olderThan)));
 
   if (error) {
     console.error("[dunning] query failed:", error.message);
@@ -176,13 +179,13 @@ export async function GET(req: NextRequest) {
    *     repo with no middleware reports a suspension that did not happen
    *   - `status` becomes suspended only once the commit really landed
    */
-  const { data: expired } = await db
+  const { data: expired } = await excludeTest((live) => live(db
     .from("hosting_clients")
     .select("id, business, plan, subscription_id, repo, branch, site_root, suspend_at, status")
     .in("payment_status", ["past_due", NOTIFIED])
     .neq("status", "suspended")
     .not("suspend_at", "is", null)
-    .lte("suspend_at", new Date(now).toISOString());
+    .lte("suspend_at", new Date(now).toISOString())));
 
   let suspended = 0;
   const blocked: string[] = [];

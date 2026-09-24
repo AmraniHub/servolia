@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase";
+import { excludeTest } from "@/lib/testContext";
 import { loadEconomics, offerChecks } from "@/lib/economics";
 import { getCapacity } from "@/lib/capacity";
 import { scanAllSites, monthKey } from "@/lib/zeroMiss";
@@ -34,12 +35,13 @@ export async function buildCrmSnapshot(): Promise<string> {
     kpis, leadsRecent, pipeline, bookingsUpcoming, unreadMsgs, prospects, activeClients, liveSites,
   ] = await Promise.all([
     db.from("crm_kpis").select("*").maybeSingle(),
-    db.from("leads").select("business, niche, stage, source, created_at").order("created_at", { ascending: false }).limit(8),
-    db.from("leads").select("stage").gte("created_at", daysAgo(90)),
+    // `is_test is not true` on every tagged table (src/lib/testContext.ts).
+    excludeTest((live) => live(db.from("leads").select("business, niche, stage, source, created_at")).order("created_at", { ascending: false }).limit(8)),
+    excludeTest((live) => live(db.from("leads").select("stage").gte("created_at", daysAgo(90)))),
     db.from("bookings").select("name, business, slot_start").eq("status", "confirmed").gte("slot_start", iso(now)).order("slot_start").limit(6),
     db.from("client_messages").select("email").eq("sender", "client").eq("read_by_admin", false),
     db.from("prospects").select("status"),
-    db.from("clients").select("business, plan, monthly_amount, status").eq("status", "active"),
+    excludeTest((live) => live(db.from("clients").select("business, plan, monthly_amount, status").eq("status", "active"))),
     db.from("client_sites").select("slug").eq("status", "published"),
   ]);
 

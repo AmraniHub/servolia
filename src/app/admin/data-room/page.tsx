@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase";
+import { excludeTest } from "@/lib/testContext";
 import { Download, Database, ShieldCheck, FileText } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -22,8 +23,9 @@ async function getCounts(): Promise<Counts> {
   if (!db) return { clients: 0, activeClients: 0, mrr: 0, leads: 0, subscribers: 0, prospects: 0, caseStudies: 0, publishedCaseStudies: 0 };
 
   const [clients, leads, subs, prospects, cases] = await Promise.all([
-    db.from("clients").select("status, monthly_amount"),
-    db.from("leads").select("id", { count: "exact", head: true }),
+    // `is_test is not true`: a buyer's data room never counts a founder test.
+    excludeTest((live) => live(db.from("clients").select("status, monthly_amount"))),
+    excludeTest((live) => live(db.from("leads").select("id", { count: "exact", head: true }))),
     db.from("email_subscribers").select("status"),
     db.from("prospects").select("id", { count: "exact", head: true }),
     db.from("case_studies").select("published"),

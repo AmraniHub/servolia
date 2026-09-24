@@ -1,4 +1,5 @@
 import { supabaseAdmin, type Client, type Build } from "@/lib/supabase";
+import { excludeTest } from "@/lib/testContext";
 import { totalFixedMonthlyEur } from "@/lib/costs";
 import { SETUP_PLAN, PLANS } from "@/lib/pricing";
 
@@ -109,8 +110,9 @@ export async function loadEconomics(): Promise<Economics> {
 
   try {
     const [{ data: clientRows }, { data: buildRows }, { count: caseCount }] = await Promise.all([
-      db.from("clients").select("monthly_amount, status, started_at, churned_at"),
-      db.from("builds").select("id, status, created_at, deposit_paid"),
+      // `is_test is not true`: founder test purchases are not the business.
+      excludeTest((live) => live(db.from("clients").select("monthly_amount, status, started_at, churned_at"))),
+      excludeTest((live) => live(db.from("builds").select("id, status, created_at, deposit_paid"))),
       db.from("case_studies").select("id", { count: "exact", head: true }).eq("published", true),
     ]);
 

@@ -10,14 +10,18 @@ export default async function ClientsPage() {
     ? await db.from("clients").select("*").order("created_at", { ascending: false })
     : { data: [] };
 
-  const mrr = (clients ?? []).filter(c => c.status === "active").reduce((s, c) => s + Number(c.monthly_amount), 0);
+  /* Founder test purchases (src/lib/testMode.ts) stay VISIBLE here, marked
+     TEST, so a test walk-through can be inspected — but they are never
+     counted: `is_test !== true` keeps every other row, as before. */
+  const real = (clients ?? []).filter(c => c.is_test !== true);
+  const mrr = real.filter(c => c.status === "active").reduce((s, c) => s + Number(c.monthly_amount), 0);
 
   return (
     <div className="px-4 sm:px-6 lg:px-8 py-6 lg:py-8 max-w-7xl mx-auto">
       <div className="flex items-end justify-between mb-6">
         <div>
           <h1 className="text-2xl font-black text-[#18181B] mb-1">Clients</h1>
-          <p className="text-sm text-[#71717A]">{(clients?.length ?? 0)} clients · MRR €{mrr.toLocaleString()}</p>
+          <p className="text-sm text-[#71717A]">{real.length} clients · MRR €{mrr.toLocaleString()}</p>
         </div>
       </div>
 
@@ -41,7 +45,10 @@ export default async function ClientsPage() {
             <tbody>
               {clients?.map(c => (
                 <tr key={c.id} className="border-b border-[#F5F4EF] last:border-0 hover:bg-[#FAFAF7]">
-                  <td className="px-4 py-3 font-semibold text-[#18181B]">{c.business}</td>
+                  <td className="px-4 py-3 font-semibold text-[#18181B]">
+                    {c.business}
+                    {c.is_test === true && <span className="ml-2 text-[10px] font-black px-2 py-0.5 rounded-full bg-[#92400E] text-white">TEST</span>}
+                  </td>
                   <td className="px-4 py-3 text-[#52525B]">{c.plan}</td>
                   <td className="px-4 py-3 font-bold text-[#36671E]">€{Number(c.monthly_amount).toLocaleString()}</td>
                   <td className="px-4 py-3">

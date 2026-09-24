@@ -38,7 +38,10 @@ export default async function HostingPage() {
     : { data: [], error: null };
 
   const clients = rows ?? [];
-  const active = clients.filter((c) => c.status === "active");
+  /* Founder test purchases (src/lib/testMode.ts) are listed, marked TEST,
+     and never counted: `is_test !== true` keeps every other row. */
+  const real = clients.filter((c) => c.is_test !== true);
+  const active = real.filter((c) => c.status === "active");
   // Annual rows already store the monthly equivalent, so this sums correctly
   // across both billing periods.
   const mrr = active.reduce((s, c) => s + Number(c.monthly_usd || 0), 0);
@@ -47,7 +50,7 @@ export default async function HostingPage() {
   // to make visible.
   const isSetUp = (c: { repo?: string | null; vercel_project?: string | null }) =>
     Boolean(c.repo || c.vercel_project);
-  const needsSetup = clients.filter((c) => c.status === "active" && !isSetUp(c)).length;
+  const needsSetup = real.filter((c) => c.status === "active" && !isSetUp(c)).length;
 
   // The table is missing until supabase/hosting-migration.sql is run. Say so
   // plainly rather than rendering an empty list that looks like "no clients".
@@ -59,7 +62,7 @@ export default async function HostingPage() {
         <div>
           <h1 className="text-2xl font-black text-[#18181B] mb-1">Hosting</h1>
           <p className="text-sm text-[#71717A]">
-            {clients.length} site{clients.length === 1 ? "" : "s"} · {usd(mrr)}/mo recurring
+            {real.length} site{real.length === 1 ? "" : "s"} · {usd(mrr)}/mo recurring
             {needsSetup > 0 ? (
               <span className="ml-2 text-[#92400E] font-bold">· {needsSetup} paid, not hosted yet</span>
             ) : null}
@@ -106,6 +109,7 @@ export default async function HostingPage() {
                     <Link href={`/admin/hosting/${c.id}`} className="font-semibold text-[#18181B] hover:text-[#36671E] hover:underline">
                       {c.business}
                     </Link>
+                    {c.is_test === true && <span className="ml-2 text-[10px] font-black px-2 py-0.5 rounded-full bg-[#92400E] text-white">TEST</span>}
                     {c.email ? <div className="text-xs text-[#A1A1AA]">{c.email}</div> : null}
                   </td>
                   <td className="px-4 py-3 font-mono text-xs text-[#52525B]">

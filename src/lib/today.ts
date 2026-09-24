@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase";
+import { excludeTest, testIds } from "@/lib/testContext";
 import { computeLeadScore } from "@/lib/scoring";
 import { readDraftEmailed } from "@/lib/draftPreview";
 import type { ReceptionistState } from "@/lib/clientSites";
@@ -66,18 +67,23 @@ export async function buildToday(now = Date.now()): Promise<Today> {
   const empty: Today = { generatedAt: new Date(now).toISOString(), sections: [], counts: { me: 0, client: 0, urgent: 0 } };
   if (!db) return empty;
 
-  const [leadsRes, buildsRes, sitesRes, hostRes, clientsRes, prospectsRes, requestsRes, receptionRes, domainRes] = await Promise.all([
-    db.from("leads").select("id, business, email, niche, stage, created_at, last_contacted_at, value_estimate, source, problems, client_value, plan_interest")
-      .not("stage", "in", '("live","lost")').eq("status", "active"),
-    db.from("builds").select("id, business, email, status, deadline, created_at, started_at").not("status", "in", '("live","delivered")'),
+  /* FOUNDER TEST MODE (src/lib/testContext.ts): test rows are not work.
+     Every tagged table is read `is_test is not true` (all pre-existing rows
+     included, as before), and rows elsewhere that point at a test build (its
+     draft site, a custom request on it) are dropped below. */
+  const [leadsRes, buildsRes, sitesRes, hostRes, clientsRes, prospectsRes, requestsRes, receptionRes, domainRes, testBuilds] = await Promise.all([
+    excludeTest((live) => live(db.from("leads").select("id, business, email, niche, stage, created_at, last_contacted_at, value_estimate, source, problems, client_value, plan_interest")
+      .not("stage", "in", '("live","lost")').eq("status", "active"))),
+    excludeTest((live) => live(db.from("builds").select("id, business, email, status, deadline, created_at, started_at").not("status", "in", '("live","delivered")'))),
     db.from("client_sites").select("slug, business, status, notes, build_id, updated_at").eq("status", "draft").not("build_id", "is", null),
-    db.from("hosting_clients").select("id, business, email, plan, status, notes, site_url, repo, vercel_project, suspend_at, payment_status"),
-    db.from("clients").select("id, business, email, plan, status, payment_status, suspend_at, build_id, started_at").in("status", ["active", "paused"]),
+    excludeTest((live) => live(db.from("hosting_clients").select("id, business, email, plan, status, notes, site_url, repo, vercel_project, suspend_at, payment_status"))),
+    excludeTest((live) => live(db.from("clients").select("id, business, email, plan, status, payment_status, suspend_at, build_id, started_at").in("status", ["active", "paused"]))),
     db.from("prospects").select("id, business, city, niche, status, next_action_at, touch_count, demo_slug")
       .eq("status", "to_contact").order("next_action_at", { ascending: true, nullsFirst: true }).limit(3),
     db.from("custom_requests").select("id, title, email, amount_eur, created_at, build_id").eq("status", "quoted"),
     db.from("client_sites").select("slug, config").like("notes", "%servolia-receptionist:%"),
     db.from("client_sites").select("slug, config").eq("status", "published").not("config->>customDomain", "is", null),
+    testIds(db, "builds"),
   ]);
 
   /* ── C2: a practice's own domain that is not answering yet ────────────
@@ -203,7 +209,7 @@ export async function buildToday(now = Date.now()): Promise<Today> {
   /* ── Builds and drafts: whose move is it ────────────────────────────── */
   const delivery: TodayItem[] = [];
   const sitesByBuild = new Map<string, { slug: string; notes: string | null; updated_at: string }>();
-  for (const s of (sitesRes.data ?? []) as Array<{ slug: string; notes: string | null; build_id: string; updated_at: string }>) {
+  for (const s of ((sitesRes.data ?? []) as Array<{ slug: string; notes: string | null; build_id: string; updated_at: string }>).filter((x) => !testBuilds.has(x.build_id))) {
     sitesByBuild.set(s.build_id, s);
   }
   for (const b of (buildsRes.data ?? []) as Array<{ id: string; business: string; status: string; deadline: string | null; started_at: string | null; created_at: string }>) {
@@ -286,7 +292,7 @@ export async function buildToday(now = Date.now()): Promise<Today> {
       money.push({ kind: "payment-failed", title: c.business, detail: `card failed — ${d !== null ? `suspends in ${d}d` : "grace running"} (plan, EUR)`, href: `${ADMIN}/clients/${c.id}`, owner: "me", urgency: d !== null && d <= 3 ? 2 : 1 });
     }
   }
-  for (const r of (requestsRes.data ?? []) as Array<{ id: string; title: string; email: string | null; amount_eur: number; build_id: string | null }>) {
+  for (const r of ((requestsRes.data ?? []) as Array<{ id: string; title: string; email: string | null; amount_eur: number; build_id: string | null }>).filter((x) => !x.build_id || !testBuilds.has(x.build_id))) {
     money.push({ kind: "request-unpaid", title: r.title, detail: `€${r.amount_eur} quoted to ${r.email ?? "?"} — unpaid`, href: r.build_id ? `${ADMIN}/builds/${r.build_id}` : `${ADMIN}/builds`, owner: "client", urgency: 0 });
   }
   if (money.length) sections.push({ key: "money", label: "Money and hosting", items: money });
