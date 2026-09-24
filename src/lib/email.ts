@@ -447,13 +447,40 @@ export const auditInProgressEmail = (firstName: string) => ({
  * "final payment" step. What starts on day 7 is the monthly plan, so the
  * timeline ends at go-live, not at another invoice.
  */
-export const installationPaidEmail = (firstName: string, planName: string, amount: number, lang: "en" | "fr" = "en") => {
+/**
+ * `opts.sessionId` puts the Stripe session on the intake link: the intake
+ * finds the paid build by it (src/app/api/contact), so a client who closed
+ * the success page and came back through THIS email used to land on a form
+ * that could not reach their build -- answers on a lead row, no draft ever.
+ * `opts.billing` says what the checkout really did (checkout-subscription):
+ * monthly = installation today, plan after a fixed 7-day trial; annual = the
+ * year paid today, installation waived. Without it (a scope-flow payment)
+ * the old line stands.
+ */
+export const installationPaidEmail = (
+  firstName: string, planName: string, amount: number, lang: "en" | "fr" = "en",
+  opts: { sessionId?: string | null; plan?: string | null; billing?: "monthly" | "annual" } = {},
+) => {
   const wa = businessWaLink(
     lang === "fr"
       ? `Bonjour, je viens de régler ma mise en place — hâte de commencer !`
       : `Hi, I just paid for my installation — excited to get started!`
   );
-  const intakeUrl = lang === "fr" ? "https://servolia.com/fr/demarrage" : "https://servolia.com/onboarding";
+  const intakeBase = lang === "fr" ? "https://servolia.com/fr/demarrage" : "https://servolia.com/onboarding";
+  const q = new URLSearchParams();
+  if (opts.plan) q.set("plan", opts.plan);
+  if (opts.sessionId) q.set("session_id", opts.sessionId);
+  const intakeUrl = q.toString() ? `${intakeBase}?${q.toString()}` : intakeBase;
+  const thenFr = opts.billing === "annual"
+    ? "Votre année est réglée : elle court à partir d'aujourd'hui"
+    : opts.billing === "monthly"
+      ? "Votre abonnement mensuel démarre 7 jours après votre paiement"
+      : "Votre abonnement mensuel démarre, une fois le site en ligne";
+  const thenEn = opts.billing === "annual"
+    ? "Your year is paid for: it runs from today"
+    : opts.billing === "monthly"
+      ? "Your monthly plan starts 7 days after your payment"
+      : "Your monthly plan starts, once the site is live";
 
   if (lang === "fr") {
     return {
@@ -471,7 +498,7 @@ export const installationPaidEmail = (firstName: string, planName: string, amoun
           <li><strong>Jour 1 (aujourd'hui) :</strong> Complétez le formulaire d'intake en 8 minutes (lien ci-dessous)</li>
           <li><strong>Juste après :</strong> Votre première version arrive par email — un lien pour la voir, généralement en quelques minutes</li>
           <li><strong>Jour 1–3 :</strong> Vous nous dites quoi changer ; vous dites go, nous mettons en ligne</li>
-          <li><strong>Ensuite :</strong> Votre abonnement mensuel démarre, une fois le site en ligne</li>
+          <li><strong>Ensuite :</strong> ${thenFr}</li>
         </ul>
         ${btn(intakeUrl, "Compléter le formulaire →")}
         ${wa ? waBtn(wa, "Discuter sur WhatsApp 💬") : ""}
@@ -497,7 +524,7 @@ export const installationPaidEmail = (firstName: string, planName: string, amoun
         <li><strong>Day 1 (today):</strong> Complete your 8-minute intake form (link below)</li>
         <li><strong>Right after:</strong> Your first draft arrives by email — a link to look at, usually within minutes</li>
         <li><strong>Day 1–3:</strong> You tell us what to change; you say go, we take it live</li>
-        <li><strong>Then:</strong> Your monthly plan starts, once the site is live</li>
+        <li><strong>Then:</strong> ${thenEn}</li>
       </ul>
       ${btn(intakeUrl, "Complete intake form →")}
       ${wa ? waBtn(wa, "Chat on WhatsApp 💬") : ""}

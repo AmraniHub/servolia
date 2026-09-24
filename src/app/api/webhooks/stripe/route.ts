@@ -35,8 +35,12 @@ import { provisionAddon } from "@/lib/provisioning";
 import { TOPUP_PACKS, monthKey, writeTopup } from "@/lib/conversationCap";
 import { topupReceiptEmail, oneOffServicePaidEmail, receptionistPaidEmail } from "@/lib/email";
 import { completeReceptionistPurchase, loadReceptionist } from "@/lib/receptionistTrial";
+import { startBuildFromIntake } from "@/lib/intakeBuild";
 
 export const runtime = "nodejs";
+// A subscriber whose intake beat this event has their draft generated after
+// the response (src/lib/intakeBuild.ts): the copy call has reached 50s.
+export const maxDuration = 120;
 
 /**
  * Stripe webhook: auto-updates builds when payments clear.
@@ -710,17 +714,19 @@ export async function POST(req: NextRequest) {
         const amount = (session.amount_total ?? 0) / 100;
         const planKey = session.metadata?.plan ?? "essentiel";
         // resolvePlan also maps the retired care/care_growth/care_scale keys.
-        const planLabel = resolvePlan(planKey)?.name ?? "Essentiel";
+        const plan = resolvePlan(planKey);
+        const planLabel = plan?.name ?? "Essentiel";
+        const billing: "monthly" | "annual" = session.metadata?.billing === "annual" ? "annual" : "monthly";
+        const subscriptionId = (session.subscription as string) ?? null;
 
-        const { data: client } = await db.from("clients").insert({
-          business: customerEmail ?? "Unknown",
-          email: customerEmail,
-          plan: planLabel.toLowerCase(),
-          monthly_amount: amount,
-          status: "active",
-          customer_id: (session.customer as string) ?? null,
-          subscription_id: (session.subscription as string) ?? null,
-        }).select("id").single();
+        /* A redelivered event must not open a second client. Stripe retries
+           on any non-2xx and occasionally on a 2xx it lost; the subscription
+           id is unique to this purchase. */
+        if (subscriptionId) {
+          const { data: seen } = await db.from("clients")
+            .select("id").eq("subscription_id", subscriptionId).limit(1).maybeSingle();
+          if (seen) return NextResponse.json({ received: true, already: true });
+        }
 
         // ── Open a build so delivery actually starts ──────────────────────
         // A self-serve subscriber has no build: they never went through the
@@ -728,14 +734,28 @@ export async function POST(req: NextRequest) {
         // nothing in the pipeline, no intake, and no site ever generated.
         // Guarded on email so a client who DID come through the scope flow
         // (and already has a build) doesn't get a duplicate.
+        //
+        // THE BUILD CARRIES THE SESSION ID, AND THE CLIENT CARRIES THE BUILD
+        // (2026-09-24, Step 6 map). The intake finds its build by
+        // checkout_session_id (src/app/api/contact) and this insert wrote none,
+        // so no /pricing buyer's answers ever reached their build and the
+        // "draft within minutes" email was never kept. And every per-client
+        // feature keys on clients.build_id -- the meter, the 80/100% emails,
+        // top-ups, the owed domain/mailbox rows on Today, suspension, the
+        // overage watch -- so a clients row without it was silent on all of
+        // them. The trial path (src/lib/receptionistTrial.ts) always did both.
         const installationCents = Number(session.metadata?.installation_cents ?? 0);
         const installationPaid = Number.isFinite(installationCents) ? installationCents / 100 : 0;
+        let buildId: string | null = null;
         let buildOpened = false;
         if (customerEmail) {
           const { data: existingBuild } = await db.from("builds")
-            .select("id").eq("email", customerEmail).maybeSingle();
-          if (!existingBuild) {
-            const { error: buildErr } = await db.from("builds").insert({
+            .select("id").eq("email", customerEmail)
+            .order("created_at", { ascending: false }).limit(1).maybeSingle();
+          if (existingBuild) {
+            buildId = existingBuild.id as string;
+          } else {
+            const { data: opened, error: buildErr } = await db.from("builds").insert({
               business: "Pending intake",
               email: customerEmail,
               plan: SETUP_PLAN.key,
@@ -745,16 +765,55 @@ export async function POST(req: NextRequest) {
               balance_due: 0,
               status: "intake",
               customer_id: (session.customer as string) ?? null,
+              checkout_session_id: session.id,
+            }).select("id").single();
+            if (!buildErr && opened) {
+              buildId = opened.id as string;
+              buildOpened = true;
+            }
+          }
+        }
+
+        const { data: client } = await db.from("clients").insert({
+          build_id: buildId,
+          business: customerEmail ?? "Unknown",
+          email: customerEmail,
+          plan: plan?.key ?? planLabel.toLowerCase(),
+          // The plan's monthly worth, never the checkout total: that carried
+          // the EUR 690 installation (or a whole year) into MRR.
+          monthly_amount: plan ? (billing === "annual" ? plan.annualEur / 12 : plan.monthlyEur) : amount,
+          status: "active",
+          customer_id: (session.customer as string) ?? null,
+          subscription_id: subscriptionId,
+        }).select("id").single();
+
+        /* The client may have finished the intake BEFORE this event arrived:
+           the form is on the success page and Stripe gives no ordering
+           promise. Their answers are on the lead row, keyed by this session
+           id -- start the build from them now, or it waits forever. */
+        let intakeAlready = false;
+        if (buildOpened && buildId) {
+          const { data: early } = await db.from("leads")
+            .select("id, business, raw_data")
+            .eq("raw_data->>sessionId", session.id)
+            .eq("raw_data->>type", "intake")
+            .order("created_at", { ascending: false }).limit(1).maybeSingle();
+          if (early?.raw_data) {
+            intakeAlready = await startBuildFromIntake({
+              buildId, leadId: early.id as string, intake: early.raw_data as Record<string, unknown>,
+              business: (early.business as string | null) ?? null,
             });
-            buildOpened = !buildErr;
           }
         }
 
         // Send them to the intake form — the build cannot start without it.
-        if (customerEmail && buildOpened) {
+        // Skipped when their answers are already in: the draft email follows.
+        if (customerEmail && buildOpened && !intakeAlready) {
           const firstName = customerEmail.split("@")[0];
           const emailLang = session.metadata?.lang === "fr" ? "fr" : "en";
-          const tpl = installationPaidEmail(firstName, planLabel, installationPaid, emailLang);
+          const tpl = installationPaidEmail(firstName, planLabel, amount, emailLang, {
+            sessionId: session.id, plan: planKey, billing,
+          });
           sendEmail(customerEmail, tpl.subject, tpl.html).catch(() => {});
         }
 
@@ -775,7 +834,7 @@ export async function POST(req: NextRequest) {
           const billingLabel = session.metadata?.billing === "annual" ? "annual" : "monthly";
           const msg = `🔁 *New ${planLabel} subscriber — €${amount} ${billingLabel}*\n${customerEmail ?? "no email"}\n` +
                       `Installation collected: €${installationPaid.toLocaleString()}${billingLabel === "annual" ? " (waived — annual)" : ""}\n` +
-                      (buildOpened ? "🧱 Build opened — waiting on their intake form\n" : "ℹ️ Existing build found — no new build opened\n") +
+                      (intakeAlready ? "🧱 Build opened — their intake was already in, draft generating\n" : buildOpened ? "🧱 Build opened — waiting on their intake form\n" : "ℹ️ Existing build found — no new build opened\n") +
                       (client ? `\n[Open in CRM](https://servolia.com/admin/clients/${client.id})` : "");
           fetch(`https://api.telegram.org/bot${tgToken}/sendMessage`, {
             method: "POST",
@@ -969,7 +1028,7 @@ export async function POST(req: NextRequest) {
       if (customerEmail && build) {
         const firstName = customerEmail.split("@")[0];
         const emailLang = session.metadata?.lang === "fr" ? "fr" : "en";
-        const tpl = installationPaidEmail(firstName, build.plan_name ?? "system", amountPaid, emailLang);
+        const tpl = installationPaidEmail(firstName, build.plan_name ?? "system", amountPaid, emailLang, { sessionId });
         sendEmail(customerEmail, tpl.subject, tpl.html).catch(() => {});
       }
 

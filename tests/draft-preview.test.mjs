@@ -126,9 +126,12 @@ test("the draft-ready email carries the link, the missing list, and the honest w
 /* ── source guards ─────────────────────────────────────────────────────── */
 
 test("the intake path sends the email by the same code that made the draft", () => {
-  const route = src("src/app/api/contact/route.ts");
-  assert.ok(route.includes("notifyDraftReady("), "the intake after() must call notifyDraftReady");
-  assert.ok(route.includes("generateSiteForBuild(buildId)"), "…after generating the draft");
+  const lib = src("src/lib/intakeBuild.ts");
+  assert.ok(lib.includes("notifyDraftReady("), "the intake after() must call notifyDraftReady");
+  assert.ok(lib.includes("generateSiteForBuild(buildId)"), "…after generating the draft");
+  // Both doors start the build through it: the form, and the webhook when the form beat the payment.
+  assert.ok(src("src/app/api/contact/route.ts").includes("startBuildFromIntake("), "the intake form starts the build");
+  assert.ok(src("src/app/api/webhooks/stripe/route.ts").includes("startBuildFromIntake("), "the webhook starts it when the intake came first");
 });
 
 test("the admin Regenerate button sends it too — one code path, no second implementation", () => {
@@ -206,13 +209,16 @@ test("the two admin routes that rewrite client_sites.notes go through keepMarker
 });
 
 test("the intake's Telegram follow-up is plain text and has a budget the Claude call fits in", () => {
-  const route = src("src/app/api/contact/route.ts");
-  const start = route.indexOf("Draft site ready");
-  const call = route.indexOf("sendTelegramMessage(", start);
-  const args = route.slice(call, route.indexOf(")", call));
+  const lib = src("src/lib/intakeBuild.ts");
+  const start = lib.indexOf("Draft site ready");
+  const call = lib.indexOf("sendTelegramMessage(", start);
+  const args = lib.slice(call, lib.indexOf(")", call));
   assert.ok(/plain:\s*true/.test(args), "one underscore in the client's address must not kill the alert");
-  const m = route.match(/export const maxDuration = (\d+)/);
-  assert.ok(m && Number(m[1]) >= 120, `maxDuration must be >= 120, is ${m && m[1]}`);
+  // Both routes that run it after their response need the budget for the Claude call.
+  for (const f of ["src/app/api/contact/route.ts", "src/app/api/webhooks/stripe/route.ts"]) {
+    const m = src(f).match(/export const maxDuration = (\d+)/);
+    assert.ok(m && Number(m[1]) >= 120, `${f}: maxDuration must be >= 120, is ${m && m[1]}`);
+  }
 });
 
 test("an invalid link lands on a page that says so, not on the sales homepage or a 404", () => {

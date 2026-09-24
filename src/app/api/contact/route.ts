@@ -1,17 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { after } from "next/server";
 import { supabaseAdmin, estimateLeadValue, type LeadSource } from "@/lib/supabase";
 import { sendEmail, auditConfirmationEmail } from "@/lib/email";
 import { sendMetaCapiEvent } from "@/lib/metaCapi";
-import { generateSiteForBuild } from "@/lib/generateSite";
-import { notifyDraftReady, type NotifyOutcome } from "@/lib/draftPreview";
-import { sendTelegramMessage, telegramConfigured } from "@/lib/telegram";
+import { startBuildFromIntake } from "@/lib/intakeBuild";
 import { rateLimited, clientIp } from "@/lib/security";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export const runtime = "nodejs";
-// The intake auto-wire runs AFTER the response (see after() below) but shares
+// The intake auto-wire runs AFTER the response (src/lib/intakeBuild.ts) but shares
 // this route's duration budget. The Claude copy call is budgeted at 10–30s
 // and has no timeout of its own; on a slow day it has reached 50s, which
 // under the old 60s ceiling killed the draft-ready email AND the Telegram
@@ -109,66 +106,13 @@ export async function POST(req: NextRequest) {
       if (type === "intake" && sessionId) {
         const { data: build } = await db.from("builds")
           .select("id, lead_id").eq("checkout_session_id", sessionId).maybeSingle();
+        // No build yet is not an error: Stripe's event may still be on its
+        // way. The webhook finds this intake (by the same session id, on the
+        // lead row written above) and starts the build itself.
         if (build) {
-          const { error: updateErr } = await db.from("builds").update({
-            intake_data: body,
-            business: resolvedBiz || undefined,
-            status: "building",
-            started_at: new Date().toISOString(),
-          }).eq("id", build.id);
-          if (build.lead_id) {
-            await db.from("lead_activities").insert({
-              lead_id: build.lead_id,
-              type: "note",
-              description: "✅ Intake form completed — build started",
-            });
-          }
-
-          // ── 1c. Auto-generate the draft site from the fresh intake ──────
-          // Runs AFTER the response is sent (next/server after()), so the
-          // client who just submitted the form never waits on the 10–30s
-          // Claude copywriting call. Strictly best-effort: generateSiteForBuild
-          // returns null instead of throwing, and the try/catch is
-          // belt-and-braces.
-          //
-          // THEN THE CLIENT IS TOLD. The moment the draft exists they get the
-          // signed preview link by email (src/lib/draftPreview.ts) — the same
-          // function the admin's Regenerate button calls, once per site. The
-          // silent Telegram follow-up says whether that email went, in words
-          // that name the next action when it did not; a draft the founder
-          // can see and the client cannot is the exact gap this closes.
-          if (!updateErr) {
-            const buildId = build.id as string;
-            after(async () => {
-              let draftSite: Awaited<ReturnType<typeof generateSiteForBuild>> = null;
-              try {
-                draftSite = await generateSiteForBuild(buildId);
-              } catch {
-                draftSite = null;
-              }
-              let notified: NotifyOutcome | null = null;
-              if (draftSite) {
-                notified = await notifyDraftReady({
-                  buildId, slug: draftSite.slug, config: draftSite.config, ai: draftSite.ai,
-                }).catch(() => ({ sent: false, reason: "send-failed" }) as NotifyOutcome);
-              }
-              if (telegramConfigured()) {
-                /* PLAIN, not Markdown. The client's address is in this message,
-                   and one underscore in it (marie_dubois@…) opens an italic run
-                   Telegram cannot close: a 400, swallowed, and the ONE message
-                   that says "the client was not emailed" is the one that dies.
-                   src/lib/telegram.ts documents exactly this trap. */
-                const text = draftSite
-                  ? `Draft site ready\nhttps://servolia.com/sites/${draftSite.slug}\n` +
-                    (notified?.sent
-                      ? `Client emailed their preview link: ${notified.to}${notified.recorded ? "" : " (NOT recorded - a retry may send it again)"}\n`
-                      : `CLIENT NOT EMAILED - ${notified?.reason ?? "unknown"}${notified?.detail ? ` (${notified.detail})` : ""}. Press Regenerate on the build page to send it.\n`) +
-                    `Admin: https://servolia.com/admin/sites`
-                  : `DRAFT GENERATION FAILED for the new intake - generate it from the build page: https://servolia.com/admin/builds/${buildId}`;
-                await sendTelegramMessage(text, undefined, { silent: true, plain: true }); // follow-up to the intake alert — no second buzz
-              }
-            });
-          }
+          await startBuildFromIntake({
+            buildId: build.id as string, leadId: build.lead_id as string | null, intake: body, business: resolvedBiz,
+          });
         }
       }
     }
