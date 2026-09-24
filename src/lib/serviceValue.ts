@@ -22,8 +22,8 @@ type Lang = "en" | "fr";
 
 const VALUE: Record<string, Record<Lang, string>> = {
   hosting_lite: {
-    en: "Your site stays online and quick, and if it ever stops you hear it from us before a customer does.",
-    fr: "Votre site reste en ligne et rapide, et s'il s'arrête vous l'apprenez par nous avant vos clients.",
+    en: "Your site stays online and quick, and your account page shows whether it is up each time you look.",
+    fr: "Votre site reste en ligne et rapide, et votre espace client affiche s'il répond à chaque fois que vous le consultez.",
   },
   hosting: {
     en: "One provider for the site, the domain and the forms — so when something needs fixing there is one number to call, not three.",

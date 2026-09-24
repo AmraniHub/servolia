@@ -70,8 +70,8 @@ export async function generateMetadata({
     description: known || isAdd
       ? copy.description
       : l === "fr"
-        ? "Hébergement, SSL, surveillance et formulaires maintenus pour un site que vous avez déjà. Trois formules, de 6 à 11 $ par mois. Résiliable à tout moment."
-        : "Hosting, SSL, monitoring and forms kept working for a website you already have. Three plans from $6 to $11 a month. Cancel anytime.",
+        ? "Hébergement, SSL et formulaires maintenus pour un site que vous avez déjà. Trois formules, de 6 à 11 $ par mois. Résiliable à tout moment."
+        : "Hosting, SSL and forms kept working for a website you already have. Three plans from $6 to $11 a month. Cancel anytime.",
     // The plan chooser is a public product, linked from the menu, so it is
     // indexed. A client's own page (?ref=) is about one business and is not.
     // An add-on page is always about one client's purchase, so it is never

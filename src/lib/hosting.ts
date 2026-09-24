@@ -66,8 +66,11 @@ const HOSTING_EXPLAIN = {
       "Your pages are served from servers close to your visitors, over https.",
     "Contact and quote forms kept connected":
       "The forms on your site keep reaching you; if one breaks, we fix it.",
-    "Uptime watched — you hear it from us first":
-      "The site is monitored; if it goes down, we tell you rather than a customer.",
+    /* NOT "uptime watched — you hear it from us first". The only monitor
+       (.github/workflows/uptime.yml) checks servolia.com, never a client's
+       site. What does exist is the live check on their account page. */
+    "Site status checked live on your account page":
+      "Each time you open your account page it checks your site and shows whether it is up. If something is broken, reply to any email and we fix it.",
     "Domain renewal and DNS managed":
       "We renew your domain on time and keep its records correct.",
     "Tracking and analytics kept connected":
@@ -82,8 +85,8 @@ const HOSTING_EXPLAIN = {
       "Vos pages sont servies depuis des serveurs proches de vos visiteurs, en https.",
     "Formulaires de contact et de devis maintenus":
       "Les formulaires de votre site continuent de vous parvenir ; s'ils cassent, nous réparons.",
-    "Disponibilité surveillée — vous l'apprenez par nous en premier":
-      "Le site est surveillé ; s'il tombe, c'est nous qui vous prévenons, pas un client.",
+    "État du site vérifié en direct dans votre espace client":
+      "À chaque ouverture, votre espace client vérifie votre site et affiche s'il répond. Si quelque chose casse, répondez à n'importe quel email et nous réparons.",
     "Renouvellement du domaine et DNS gérés":
       "Nous renouvelons votre domaine à temps et gardons ses enregistrements corrects.",
     "Suivi et statistiques maintenus":
@@ -181,7 +184,7 @@ export const CLIENT_PRODUCTS: Record<string, ClientProduct> = {
     includes: [
       "Hosting on a global CDN, with SSL",
       "Contact and quote forms kept connected",
-      "Uptime watched — you hear it from us first",
+      "Site status checked live on your account page",
     ],
     description:
       "Hosting, SSL and a global CDN, with the site's contact and quote forms " +
@@ -198,7 +201,7 @@ export const CLIENT_PRODUCTS: Record<string, ClientProduct> = {
       includes: [
         "Hébergement sur un réseau mondial, avec SSL",
         "Formulaires de contact et de devis maintenus",
-        "Disponibilité surveillée — vous l'apprenez par nous en premier",
+        "État du site vérifié en direct dans votre espace client",
       ],
       description:
         "Hébergement, SSL et réseau mondial, avec les formulaires de contact " +
@@ -225,7 +228,7 @@ export const CLIENT_PRODUCTS: Record<string, ClientProduct> = {
       "Domain renewal and DNS managed",
       "Contact and quote forms kept connected",
       "Tracking and analytics kept connected",
-      "Uptime watched — you hear it from us first",
+      "Site status checked live on your account page",
     ],
     description:
       "Hosting, SSL, domain renewal, DNS, and keeping the site's forms and " +
@@ -243,7 +246,7 @@ export const CLIENT_PRODUCTS: Record<string, ClientProduct> = {
         "Renouvellement du domaine et DNS gérés",
         "Formulaires de contact et de devis maintenus",
         "Suivi et statistiques maintenus",
-        "Disponibilité surveillée — vous l'apprenez par nous en premier",
+        "État du site vérifié en direct dans votre espace client",
       ],
       description:
         "Hébergement, SSL, renouvellement du domaine, DNS, et maintien des " +
@@ -293,7 +296,7 @@ export const CLIENT_PRODUCTS: Record<string, ClientProduct> = {
       "Domain renewal and DNS managed",
       "Contact and quote forms kept connected",
       "Tracking and analytics kept connected",
-      "Uptime watched — you hear it from us first",
+      "Site status checked live on your account page",
       "Business email on your domain — 1 mailbox included",
       "Email deliverability set up (SPF, DKIM, DMARC)",
     ],
@@ -314,7 +317,7 @@ export const CLIENT_PRODUCTS: Record<string, ClientProduct> = {
         "Renouvellement du domaine et DNS gérés",
         "Formulaires de contact et de devis maintenus",
         "Suivi et statistiques maintenus",
-        "Disponibilité surveillée — vous l'apprenez par nous en premier",
+        "État du site vérifié en direct dans votre espace client",
         "Messagerie professionnelle à votre domaine — 1 boîte incluse",
         "Délivrabilité configurée (SPF, DKIM, DMARC)",
       ],

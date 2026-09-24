@@ -170,8 +170,9 @@ export default function HostingTerms() {
 
             <Section n="06" title="Support and account">
               <p>
-                Reply to any email from us. We watch uptime and you hear about a
-                problem from us before you notice it yourself.
+                Reply to any email from us. Your account page checks whether the
+                site is up each time you open it; if something is broken, tell us
+                and we fix it.
               </p>
               <p>
                 Your account is held under the email address you give at checkout,

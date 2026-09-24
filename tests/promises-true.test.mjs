@@ -134,3 +134,31 @@ test("a Business client's mailbox is owed until their domain publishes MX, and l
   const today = src("src/lib/today.ts");
   assert.ok(today.includes("hostingMailboxOwed(h, hostMail.get(h.id))") && today.includes('kind: "hosting-mailbox-owed"'));
 });
+
+/* ── 4. no uptime monitor is promised for a client's site ──────────────── */
+
+test("nothing tells a hosting client they hear about downtime from us first", () => {
+  // The only monitor checks servolia.com. Until one watches client sites,
+  // no product line, explanation, value line or term may promise it.
+  const workflow = src(".github/workflows/uptime.yml");
+  assert.ok(workflow.includes("https://servolia.com/"), "the monitor that exists");
+  const claims = [/hear it from us/i, /hear about a\s+problem from us/i, /you hear about it from us/i, /uptime watched/i, /we watch uptime/i,
+    /apprenez par nous/i, /disponibilité surveillée/i, /c'est nous qui vous prévenons/i];
+  const lines = Object.values(CLIENT_PRODUCTS).flatMap((p) => [
+    ...p.includes, ...p.fr.includes, ...Object.entries(p.explain ?? {}).flat(), ...Object.entries(p.fr.explain ?? {}).flat(), p.blurb, p.fr.blurb,
+  ]);
+  const files = ["src/lib/serviceValue.ts", "src/app/hosting/terms/page.tsx", "src/app/hosting/page.tsx", "src/components/PlanChooser.tsx"]
+    .map((f) => [f, src(f).replace(/\/\*[\s\S]*?\*\//g, "")]);
+  const bad = [];
+  for (const c of claims) {
+    for (const l of lines) if (c.test(l)) bad.push(`product copy: ${l}`);
+    for (const [f, s] of files) if (c.test(s)) bad.push(`${f}: ${c}`);
+  }
+  assert.deepEqual(bad, []);
+  // Every includes line still has its explanation (the key moved with it).
+  for (const k of ["hosting_lite", "hosting", "hosting_business"]) {
+    const p = CLIENT_PRODUCTS[k];
+    for (const l of p.includes) assert.ok(p.explain[l], `${k}: "${l}" has an explanation`);
+    for (const l of p.fr.includes) assert.ok(p.fr.explain[l], `${k} fr: "${l}" has an explanation`);
+  }
+});

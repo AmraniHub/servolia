@@ -95,7 +95,7 @@ const T = {
        plan already chosen told the reader the page had lost track of them. */
     h1Choose: ["Choose your ", "plan"],
     subChoose:
-      "Hosting, SSL and monitoring are the same on all three. What changes is whether we handle your domain, and whether you get email on it.",
+      "Hosting, SSL and the live site-status check are the same on all three. What changes is whether we handle your domain, and whether you get email on it.",
     h1Details: ["Your ", "details"],
     subDetails:
       "Your domain, and the email for your account and invoices. You pay on the next screen, with Stripe.",
@@ -153,7 +153,7 @@ const T = {
     eyebrow: "Hébergement Servolia",
     h1Choose: ["Choisissez votre ", "formule"],
     subChoose:
-      "L'hébergement, le SSL et la surveillance sont identiques sur les trois. Ce qui change : si nous gérons votre domaine, et si vous avez une messagerie à votre nom.",
+      "L'hébergement, le SSL et la vérification en direct de l'état du site sont identiques sur les trois. Ce qui change : si nous gérons votre domaine, et si vous avez une messagerie à votre nom.",
     h1Details: ["Vos ", "coordonnées"],
     subDetails:
       "Votre domaine, et l'email de votre compte et de vos factures. Le paiement se fait à l'écran suivant, avec Stripe.",
