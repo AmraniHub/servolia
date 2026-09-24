@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { CheckCircle2 } from "lucide-react";
 import { setupLinkForSession, assistantLinkForSession } from "@/lib/upgrade";
+import { resolveHostingPlan } from "@/lib/hosting";
 
 export const metadata: Metadata = {
   title: "Thank you",
@@ -58,6 +59,11 @@ const COPY_FR: Record<string, Copy> = {
     body:
       "Votre solde est à jour et il ne reste rien à payer. Il s'agissait d'un paiement unique — il ne se répétera pas.",
   },
+  seo_multilingual: {
+    title: "Paiement reçu",
+    body:
+      "Un paiement unique — rien ne se renouvelle. Nous déclarons vos langues (hreflang), écrivons un plan de site par langue et les données structurées, et vous confirmons par email quand c'est en place — sous cinq jours ouvrés. Rien à faire de votre côté d'ici là.",
+  },
 };
 
 const FALLBACK_FR: Copy = {
@@ -86,6 +92,16 @@ const COPY: Record<string, Copy> = {
     title: "That's settled",
     body:
       "Your balance is clear and nothing is outstanding. This was a one-off charge — it will not repeat.",
+  },
+  /* A ONE-OFF SERVICE. It used to fall through to FALLBACK — "your service is
+     active, nothing else to do" — and then the footer line promised a renewal
+     date for a payment that never renews. The body repeats what
+     oneOffServicePaidEmail promises, word for word in substance, so the page
+     and the inbox tell the buyer the same thing. */
+  seo_multilingual: {
+    title: "Payment received",
+    body:
+      "A single payment — nothing renews. We declare your languages (hreflang), write a sitemap per language and the structured data, and email you when it is in place — within five working days. Nothing for you to do until then.",
   },
 };
 
@@ -154,13 +170,23 @@ export default async function HostingThanks({
      restored variant. */
   /* Only the server knows whether this buyer already had a site with us, so
      the checkout flags it rather than the page guessing. */
-  const isSetup = setup === "1";
+  /* A one-off has no subscription, so setupLinkForSession can never mint its
+     link: a stale or hand-built `setup=1` on one would read "one short step
+     left" above no button at all. One-off purchases never take the step. */
+  const isOneOff = Boolean(resolveHostingPlan(product)?.oneOffUsd) || product === "arrears";
+  const isSetup = setup === "1" && !isOneOff;
   const isBrief = brief === "1";
   const setupUrl = isSetup && sessionId ? await setupLinkForSession(sessionId) : null;
   const briefUrl = isBrief && sessionId ? await assistantLinkForSession(sessionId) : null;
   const stepCopy = isBrief ? (fr ? BRIEF_FR : BRIEF_EN) : (fr ? SETUP_FR : SETUP_EN);
   const stepUrl = isBrief ? briefUrl : setupUrl;
   const isStep = isSetup || isBrief;
+  /* The link could not be minted here (Stripe slow, session unreadable). The
+     webhook mints the same link into the confirmation email, so point there
+     rather than describe a step with nothing to click. */
+  const noLinkNote = fr
+    ? " Le lien pour le faire est dans votre email de confirmation."
+    : " The link to do it is in your confirmation email.";
 
   const entry = (fr ? COPY_FR : COPY)[product];
   const isRestore = restored === "1";
@@ -190,7 +216,7 @@ export default async function HostingThanks({
             {isStep ? stepCopy.title : copy.title}
           </h1>
           <p className="text-[#52525B] leading-relaxed mb-6">
-            {(isStep ? stepCopy.body : copy.body) + domainNote}
+            {(isStep ? stepCopy.body : copy.body) + domainNote + (isStep && !stepUrl ? noLinkNote : "")}
           </p>
           {isStep && stepUrl ? (
             <a
@@ -205,9 +231,13 @@ export default async function HostingThanks({
               Stripe dashboard toggle nobody can see — see
               clientServicePaidEmail in src/lib/email.ts. */}
           <p className="text-sm text-[#71717A] leading-relaxed mb-8">
-            {fr
-              ? "Une confirmation arrive dans votre boîte mail, avec le montant payé et la date de renouvellement. Stripe envoie un reçu séparé pour vos archives."
-              : "A confirmation is on its way to your inbox, with what you paid and when it renews. Stripe sends a separate receipt for your records."}
+            {isOneOff
+              ? (fr
+                  ? "Une confirmation arrive dans votre boîte mail, avec le montant payé. Stripe envoie un reçu séparé pour vos archives."
+                  : "A confirmation is on its way to your inbox, with what you paid. Stripe sends a separate receipt for your records.")
+              : fr
+                ? "Une confirmation arrive dans votre boîte mail, avec le montant payé et la date de renouvellement. Stripe envoie un reçu séparé pour vos archives."
+                : "A confirmation is on its way to your inbox, with what you paid and when it renews. Stripe sends a separate receipt for your records."}
           </p>
 
           <Link

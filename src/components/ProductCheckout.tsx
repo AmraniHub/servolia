@@ -29,6 +29,10 @@ const T = {
     setupOnce: (n: number) => `+ $${usd(n)} once — mailboxes set up`,
     redirecting: "Redirecting to Stripe…",
     pay: (n: number) => `Pay $${usd(n)} — get started`,
+    once: "once",
+    billedOnce: "One payment. Nothing renews, nothing to cancel.",
+    payOnce: (n: number) => `Pay $${usd(n)} once`,
+    nothingRecurring: "Nothing recurring",
     needSite: "Enter your website to continue",
     secured: "Secured by Stripe",
     cancelAnytime: "Cancel anytime",
@@ -53,6 +57,10 @@ const T = {
     setupOnce: (n: number) => `+ ${usd(n)} $ une fois — boîtes email mises en place`,
     redirecting: "Redirection vers Stripe…",
     pay: (n: number) => `Payer ${usd(n)} $ — activer`,
+    once: "une seule fois",
+    billedOnce: "Un seul paiement. Rien ne se renouvelle, rien à résilier.",
+    payOnce: (n: number) => `Payer ${usd(n)} $ une seule fois`,
+    nothingRecurring: "Rien de récurrent",
     needSite: "Indiquez votre site pour continuer",
     secured: "Sécurisé par Stripe",
     cancelAnytime: "Résiliable à tout moment",
@@ -68,6 +76,7 @@ export default function ProductCheckout({
   monthlyUsd,
   annualUsd,
   setupUsd = 0,
+  oneOffUsd = 0,
   includes,
   refCode,
   siteLabel,
@@ -81,6 +90,14 @@ export default function ProductCheckout({
   annualUsd: number;
   /** A one-time charge on the first payment (Business: mailbox setup). */
   setupUsd?: number;
+  /**
+   * Bought once (multilingual search). When set it is the ONLY price: no
+   * yearly/monthly toggle, no setup line, and "once" instead of "/ year".
+   * Leaving it out once showed "$450 / year" on a page Stripe then charged
+   * $145 for — the server reads hostingAmountCents, which puts the one-off
+   * first, so the page has to as well.
+   */
+  oneOffUsd?: number;
   includes: string[];
   refCode: string;
   siteLabel: string;
@@ -138,8 +155,12 @@ export default function ProductCheckout({
     }
   }
 
+  const oneOff = oneOffUsd > 0;
   const annual = billing === "annual";
-  const amount = annual ? annualUsd : monthlyUsd;
+  // Same order as hostingAmountCents on the server: a one-off wins outright.
+  const amount = oneOff ? oneOffUsd : annual ? annualUsd : monthlyUsd;
+  // A one-off carries no setup line — the server gates it to hosting tiers.
+  const extra = oneOff ? 0 : setupUsd;
   // Only claim a saving when the annual price is actually below 12 months.
   const saving = monthlyUsd * 12 - annualUsd;
 
@@ -185,31 +206,35 @@ export default function ProductCheckout({
         )}
 
         <div className="px-7 pt-6">
-          <div className="flex items-center gap-1 p-1 rounded-xl bg-[#F4F4F0] mb-6">
-            {(["annual", "monthly"] as const).map((b) => (
-              <button
-                key={b}
-                onClick={() => setBilling(b)}
-                className={`flex-1 h-9 rounded-lg text-sm font-bold transition ${
-                  billing === b ? "bg-white text-[#18181B] shadow-sm" : "text-[#71717A] hover:text-[#18181B]"
-                }`}
-              >
-                {b === "annual" ? t.yearly : t.monthly}
-              </button>
-            ))}
-          </div>
+          {/* No period to choose for a one-off: a toggle there would offer a
+              "monthly" the server never charges. */}
+          {oneOff ? null : (
+            <div className="flex items-center gap-1 p-1 rounded-xl bg-[#F4F4F0] mb-6">
+              {(["annual", "monthly"] as const).map((b) => (
+                <button
+                  key={b}
+                  onClick={() => setBilling(b)}
+                  className={`flex-1 h-9 rounded-lg text-sm font-bold transition ${
+                    billing === b ? "bg-white text-[#18181B] shadow-sm" : "text-[#71717A] hover:text-[#18181B]"
+                  }`}
+                >
+                  {b === "annual" ? t.yearly : t.monthly}
+                </button>
+              ))}
+            </div>
+          )}
 
           <div className="flex items-baseline gap-1.5">
             <span className="text-[44px] leading-none font-black text-[#18181B] tracking-tight">${usd(amount)}</span>
-            <span className="text-[#71717A] font-medium">{annual ? t.perYear : t.perMonth}</span>
+            <span className="text-[#71717A] font-medium">{oneOff ? t.once : annual ? t.perYear : t.perMonth}</span>
           </div>
-          <p className={`text-sm text-[#71717A] mt-2 ${setupUsd ? "mb-1" : "mb-6"}`}>
-            {annual ? t.billedAnnually : t.billedMonthly}
-            {annual && saving > 0 ? (
+          <p className={`text-sm text-[#71717A] mt-2 ${extra ? "mb-1" : "mb-6"}`}>
+            {oneOff ? t.billedOnce : annual ? t.billedAnnually : t.billedMonthly}
+            {!oneOff && annual && saving > 0 ? (
               <span className="ml-1.5 font-semibold text-[#36671E]">{t.save(saving)}</span>
             ) : null}
           </p>
-          {setupUsd ? <p className="text-sm text-[#71717A] mb-6">{t.setupOnce(setupUsd)}</p> : null}
+          {extra ? <p className="text-sm text-[#71717A] mb-6">{t.setupOnce(extra)}</p> : null}
 
           <ul className="space-y-2.5 mb-7">
             {includes.map((line) => (
@@ -230,7 +255,7 @@ export default function ProductCheckout({
             {loading
               ? t.redirecting
               : identified
-                ? t.pay(amount + setupUsd)
+                ? oneOff ? t.payOnce(amount) : t.pay(amount + extra)
                 : t.needSite}
           </button>
 
@@ -238,7 +263,7 @@ export default function ProductCheckout({
 
           <div className="mt-5 flex items-center justify-center gap-5 text-[11px] text-[#8A8A80]">
             <span className="inline-flex items-center gap-1.5"><Lock className="w-3.5 h-3.5" /> {t.secured}</span>
-            <span className="inline-flex items-center gap-1.5"><ShieldCheck className="w-3.5 h-3.5" /> {t.cancelAnytime}</span>
+            <span className="inline-flex items-center gap-1.5"><ShieldCheck className="w-3.5 h-3.5" /> {oneOff ? t.nothingRecurring : t.cancelAnytime}</span>
           </div>
           <p className="mt-2.5 text-[11px] text-[#A8A8A0] text-center">
             {t.cardNote}

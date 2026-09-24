@@ -105,6 +105,7 @@ export default function ClientProductPage({
             monthlyUsd={product.monthlyUsd}
             annualUsd={product.annualUsd}
             setupUsd={product.setupUsd}
+            oneOffUsd={product.oneOffUsd}
             includes={copy.includes}
             refCode={refCode}
             siteLabel={siteLabel}

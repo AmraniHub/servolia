@@ -295,9 +295,14 @@ export async function POST(req: NextRequest) {
        * business (`brief=1`), which is NOT the hosting handover form — asking
        * "where does your site live?" of someone who bought an assistant for a
        * site they run themselves is the wrong question on the wrong page. */
+      /* A ONE-OFF never takes the handover step: the step's link is minted
+       * from a subscription, which a one-off never has, so `setup=1` put
+       * "one short step left" above no button at all. */
       success_url: hostingPlan.key === "chatbot"
         ? `${origin}/hosting/thanks?product=chatbot&lang=${lang}${client?.gateWidget ? "&restored=1" : client?.repo ? "&hosted=1" : "&brief=1&session_id={CHECKOUT_SESSION_ID}"}`
-        : `${origin}/hosting/thanks?product=${hostingPlan.key}&lang=${lang}${client?.gateWidget ? "&restored=1" : ""}${domainLine ? "&domain=1" : ""}${client ? "" : "&setup=1&session_id={CHECKOUT_SESSION_ID}"}`,
+        : oneOff
+          ? `${origin}/hosting/thanks?product=${hostingPlan.key}&lang=${lang}`
+          : `${origin}/hosting/thanks?product=${hostingPlan.key}&lang=${lang}${client?.gateWidget ? "&restored=1" : ""}${domainLine ? "&domain=1" : ""}${client ? "" : "&setup=1&session_id={CHECKOUT_SESSION_ID}"}`,
       cancel_url: `${origin}/${hostingPlan.key === "chatbot" ? "chatbot" : "hosting"}${ref ? `?ref=${encodeURIComponent(ref)}` : ""}`,
     });
 
