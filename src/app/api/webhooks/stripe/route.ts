@@ -748,27 +748,35 @@ export async function POST(req: NextRequest) {
         const installationPaid = Number.isFinite(installationCents) ? installationCents / 100 : 0;
         let buildId: string | null = null;
         let buildOpened = false; // a new build, opened by this event
-        let buildReused = false; // a scope-flow client's own build, still waiting
+        let buildReused = false; // a scope-flow client's own build, no client on it yet
+        let reusedStatus = "";
+        let reusedDeposit = 0;
         if (customerEmail) {
-          /* Reuse ONLY a build still waiting for its intake that no client
-             owns yet: a scope-flow client arriving to subscribe. Any other
-             build under this email is somebody's site -- a receptionist
+          /* Reuse the newest build under this email that NO client owns yet:
+             a scope-flow client arriving to subscribe, at whatever stage her
+             site is (she may have done her intake the day she paid). A build
+             a client already owns is somebody's site -- a receptionist
              client, a second practice -- and tying this subscription to it
              would meter it, and on a failed card suspend it, for the wrong
-             plan. (Review of 2db729c, 2026-09-24.) */
-          const { data: waiting } = await db.from("builds")
-            .select("id, checkout_session_id").eq("email", customerEmail).eq("status", "intake")
-            .order("created_at", { ascending: false }).limit(1).maybeSingle();
-          if (waiting) {
+             plan. Decided by ownership, never by status: status alone opened
+             a second, empty build for a scope client whose site was already
+             built. (Reviews of 2db729c, 2026-09-24.) */
+          const { data: candidates } = await db.from("builds")
+            .select("id, status, checkout_session_id, deposit_paid")
+            .in("email", Array.from(new Set([customerEmail, customerEmail.toLowerCase()])))
+            .order("created_at", { ascending: false }).limit(5);
+          for (const c of (candidates ?? []) as { id: string; status: string; checkout_session_id: string | null; deposit_paid: number | null }[]) {
             const { data: owner } = await db.from("clients")
-              .select("id").eq("build_id", waiting.id).limit(1).maybeSingle();
-            if (!owner) {
-              buildId = waiting.id as string;
-              buildReused = true;
-              if (!waiting.checkout_session_id) {
-                await db.from("builds").update({ checkout_session_id: session.id }).eq("id", buildId);
-              }
+              .select("id").eq("build_id", c.id).limit(1).maybeSingle();
+            if (owner) continue;
+            buildId = c.id;
+            buildReused = true;
+            reusedStatus = c.status;
+            reusedDeposit = Number(c.deposit_paid ?? 0);
+            if (!c.checkout_session_id) {
+              await db.from("builds").update({ checkout_session_id: session.id }).eq("id", buildId);
             }
+            break;
           }
           if (!buildId) {
             const { data: opened, error: buildErr } = await db.from("builds").insert({
@@ -797,7 +805,8 @@ export async function POST(req: NextRequest) {
         const { data: client, error: clientErr } = await db.from("clients").insert({
           build_id: buildId,
           business: customerEmail ?? "Unknown",
-          email: customerEmail,
+          // Lowercase: the portal's login cookie is, and billing matches it exactly.
+          email: customerEmail ? customerEmail.toLowerCase() : null,
           plan: plan?.key ?? planLabel.toLowerCase(),
           // The plan's monthly worth, never the checkout total: that carried
           // the EUR 690 installation (or a whole year) into MRR. To the cent:
@@ -841,7 +850,7 @@ export async function POST(req: NextRequest) {
 
         // Send them to the intake form — the build cannot start without it.
         // Skipped when their answers are already in: the draft email follows.
-        if (customerEmail && buildOpened && !intakeAlready) {
+        if (customerEmail && (buildOpened || (buildReused && reusedStatus === "intake")) && !intakeAlready) {
           const firstName = customerEmail.split("@")[0];
           const emailLang = session.metadata?.lang === "fr" ? "fr" : "en";
           const tpl = installationPaidEmail(firstName, planLabel, amount, emailLang, {
@@ -859,6 +868,16 @@ export async function POST(req: NextRequest) {
             .update({ stage: "deposit_paid" })
             .eq("email", customerEmail)
             .in("stage", ["new", "audit_sent", "qualified"]);
+        }
+
+        /* The plan checkout charges the installation on every monthly purchase; a
+           scope-flow client already paid it on her build. The checkout cannot
+           know that, so the founder is told to refund it. */
+        if (buildReused && reusedDeposit > 0 && installationPaid > 0) {
+          await sendTelegramMessage(
+            `INSTALLATION CHARGED TWICE - refund EUR ${installationPaid.toLocaleString()} to ${customerEmail}: their build had EUR ${reusedDeposit.toLocaleString()} already paid.\nhttps://servolia.com/admin/builds/${buildId}`,
+            undefined, { plain: true },
+          ).catch(() => {});
         }
 
         const tgToken = process.env.TELEGRAM_BOT_TOKEN;
@@ -1011,24 +1030,14 @@ export async function POST(req: NextRequest) {
         }).select("*").single();
         build = newBuild;
       } else {
-        await db.from("builds").update({
-          deposit_paid: amountPaid,
-          status: "intake",
-          email: customerEmail ?? build.email,
-          customer_id: (session.customer as string) ?? null,
-        }).eq("id", build.id);
-
-        if (build.lead_id) {
-          await db.from("leads").update({
-            stage: "deposit_paid",
-            email: customerEmail ?? undefined,
-          }).eq("id", build.lead_id);
-          await db.from("lead_activities").insert({
-            lead_id: build.lead_id,
-            type: "payment",
-            description: `Installation paid — €${amountPaid.toLocaleString()} via Stripe`,
-          });
-        }
+        /* A build already carrying THIS session id can only be a repeat of
+           this event: /api/checkout writes nothing, and only this branch
+           stamps checkout_session_id on a build. The old code wrote status
+           "intake" over whatever it was -- a live site went back to awaiting
+           its intake, the client got a fresh "complete your intake" email,
+           and submitting it regenerated her published site as a draft.
+           Nothing is written or sent again. (Review round 2, 2026-09-24.) */
+        return NextResponse.json({ received: true, already: true });
       }
 
       // Auto-create a scope acceptance if this build's lead doesn't already have

@@ -472,6 +472,8 @@ export const installationPaidEmail = (
   const q = new URLSearchParams();
   if (opts.plan) q.set("plan", opts.plan);
   if (opts.sessionId) q.set("session_id", opts.sessionId);
+  // The intake's thank-you screen reads these to say day 8 / already paid.
+  if (opts.billing) { q.set("subscribed", "1"); q.set("billing", opts.billing); }
   const intakeUrl = q.toString() ? `${intakeBase}?${q.toString()}` : intakeBase;
   const thenFr = opts.billing === "annual"
     ? "Votre année est réglée : elle court à partir d'aujourd'hui"

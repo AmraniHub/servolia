@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import Stripe from "stripe";
 import { supabaseAdmin, estimateLeadValue, type LeadSource } from "@/lib/supabase";
 import { sendEmail, auditConfirmationEmail } from "@/lib/email";
 import { sendMetaCapiEvent } from "@/lib/metaCapi";
@@ -107,9 +108,29 @@ export async function POST(req: NextRequest) {
       if (type === "intake" && sessionId) {
         // Newest, never maybeSingle(): two rows with one session id made that
         // error out, and the intake was silently dropped.
-        const { data: build } = await db.from("builds")
+        let { data: build } = await db.from("builds")
           .select("id, lead_id, status").eq("checkout_session_id", sessionId)
           .order("created_at", { ascending: false }).limit(1).maybeSingle();
+        /* A scope-flow client who then subscribes keeps her build and its
+           FIRST session id, so the subscription's session names no build.
+           Stripe says whose session it is: a paid session's own email finds
+           the build that is still waiting for its intake. The email is
+           Stripe's, never the form's, so a stranger cannot aim this. */
+        if (!build && /^cs_(live|test)_/.test(String(sessionId)) && process.env.STRIPE_SECRET_KEY) {
+          try {
+            const s = await new Stripe(process.env.STRIPE_SECRET_KEY).checkout.sessions.retrieve(String(sessionId));
+            const paidEmail = s.status === "complete" ? (s.customer_details?.email ?? s.customer_email ?? null) : null;
+            if (paidEmail) {
+              ({ data: build } = await db.from("builds")
+                .select("id, lead_id, status")
+                .in("email", Array.from(new Set([paidEmail, paidEmail.toLowerCase()])))
+                .eq("status", "intake")
+                .order("created_at", { ascending: false }).limit(1).maybeSingle());
+            }
+          } catch {
+            /* Stripe unreachable: the answers are on the lead row, as before. */
+          }
+        }
         // No build yet is not an error: Stripe's event may still be on its
         // way. The webhook finds this intake (by the same session id, on the
         // lead row written above) and starts the build itself.

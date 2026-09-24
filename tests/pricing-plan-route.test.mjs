@@ -84,9 +84,41 @@ test("an intake starts a build only while it waits for one — a live site is ne
 
 test("a returning email never ties a new subscription to somebody's existing site", () => {
   const b = subscriptionBranch();
-  const reuse = b.slice(b.indexOf("Reuse ONLY"), b.indexOf("if (!buildId) {"));
-  assert.match(reuse, /\.eq\("status", "intake"\)/, "only a build still waiting");
-  assert.match(reuse, /\.eq\("build_id", waiting\.id\)/, "and only one no client owns");
+  const reuse = b.slice(b.indexOf("Reuse the newest build"), b.indexOf("if (!buildId) {"));
+  assert.match(reuse, /\.eq\("build_id", c\.id\)/, "only a build no client owns");
+  assert.match(reuse, /if \(owner\) continue;/);
+  assert.doesNotMatch(reuse, /\.eq\("status", "intake"\)/, "by ownership, never by status: a scope client's built site is still hers");
+});
+
+/* ── review round 2 ────────────────────────────────────────────────────── */
+
+test("a repeated scope-flow payment event writes and sends nothing", () => {
+  const w = src("src/app/api/webhooks/stripe/route.ts");
+  const found = w.slice(w.indexOf('.eq("checkout_session_id", sessionId)'), w.indexOf("Auto-create a scope acceptance"));
+  assert.match(found, /\} else \{[\s\S]*return NextResponse\.json\(\{ received: true, already: true \}\);/);
+  assert.doesNotMatch(found.slice(found.indexOf("} else {")), /status: "intake"/, "a live site is never sent back to intake");
+});
+
+test("an installation paid twice is flagged for a refund; a reused waiting build still gets its intake email", () => {
+  const b = subscriptionBranch();
+  assert.match(b, /INSTALLATION CHARGED TWICE/);
+  assert.match(b, /buildOpened \|\| \(buildReused && reusedStatus === "intake"\)/);
+});
+
+test("the subscription's own intake finds a reused build through Stripe's record of the session", () => {
+  const contact = src("src/app/api/contact/route.ts");
+  assert.match(contact, /checkout\.sessions\.retrieve\(String\(sessionId\)\)/);
+  assert.match(contact, /s\.status === "complete"/, "only a paid session");
+  assert.match(contact, /s\.customer_details\?\.email/, "Stripe's email, never the form's");
+});
+
+test("the plan client's email is stored lowercase, as the portal login cookie is", () => {
+  assert.match(subscriptionBranch(), /email: customerEmail \? customerEmail\.toLowerCase\(\) : null/);
+});
+
+test("the receipt's intake link tells the thank-you screen which plan terms apply", () => {
+  const { html } = installationPaidEmail("amine", "Croissance", 1490, "en", { sessionId: "cs_test_9", billing: "annual" });
+  assert.ok(/subscribed=1(&amp;|&)billing=annual/.test(html));
 });
 
 test("a lost race or a failed insert is answered so Stripe does the right thing", () => {
