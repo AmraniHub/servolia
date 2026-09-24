@@ -70,6 +70,58 @@ test("the receipt's intake button reaches the paid build", () => {
   assert.match(subscriptionBranch(), /sessionId: session\.id, plan: planKey, billing/);
 });
 
+/* ── review of 2db729c ─────────────────────────────────────────────────── */
+
+test("an intake starts a build only while it waits for one — a live site is never pulled back to draft", () => {
+  const lib = src("src/lib/intakeBuild.ts");
+  const update = lib.slice(lib.indexOf('from("builds").update('), lib.indexOf("if (updateErr"));
+  assert.match(update, /\.eq\("status", "intake"\)/, "the status flip is the claim");
+  assert.match(update, /\.select\("id"\)/, "and only a row that actually flipped schedules the draft");
+  assert.match(lib, /!claimed\?\.length\) return false/);
+  // The founder hears about an intake sent again; the site is not touched.
+  assert.match(src("src/app/api/contact/route.ts"), /Intake sent AGAIN/);
+});
+
+test("a returning email never ties a new subscription to somebody's existing site", () => {
+  const b = subscriptionBranch();
+  const reuse = b.slice(b.indexOf("Reuse ONLY"), b.indexOf("if (!buildId) {"));
+  assert.match(reuse, /\.eq\("status", "intake"\)/, "only a build still waiting");
+  assert.match(reuse, /\.eq\("build_id", waiting\.id\)/, "and only one no client owns");
+});
+
+test("a lost race or a failed insert is answered so Stripe does the right thing", () => {
+  const b = subscriptionBranch();
+  assert.match(b, /clientErr\?\.code === "23505"/, "the parallel delivery won: 200, already");
+  assert.match(b, /if \(buildOpened && buildId\) await db\.from\("builds"\)\.delete\(\)/, "our own build undone");
+  assert.match(b, /status: 500/, "a real failure is retried, never answered 200");
+  // Two rows with one session id must not drop the intake.
+  const contact = src("src/app/api/contact/route.ts");
+  const look = contact.slice(contact.indexOf('.eq("checkout_session_id", sessionId)'), contact.indexOf("if (build) {"));
+  assert.match(look, /\.limit\(1\)/);
+});
+
+test("the monthly worth is stored to the cent", () => {
+  assert.match(subscriptionBranch(), /Math\.round\(\(billing === "annual" \? plan\.annualEur \/ 12 : plan\.monthlyEur\) \* 100\) \/ 100/);
+});
+
+test("an annual buyer is never told they paid for an installation", () => {
+  const annual = installationPaidEmail("amine", "Essentiel", 1490, "en", { billing: "annual" }).html;
+  assert.doesNotMatch(annual, /installation is confirmed/i);
+  assert.doesNotMatch(annual, /paid for my installation/i);
+  const monthly = installationPaidEmail("amine", "Essentiel", 690, "en", { billing: "monthly" }).html;
+  assert.match(monthly, /installation is confirmed/i);
+});
+
+test("the intake's thank-you screen says what the plan checkout did", () => {
+  const form = src("src/components/OnboardingForm.tsx");
+  assert.match(form, /params\.get\("subscribed"\) === "1"/);
+  assert.match(form, /d\.planLine\[billing\]/);
+  assert.match(form, /7 days after your payment/);
+  assert.match(form, /7 jours après votre paiement/);
+  assert.doesNotMatch(form, /nothing more to pay/);
+  assert.doesNotMatch(form, /plus rien à régler"/);
+});
+
 test("every caller of /api/billing-portal has a handler for its method", () => {
   const route = src("src/app/api/billing-portal/route.ts");
   for (const f of ["src/components/PortalDashboard.tsx", "src/app/billing/page.tsx"]) {

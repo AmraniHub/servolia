@@ -747,14 +747,30 @@ export async function POST(req: NextRequest) {
         const installationCents = Number(session.metadata?.installation_cents ?? 0);
         const installationPaid = Number.isFinite(installationCents) ? installationCents / 100 : 0;
         let buildId: string | null = null;
-        let buildOpened = false;
+        let buildOpened = false; // a new build, opened by this event
+        let buildReused = false; // a scope-flow client's own build, still waiting
         if (customerEmail) {
-          const { data: existingBuild } = await db.from("builds")
-            .select("id").eq("email", customerEmail)
+          /* Reuse ONLY a build still waiting for its intake that no client
+             owns yet: a scope-flow client arriving to subscribe. Any other
+             build under this email is somebody's site -- a receptionist
+             client, a second practice -- and tying this subscription to it
+             would meter it, and on a failed card suspend it, for the wrong
+             plan. (Review of 2db729c, 2026-09-24.) */
+          const { data: waiting } = await db.from("builds")
+            .select("id, checkout_session_id").eq("email", customerEmail).eq("status", "intake")
             .order("created_at", { ascending: false }).limit(1).maybeSingle();
-          if (existingBuild) {
-            buildId = existingBuild.id as string;
-          } else {
+          if (waiting) {
+            const { data: owner } = await db.from("clients")
+              .select("id").eq("build_id", waiting.id).limit(1).maybeSingle();
+            if (!owner) {
+              buildId = waiting.id as string;
+              buildReused = true;
+              if (!waiting.checkout_session_id) {
+                await db.from("builds").update({ checkout_session_id: session.id }).eq("id", buildId);
+              }
+            }
+          }
+          if (!buildId) {
             const { data: opened, error: buildErr } = await db.from("builds").insert({
               business: "Pending intake",
               email: customerEmail,
@@ -767,32 +783,49 @@ export async function POST(req: NextRequest) {
               customer_id: (session.customer as string) ?? null,
               checkout_session_id: session.id,
             }).select("id").single();
-            if (!buildErr && opened) {
-              buildId = opened.id as string;
-              buildOpened = true;
+            // A paid client with no build is the failure this branch exists to
+            // prevent: answer 500 so Stripe delivers the event again.
+            if (buildErr || !opened) {
+              console.error("[stripe-webhook] plan build insert failed", buildErr?.message);
+              return NextResponse.json({ error: "build not recorded" }, { status: 500 });
             }
+            buildId = opened.id as string;
+            buildOpened = true;
           }
         }
 
-        const { data: client } = await db.from("clients").insert({
+        const { data: client, error: clientErr } = await db.from("clients").insert({
           build_id: buildId,
           business: customerEmail ?? "Unknown",
           email: customerEmail,
           plan: plan?.key ?? planLabel.toLowerCase(),
           // The plan's monthly worth, never the checkout total: that carried
-          // the EUR 690 installation (or a whole year) into MRR.
-          monthly_amount: plan ? (billing === "annual" ? plan.annualEur / 12 : plan.monthlyEur) : amount,
+          // the EUR 690 installation (or a whole year) into MRR. To the cent:
+          // 1490 / 12 is 124.1666..., and the portal printed it whole.
+          monthly_amount: plan
+            ? Math.round((billing === "annual" ? plan.annualEur / 12 : plan.monthlyEur) * 100) / 100
+            : amount,
           status: "active",
           customer_id: (session.customer as string) ?? null,
           subscription_id: subscriptionId,
         }).select("id").single();
+        if (clientErr || !client) {
+          // Undo our own build so a retry starts clean.
+          if (buildOpened && buildId) await db.from("builds").delete().eq("id", buildId);
+          /* 23505 = the unique index on clients.subscription_id
+             (supabase/2026-09-22-clients-subscription-unique.sql) caught a
+             parallel delivery of this same event: it won, and did the rest. */
+          if (clientErr?.code === "23505") return NextResponse.json({ received: true, already: true });
+          console.error("[stripe-webhook] plan client insert failed", clientErr?.message);
+          return NextResponse.json({ error: "client not recorded" }, { status: 500 });
+        }
 
         /* The client may have finished the intake BEFORE this event arrived:
            the form is on the success page and Stripe gives no ordering
            promise. Their answers are on the lead row, keyed by this session
            id -- start the build from them now, or it waits forever. */
         let intakeAlready = false;
-        if (buildOpened && buildId) {
+        if (buildId && (buildOpened || buildReused)) {
           const { data: early } = await db.from("leads")
             .select("id, business, raw_data")
             .eq("raw_data->>sessionId", session.id)

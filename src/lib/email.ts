@@ -461,10 +461,12 @@ export const installationPaidEmail = (
   firstName: string, planName: string, amount: number, lang: "en" | "fr" = "en",
   opts: { sessionId?: string | null; plan?: string | null; billing?: "monthly" | "annual" } = {},
 ) => {
+  // Annual waives the installation: never tell that buyer they paid for one.
+  const annual = opts.billing === "annual";
   const wa = businessWaLink(
     lang === "fr"
-      ? `Bonjour, je viens de régler ma mise en place — hâte de commencer !`
-      : `Hi, I just paid for my installation — excited to get started!`
+      ? (annual ? `Bonjour, je viens de régler mon année — hâte de commencer !` : `Bonjour, je viens de régler ma mise en place — hâte de commencer !`)
+      : (annual ? `Hi, I just paid for my year — excited to get started!` : `Hi, I just paid for my installation — excited to get started!`)
   );
   const intakeBase = lang === "fr" ? "https://servolia.com/fr/demarrage" : "https://servolia.com/onboarding";
   const q = new URLSearchParams();
@@ -505,7 +507,7 @@ export const installationPaidEmail = (
         <p style="margin:24px 0 0;font-size:14px;line-height:1.6;color:#71717A;">
           Des questions ? Répondez directement à cet email${wa ? " ou écrivez-nous sur WhatsApp" : ""} — je lis chaque message.
         </p>
-      `, { preheader: "Votre installation est confirmee. Voici ce qui se passe maintenant.", lang: "fr" }),
+      `, { preheader: annual ? "Votre annee est reglee. Voici ce qui se passe maintenant." : "Votre installation est confirmee. Voici ce qui se passe maintenant.", lang: "fr" }),
     };
   }
 
@@ -531,7 +533,7 @@ export const installationPaidEmail = (
       <p style="margin:24px 0 0;font-size:14px;line-height:1.6;color:#71717A;">
         Questions? Reply directly${wa ? " or message us on WhatsApp" : ""} — I read every message.
       </p>
-      `, { preheader: "Your installation is confirmed. Here is what happens next.", lang: "en" }),
+      `, { preheader: annual ? "Your year is paid for. Here is what happens next." : "Your installation is confirmed. Here is what happens next.", lang: "en" }),
   };
 };
 

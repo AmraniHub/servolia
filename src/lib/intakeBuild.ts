@@ -15,7 +15,8 @@ import { sendTelegramMessage, telegramConfigured } from "@/lib/telegram";
  * build waited in "intake" forever, and the "draft within minutes" email was
  * a promise nothing kept.
  *
- * Returns false when the build could not be updated (nothing is scheduled).
+ * Returns false when the build was not waiting for an intake, or could not
+ * be updated (nothing is scheduled either way).
  * The generation runs AFTER the response (next/server after()), so the caller
  * never waits on the 10-50s copywriting call; generateSiteForBuild returns
  * null rather than throwing, and the try/catch is belt-and-braces.
@@ -34,13 +35,20 @@ export async function startBuildFromIntake(a: {
 }): Promise<boolean> {
   const db = supabaseAdmin();
   if (!db) return false;
-  const { error: updateErr } = await db.from("builds").update({
+  /* ONLY A BUILD STILL WAITING FOR ITS INTAKE. The flip from "intake" to
+     "building" is the claim: one caller wins it, so the form and the webhook
+     arriving together start ONE draft, and an intake sent again later -- the
+     receipt's button carries the session id, and the contact route is public
+     -- can never pull a published site back to draft (generateSiteForBuild
+     writes status "draft") or rewrite its copy. Redoing a draft is the
+     admin's Regenerate button. (Review of 2db729c, 2026-09-24.) */
+  const { data: claimed, error: updateErr } = await db.from("builds").update({
     intake_data: a.intake,
     business: a.business || undefined,
     status: "building",
     started_at: new Date().toISOString(),
-  }).eq("id", a.buildId);
-  if (updateErr) return false;
+  }).eq("id", a.buildId).eq("status", "intake").select("id");
+  if (updateErr || !claimed?.length) return false;
 
   if (a.leadId) {
     await db.from("lead_activities").insert({

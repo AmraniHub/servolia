@@ -3,6 +3,7 @@ import { supabaseAdmin, estimateLeadValue, type LeadSource } from "@/lib/supabas
 import { sendEmail, auditConfirmationEmail } from "@/lib/email";
 import { sendMetaCapiEvent } from "@/lib/metaCapi";
 import { startBuildFromIntake } from "@/lib/intakeBuild";
+import { sendTelegramMessage, telegramConfigured } from "@/lib/telegram";
 import { rateLimited, clientIp } from "@/lib/security";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -104,15 +105,27 @@ export async function POST(req: NextRequest) {
       // your intake" (see src/app/api/webhooks/stripe/route.ts: payment sets
       // status "intake", this is what advances it to "building").
       if (type === "intake" && sessionId) {
+        // Newest, never maybeSingle(): two rows with one session id made that
+        // error out, and the intake was silently dropped.
         const { data: build } = await db.from("builds")
-          .select("id, lead_id").eq("checkout_session_id", sessionId).maybeSingle();
+          .select("id, lead_id, status").eq("checkout_session_id", sessionId)
+          .order("created_at", { ascending: false }).limit(1).maybeSingle();
         // No build yet is not an error: Stripe's event may still be on its
         // way. The webhook finds this intake (by the same session id, on the
         // lead row written above) and starts the build itself.
         if (build) {
-          await startBuildFromIntake({
+          const started = await startBuildFromIntake({
             buildId: build.id as string, leadId: build.lead_id as string | null, intake: body, business: resolvedBiz,
           });
+          /* A build past "intake" keeps its site exactly as it is; the new
+             answers are on the lead row, and the founder decides. */
+          if (!started && build.status !== "intake" && telegramConfigured()) {
+            await sendTelegramMessage(
+              `Intake sent AGAIN for a build already ${build.status} - nothing was changed on the site.\n` +
+              `New answers are on the lead. Regenerate by hand only if they asked for it: https://servolia.com/admin/builds/${build.id}`,
+              undefined, { silent: true, plain: true },
+            );
+          }
         }
       }
     }

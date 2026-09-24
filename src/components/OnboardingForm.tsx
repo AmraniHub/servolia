@@ -102,9 +102,15 @@ const COPY = {
       timeline: [
         ["Right now", "Your answers become a first version of your site"],
         ["Minutes from now", "A link to your draft arrives by email — look, then tell us what to change"],
-        ["After approval", "You say go, we take it live — nothing more to pay"],
+        ["After approval", "You say go, we take it live — nothing extra to pay for the launch"],
         ["At launch", "Your monthly plan starts and runs the system"],
       ] as [string, string][],
+      /* A plan checkout's own terms (checkout-subscription): monthly runs a
+         fixed 7-day trial, annual is paid on the day. Replaces the last line. */
+      planLine: {
+        monthly: ["Day 8", "Your monthly plan starts, 7 days after your payment"],
+        annual: ["Already paid", "Your year runs from the day you paid"],
+      } as Record<"monthly" | "annual", [string, string]>,
       wa: (biz: string, plan: string) => `Hi! I just completed my intake for ${biz} (${plan}).`,
       waFallbackBiz: "my business",
       waLabel: "Message us on WhatsApp",
@@ -192,9 +198,13 @@ const COPY = {
       timeline: [
         ["Tout de suite", "Vos réponses deviennent une première version de votre site"],
         ["Dans quelques minutes", "Le lien vers votre brouillon arrive par email — regardez, puis dites-nous quoi changer"],
-        ["Après validation", "Vous dites go, nous mettons en ligne — plus rien à régler"],
+        ["Après validation", "Vous dites go, nous mettons en ligne — rien de plus à régler pour la mise en ligne"],
         ["Au lancement", "Votre formule mensuelle démarre et fait tourner le système"],
       ] as [string, string][],
+      planLine: {
+        monthly: ["Jour 8", "Votre formule mensuelle démarre, 7 jours après votre paiement"],
+        annual: ["Déjà réglé", "Votre année court depuis le jour de votre paiement"],
+      } as Record<"monthly" | "annual", [string, string]>,
       wa: (biz: string, plan: string) => `Bonjour ! Je viens de compléter mon brief pour ${biz} (${plan}).`,
       waFallbackBiz: "mon entreprise",
       waLabel: "Écrivez-nous sur WhatsApp",
@@ -210,6 +220,9 @@ function Form({ lang }: { lang: Lang }) {
   const plan = params.get("plan") ?? SETUP_PLAN.key;
   const planName = planLabel(plan, lang);
   const sessionId = params.get("session_id");
+  // Set by the plan checkout's success URL (checkout-subscription).
+  const subscribed = params.get("subscribed") === "1";
+  const billing: "monthly" | "annual" = params.get("billing") === "annual" ? "annual" : "monthly";
 
   const [step, setStep] = useState(0);
   const [submitted, setSubmitted] = useState(false);
@@ -290,7 +303,7 @@ function Form({ lang }: { lang: Lang }) {
             {d.body} <strong className="text-[#18181B]">{d.bodyStrong}</strong> {d.bodyEnd}
           </p>
           <div className="mt-8 p-5 rounded-2xl bg-[#F5F4EF] border border-[#D4D2CC] text-left space-y-3">
-            {d.timeline.map(([time, desc], i) => (
+            {(subscribed ? [...d.timeline.slice(0, -1), d.planLine[billing]] : d.timeline).map(([time, desc], i) => (
               <div key={i} className="flex gap-3 items-start">
                 <span className="text-xs font-black text-[#36671E] mt-0.5 shrink-0 w-20">{time}</span>
                 <span className="text-sm text-[#52525B]">{desc}</span>
