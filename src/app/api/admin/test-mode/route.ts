@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isAdminAuthed } from "@/lib/auth";
+import { isAdminAuthed, getCookieName } from "@/lib/auth";
 import { testModeAvailable } from "@/lib/stripeMode";
 import { TEST_COOKIE, TEST_HOURS, TEST_UI_COOKIE, signTestCookie, testModeUntil } from "@/lib/testMode";
 
@@ -8,7 +8,9 @@ export const runtime = "nodejs";
 /**
  * Founder test mode, switched on or off for THIS browser (src/lib/testMode.ts).
  *
- *   GET                  → { on, until, available }
+ *   GET                  → { on, until, available } (401 unless admin — the
+ *                          TEST MODE pill asks here, so it shows only when the
+ *                          signed cookie AND the admin session both check out)
  *   POST { on: true }    → sets sv_test (signed, 8 hours) + sv_test_ui
  *   POST { on: false }   → clears both
  *
@@ -36,7 +38,9 @@ export async function POST(req: NextRequest) {
     const exp = Date.now() + TEST_HOURS * 3600_000;
     const res = NextResponse.json({ on: true, until: new Date(exp).toISOString(), available: testModeAvailable() });
     const maxAge = TEST_HOURS * 3600;
-    res.cookies.set(TEST_COOKIE, signTestCookie(exp), { httpOnly: true, secure, sameSite: "lax", path: "/", maxAge });
+    // Bound to THIS admin session: logging out or its expiry ends test mode.
+    const adminToken = req.cookies.get(getCookieName())?.value ?? "";
+    res.cookies.set(TEST_COOKIE, signTestCookie(exp, adminToken), { httpOnly: true, secure, sameSite: "lax", path: "/", maxAge });
     res.cookies.set(TEST_UI_COOKIE, "1", { httpOnly: false, secure, sameSite: "lax", path: "/", maxAge });
     return res;
   }

@@ -40,6 +40,7 @@ import { ASSISTANT_SITES } from "@/lib/assistantSites";
 import { installAssistantTag } from "@/lib/assistantInstall";
 import { conversationCount } from "@/lib/assistantAccess";
 import { HOSTING_TIERS } from "@/lib/hosting";
+import { excludeTest } from "@/lib/testContext";
 
 export const TRIAL_DAYS = 7;
 
@@ -127,11 +128,12 @@ export async function startAssistantTrial(ref: string): Promise<TrialStart> {
   const db = supabaseAdmin();
   if (!db) return { ok: false, reason: "no-db" };
 
-  const { data: rows } = await db
+  // `is_test is not true`: founder test rows are never a client's hosting.
+  const { data: rows } = await excludeTest(db, (live) => live(db
     .from("hosting_clients")
     .select("id, plan, status, notes")
-    .ilike("email", client.email)
-    .in("status", ["active", "past_due", "trial", "trial_ended"]);
+    .ilike("email", client.email!) // narrowed above; lost inside the closure
+    .in("status", ["active", "past_due", "trial", "trial_ended"])));
   const all = rows ?? [];
   const hosting = all.some((r) => HOSTING_TIERS.includes(String(r.plan).toLowerCase()) && (r.status === "active" || r.status === "past_due"));
   if (!hosting) return { ok: false, reason: "not-hosting-client" };
@@ -200,11 +202,11 @@ export async function trialStateFor(ref: string): Promise<TrialState> {
   const client = clientRefFor(ref.trim().toLowerCase());
   const db = supabaseAdmin();
   if (!client?.email || !db) return { state: "none" };
-  const { data } = await db
+  const { data } = await excludeTest(db, (live) => live(db
     .from("hosting_clients")
     .select("status, notes")
     .eq("plan", "chatbot")
-    .ilike("email", client.email);
+    .ilike("email", client.email!)));
   const rows = data ?? [];
   if (rows.some((r) => r.status === "active" || r.status === "past_due")) return { state: "paid" };
   const running = rows.find((r) => trialRunning(r));

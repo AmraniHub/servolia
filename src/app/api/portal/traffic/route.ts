@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { getClientEmail } from "@/lib/clientAuth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { fetchTraffic, summarize } from "@/lib/traffic";
+import { excludeTest } from "@/lib/testContext";
+import { founderTestBrowser } from "@/lib/testMode";
 
 export const runtime = "nodejs";
 
@@ -24,7 +26,8 @@ export async function GET(req: Request) {
   const days = [7, 30, 90].includes(Number(url.searchParams.get("days"))) ? Number(url.searchParams.get("days")) : 30;
 
   // Same ownership chain the leads route uses: builds by email → client_sites.
-  const { data: builds } = await db.from("builds").select("id").eq("email", email);
+  // `is_test is not true`, except in the founder's own test-mode browser.
+  const { data: builds } = await excludeTest(db, (live) => live(db.from("builds").select("id").eq("email", email)), { keepTest: await founderTestBrowser() });
   const buildIds = (builds ?? []).map((b) => b.id);
   if (!buildIds.length) return NextResponse.json({ traffic: null, days });
 

@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
 
   const overages: { client: string; used: number; included: number; move: string }[] = [];
   // `is_test is not true`: no overage alert for a founder test client.
-  const { data: flatRows, error: clientsErr } = await excludeTest((live) => live(db.from("clients")
+  const { data: flatRows, error: clientsErr } = await excludeTest(db, (live) => live(db.from("clients")
     .select("id, business, plan, build_id, billing_mode, status")
     .eq("status", "active")));
   if (clientsErr) {

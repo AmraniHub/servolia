@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getClientEmail } from "@/lib/clientAuth";
 import { supabaseAdmin } from "@/lib/supabase";
+import { excludeTest } from "@/lib/testContext";
+import { founderTestBrowser } from "@/lib/testMode";
 
 export const runtime = "nodejs";
 
@@ -30,7 +32,8 @@ const LEAD_STATUSES = ["new", "contacted", "booked", "won", "lost"] as const;
 async function ownedSlugs(email: string): Promise<string[]> {
   const db = supabaseAdmin();
   if (!db) return [];
-  const { data: builds } = await db.from("builds").select("id").eq("email", email);
+  // `is_test is not true`, except in the founder's own test-mode browser.
+  const { data: builds } = await excludeTest(db, (live) => live(db.from("builds").select("id").eq("email", email)), { keepTest: await founderTestBrowser() });
   const buildIds = (builds ?? []).map((b) => b.id);
   if (!buildIds.length) return [];
   const { data: sites } = await db.from("client_sites").select("slug").in("build_id", buildIds);
@@ -45,7 +48,7 @@ export async function GET() {
   if (!db) return NextResponse.json({ leads: [], stats: null });
 
   // The client's sites: builds by email → client_sites by build_id
-  const { data: builds } = await db.from("builds").select("id").eq("email", email);
+  const { data: builds } = await excludeTest(db, (live) => live(db.from("builds").select("id").eq("email", email)), { keepTest: await founderTestBrowser() });
   const buildIds = (builds ?? []).map((b) => b.id);
   if (!buildIds.length) return NextResponse.json({ leads: [], stats: null });
 

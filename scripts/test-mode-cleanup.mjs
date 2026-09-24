@@ -24,9 +24,23 @@
  * supabase/schema.sql), printed in the dry run so nothing is a surprise:
  *   - scope_acceptances and lead_activities of a test lead: deleted (cascade)
  *   - custom_requests on a test build: deleted (cascade)
- *   - client_sites on a test build (its draft site, or the trial row a test
- *     receptionist purchase linked): KEPT, their build_id set to null. Remove
- *     a test site by hand at /admin/sites if you want it gone.
+ *   - client_sites on a test build that is NOT a paid receptionist (e.g. the
+ *     draft site generated for a test plan): KEPT, build_id set to null by
+ *     the database. Remove it by hand at /admin/sites if you want it gone.
+ *
+ * What THIS SCRIPT reverts itself, before deleting (printed in the dry run):
+ *   - a receptionist trial row (client_sites) that a test purchase marked
+ *     paid — found ONLY by pointing at a test build (build_id in the test
+ *     builds selected above). Test mode only ever links the founder's own
+ *     trial, and this puts it back exactly as a running trial reads:
+ *       config.receptionist.paidAt   removed
+ *       config.receptionist.plan     removed
+ *       config.receptionist.paying   removed
+ *       config.status                "draft"
+ *       status (column)              "draft"
+ *       build_id (column)            null
+ *     Its trial dates, address, owner and requests are left untouched. The
+ *     PATCH is filtered on the same build_id, so it can match nothing else.
  *
  * Stripe's own TEST-mode objects (customers, subscriptions) are not touched:
  * delete them in the Stripe dashboard in test mode if you want a clean slate.
@@ -125,6 +139,7 @@ async function main() {
   }
 
   // What the foreign keys do on their own, listed so the dry run is complete.
+  let reverts = [];
   const leadIds = ids(selected.leads);
   const buildIds = ids(selected.builds);
   if (leadIds.length) {
@@ -134,10 +149,16 @@ async function main() {
   }
   if (buildIds.length) {
     const cr = await rest(`custom_requests?build_id=${inList(buildIds)}&select=id,title`).catch(() => []);
-    const cs = await rest(`client_sites?build_id=${inList(buildIds)}&select=id,slug,status`).catch(() => []);
+    const cs = await rest(`client_sites?build_id=${inList(buildIds)}&select=id,slug,status,build_id,config`).catch(() => []);
     console.log(`Also removed by ON DELETE CASCADE with those builds: ${cr.length} custom_requests.`);
-    if (cs.length) {
-      console.log(`KEPT, build_id set to null by the database: ${cs.length} client_sites — ${cs.map((s) => `${s.slug} (${s.status})`).join(", ")}.`);
+    reverts = cs.filter((s) => s.config?.receptionist?.paidAt && buildIds.includes(s.build_id));
+    const kept = cs.filter((s) => !reverts.includes(s));
+    for (const s of reverts) {
+      const r = s.config.receptionist;
+      console.log(`REVERT receptionist trial ${s.slug} (${s.id}): paidAt ${r.paidAt} -> removed, plan ${r.plan ?? "-"} -> removed, status ${s.status} -> draft, build_id ${s.build_id} -> null.`);
+    }
+    if (kept.length) {
+      console.log(`KEPT, build_id set to null by the database: ${kept.length} client_sites — ${kept.map((s) => `${s.slug} (${s.status})`).join(", ")}.`);
       console.log(`  Remove a test site by hand at /admin/sites if you want it gone.`);
     }
   }
@@ -145,6 +166,21 @@ async function main() {
   if (!APPLY) {
     console.log(`\nNothing deleted. Re-run with --apply to delete exactly the rows above.`);
     return;
+  }
+
+  // The trial rows first: they are found through the builds about to go.
+  for (const s of reverts) {
+    const receptionist = { ...s.config.receptionist };
+    delete receptionist.paidAt;
+    delete receptionist.plan;
+    delete receptionist.paying;
+    const config = { ...s.config, status: "draft", receptionist };
+    const done = await rest(`client_sites?id=eq.${s.id}&build_id=eq.${s.build_id}`, {
+      method: "PATCH",
+      headers: { Prefer: "return=representation" },
+      body: JSON.stringify({ config, status: "draft", build_id: null }),
+    });
+    console.log(`client_sites ${s.slug}: ${(done ?? []).length ? "reverted to a running trial" : "NOT reverted (row changed since it was read)"}`);
   }
 
   for (const t of TABLES) {

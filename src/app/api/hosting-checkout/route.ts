@@ -72,6 +72,12 @@ export async function POST(req: NextRequest) {
    * amount posted from a browser is an amount the payer can edit.
    */
   const client = clientRefFor(ref);
+  /* Test mode never borrows a real client's identity: a known ref would lock
+     the checkout to that client's address and point the webhook at their
+     repository. Refused outright rather than stripped. */
+  if (co.test && client) {
+    return NextResponse.json({ error: "Test mode: use a test ref, not a real client's page" }, { status: 503 });
+  }
   if (mode === "arrears") {
     const owed = client?.arrearsUsd ?? 0;
     if (owed <= 0) {
@@ -81,7 +87,7 @@ export async function POST(req: NextRequest) {
     const once = await stripeOnce.checkout.sessions.create({
       mode: "payment",
       locale: lang,
-      ...(email ? { customer_email: email } : {}),
+      ...((co.buyer || email) ? { customer_email: co.buyer || email } : {}),
       line_items: [
         {
           price_data: {
@@ -228,7 +234,8 @@ export async function POST(req: NextRequest) {
        * it correctly. They see it (masked) on our page first, so a wrong one
        * can be raised before they are locked into it. Where no address has
        * been agreed, Stripe asks as before. */
-      ...((client?.email || email) ? { customer_email: client?.email || email } : {}),
+      // Test mode: always the founder's address (src/lib/testMode.ts).
+      ...((co.buyer || client?.email || email) ? { customer_email: co.buyer || client?.email || email } : {}),
       line_items: [
         {
           price_data: {

@@ -103,7 +103,8 @@ export async function POST(req: NextRequest) {
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
-      customer_email: email,
+      // Test mode: always the founder's address (src/lib/testMode.ts).
+      customer_email: co.buyer ?? email,
       line_items,
       mode: "subscription",
       locale: fr ? "fr" : "en",

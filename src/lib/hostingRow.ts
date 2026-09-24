@@ -1,5 +1,6 @@
 import { supabaseAdmin } from "@/lib/supabase";
 import { CLIENT_REFS, knownSiteUrl } from "@/lib/clientRefs";
+import { excludeTest } from "@/lib/testContext";
 
 /**
  * FINDING A CLIENT'S BILLING ROW, THE WAY THE REST OF THIS CODEBASE DOES.
@@ -49,7 +50,8 @@ export async function rowForRef(ref: string): Promise<HostingRow | null> {
   if (!email) return null;
   const db = supabaseAdmin();
   if (!db) return null;
-  const { data, error } = await db.from("hosting_clients").select(COLUMNS).ilike("email", email).limit(2);
+  // `is_test is not true`: a founder test row is never a client's billing row.
+  const { data, error } = await excludeTest(db, (live) => live(db.from("hosting_clients").select(COLUMNS).ilike("email", email)).limit(2));
   if (error) {
     console.error("[hosting-row] lookup failed:", error.message);
     return null;

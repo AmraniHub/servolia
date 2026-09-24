@@ -1,5 +1,6 @@
 import { supabaseAdmin } from "@/lib/supabase";
 import type { ClientSiteConfig } from "@/lib/clientSites";
+import { excludeTest } from "@/lib/testContext";
 
 /**
  * IS THIS ASSISTANT PAID FOR?
@@ -76,12 +77,14 @@ async function switchedOn(email?: string | null): Promise<boolean> {
   if (!e) return false;
   const db = supabaseAdmin();
   if (!db) return false;
-  const { data } = await db
+  // `is_test is not true`: a founder test purchase never switches on a
+  // client's assistant.
+  const { data } = await excludeTest(db, (live) => live(db
     .from("hosting_clients")
     .select("status, notes")
     .eq("plan", "chatbot")
     .ilike("email", e)
-    .in("status", ["active", "past_due", "trial"]);
+    .in("status", ["active", "past_due", "trial"])));
   const now = Date.now();
   return (data ?? []).some((r) => r.status !== "trial" || trialStillRunning(r.notes, now));
 }

@@ -7,6 +7,7 @@ import { HOSTING_TIERS, CLIENT_PRODUCTS } from "@/lib/hosting";
 import { mintUpgradeToken } from "@/lib/upgrade";
 import { sendEmail, assistantBuiltEmail } from "@/lib/email";
 import { sendTelegramMessage } from "@/lib/telegram";
+import { excludeTest } from "@/lib/testContext";
 
 export const runtime = "nodejs";
 
@@ -77,12 +78,13 @@ export async function POST(req: NextRequest) {
   const db = supabaseAdmin();
   if (!db) return NextResponse.json({ ok: false, error: "no-db" }, { status: 503 });
 
-  const { data: rows } = await db
+  // `is_test is not true`: a founder test row is never this client's hosting.
+  const { data: rows } = await excludeTest(db, (live) => live(db
     .from("hosting_clients")
     .select("id, subscription_id, plan, notes")
-    .ilike("email", client.email)
-    .in("status", ["active", "past_due"])
-    .order("created_at", { ascending: false });
+    .ilike("email", client.email!) // narrowed above; lost inside the closure
+    .in("status", ["active", "past_due"]))
+    .order("created_at", { ascending: false }));
   const hosting = (rows ?? []).find(
     (r) => HOSTING_TIERS.includes(String(r.plan).toLowerCase()) && r.subscription_id,
   );

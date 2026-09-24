@@ -63,11 +63,11 @@ async function assistantSettingsUrl(
   email: string,
 ): Promise<string> {
   if (!db || !email) return "https://servolia.com/hosting";
-  const { data } = await db
+  const { data } = await excludeTest(db, (live) => live(db
     .from("hosting_clients")
     .select("subscription_id, plan")
     .ilike("email", email)
-    .in("status", ["active", "past_due"]);
+    .in("status", ["active", "past_due"])));
   const hosting = (data ?? []).find(
     (r) => HOSTING_TIERS.includes(String(r.plan).toLowerCase()) && r.subscription_id,
   );
@@ -94,7 +94,7 @@ export async function GET(req: NextRequest) {
 
   // `is_test is not true`: founder test rows are never dunned or suspended —
   // suspension commits to a client repository (src/lib/testContext.ts).
-  const { data: overdue, error } = await excludeTest((live) => live(db
+  const { data: overdue, error } = await excludeTest(db, (live) => live(db
     .from("hosting_clients")
     .select("id, business, email, plan, subscription_id, past_due_since, suspend_at, open_invoice_url")
     .eq("payment_status", "past_due")
@@ -179,7 +179,7 @@ export async function GET(req: NextRequest) {
    *     repo with no middleware reports a suspension that did not happen
    *   - `status` becomes suspended only once the commit really landed
    */
-  const { data: expired } = await excludeTest((live) => live(db
+  const { data: expired } = await excludeTest(db, (live) => live(db
     .from("hosting_clients")
     .select("id, business, plan, subscription_id, repo, branch, site_root, suspend_at, status")
     .in("payment_status", ["past_due", NOTIFIED])

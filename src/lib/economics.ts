@@ -111,8 +111,8 @@ export async function loadEconomics(): Promise<Economics> {
   try {
     const [{ data: clientRows }, { data: buildRows }, { count: caseCount }] = await Promise.all([
       // `is_test is not true`: founder test purchases are not the business.
-      excludeTest((live) => live(db.from("clients").select("monthly_amount, status, started_at, churned_at"))),
-      excludeTest((live) => live(db.from("builds").select("id, status, created_at, deposit_paid"))),
+      excludeTest(db, (live) => live(db.from("clients").select("monthly_amount, status, started_at, churned_at"))),
+      excludeTest(db, (live) => live(db.from("builds").select("id, status, created_at, deposit_paid"))),
       db.from("case_studies").select("id", { count: "exact", head: true }).eq("published", true),
     ]);
 

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getClientEmail } from "@/lib/clientAuth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { sendTelegramMessage } from "@/lib/telegram";
+import { excludeTest } from "@/lib/testContext";
+import { founderTestBrowser } from "@/lib/testMode";
 
 export const runtime = "nodejs";
 
@@ -55,13 +57,14 @@ export async function POST(req: NextRequest) {
   if (!db) return NextResponse.json({ error: "Not configured" }, { status: 503 });
 
   // Tie the message to their most recent build, if they have one, for context in the CRM.
-  const { data: build } = await db
+  // `is_test is not true`, except in the founder's own test-mode browser.
+  const { data: build } = await excludeTest(db, (live) => live(db
     .from("builds")
     .select("id, business")
-    .eq("email", email)
+    .eq("email", email))
     .order("created_at", { ascending: false })
     .limit(1)
-    .maybeSingle();
+    .maybeSingle(), { keepTest: await founderTestBrowser() });
 
   const { data: inserted, error } = await db
     .from("client_messages")

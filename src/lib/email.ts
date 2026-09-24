@@ -1,6 +1,7 @@
 import { Resend } from "resend";
 import { businessWaLink } from "./whatsapp";
 import { sendTelegramMessage } from "@/lib/telegram";
+import { inTestContext, founderEmail } from "@/lib/testContext";
 import { rateLimited } from "@/lib/security";
 // Aliased: this file already uses `money` and `usd` as local names in templates.
 import { usd as usdFmt } from "@/lib/hosting";
@@ -119,6 +120,22 @@ async function warnWrongSender(configured: string): Promise<void> {
 const REPLY_TO = process.env.EMAIL_REPLY_TO?.trim() || null;
 
 export async function sendEmail(to: string, subject: string, html: string, text?: string): Promise<boolean> {
+  /* FOUNDER TEST MODE (src/lib/testContext.ts): nothing sent during a test
+     reaches its recipient. It goes to the founder, subject "[TEST] ", and
+     with no founder address configured it is not sent at all — the founder
+     is told on Telegram instead. Enforced here so no call site can forget. */
+  if (inTestContext()) {
+    const founder = founderEmail();
+    if (!founder) {
+      await sendTelegramMessage(
+        `TEST MODE: email NOT sent (set FOUNDER_EMAIL to receive test emails).\nSubject: ${subject}\nMeant for: ${to}`,
+        undefined, { plain: true },
+      ).catch(() => {});
+      return false;
+    }
+    to = founder;
+    subject = `[TEST] ${subject}`;
+  }
   const r = client();
   if (FROM_OVERRIDDEN) await warnWrongSender(FROM_OVERRIDDEN);
   if (!r) {

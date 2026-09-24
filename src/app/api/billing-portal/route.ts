@@ -4,6 +4,8 @@ import { billingPortalUrl } from "@/lib/clientPortal";
 import { subscriptionContext } from "@/lib/upgrade";
 import { getClientEmail } from "@/lib/clientAuth";
 import { supabaseAdmin } from "@/lib/supabase";
+import { excludeTest } from "@/lib/testContext";
+import { founderTestBrowser } from "@/lib/testMode";
 
 export const runtime = "nodejs";
 
@@ -64,13 +66,14 @@ export async function POST(req: NextRequest) {
   const db = supabaseAdmin();
   if (!db) return NextResponse.json({ error: "Billing is unavailable right now - email hello@servolia.com." }, { status: 503 });
 
-  const { data: rows } = await db.from("clients")
+  // `is_test is not true`, except in the founder's own test-mode browser.
+  const { data: rows } = await excludeTest(db, (live) => live(db.from("clients")
     .select("subscription_id, status, created_at")
     // Exact, never ilike: "_" and "%" are wildcards there, and marie_dubois@…
     // would also match another client's address.
     .in("email", Array.from(new Set([email.trim(), email.trim().toLowerCase()])))
-    .not("subscription_id", "is", null)
-    .order("created_at", { ascending: false });
+    .not("subscription_id", "is", null))
+    .order("created_at", { ascending: false }), { keepTest: await founderTestBrowser() });
   const list = (rows ?? []) as { subscription_id: string; status: string }[];
   const pick = list.find((r) => r.status === "active") ?? list[0];
   if (!pick) {

@@ -42,7 +42,7 @@ export async function GET(req: NextRequest) {
 
   // `is_test is not true` on all three reads: a founder test row is never
   // charged, renewed or margin-watched (src/lib/testContext.ts).
-  const { data: rows, error } = await excludeTest((live) => live(db
+  const { data: rows, error } = await excludeTest(db, (live) => live(db
     .from("hosting_clients")
     .select("id, business, customer_id, billing_period, status, notes")
     .in("status", ["active", "past_due"])
@@ -88,7 +88,7 @@ export async function GET(req: NextRequest) {
    *
    * Without this the client pays once, keeps the domain, and we renew it at
    * our own cost every year afterwards. */
-  const { data: addonRows } = await excludeTest((live) => live(db
+  const { data: addonRows } = await excludeTest(db, (live) => live(db
     .from("hosting_clients")
     .select("id, business, customer_id, status, notes")
     .in("status", ["active", "past_due"])
@@ -129,7 +129,7 @@ export async function GET(req: NextRequest) {
    * price does not stay fixed. When the gap closes to within a few dollars
    * of the profit target, the operator is told once -- with the numbers --
    * so the next renewal can be repriced with notice, never mid-term. */
-  const { data: held } = await excludeTest((live) => live(db
+  const { data: held } = await excludeTest(db, (live) => live(db
     .from("hosting_clients")
     .select("id, business, notes")
     .in("status", ["active", "past_due"])

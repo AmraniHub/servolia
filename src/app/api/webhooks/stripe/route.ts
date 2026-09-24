@@ -251,14 +251,15 @@ async function handleEvent(event: Stripe.Event, stripe: Stripe, db: Db): Promise
            the normal shape for a client the operator set up in advance. */
         let hostRow: { id: string; notes: string | null } | null = known ?? null;
         if (!hostRow && customerEmail) {
-          let preQ = db.from("hosting_clients")
-            .select("id, notes")
-            .ilike("email", customerEmail).eq("plan", planKey).is("subscription_id", null);
           // A test purchase may only ever complete a TEST row, never a real
-          // client's pre-created one.
-          if (test) preQ = preQ.eq("is_test", true);
-          const { data: pre } = await preQ
-            .order("created_at", { ascending: false }).limit(1).maybeSingle();
+          // client's pre-created one — and a live one never a test row.
+          const { data: pre } = await excludeTest(db, (live) => {
+            const preQ = db.from("hosting_clients")
+              .select("id, notes")
+              .ilike("email", customerEmail).eq("plan", planKey).is("subscription_id", null);
+            return (test ? preQ.eq("is_test", true) : live(preQ))
+              .order("created_at", { ascending: false }).limit(1).maybeSingle();
+          });
           if (pre) hostRow = pre;
         }
 
@@ -859,7 +860,7 @@ async function handleEvent(event: Stripe.Event, stripe: Stripe, db: Db): Promise
           /* Test and live never share a build: a test purchase adopts only a
              test build, and a live one never adopts a test build (is_test is
              not true — every pre-existing row qualifies, as before). */
-          const { data: candidates } = await excludeTest((live) => {
+          const { data: candidates } = await excludeTest(db, (live) => {
             const q = db.from("builds")
               .select("id, status, checkout_session_id, deposit_paid")
               .in("email", Array.from(new Set([customerEmail, customerEmail.toLowerCase()])));
@@ -1027,11 +1028,13 @@ async function handleEvent(event: Stripe.Event, stripe: Stripe, db: Db): Promise
         let credited = false;
         let business = customerEmail;
         if (customerEmail && conversations > 0) {
-          const rowQ = db.from("clients").select("id, business, notes")
-            .ilike("email", customerEmail).in("status", ["active", "past_due", "paused"]);
-          // A test pack is credited only to a test client.
-          const { data: row } = await (test ? rowQ.eq("is_test", true) : rowQ)
-            .order("created_at", { ascending: false }).limit(1).maybeSingle();
+          // A test pack is credited only to a test client; a paid one never.
+          const { data: row } = await excludeTest(db, (live) => {
+            const rowQ = db.from("clients").select("id, business, notes")
+              .ilike("email", customerEmail).in("status", ["active", "past_due", "paused"]);
+            return (test ? rowQ.eq("is_test", true) : live(rowQ))
+              .order("created_at", { ascending: false }).limit(1).maybeSingle();
+          });
           const c = row as { id: string; business: string; notes: string | null } | null;
           if (c) {
             business = c.business;
@@ -1110,7 +1113,9 @@ async function handleEvent(event: Stripe.Event, stripe: Stripe, db: Db): Promise
 
         // Link the lead this purchase came from, or create one — a paying
         // customer must exist in the CRM even if they never filled a form.
-        let leadId = session.metadata?.lead_id || null;
+        // A test purchase never links to (or writes a scope for) a real
+        // lead: it always gets its own tagged lead below.
+        let leadId = (test ? null : session.metadata?.lead_id) || null;
         if (!leadId) {
           const { data: newLead } = await db.from("leads").insert({
             business: customerEmail ?? `Direct purchase · ${planLabel}`,

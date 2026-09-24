@@ -72,12 +72,12 @@ export async function buildToday(now = Date.now()): Promise<Today> {
      included, as before), and rows elsewhere that point at a test build (its
      draft site, a custom request on it) are dropped below. */
   const [leadsRes, buildsRes, sitesRes, hostRes, clientsRes, prospectsRes, requestsRes, receptionRes, domainRes, testBuilds] = await Promise.all([
-    excludeTest((live) => live(db.from("leads").select("id, business, email, niche, stage, created_at, last_contacted_at, value_estimate, source, problems, client_value, plan_interest")
+    excludeTest(db, (live) => live(db.from("leads").select("id, business, email, niche, stage, created_at, last_contacted_at, value_estimate, source, problems, client_value, plan_interest")
       .not("stage", "in", '("live","lost")').eq("status", "active"))),
-    excludeTest((live) => live(db.from("builds").select("id, business, email, status, deadline, created_at, started_at").not("status", "in", '("live","delivered")'))),
+    excludeTest(db, (live) => live(db.from("builds").select("id, business, email, status, deadline, created_at, started_at").not("status", "in", '("live","delivered")'))),
     db.from("client_sites").select("slug, business, status, notes, build_id, updated_at").eq("status", "draft").not("build_id", "is", null),
-    excludeTest((live) => live(db.from("hosting_clients").select("id, business, email, plan, status, notes, site_url, repo, vercel_project, suspend_at, payment_status"))),
-    excludeTest((live) => live(db.from("clients").select("id, business, email, plan, status, payment_status, suspend_at, build_id, started_at").in("status", ["active", "paused"]))),
+    excludeTest(db, (live) => live(db.from("hosting_clients").select("id, business, email, plan, status, notes, site_url, repo, vercel_project, suspend_at, payment_status"))),
+    excludeTest(db, (live) => live(db.from("clients").select("id, business, email, plan, status, payment_status, suspend_at, build_id, started_at").in("status", ["active", "paused"]))),
     db.from("prospects").select("id, business, city, niche, status, next_action_at, touch_count, demo_slug")
       .eq("status", "to_contact").order("next_action_at", { ascending: true, nullsFirst: true }).limit(3),
     db.from("custom_requests").select("id, title, email, amount_eur, created_at, build_id").eq("status", "quoted"),

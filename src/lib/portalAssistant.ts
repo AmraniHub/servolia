@@ -1,6 +1,7 @@
 import { supabaseAdmin, type Build, type Client } from "@/lib/supabase";
 import { resolvePlan, PLANS, PLAN_ORDER, SETUP_PLAN, SELLABLE_ADDONS } from "@/lib/pricing";
 import { complianceFor, monthKey } from "@/lib/zeroMiss";
+import { excludeTest } from "@/lib/testContext";
 
 /**
  * PORTAL ASSISTANT — the client's own help desk, grounded in their real account.
@@ -55,8 +56,9 @@ export async function loadAssistantContext(email: string, lang: "en" | "fr"): Pr
   if (!db) return ctx;
 
   try {
-    const { data: client } = await db.from("clients").select("*").eq("email", email)
-      .order("created_at", { ascending: false }).limit(1).maybeSingle();
+    // `is_test is not true`: founder test rows never answer for a client.
+    const { data: client } = await excludeTest(db, (live) => live(db.from("clients").select("*").eq("email", email))
+      .order("created_at", { ascending: false }).limit(1).maybeSingle());
     const c = client as Client | null;
     if (c) {
       ctx.businessName = c.business ?? null;
@@ -67,8 +69,8 @@ export async function loadAssistantContext(email: string, lang: "en" | "fr"): Pr
       ctx.conversationsIncluded = plan?.conversations ?? null;
     }
 
-    const { data: builds } = await db.from("builds").select("*").eq("email", email)
-      .order("created_at", { ascending: false }).limit(1);
+    const { data: builds } = await excludeTest(db, (live) => live(db.from("builds").select("*").eq("email", email))
+      .order("created_at", { ascending: false }).limit(1));
     const b = (builds as Build[] | null)?.[0];
     if (b) {
       ctx.buildStatus = b.status ?? null;

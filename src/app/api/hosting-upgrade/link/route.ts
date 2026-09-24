@@ -3,6 +3,8 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { sendEmail, upgradeLinkEmail } from "@/lib/email";
 import { upgradeLinkFor, subscriptionContext } from "@/lib/upgrade";
 import { productCopy } from "@/lib/hosting";
+import { excludeTest } from "@/lib/testContext";
+import { founderTestBrowser } from "@/lib/testMode";
 
 export const runtime = "nodejs";
 
@@ -30,13 +32,19 @@ export async function POST(req: NextRequest) {
   const db = supabaseAdmin();
   if (!db) return same;
 
-  const { data: client } = await db
+  /* `is_test is not true` (founder test rows are visible only to the
+     founder's own test browser), and the newest row rather than
+     maybeSingle(): two rows under one address made that error, and the
+     client silently got no link. */
+  const { data: client } = await excludeTest(db, (live) => live(db
     .from("hosting_clients")
     .select("subscription_id, business, plan")
     .eq("email", email)
     .eq("billing_period", "monthly")
-    .eq("status", "active")
-    .maybeSingle();
+    .eq("status", "active"))
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle(), { keepTest: await founderTestBrowser() });
 
   if (!client?.subscription_id) return same;
 

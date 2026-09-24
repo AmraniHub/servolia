@@ -1,22 +1,27 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useEffect, useState } from "react";
 
 /**
  * A small "TEST MODE" pill, shown only in the founder's browser while test
- * mode is on (src/lib/testMode.ts). It reads the non-httpOnly companion
- * cookie `sv_test_ui`, which carries no authority — the purchase itself is
- * decided by the signed httpOnly `sv_test`. Rendered from the root layout, so
- * every thank-you page (onboarding, /fr/demarrage, /hosting/thanks, the
- * portal) says plainly that what was just bought was a test.
+ * mode is on (src/lib/testMode.ts). The companion cookie `sv_test_ui` only
+ * says "worth asking": the pill then asks GET /api/admin/test-mode, which
+ * runs the SAME check as a purchase (the signed httpOnly `sv_test`, bound to
+ * a live admin session). A stale or copied hint cookie shows nothing.
+ * Rendered from the root layout, so every thank-you page says plainly that
+ * what was just bought was a test.
  */
-const noSubscribe = () => () => {};
-const readCookie = () => /(?:^|;\s*)sv_test_ui=1(?:;|$)/.test(document.cookie);
-const onServer = () => false;
-
 export default function TestModeNote() {
-  // Server (and first hydration pass): off. Then the browser's own cookie.
-  const on = useSyncExternalStore(noSubscribe, readCookie, onServer);
+  const [on, setOn] = useState(false);
+  useEffect(() => {
+    if (!/(?:^|;\s*)sv_test_ui=1(?:;|$)/.test(document.cookie)) return;
+    let alive = true;
+    fetch("/api/admin/test-mode", { credentials: "same-origin" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((s: { on?: boolean } | null) => { if (alive) setOn(s?.on === true); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, []);
   if (!on) return null;
   return (
     <div

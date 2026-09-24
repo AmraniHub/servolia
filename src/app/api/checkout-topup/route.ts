@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
-      customer_email: email,
+      customer_email: co.buyer ?? email, // test mode: the founder's address
       line_items: [{
         price_data: {
           currency: "eur",
@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
       mode: "payment",
       success_url: `${origin}/portal?topup=done`,
       cancel_url: `${origin}/portal`,
-      metadata: { kind: "topup", pack: p.key, conversations: String(p.conversations), email, lang: fr ? "fr" : "en", source: "servolia-portal", ...co.tag },
+      metadata: { kind: "topup", pack: p.key, conversations: String(p.conversations), email: co.buyer ?? email, lang: fr ? "fr" : "en", source: "servolia-portal", ...co.tag },
     });
     return NextResponse.json({ url: session.url });
   } catch (err) {

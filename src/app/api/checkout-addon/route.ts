@@ -2,14 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { addonForSale } from "@/lib/pricing";
 import { getClientEmail } from "@/lib/clientAuth";
 import { supabaseAdmin } from "@/lib/supabase";
-import { checkoutStripe } from "@/lib/testMode";
+import { checkoutStripe, founderTestBrowser } from "@/lib/testMode";
+import { excludeTest } from "@/lib/testContext";
 
 /** The slugs this client actually owns: builds by email -> client_sites.
  *  Same scoping the portal's leads route uses. */
 async function ownedSlugs(email: string): Promise<string[]> {
   const db = supabaseAdmin();
   if (!db) return [];
-  const { data: builds } = await db.from("builds").select("id").eq("email", email);
+  // `is_test is not true`, except in the founder's own test-mode browser.
+  const { data: builds } = await excludeTest(db, (live) => live(db.from("builds").select("id").eq("email", email)), { keepTest: await founderTestBrowser() });
   const buildIds = (builds ?? []).map((b) => b.id);
   if (!buildIds.length) return [];
   const { data: sites } = await db.from("client_sites").select("slug").in("build_id", buildIds);
@@ -68,7 +70,7 @@ export async function POST(req: NextRequest) {
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
-      customer_email: email,
+      customer_email: co.buyer ?? email, // test mode: the founder's address
       line_items: [
         {
           price_data: {
@@ -86,7 +88,7 @@ export async function POST(req: NextRequest) {
       mode: "subscription",
       success_url: `${origin}/portal?addon=${addon}&enabled=1`,
       cancel_url: `${origin}/portal`,
-      metadata: { kind: "addon", addon, siteSlug: slug, email, source: "servolia-portal", ...co.tag },
+      metadata: { kind: "addon", addon, siteSlug: slug, email: co.buyer ?? email, source: "servolia-portal", ...co.tag },
     });
 
     return NextResponse.json({ url: session.url });

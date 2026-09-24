@@ -43,7 +43,7 @@ import { slugify, getClientSite, type ClientSiteConfig, type ReceptionistState }
 import { probeBrand, fetchPublic, normalizeDomainInput, type BrandProbe } from "@/lib/brandProbe";
 import { conversationCount } from "@/lib/assistantAccess";
 import { resolvePlan, planAmountCents, SETUP_PLAN } from "@/lib/pricing";
-import { testTag } from "@/lib/testContext";
+import { testTag, inTestContext, isFounderEmail } from "@/lib/testContext";
 
 export const RECEPTIONIST_TRIAL_DAYS = 7;
 /** The day-5 note: two days before the end. */
@@ -736,7 +736,11 @@ export async function completeReceptionistPurchase(a: {
   const plan = resolvePlan(a.planKey);
   if (!plan) return { ok: false, reason: `unknown plan ${a.planKey}` };
   const monthlyEur = planAmountCents(plan, a.billing) / 100 / (a.billing === "annual" ? 12 : 1);
-  const row = await loadReceptionist(a.slug);
+  const found = await loadReceptionist(a.slug);
+  /* FOUNDER TEST MODE: a test purchase may claim and link ONLY the founder's
+     own trial. Anyone else's trial row is treated as not found — it is never
+     claimed, marked paid or pointed at the test build. */
+  const row = inTestContext() && !isFounderEmail(found?.config.receptionist?.email) ? null : found;
   const business = row?.config.businessName ?? a.email;
   const base = { business, planName: plan.name, monthlyEur };
 

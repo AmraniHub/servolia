@@ -81,30 +81,85 @@ export function testPrefixed(text: string): string {
   return inTestContext() && !text.startsWith(TEST_PREFIX) ? `${TEST_PREFIX}${text}` : text;
 }
 
-/** Postgres/PostgREST's answer when the is_test column has not been added. */
-export function isMissingTestColumn(err: { message?: string; code?: string } | null | undefined): boolean {
-  if (!err) return false;
-  return /is_test/.test(err.message ?? "") && (err.code === "42703" || err.code === "PGRST204" || /does not exist|could not find/i.test(err.message ?? ""));
+/* ── Is the is_test column there yet? ──────────────────────────────────
+ *
+ * Asked ONCE per process with a cheap `select is_test limit 1` on each tagged
+ * table, never by parsing a query's error: a head/count query (count:
+ * "exact", head: true) fails with an EMPTY message, so an error-parsing
+ * fallback read "not the column", returned the error, and every admin count
+ * showed 0 before the SQL was run. A yes is kept for the life of the
+ * process; a no is asked again after a minute, so running the SQL takes
+ * effect without a redeploy. */
+
+const TAGGED = ["clients", "builds", "hosting_clients", "leads"] as const;
+const RETRY_MS = 60_000;
+let ready: { value: boolean; at: number } | null = null;
+let probing: Promise<boolean> | null = null;
+
+type ProbeDb = { from(t: string): { select(c: string): { limit(n: number): PromiseLike<{ error: unknown }> } } };
+
+export async function testColumnReady(db: unknown): Promise<boolean> {
+  if (ready?.value) return true;
+  if (ready && Date.now() - ready.at < RETRY_MS) return false;
+  if (!probing) {
+    probing = Promise.all(TAGGED.map((t) => (db as ProbeDb).from(t).select("is_test").limit(1)))
+      .then((rs) => rs.every((r) => !r.error), () => false)
+      .then((ok) => {
+        ready = { value: ok, at: Date.now() };
+        probing = null;
+        return ok;
+      });
+  }
+  return probing;
+}
+
+/** Tests only: forget the cached answer. */
+export function __resetTestColumnCacheForTests(): void {
+  ready = null;
+  probing = null;
 }
 
 type Filterable = { not(column: string, operator: string, value: unknown): unknown };
 
 /**
- * Run a query with `is_test is not true` added, or — if the column does not
- * exist yet — without it, exactly as the query ran before test mode.
+ * Run a query with `is_test is not true` added (false AND null rows kept —
+ * every row that existed before test mode), or exactly as it ran before
+ * when the column does not exist yet.
  *
- *   const { data } = await excludeTest((live) =>
+ *   const { data } = await excludeTest(db, (live) =>
  *     live(db.from("clients").select("id").eq("status", "active")));
+ *
+ * `keepTest: true` runs it unfiltered: only for a request from the founder's
+ * own test-mode browser (src/lib/testMode.ts founderTestBrowser), so a test
+ * buyer's portal still shows the test purchase to the founder and to nobody
+ * else.
  *
  * `live` must wrap the builder BEFORE .single()/.maybeSingle(), which return
  * a builder that no longer takes filters.
  */
-export async function excludeTest<R extends { error: { message?: string; code?: string } | null }>(
+export async function excludeTest<R>(
+  db: unknown,
   run: (live: <Q>(q: Q) => Q) => PromiseLike<R>,
+  opts: { keepTest?: boolean } = {},
 ): Promise<R> {
-  const filtered = await run(<Q,>(q: Q) => (q as unknown as Filterable).not("is_test", "is", true) as Q);
-  if (isMissingTestColumn(filtered.error)) return run(<Q,>(q: Q) => q);
-  return filtered;
+  if (opts.keepTest || !(await testColumnReady(db))) return run(<Q,>(q: Q) => q);
+  return run(<Q,>(q: Q) => (q as unknown as Filterable).not("is_test", "is", true) as Q);
+}
+
+/* ── The founder's own address ─────────────────────────────────────────
+ * Where every email sent during a test goes instead of its recipient, and
+ * the only trial owner a test purchase may mark paid. FOUNDER_EMAIL, else
+ * EMAIL_REPLY_TO (the mailbox client replies already reach). Null when
+ * neither is set: test emails are then refused, never sent to a client. */
+export function founderEmail(): string | null {
+  const raw = process.env.FOUNDER_EMAIL?.trim() || process.env.EMAIL_REPLY_TO?.trim() || "";
+  const addr = (raw.match(/<([^>]+)>/)?.[1] ?? raw).trim().toLowerCase();
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(addr) ? addr : null;
+}
+
+export function isFounderEmail(email: string | null | undefined): boolean {
+  const f = founderEmail();
+  return Boolean(f && email && email.trim().toLowerCase() === f);
 }
 
 type Db = {

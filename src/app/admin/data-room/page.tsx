@@ -24,8 +24,8 @@ async function getCounts(): Promise<Counts> {
 
   const [clients, leads, subs, prospects, cases] = await Promise.all([
     // `is_test is not true`: a buyer's data room never counts a founder test.
-    excludeTest((live) => live(db.from("clients").select("status, monthly_amount"))),
-    excludeTest((live) => live(db.from("leads").select("id", { count: "exact", head: true }))),
+    excludeTest(db, (live) => live(db.from("clients").select("status, monthly_amount"))),
+    excludeTest(db, (live) => live(db.from("leads").select("id", { count: "exact", head: true }))),
     db.from("email_subscribers").select("status"),
     db.from("prospects").select("id", { count: "exact", head: true }),
     db.from("case_studies").select("published"),

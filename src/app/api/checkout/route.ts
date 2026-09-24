@@ -60,7 +60,10 @@ export async function POST(req: NextRequest) {
       // the language their generated site comes out in.
       success_url: `${origin}${fr ? "/fr/demarrage" : "/onboarding"}?plan=${plan}&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}${fr ? "/fr/tarifs" : "/pricing"}`,
-      metadata: { plan, source: "servolia-website", lead_id: leadId ?? "", lang: fr ? "fr" : "en", ...co.tag },
+      // Test mode: bought in the founder's name, and never linked to a real
+      // lead (a real prospect's /scope link carries their lead id).
+      ...(co.buyer ? { customer_email: co.buyer } : {}),
+      metadata: { plan, source: "servolia-website", lead_id: co.test ? "" : (leadId ?? ""), lang: fr ? "fr" : "en", ...co.tag },
       custom_text: {
         submit: {
           message: fr

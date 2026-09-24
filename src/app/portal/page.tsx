@@ -7,6 +7,8 @@ import { paymentAlertFrom } from "@/lib/clientBilling";
 import { complianceFor, type ComplianceReport } from "@/lib/zeroMiss";
 import type { PortalDomain } from "@/components/portal/DomainPanel";
 import { capStateForBuild } from "@/lib/conversationCap";
+import { excludeTest } from "@/lib/testContext";
+import { founderTestBrowser } from "@/lib/testMode";
 
 export const dynamic = "force-dynamic";
 
@@ -25,20 +27,24 @@ export default async function PortalPage() {
   let scopesByLeadId: Record<string, { token: string; accepted: boolean }> = {};
 
   if (db) {
-    const { data } = await db
+    /* `is_test is not true`: a client never sees a founder test purchase made
+       under her address. The founder's own test-mode browser does, so a test
+       purchase can be walked through the portal. */
+    const keepTest = await founderTestBrowser();
+    const { data } = await excludeTest(db, (live) => live(db
       .from("builds")
       .select("*")
-      .eq("email", email)
-      .order("created_at", { ascending: false });
+      .eq("email", email))
+      .order("created_at", { ascending: false }), { keepTest });
     builds = (data as Build[]) ?? [];
 
-    const { data: client } = await db
+    const { data: client } = await excludeTest(db, (live) => live(db
       .from("clients")
       .select("*")
-      .eq("email", email)
+      .eq("email", email))
       .order("created_at", { ascending: false })
       .limit(1)
-      .maybeSingle();
+      .maybeSingle(), { keepTest });
     subscription = (client as Client) ?? null;
 
     const buildIds = builds.map((b) => b.id);

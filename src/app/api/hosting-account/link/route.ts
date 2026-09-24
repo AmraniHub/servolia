@@ -4,6 +4,7 @@ import { clientRefFor } from "@/lib/clientRefs";
 import { accountLinkFor } from "@/lib/upgrade";
 import { sendEmail, accountLinkEmail } from "@/lib/email";
 import { sendTelegramMessage } from "@/lib/telegram";
+import { excludeTest } from "@/lib/testContext";
 
 export const runtime = "nodejs";
 
@@ -40,14 +41,15 @@ export async function POST(req: NextRequest) {
   const db = supabaseAdmin();
   if (!db) return same;
 
-  const { data: row } = await db
+  // `is_test is not true`: a founder test row is never a client's account.
+  const { data: row } = await excludeTest(db, (live) => live(db
     .from("hosting_clients")
     .select("subscription_id, business")
     .eq("email", client.email)
-    .in("status", ["active", "past_due"])
+    .in("status", ["active", "past_due"]))
     .order("created_at", { ascending: false })
     .limit(1)
-    .maybeSingle();
+    .maybeSingle());
   if (!row?.subscription_id) return same;
 
   const url = await accountLinkFor(row.subscription_id, req.nextUrl.origin);

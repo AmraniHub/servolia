@@ -11,6 +11,7 @@ import { isDomainSalesConfigured } from "@/lib/domainSales";
 import { supabaseAdmin } from "@/lib/supabase";
 import { nextChargeDate } from "@/lib/hosting";
 import AlreadyActive from "@/components/AlreadyActive";
+import { excludeTest } from "@/lib/testContext";
 
 /**
  * ONE URL, TWO SITUATIONS.
@@ -147,15 +148,16 @@ export default async function HostingPage({
      * one the page says so and offers the one thing they are here for: their
      * service page. */
     const db = client.email ? supabaseAdmin() : null;
+    // `is_test is not true`: a founder test row never stands in for a client.
     const { data: live } = db
-      ? await db
+      ? await excludeTest(db, (only) => only(db
           .from("hosting_clients")
           .select("plan, billing_period, started_at, status")
           .eq("email", client.email!)
-          .in("status", ["active", "past_due"])
+          .in("status", ["active", "past_due"]))
           .order("created_at", { ascending: false })
           .limit(1)
-          .maybeSingle()
+          .maybeSingle())
       : { data: null };
 
     if (live) {

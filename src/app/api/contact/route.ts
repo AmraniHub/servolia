@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin, estimateLeadValue, type LeadSource } from "@/lib/supabase";
 import { stripeForSessionId } from "@/lib/stripeMode";
 import { isTestRequest } from "@/lib/testMode";
-import { runAsTest, testTag, testPrefixed, inTestContext } from "@/lib/testContext";
+import { runAsTest, testTag, testPrefixed, inTestContext, excludeTest } from "@/lib/testContext";
 import { sendEmail, auditConfirmationEmail } from "@/lib/email";
 import { sendMetaCapiEvent } from "@/lib/metaCapi";
 import { startBuildFromIntake } from "@/lib/intakeBuild";
@@ -137,13 +137,15 @@ async function handleContact(req: NextRequest) {
             const planSession = s.status === "complete" && s.mode === "subscription" && s.metadata?.kind === "care_plan";
             const paidEmail = planSession ? (s.customer_details?.email ?? s.customer_email ?? null) : null;
             if (paidEmail) {
-              let q = db.from("builds")
-                .select("id, lead_id, status")
-                .in("email", Array.from(new Set([paidEmail, paidEmail.toLowerCase()])))
-                .eq("status", "intake");
-              // A TEST session may only ever aim at a test build.
-              if (String(sessionId).startsWith("cs_test_")) q = q.eq("is_test", true);
-              ({ data: build } = await q.order("created_at", { ascending: false }).limit(1).maybeSingle());
+              // A TEST session aims only at a test build; a live one never does.
+              const testSession = String(sessionId).startsWith("cs_test_");
+              ({ data: build } = await excludeTest(db, (live) => {
+                const q = db.from("builds")
+                  .select("id, lead_id, status")
+                  .in("email", Array.from(new Set([paidEmail, paidEmail.toLowerCase()])))
+                  .eq("status", "intake");
+                return (testSession ? q.eq("is_test", true) : live(q)).order("created_at", { ascending: false }).limit(1).maybeSingle();
+              }));
             }
           } catch {
             /* Stripe unreachable: the answers are on the lead row, as before. */

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { resolvePlan, planAmountCents, SETUP_PLAN } from "@/lib/pricing";
 import { readReceptionistToken, loadReceptionist, receptionistPhase } from "@/lib/receptionistTrial";
 import { checkoutStripe } from "@/lib/testMode";
+import { isFounderEmail } from "@/lib/testContext";
 
 export const runtime = "nodejs";
 
@@ -39,6 +40,12 @@ export async function POST(req: NextRequest) {
   const r = row?.config.receptionist;
   if (!row || !r || r.email?.toLowerCase() !== claim.email.toLowerCase()) {
     return NextResponse.json({ error: "not-found" }, { status: 404 });
+  }
+  /* Test mode buys only the FOUNDER's own trial. Paying marks a trial paid
+     and links it to a client; on a prospect's trial that would switch her
+     receptionist on for a purchase that never happened. */
+  if (co.test && !isFounderEmail(r.email)) {
+    return NextResponse.json({ error: "Test mode: only a trial started with the founder's own address can be bought" }, { status: 403 });
   }
   const phase = receptionistPhase(r);
   // row.build_id too: a payment the webhook has linked but not yet marked.

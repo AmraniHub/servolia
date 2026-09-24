@@ -30,7 +30,7 @@ async function fetchHostingKpis(): Promise<{ clients: number; monthlyUsd: number
   const db = supabaseAdmin();
   if (!db) return { clients: 0, monthlyUsd: 0, trials: 0 };
   // `is_test is not true`: founder test purchases never count (src/lib/testContext.ts).
-  const { data } = await excludeTest((live) => live(db.from("hosting_clients").select("status, monthly_usd").in("status", ["active", "past_due", "trial"])));
+  const { data } = await excludeTest(db, (live) => live(db.from("hosting_clients").select("status, monthly_usd").in("status", ["active", "past_due", "trial"])));
   const rows = (data ?? []) as { status: string; monthly_usd: number | null }[];
   const paying = rows.filter((r) => r.status !== "trial");
   return {
@@ -43,14 +43,14 @@ async function fetchHostingKpis(): Promise<{ clients: number; monthlyUsd: number
 async function fetchRecentLeads(): Promise<Lead[]> {
   const db = supabaseAdmin();
   if (!db) return [];
-  const { data } = await excludeTest((live) => live(db.from("leads").select("*")).order("created_at", { ascending: false }).limit(8));
+  const { data } = await excludeTest(db, (live) => live(db.from("leads").select("*")).order("created_at", { ascending: false }).limit(8));
   return (data as Lead[]) ?? [];
 }
 
 async function fetchRecentPayments(): Promise<Build[]> {
   const db = supabaseAdmin();
   if (!db) return [];
-  const { data } = await excludeTest((live) => live(db.from("builds").select("*")
+  const { data } = await excludeTest(db, (live) => live(db.from("builds").select("*")
     .gt("deposit_paid", 0)).order("created_at", { ascending: false }).limit(6));
   return (data as Build[]) ?? [];
 }
@@ -70,7 +70,7 @@ async function fetchStageCounts(): Promise<Record<string, number>> {
   if (!db) return {};
   const counts: Record<string, number> = {};
   for (const s of STAGES) {
-    const { count } = await excludeTest((live) => live(db.from("leads").select("*", { count: "exact", head: true }).eq("stage", s.key)));
+    const { count } = await excludeTest(db, (live) => live(db.from("leads").select("*", { count: "exact", head: true }).eq("stage", s.key)));
     counts[s.key] = count ?? 0;
   }
   return counts;
