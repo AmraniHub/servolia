@@ -6,7 +6,8 @@ import { sendEmail, accountLinkEmail } from "@/lib/email";
 import { sendTelegramMessage } from "@/lib/telegram";
 import { excludeTest, runAsTest } from "@/lib/testContext";
 import { founderTestBrowser } from "@/lib/testMode";
-import { rateLimited, clientIp } from "@/lib/security";
+import { clientIp } from "@/lib/security";
+import { atomicLimit } from "@/lib/atomicLimit";
 import { normalizeEmail, emailKey, sendLinkForEmail, type LinkRow } from "@/lib/accountLinkByEmail";
 
 export const runtime = "nodejs";
@@ -98,11 +99,19 @@ async function byEmail(req: NextRequest, raw: string, same: NextResponse): Promi
   // tells nothing about who is a client.
   if (!email) return NextResponse.json({ ok: false, error: "invalid-email" }, { status: 400 });
 
-  if (
-    (await rateLimited(`link-email-ip:${clientIp(req.headers)}`, 5, 3600)) ||
-    (await rateLimited(`link-email:${emailKey(email)}`, 3, 3600))
-  ) {
-    return NextResponse.json({ ok: false, error: "rate-limited" }, { status: 429, headers: { "Retry-After": "3600" } });
+  /* ATOMIC, per IP and per address, and FAIL-CLOSED: each request is counted
+     by one Postgres statement (src/lib/atomicLimit.ts), so thirty parallel
+     requests cannot all read "0" and all send. If the counter cannot be
+     reached, the request is refused, never waved through. Neither answer
+     depends on whether the address is a client. */
+  for (const [key, max] of [[`link-email-ip:${clientIp(req.headers)}`, 5], [`link-email:${emailKey(email)}`, 3]] as const) {
+    const verdict = await atomicLimit(key, max, 3600);
+    if (verdict === "limited") {
+      return NextResponse.json({ ok: false, error: "rate-limited" }, { status: 429, headers: { "Retry-After": "3600" } });
+    }
+    if (verdict === "unavailable") {
+      return NextResponse.json({ ok: false, error: "unavailable" }, { status: 503 });
+    }
   }
 
   const origin = req.nextUrl.origin;

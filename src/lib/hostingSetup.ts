@@ -12,12 +12,12 @@ import { HOSTING_TIERS, resolveHostingPlan } from "@/lib/hosting";
  *
  *   paid      auto  the hosting_clients row (it exists only after payment)
  *   details   auto  the setup form was submitted (or we already host them)
- *   onboard   HAND  their site is set up on our hosting (the founder records
- *                   the repo / Vercel project, or ticks it)
+ *   onboard   HAND  their site is set up on our hosting (the founder ticks it,
+ *                   and can only once the Vercel project is recorded)
  *   dns       auto  a live DNS lookup: the domain answers from Vercel
  *   https     auto  a TLS handshake with a valid certificate, once DNS points
- *   live      auto  HTTP 200 over https, served by Vercel (and, where the API
- *                   can say, on the project we recorded for them)
+ *   live      auto  HTTP 200 over https, served by Vercel, AND Vercel's API
+ *                   confirms the host is on the project recorded for them
  *   forms     HAND  their forms (and tracking, on plans that include it) tested
  *   mailbox   HAND  Business only: the mailbox and SPF/DKIM/DMARC set up
  *
@@ -37,6 +37,27 @@ export type Milestone = "dns" | "live";
 export const MILESTONES: readonly Milestone[] = ["dns", "live"];
 
 export type Lang = "en" | "fr";
+
+/**
+ * THE CUTOVER. Every real hosting row created before this moment belongs to
+ * an ESTABLISHED client: the owner's rule is that existing subscribers'
+ * records are not changed, so for them the tracker is not used at all — no
+ * checklist on their page (their measured status only), no row writes, no
+ * milestone email, no founder notice, skipped by the cron, read-only on the
+ * admin page.
+ *
+ * Deliberately wider than "active or past_due": a suspended or churned client
+ * from before the cutover is an existing subscriber too, and nothing here has
+ * any business writing to their row. Test rows are never established.
+ */
+export const SETUP_TRACKER_SINCE = "2026-09-25T00:00:00Z";
+
+export function isEstablished(row: { is_test?: boolean | null; created_at?: string | null; started_at?: string | null }): boolean {
+  if (row.is_test === true) return false;
+  const born = Date.parse(row.created_at ?? row.started_at ?? "");
+  // No date at all: treat as existing. Leaving a real row alone is the safe mistake.
+  return !Number.isFinite(born) || born < Date.parse(SETUP_TRACKER_SINCE);
+}
 
 /** One DNS record the domain needs, and what it answered with just now. */
 export interface RecordCheck {
@@ -87,6 +108,10 @@ export interface Probe {
  */
 export interface SetupState {
   rev?: number;
+  /** The first check that actually MEASURED something (see isMeasured).
+   *  Before it, every check is silent; at it, what is already done is
+   *  stamped as baseline; after it, a milestone reached is emailed. */
+  baselineAt?: string;
   /** When the setup form arrived. */
   detailsAt?: string;
   /** The founder's ticks: step -> when. */
@@ -94,10 +119,14 @@ export interface SetupState {
   /** The first time each step was observed done. */
   seen?: Partial<Record<StepId, string>>;
   /**
-   * The client's milestone emails. ISO when sent; "baseline:<iso>" when the
-   * step was already done the first time it was ever checked (an existing
-   * client is never told news they have had for months); "covered:<iso>" when
-   * a bigger milestone's email said it at the same moment.
+   * The client's milestone emails:
+   *   "claim:<n>:<iso>"   being sent now (attempt n); a claim older than ten
+   *                       minutes is a crashed send and may be taken again
+   *   "<iso>"             sent — written only AFTER the send succeeded
+   *   "failed:<n>:<iso>"  attempt n failed; retried on the next check, up to 5
+   *   "baseline:<iso>"    already done at the first measured check: not news
+   *   "covered:<iso>"     a bigger milestone's email said it at the same moment
+   *   "no-address:<iso>"  nobody to send it to
    */
   mail?: Partial<Record<Milestone, string>>;
   /** Same stamps for the founder's notification. */
@@ -198,7 +227,7 @@ const COPY = {
     dnsActionEither: (h: string) => `We point ${h} once we have access to your DNS — or add the records below yourself to go faster. We check every 15 minutes.`,
     dnsDoingOurs: (h: string) => `The DNS for ${h} is with us: it points here as soon as we attach it to your site.`,
     https: "Secure connection (https)",
-    httpsDone: (until: string | null) => until ? `Valid certificate, renews automatically (current one runs to ${until}).` : "Valid certificate, renews automatically.",
+    httpsDone: (until: string | null) => until ? `Valid certificate (the current one runs to ${until}).` : "Valid certificate.",
     httpsDoing: "The certificate is issued automatically once your domain points to us. We check every 15 minutes.",
     httpsWaiting: "Starts once your domain points to us.",
     live: "Site live on Servolia hosting",
@@ -207,6 +236,7 @@ const COPY = {
     liveWaiting: "Starts once the steps above are done.",
     liveWhyStatus: (s: number) => `Your address answered with an error (HTTP ${s}).`,
     liveWhyElsewhere: "Your address is still answering from another host.",
+    liveWhyUnconfirmed: "Your address answers, but we have not yet confirmed it is attached to your site on our hosting.",
     liveWhyNoAnswer: "Your address did not answer our check.",
     forms: "Contact forms tested",
     formsAndTracking: "Contact forms and tracking tested",
@@ -239,7 +269,7 @@ const COPY = {
     dnsActionEither: (h: string) => `Nous dirigeons ${h} dès que nous avons accès à vos DNS — ou ajoutez vous-même les enregistrements ci-dessous pour aller plus vite. Nous vérifions toutes les 15 minutes.`,
     dnsDoingOurs: (h: string) => `Les DNS de ${h} sont chez nous : il pointe ici dès que nous le rattachons à votre site.`,
     https: "Connexion sécurisée (https)",
-    httpsDone: (until: string | null) => until ? `Certificat valide, renouvelé automatiquement (l'actuel court jusqu'au ${until}).` : "Certificat valide, renouvelé automatiquement.",
+    httpsDone: (until: string | null) => until ? `Certificat valide (l'actuel court jusqu'au ${until}).` : "Certificat valide.",
     httpsDoing: "Le certificat est émis automatiquement dès que votre domaine pointe vers nous. Nous vérifions toutes les 15 minutes.",
     httpsWaiting: "Commence dès que votre domaine pointe vers nous.",
     live: "Site en ligne sur l'hébergement Servolia",
@@ -248,6 +278,7 @@ const COPY = {
     liveWaiting: "Commence une fois les étapes ci-dessus terminées.",
     liveWhyStatus: (s: number) => `Votre adresse a répondu par une erreur (HTTP ${s}).`,
     liveWhyElsewhere: "Votre adresse répond encore depuis un autre hébergeur.",
+    liveWhyUnconfirmed: "Votre adresse répond, mais nous n'avons pas encore confirmé qu'elle est rattachée à votre site sur notre hébergement.",
     liveWhyNoAnswer: "Votre adresse n'a pas répondu à notre vérification.",
     forms: "Formulaires de contact testés",
     formsAndTracking: "Formulaires de contact et suivi testés",
@@ -392,16 +423,22 @@ export function computeChecklist(
     cta: !details && ctx.setupHref ? { label: t.detailsCta, href: ctx.setupHref } : null,
   });
 
-  // (c-hand) Their site on our hosting.
-  const onboard = Boolean(hand.onboard || row.repo || row.vercel_project || ctx.knownRepo);
+  // (c-hand) Their site on our hosting: the founder's tick, which the admin
+  // endpoint accepts only once the Vercel project is recorded — and which
+  // stops counting if that project is ever cleared, because "live" is then
+  // checked against it.
+  const onboard = Boolean(hand.onboard && row.vercel_project);
+  const onboardStart = !onboard && details ? detailsAt : null;
   add({
     id: "onboard", kind: "hand",
     state: onboard ? "done" : details ? "doing" : "waiting",
     title: t.onboard,
     detail: onboard ? t.onboardDone : details ? t.onboardDoing : t.onboardWaiting,
     doneAt: onboard ? (hand.onboard ?? seen.onboard ?? null) : null,
-    startedAt: !onboard && details ? detailsAt : null,
-    promise: !onboard && details ? t.onboardPromise : null,
+    startedAt: onboardStart,
+    // The promise is shown only beside the date it runs from; /admin/today
+    // marks the row OVERDUE once a working day has passed (onboardOverdue).
+    promise: onboardStart ? t.onboardPromise : null,
   });
 
   // (c) DNS — measured. Only counted once their site is on our hosting: a
@@ -432,17 +469,20 @@ export function computeChecklist(
     doneAt: tlsOk ? (seen.https ?? p?.at ?? null) : null,
   });
 
-  // (e) Live — measured: 200, from Vercel, on their own address, on the
-  // project recorded for them where Vercel's API can say so.
+  // (e) Live — measured: 200, from Vercel, on their own address, AND
+  // Vercel's API confirms the host is on the project recorded for them.
+  // Vercel's headers alone would also pass for a site on somebody else's
+  // Vercel account, so an unconfirmed attachment is never live.
   const h = p?.http ?? null;
   const sameSite = Boolean(h?.finalHost && host && h.finalHost.replace(/^www\./, "") === host.replace(/^www\./, ""));
-  const liveOk = tlsOk && onboard && h?.status === 200 && h.servedByUs && h.attached !== false && sameSite;
+  const liveOk = tlsOk && onboard && h?.status === 200 && h.servedByUs && h.attached === true && sameSite;
   let liveDetail: string;
   if (liveOk) liveDetail = t.liveDone(host ?? "");
   else if (!(tlsOk && onboard)) liveDetail = t.liveWaiting;
   else if (!h || h.status === null) liveDetail = t.liveDoing(t.liveWhyNoAnswer);
   else if (!h.servedByUs || h.attached === false || !sameSite) liveDetail = t.liveDoing(t.liveWhyElsewhere);
-  else liveDetail = t.liveDoing(t.liveWhyStatus(h.status));
+  else if (h.status !== 200) liveDetail = t.liveDoing(t.liveWhyStatus(h.status));
+  else liveDetail = t.liveDoing(t.liveWhyUnconfirmed);
   add({
     id: "live", kind: "auto",
     state: liveOk ? "done" : tlsOk && onboard ? "doing" : "waiting",
@@ -502,10 +542,45 @@ export function doneSteps(list: Checklist): StepId[] {
 
 /* ── What changed since the last check ─────────────────────────────────── */
 
+/**
+ * Did this check actually MEASURE the address? DNS answered without a
+ * resolver error AND the site gave an HTTP status. A timed-out lookup or a
+ * fetch that never connected measured nothing, so it can neither set the
+ * baseline nor be read as "not pointed yet".
+ */
+export function isMeasured(probe: Probe | null | undefined): boolean {
+  return Boolean(probe && !probe.dns.error && typeof probe.http?.status === "number");
+}
+
+export const MAX_MAIL_TRIES = 5;
+const CLAIM_STALE_MS = 10 * 60_000;
+
+/** "claim:<n>:<iso>" / "failed:<n>:<iso>" -> { kind, n, at }. */
+function parseStamp(s: string | undefined): { kind: string; n: number; at: number } | null {
+  if (!s) return null;
+  const m = s.match(/^(claim|failed):(\d+):(.+)$/);
+  return m ? { kind: m[1], n: Number(m[2]), at: Date.parse(m[3]) } : { kind: "final", n: 0, at: NaN };
+}
+
+/**
+ * May this milestone's email be sent now, and as which attempt? Null when it
+ * is settled (sent, baseline, covered, no address, or out of tries) or is
+ * being sent by someone else right now.
+ */
+export function mailAttempt(stamp: string | undefined, nowMs: number): number | null {
+  const s = parseStamp(stamp);
+  if (!s) return 1;
+  if (s.kind === "claim") return nowMs - s.at > CLAIM_STALE_MS ? s.n + 1 : null;
+  if (s.kind === "failed") return s.n < MAX_MAIL_TRIES ? s.n + 1 : null;
+  return null;
+}
+
 export interface Transition {
   next: SetupState;
-  /** Milestone emails to send to the client now. */
+  /** Milestone emails to send now. Each is CLAIMED in `next`, never marked sent. */
   send: Milestone[];
+  /** The claim written for each milestone in `send`, to settle after the send. */
+  claims: Partial<Record<Milestone, string>>;
   /** Milestones to tell the founder about now. */
   notify: Milestone[];
 }
@@ -513,63 +588,97 @@ export interface Transition {
 /**
  * The state to store after a check, and which milestone messages it earns.
  *
- * A MILESTONE IS NEWS ONLY WHEN IT FLIPS. The first check of a row whose
- * domain already points here (every client hosted before this shipped) is a
- * baseline: stamped, not sent. After that, a step seen done for the first
- * time sends its email once — the stamp is in `next`, and the caller writes
- * `next` BEFORE sending, conditional on nobody else having written first, so
- * a crash costs an email and never sends a second one.
+ * A MILESTONE IS NEWS ONLY WHEN IT FLIPS AFTER A REAL MEASUREMENT. Until a
+ * check has measured the address (isMeasured), every check is silent and no
+ * baseline is set — a failed first probe is never taken as the starting
+ * point. The first measured check is the baseline: milestones already done
+ * then are stamped "baseline", not sent. After it, a milestone that is done
+ * and not yet settled is claimed for sending.
  *
- * Both flipping in the same check (the certificate was already there) sends
- * ONE email, the bigger one; the domain milestone is marked covered by it.
+ * NOTHING IS STAMPED "SENT" HERE. The caller writes `next` (with the claims)
+ * as a compare-and-swap, sends, and only then settles each claim: the send
+ * time on success, "failed:<n>" on failure (retried next check, up to
+ * MAX_MAIL_TRIES). Of two checks racing, only the one whose write lands holds
+ * the claim, so one email goes out.
+ *
+ * Both milestones due at once send ONE email, the live one; the domain
+ * milestone is marked covered by it.
  */
-export function planTransition(prev: SetupState | null | undefined, list: Checklist, nowIso: string): Transition {
+export function planTransition(prev: SetupState | null | undefined, list: Checklist, nowIso: string, measured: boolean): Transition {
   const before = prev ?? {};
-  const baseline = !before.checkedAt;
+  const nowMs = Date.parse(nowIso);
   const done = doneSteps(list);
   const seen = { ...(before.seen ?? {}) };
   for (const id of done) if (!seen[id]) seen[id] = nowIso;
   const mail = { ...(before.mail ?? {}) };
   const owner = { ...(before.owner ?? {}) };
+  const next: SetupState = { ...before, rev: (before.rev ?? 0) + 1, seen, mail, owner, checkedAt: nowIso };
 
-  const flipped: Milestone[] = [];
-  for (const m of MILESTONES) {
-    if (!done.includes(m) || mail[m]) continue;
-    if (baseline || before.seen?.[m]) {
-      mail[m] = `baseline:${nowIso}`;
-      owner[m] = owner[m] ?? `baseline:${nowIso}`;
-    } else {
-      flipped.push(m);
+  const send: Milestone[] = [];
+  const claims: Partial<Record<Milestone, string>> = {};
+  const notify: Milestone[] = [];
+
+  if (!before.baselineAt) {
+    if (measured) {
+      next.baselineAt = nowIso;
+      for (const m of MILESTONES) {
+        if (!done.includes(m) || mail[m]) continue;
+        mail[m] = `baseline:${nowIso}`;
+        owner[m] = owner[m] ?? `baseline:${nowIso}`;
+      }
+    }
+  } else {
+    const due = MILESTONES.filter((m) => done.includes(m) && mailAttempt(mail[m], nowMs) !== null);
+    const pick: Milestone | null = due.includes("live") ? "live" : due.includes("dns") ? "dns" : null;
+    if (pick) {
+      const n = mailAttempt(mail[pick], nowMs) ?? 1;
+      claims[pick] = `claim:${n}:${nowIso}`;
+      mail[pick] = claims[pick];
+      send.push(pick);
+      // Any domain email still pending (never sent, failed, or a stale claim)
+      // is said by the live email; sending it afterwards would read backwards.
+      if (pick === "live" && due.includes("dns")) {
+        mail.dns = `covered:${nowIso}`;
+        owner.dns = owner.dns ?? `covered:${nowIso}`;
+      }
+      if (!owner[pick]) {
+        notify.push(pick);
+        owner[pick] = nowIso;
+      }
     }
   }
-  const send: Milestone[] = [];
-  if (flipped.includes("live")) {
-    send.push("live");
-    mail.live = nowIso;
-    if (flipped.includes("dns")) mail.dns = `covered:${nowIso}`;
-  } else if (flipped.includes("dns")) {
-    send.push("dns");
-    mail.dns = nowIso;
-  }
-  const notify: Milestone[] = [];
-  for (const m of send) {
-    if (owner[m]) continue;
-    notify.push(m);
-    owner[m] = nowIso;
-  }
-  if (send.includes("live") && flipped.includes("dns") && !owner.dns) owner.dns = `covered:${nowIso}`;
 
-  const next: SetupState = {
-    ...before,
-    rev: (before.rev ?? 0) + 1,
-    seen,
-    mail,
-    owner,
-    checkedAt: nowIso,
-  };
   if (list.complete && !before.completeAt) next.completeAt = nowIso;
   if (!list.complete && before.completeAt) delete next.completeAt; // a step was undone
-  return { next, send, notify };
+  return { next, send, claims, notify };
+}
+
+/** What a claim becomes once the send has resolved. */
+export function settleClaim(claim: string, sent: boolean | null, nowIso: string): string {
+  if (sent === null) return `no-address:${nowIso}`;
+  if (sent) return nowIso;
+  const n = parseStamp(claim)?.n ?? 1;
+  return `failed:${n}:${nowIso}`;
+}
+
+/**
+ * The only timeframe promised in writing for setup: SetupForm's "we get in
+ * touch within one working day". Overdue once the whole of the next working
+ * day (UTC, Monday to Friday) after the details arrived has passed.
+ */
+export function onboardOverdue(startIso: string | null | undefined, nowMs: number): boolean {
+  const start = Date.parse(String(startIso ?? ""));
+  if (!Number.isFinite(start)) return false;
+  const d = new Date(start);
+  d.setUTCHours(0, 0, 0, 0);
+  let working = 0;
+  while (working < 1) {
+    d.setUTCDate(d.getUTCDate() + 1);
+    const day = d.getUTCDay();
+    if (day !== 0 && day !== 6) working += 1;
+  }
+  d.setUTCDate(d.getUTCDate() + 1); // end of that working day
+  return nowMs >= d.getTime();
 }
 
 /* ── "What we noticed", said only from measurements ────────────────────── */

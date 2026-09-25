@@ -33,6 +33,7 @@ const T = {
     linkSent: "If that address has a Servolia hosting plan, the link is on its way. Check your inbox (and spam) in a minute.",
     linkInvalid: "That does not look like an email address.",
     linkTooMany: "Too many requests from here. Try again in an hour.",
+    linkUnavailable: "We cannot send links at this moment. Reply to any email from us and we will send it.",
   },
   fr: {
     title: "Votre service",
@@ -52,6 +53,7 @@ const T = {
     linkSent: "Si cette adresse a une formule d'hébergement Servolia, le lien est en route. Regardez votre boîte (et les spams) d'ici une minute.",
     linkInvalid: "Cette adresse email ne semble pas valide.",
     linkTooMany: "Trop de demandes depuis cette connexion. Réessayez dans une heure.",
+    linkUnavailable: "Nous ne pouvons pas envoyer de lien pour le moment. Répondez à l'un de nos emails et nous vous l'envoyons.",
   },
 };
 
@@ -148,6 +150,7 @@ function EmailMyLink({ lang }: { lang: "en" | "fr" }) {
       });
       if (r.status === 429) setMsg({ ok: false, text: t.linkTooMany });
       else if (r.status === 400) setMsg({ ok: false, text: t.linkInvalid });
+      else if (r.status === 503) setMsg({ ok: false, text: t.linkUnavailable });
       else if (r.ok) setMsg({ ok: true, text: t.linkSent });
       else setMsg({ ok: false, text: t.dropped });
     } catch {

@@ -37,6 +37,7 @@ import { assistantLinkFor } from "@/lib/upgrade";
 import SetupTracker from "@/components/client/SetupTracker";
 import { loadSetupRow, checklistForView } from "@/lib/hostingSetupRun";
 import { noticedQuiet, siteTile, type Checklist, type SetupRow } from "@/lib/hostingSetup";
+import { rateLimited } from "@/lib/security";
 
 export const metadata: Metadata = {
   title: "Your service",
@@ -446,15 +447,18 @@ export default async function AccountPage({
       : { up: null, status: null, lastChange: null, recentChanges: 0 };
 
   /* THE SETUP CHECKLIST — paid, details, on our servers, DNS, https, live,
-     forms (and the mailbox on Business). Overview only, hosting tiers only.
-     Measured now when the last stored check is stale, never stored from a
-     page view. Until its `live` step passes, nothing on this page calls the
-     site "online" (siteTile / noticedQuiet). */
-  const setupList: Checklist | null = !isDemo && setupRow && dashPage === "overview"
+     forms (and the mailbox on Business). Overview only, hosting tiers only,
+     and NEVER for an established client (a row from before the tracker
+     shipped): they see their plan and measured status, as before. A stale
+     stored check may be re-measured for the page, through the same
+     per-subscription limit as "Check again"; nothing a page view measures is
+     stored. Until the `live` step passes, nothing here says "online". */
+  const setupSub = subId;
+  const setupList: Checklist | null = !isDemo && setupRow && setupSub && dashPage === "overview"
     ? await checklistForView(setupRow, {
         lang: ctxLang,
         setupHref: linkToken ? `/hosting/setup?t=${encodeURIComponent(linkToken)}` : null,
-        probeIfStale: true,
+        allowProbe: async () => !(await rateLimited(`setup-check:${setupSub}`, 4, 600)),
       })
     : null;
   const tile = siteTile({ lang: ctxLang, checklist: setupList, health });

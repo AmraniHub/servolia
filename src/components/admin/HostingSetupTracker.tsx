@@ -12,18 +12,27 @@ import type { Checklist } from "@/lib/hostingSetup";
  *
  * `stored` is false until supabase/2026-09-25-hosting-setup.sql has run: the
  * checklist still shows, but ticks cannot be saved and nothing is emailed.
+ *
+ * An ESTABLISHED client (a real row from before the tracker shipped) is shown
+ * read-only: no ticks, nothing stored, nothing emailed. "Run checks now" still
+ * measures, for your information only.
  */
 export default function HostingSetupTracker({
   id,
   initial,
   stored,
   mail,
+  established,
+  vercelProject,
 }: {
   id: string;
   initial: Checklist;
   stored: boolean;
   /** The milestone stamps, for the founder to see what the client was sent. */
   mail: Record<string, string>;
+  established: boolean;
+  /** "On our hosting" can only be ticked once this is recorded. */
+  vercelProject: string | null;
 }) {
   const [list, setList] = useState(initial);
   const [busy, setBusy] = useState<string | null>(null);
@@ -71,7 +80,14 @@ export default function HostingSetupTracker({
         </button>
       </div>
 
-      {!stored ? (
+      {established ? (
+        <p className="mb-4 rounded-lg border border-[#E4E4E7] bg-[#FAFAFA] px-3 py-2 text-xs text-[#52525B]" data-testid="established-note">
+          <strong>Established client — tracker not used.</strong> This row predates the setup tracker, so their service page shows no
+          checklist, nothing is written to their row and they get no setup emails. Shown here read-only.
+        </p>
+      ) : null}
+
+      {!stored && !established ? (
         <p className="mb-4 rounded-lg border border-[#FDE68A] bg-[#FFFBEB] px-3 py-2 text-xs text-[#78350F]">
           Not stored yet: run <span className="font-mono">supabase/2026-09-25-hosting-setup.sql</span> in the Supabase SQL editor.
           Until then ticks cannot be saved and no milestone email is sent.
@@ -93,10 +109,11 @@ export default function HostingSetupTracker({
               {s.doneAt ? <p className="text-[11px] text-[#A1A1AA] mt-0.5">done {s.doneAt.slice(0, 16).replace("T", " ")}</p> : null}
               {s.startedAt ? <p className="text-[11px] text-[#A1A1AA] mt-0.5">started {s.startedAt.slice(0, 10)}{s.promise ? ` · promised: ${s.promise}` : ""}</p> : null}
             </div>
-            {s.kind === "hand" ? (
+            {s.kind === "hand" && !established ? (
               <button
                 type="button"
-                disabled={busy !== null || !stored}
+                title={s.id === "onboard" && s.state !== "done" && !vercelProject ? "Record the Vercel project in Hosting setup below first: live is checked against it." : undefined}
+                disabled={busy !== null || !stored || (s.id === "onboard" && s.state !== "done" && !vercelProject)}
                 onClick={() => call({ action: "tick", step: s.id, done: s.state !== "done" }, s.id)}
                 className={`h-8 px-3 rounded-lg text-xs font-bold border shrink-0 disabled:opacity-40 ${
                   s.state === "done" ? "border-[#E4E4E7] text-[#71717A]" : "border-[#36671E] bg-[#36671E] text-white"
@@ -108,6 +125,12 @@ export default function HostingSetupTracker({
           </li>
         ))}
       </ul>
+
+      {!established && !vercelProject && list.steps.some((s) => s.id === "onboard" && s.state !== "done") ? (
+        <p className="mt-3 text-xs text-[#92400E]">
+          To tick &quot;on our hosting&quot;, first record the <strong>Vercel project</strong> in Hosting setup below — the live check is made against it.
+        </p>
+      ) : null}
 
       {list.records.length ? (
         <p className="mt-3 text-xs text-[#52525B]">

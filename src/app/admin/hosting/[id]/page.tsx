@@ -17,7 +17,7 @@ import { getClientSite } from "@/lib/clientSites";
 import { clientRefFor, refKeyForEmail, knownSiteUrl } from "@/lib/clientRefs";
 import HostingSetupTracker from "@/components/admin/HostingSetupTracker";
 import { checklistForView, setupColumnReady } from "@/lib/hostingSetupRun";
-import type { SetupRow } from "@/lib/hostingSetup";
+import { isEstablished, type SetupRow } from "@/lib/hostingSetup";
 
 export const dynamic = "force-dynamic";
 
@@ -88,8 +88,10 @@ export default async function HostingClientPage({ params }: { params: Promise<{ 
 
   /* The setup checklist the client sees, from the last stored check (the
      founder runs a fresh one with the button, so opening this page never
-     probes a client's domain by itself). Null for a non-hosting plan. */
-  const setupList = await checklistForView(c as SetupRow, { lang: "en", probeIfStale: false });
+     probes a client's domain by itself). Null for a non-hosting plan. An
+     ESTABLISHED client's is shown read-only: the tracker is not used for them. */
+  const setupList = await checklistForView(c as SetupRow, { lang: "en", includeEstablished: true });
+  const setupEstablished = isEstablished(c as SetupRow);
   const setupStored = await setupColumnReady(db);
   const setupMail = ((c as SetupRow).setup?.mail ?? {}) as Record<string, string>;
 
@@ -135,7 +137,14 @@ export default async function HostingClientPage({ params }: { params: Promise<{ 
       </div>
 
       {setupList ? (
-        <HostingSetupTracker id={c.id} initial={setupList} stored={setupStored} mail={setupMail} />
+        <HostingSetupTracker
+          id={c.id}
+          initial={setupList}
+          stored={setupStored}
+          mail={setupMail}
+          established={setupEstablished}
+          vercelProject={c.vercel_project ?? null}
+        />
       ) : null}
 
       {siteUrl ? (

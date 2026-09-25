@@ -24,10 +24,14 @@ import type { Probe, RecordCheck } from "@/lib/hostingSetup";
  * would call every one of our own sites "not pointed". So the check accepts
  * Vercel's known ranges plus whatever cname.vercel-dns.com answers today.
  *
- * The certificate and HTTP checks run ONLY once DNS points to Vercel: a valid
- * certificate on the client's old host is not our secure connection, and it
- * keeps this code from ever connecting to an address a client typed that
- * resolves somewhere private.
+ * WHAT IS FETCHED, AND WHERE IT MAY GO. The address a client typed is fetched
+ * (so the first check records a real measurement — hostingSetup.isMeasured)
+ * only when every address it resolves to is public. Redirects are never
+ * followed blindly: at most two hops, each https and on the same registrable
+ * domain, or the fetch stops where it is. A client's site that redirects to
+ * 169.254.169.254, to localhost, to plain http or to another domain is
+ * reported as "stopped", never visited. The certificate check runs only once
+ * DNS points to Vercel.
  */
 
 const VERCEL_PREFIXES = ["76.76.21.", "66.33.60.", "216.150.1.", "216.150.16.", "216.198.79.", "64.29.17."];
@@ -39,6 +43,20 @@ export function isVercelName(name: string): boolean {
 
 export function isVercelIp(ip: string, extra: readonly string[] = []): boolean {
   return extra.includes(ip) || VERCEL_PREFIXES.some((p) => ip.startsWith(p));
+}
+
+/** A routable public IPv4 address (not private, loopback, link-local, CGNAT, multicast). */
+export function isPublicIpv4(ip: string): boolean {
+  const m = ip.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (!m) return false;
+  const [a, b] = [Number(m[1]), Number(m[2])];
+  if ([m[1], m[2], m[3], m[4]].some((x) => Number(x) > 255)) return false;
+  if (a === 0 || a === 10 || a === 127 || a >= 224) return false;
+  if (a === 169 && b === 254) return false;
+  if (a === 172 && b >= 16 && b <= 31) return false;
+  if (a === 192 && b === 168) return false;
+  if (a === 100 && b >= 64 && b <= 127) return false;
+  return true;
 }
 
 /** "shop.cabinet.co.uk" -> "cabinet.co.uk"; an apex returns itself. */
@@ -111,7 +129,7 @@ export function judgeDns(expected: ExpectedRecord[], answers: DnsAnswers): Probe
 
 const NOT_THERE = new Set(["ENOTFOUND", "ENODATA", "NXDOMAIN", "ENONAME"]);
 
-async function gatherDns(expected: ExpectedRecord[]): Promise<DnsAnswers> {
+async function gatherDns(expected: ExpectedRecord[], checkHost: string): Promise<DnsAnswers> {
   const r = new Resolver({ timeout: 2500, tries: 2 });
   let error: string | undefined;
   const ask = async (fn: () => Promise<string[]>): Promise<string[]> => {
@@ -123,8 +141,8 @@ async function gatherDns(expected: ExpectedRecord[]): Promise<DnsAnswers> {
       return [];
     }
   };
-  const apex = registrableOf(expected[0]?.host ?? "");
-  const hosts = [...new Set(expected.map((e) => e.host))];
+  const apex = registrableOf(expected[0]?.host ?? checkHost);
+  const hosts = [...new Set([checkHost, ...expected.map((e) => e.host)])];
   const [ns, vercelIps, ...perHost] = await Promise.all([
     ask(() => r.resolveNs(apex)),
     ask(() => r.resolve4("cname.vercel-dns.com")),
@@ -161,47 +179,93 @@ export function checkTls(host: string, timeoutMs = 6000): Promise<NonNullable<Pr
   });
 }
 
+const within = <T>(ms: number, p: Promise<T>, fallback: T): Promise<T> =>
+  Promise.race([p.catch(() => fallback), new Promise<T>((r) => setTimeout(() => r(fallback), ms))]);
+
 /** Is this host on the Vercel project recorded for the client? Null when it cannot be asked. */
-async function attachedTo(project: string | null, host: string): Promise<boolean | null> {
+async function attachedTo(project: string | null, host: string, timeoutMs = 4000): Promise<boolean | null> {
   if (!project) return null;
-  const res = await registrar<{ verified?: boolean }>(
+  return within(timeoutMs, registrar<{ verified?: boolean }>(
     `/v9/projects/${encodeURIComponent(project)}/domains/${encodeURIComponent(host)}`,
-  );
-  if (res.ok) return res.data?.verified !== false;
-  if (res.status === 404) return false;
-  return null; // not configured, test mode, network: unknown, never "no"
+  ).then((res) => {
+    if (res.ok) return res.data?.verified !== false;
+    if (res.status === 404) return false;
+    return null; // not configured, test mode, network: unknown, never "no"
+  }), null);
 }
 
-async function checkHttp(host: string, project: string | null, timeoutMs = 8000): Promise<NonNullable<Probe["http"]>> {
+export type FetchLike = (url: string, init: RequestInit) => Promise<Response>;
+
+export interface SafeFetchResult {
+  status: number | null;
+  headers: Headers | null;
+  /** The last URL actually requested. */
+  finalUrl: string;
+  /** Why a redirect was not followed, or why nothing answered. */
+  stopped?: string;
+}
+
+/**
+ * GET https://<host>/ following at most `maxHops` redirects, each of which
+ * must be https and on the same registrable domain as the start. Anything
+ * else stops the fetch where it stands and says why; the refused target is
+ * never requested.
+ */
+export async function safeFetch(startUrl: string, fetchImpl: FetchLike = fetch, opts: { maxHops?: number; timeoutMs?: number } = {}): Promise<SafeFetchResult> {
+  const maxHops = opts.maxHops ?? 2;
   const ctl = new AbortController();
-  const timer = setTimeout(() => ctl.abort(), timeoutMs);
+  const timer = setTimeout(() => ctl.abort(), opts.timeoutMs ?? 8000);
+  const home = registrableOf(new URL(startUrl).hostname);
+  let url = startUrl;
   try {
-    const res = await fetch(`https://${host}/`, {
-      redirect: "follow",
-      signal: ctl.signal,
-      cache: "no-store",
-      headers: { "User-Agent": "Servolia-setup-check/1.0 (+https://servolia.com/hosting/terms)" },
-    });
-    res.body?.cancel().catch(() => {});
-    const servedByUs = /vercel/i.test(res.headers.get("server") ?? "") || res.headers.has("x-vercel-id");
-    let finalHost: string | null = null;
-    try { finalHost = new URL(res.url).hostname.toLowerCase(); } catch { finalHost = null; }
-    return { status: res.status, servedByUs, attached: await attachedTo(project, host), finalHost };
+    for (let hop = 0; ; hop++) {
+      const res = await fetchImpl(url, {
+        redirect: "manual",
+        signal: ctl.signal,
+        cache: "no-store",
+        headers: { "User-Agent": "Servolia-setup-check/1.0 (+https://servolia.com/hosting/terms)" },
+      });
+      res.body?.cancel().catch(() => {});
+      const location = res.status >= 300 && res.status < 400 ? res.headers.get("location") : null;
+      if (!location) return { status: res.status, headers: res.headers, finalUrl: url };
+      const stop = (why: string): SafeFetchResult => ({ status: res.status, headers: res.headers, finalUrl: url, stopped: why });
+      if (hop >= maxHops) return stop("too-many-redirects");
+      let next: URL;
+      try { next = new URL(location, url); } catch { return stop("bad-location"); }
+      if (next.protocol !== "https:") return stop("redirect-not-https");
+      if (next.port && next.port !== "443") return stop("redirect-odd-port");
+      if (!isPublicHost(next.hostname)) return stop("redirect-not-public");
+      if (registrableOf(next.hostname) !== home) return stop("redirect-other-domain");
+      url = next.href;
+    }
   } catch (e) {
     const cause = (e as { cause?: { code?: string } }).cause?.code;
-    return { status: null, servedByUs: false, attached: null, finalHost: null, error: cause ?? (e instanceof Error ? e.name : "error") };
+    return { status: null, headers: null, finalUrl: url, stopped: cause ?? (e instanceof Error ? e.name : "error") };
   } finally {
     clearTimeout(timer);
   }
 }
 
+async function checkHttp(host: string, project: string | null, pointed: boolean): Promise<NonNullable<Probe["http"]>> {
+  const r = await safeFetch(`https://${host}/`);
+  const servedByUs = Boolean(r.headers && (/vercel/i.test(r.headers.get("server") ?? "") || r.headers.has("x-vercel-id")));
+  let finalHost: string | null = null;
+  try { finalHost = new URL(r.finalUrl).hostname.toLowerCase(); } catch { finalHost = null; }
+  return {
+    status: r.status,
+    servedByUs,
+    // Asked only when it can matter: the address points to Vercel.
+    attached: pointed ? await attachedTo(project, host) : null,
+    finalHost,
+    ...(r.stopped ? { error: r.stopped } : {}),
+  };
+}
+
 async function vercelConfig(host: string, project: string | null): Promise<Record<string, unknown> | null> {
   if (!project) return null;
-  const timeout = new Promise<null>((r) => setTimeout(() => r(null), 4000));
-  const ask = registrar<Record<string, unknown>>(
+  return within(4000, registrar<Record<string, unknown>>(
     `/v6/domains/${encodeURIComponent(registrableOf(host))}/config?projectIdOrName=${encodeURIComponent(project)}`,
-  ).then((res) => (res.ok ? res.data : null), () => null);
-  return Promise.race([ask, timeout]);
+  ).then((res) => (res.ok ? res.data : null)), null);
 }
 
 /**
@@ -215,9 +279,15 @@ export async function probeHost(target: { host: string; vercelProject: string | 
     return { at, host: target.host, dns: { pointed: false, viaNameservers: false, records: [], error: "not-a-public-domain" }, tls: null, http: null };
   }
   const expected = expectedRecords(host, await vercelConfig(host, target.vercelProject));
-  const dns = judgeDns(expected, await gatherDns(expected));
-  if (!dns.pointed) return { at, host, dns, tls: null, http: null };
-  const tlsResult = await checkTls(host);
-  const http = tlsResult.ok ? await checkHttp(host, target.vercelProject) : null;
+  const answers = await gatherDns(expected, host);
+  const dns = judgeDns(expected, answers);
+  // Fetched only when every address it resolves to is public: a name that
+  // resolves into a private network is reported, never visited.
+  const addrs = answers.a[host] ?? [];
+  const reachable = addrs.length > 0 && addrs.every(isPublicIpv4);
+  const [tlsResult, http] = await Promise.all([
+    dns.pointed ? checkTls(host) : Promise.resolve(null),
+    reachable ? checkHttp(host, target.vercelProject, dns.pointed) : Promise.resolve(null),
+  ]);
   return { at, host, dns, tls: tlsResult, http };
 }

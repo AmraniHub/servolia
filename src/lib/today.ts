@@ -6,6 +6,7 @@ import type { ReceptionistState } from "@/lib/clientSites";
 import { mailDomainFor, mailState, whatIsOwed, hostingMailDomain, hostingMailboxOwed, hostingSetupOwed, type OwedSite, type MailState } from "@/lib/owedToPractice";
 import { readOneOffs, type OneOffOrder, type OneOffLeadData } from "@/lib/oneOffOrders";
 import { resolveHostingPlan } from "@/lib/hosting";
+import { onboardOverdue } from "@/lib/hostingSetup";
 
 /**
  * TODAY — one list of what needs a human, assembled from everything that
@@ -305,7 +306,7 @@ export async function buildToday(now = Date.now()): Promise<Today> {
     const setup = hostingSetupOwed(h);
     if (setup) {
       money.push(setup.handover
-        ? { kind: "needs-setup", title: h.business, detail: `handover received${setup.submitted ? ` ${setup.submitted}` : ""} — we promised to write within one working day. Migrate the site, then record the repo or Vercel project on their page (that clears this row)`, href: `${ADMIN}/hosting/${h.id}`, owner: "me", urgency: 2 }
+        ? { kind: "needs-setup", title: h.business, detail: `${onboardOverdue(setup.submitted, now) ? "OVERDUE — " : ""}handover received${setup.submitted ? ` ${setup.submitted}` : ""} — we promised to write within one working day (the client's setup checklist shows that promise with this date). Migrate the site, then record the repo or Vercel project on their page (that clears this row)`, href: `${ADMIN}/hosting/${h.id}`, owner: "me", urgency: 2 }
         : { kind: "needs-setup", title: h.business, detail: `paid for hosting — not hosted yet, no handover from them${h.site_url ? ` (site on record: ${h.site_url})` : ""}. Nudge them to say where the site lives`, href: `${ADMIN}/hosting/${h.id}`, owner: "me", urgency: 2 });
     }
   }

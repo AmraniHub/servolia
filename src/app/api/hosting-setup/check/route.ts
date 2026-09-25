@@ -4,6 +4,7 @@ import { readUpgradeToken } from "@/lib/upgrade";
 import { clientSession } from "@/lib/clientAreaAuth";
 import { rateLimited, clientIp } from "@/lib/security";
 import { loadSetupRow, runSetupCheck, defaultDeps } from "@/lib/hostingSetupRun";
+import { isEstablished } from "@/lib/hostingSetup";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -40,6 +41,8 @@ export async function POST(req: NextRequest) {
   if (!db) return NextResponse.json({ ok: false, error: "no-db" }, { status: 503 });
   const row = await loadSetupRow(db, { subscriptionId: subId });
   if (!row) return NextResponse.json({ ok: false, error: "not-found" }, { status: 404 });
+  // An established client has no tracker (their page shows none): nothing to re-check.
+  if (isEstablished(row)) return NextResponse.json({ ok: false, error: "not-tracked" }, { status: 404 });
 
   const lang = body?.lang === "fr" ? "fr" : "en";
   const out = await runSetupCheck(row.id, defaultDeps(db), lang);

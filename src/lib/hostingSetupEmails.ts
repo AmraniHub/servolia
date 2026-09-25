@@ -2,7 +2,7 @@ import { brandWrapper } from "@/lib/email";
 import type { Checklist, Lang, Milestone } from "@/lib/hostingSetup";
 
 /**
- * THE TWO SETUP MILESTONE EMAILS, AND THE FOUNDER'S COPY OF EACH.
+ * THE TWO SETUP MILESTONE EMAILS. (The founder's notice goes through notifyOwner.)
  *
  * Kept out of src/lib/email.ts on purpose (another branch is editing it). They
  * reuse its brand frame, so they look like every other Servolia email.
@@ -98,18 +98,4 @@ export function setupMilestoneEmail(input: MilestoneEmailInput): { subject: stri
   `, { preheader: copy.preheader, lang });
 
   return { subject: copy.subject, html };
-}
-
-/** The founder's copy: plain, everything in it, one link to the row. */
-export function ownerSetupEmail(input: { subject: string; lines: string[] }): { subject: string; html: string } {
-  const body = input.lines
-    .map((l) => (l ? `<p style="margin:0 0 8px;font-size:14px;line-height:1.6;color:${BODY};">${esc(l).replace(/(https:\/\/[^\s<]+)/g, '<a href="$1">$1</a>')}</p>` : ""))
-    .join("");
-  return {
-    subject: input.subject,
-    html: brandWrapper(`<h1 style="margin:0 0 14px;font-size:19px;font-weight:900;color:${INK};">${esc(input.subject)}</h1>${body}`, {
-      preheader: input.lines[0] ?? input.subject,
-      lang: "en",
-    }),
-  };
 }

@@ -16,9 +16,12 @@ const SUPA = "https://link-test.supabase.co";
 const outbound = [];
 const lookups = [];
 const limits = new Map();
+const rpcHits = new Map();
+const rpcMissing = { on: false };
 const HOSTING = [
   { id: "h1", email: "Owner@Acme-Dental.com", subscription_id: "sub_live_acme", business: "Acme Dental", status: "active", plan: "hosting", is_test: false },
   { id: "h2", email: "gone@old.com", subscription_id: "sub_live_old", business: "Old", status: "churned", plan: "hosting", is_test: false },
+  { id: "h3", email: "flood@clinic.com", subscription_id: "sub_live_flood", business: "Clinic", status: "active", plan: "hosting", is_test: false },
 ];
 
 function reply(body, status = 200) {
@@ -41,6 +44,16 @@ async function fakeFetch(input, init = {}) {
   const wantsObject = (new Headers(init.headers ?? {}).get("accept") ?? "").includes("vnd.pgrst.object");
   const one = (rows) => (wantsObject ? (rows[0] ? reply(rows[0]) : reply({ code: "PGRST116", message: "no rows" }, 406)) : reply(rows));
 
+  /* servolia_rate_hit: insert-or-increment and return the count in one step,
+     exactly as the SQL function does (atomic here because this block does not
+     await between the read and the write). */
+  if (table === "rpc/servolia_rate_hit") {
+    if (rpcMissing.on) return reply({ code: "PGRST202", message: "Could not find the function public.servolia_rate_hit" }, 404);
+    const body = JSON.parse(String(init.body));
+    const r = rpcHits.get(body.p_key) ?? 0;
+    rpcHits.set(body.p_key, r + 1);
+    return reply(r + 1);
+  }
   if (table === "rate_limits") {
     const key = (q.get("key") ?? "").replace(/^eq\./, "");
     if (method === "GET") return one(limits.has(key) ? [{ ...limits.get(key) }] : []);
@@ -155,7 +168,35 @@ test("rate limits bite before any lookup: 5 per IP per hour, 3 per address per h
   const perAddress = [];
   for (let i = 0; i < 4; i++) perAddress.push((await LINK.POST(linkReq({ email: "target@x.com" }))).status);
   assert.deepEqual(perAddress, [200, 200, 200, 429], "rotating IPs does not beat the per-address limit");
-  assert.ok([...limits.keys()].every((k) => !k.includes("target@x.com")), "the address is hashed in the limiter table");
+  assert.ok([...rpcHits.keys()].every((k) => !k.includes("target@x.com")), "the address is hashed in the limiter table");
+});
+
+test("FLOOD: 30 parallel requests for one client's address send at most 3 emails (the limiter is atomic)", async () => {
+  outbound.length = 0;
+  const res = await Promise.all(Array.from({ length: 30 }, (_, i) => LINK.POST(linkReq({ email: "flood@clinic.com" }, `198.18.${Math.floor(i / 250)}.${i % 250}`))));
+  await settle();
+  const codes = res.map((r) => r.status);
+  assert.equal(codes.filter((c) => c === 200).length, 3, `codes: ${codes.join(",")}`);
+  assert.equal(codes.filter((c) => c === 429).length, 27);
+  const sent = resendCalls();
+  assert.ok(sent.length <= 3, `${sent.length} emails`);
+  assert.equal(sent.length, 3);
+  assert.ok(sent.every((c) => JSON.parse(c.body).to.includes("flood@clinic.com")));
+});
+
+test("FAIL CLOSED: without the limiter function, the request is refused and nothing is sent", async () => {
+  outbound.length = 0;
+  lookups.length = 0;
+  rpcMissing.on = true;
+  try {
+    const r = await LINK.POST(linkReq({ email: "owner@acme-dental.com" }));
+    await settle();
+    assert.equal(r.status, 503);
+    assert.equal(resendCalls().length, 0);
+    assert.equal(lookups.length, 0, "no lookup either");
+  } finally {
+    rpcMissing.on = false;
+  }
 });
 
 test("the ref path is unchanged: no ref and no email is still a 400", async () => {
@@ -177,4 +218,15 @@ test("Check again: needs the signed link, then 4 per subscription per 10 minutes
     codes.push(res.status);
   }
   assert.deepEqual(codes, [404, 404, 404, 404, 429], "the fifth is refused before the row is read");
+});
+
+test("Check again on an ESTABLISHED client's row: refused, nothing measured or written", async () => {
+  outbound.length = 0;
+  const token = await UP.mintUpgradeToken("sub_live_acme"); // h1 carries no created_at: an existing row
+  const res = await CHECK.POST(new NextRequest("https://servolia.com/api/hosting-setup/check", {
+    method: "POST", body: JSON.stringify({ token }), headers: { "content-type": "application/json", "x-forwarded-for": "198.51.100.99" },
+  }));
+  assert.equal(res.status, 404);
+  assert.equal((await res.json()).error, "not-tracked");
+  assert.equal(outbound.length, 0);
 });
