@@ -11,6 +11,12 @@
  * by tests/webhook-harness.mjs. tests/webhook-live-baseline.json is the live
  * scenarios' output captured on the webhook BEFORE test mode (8851b6b); the
  * first webhook test compares today's output to it byte for byte.
+ *
+ * Re-captured ONCE, on 2026-09-25, for the Telegram message bodies alone:
+ * alerts went plain-text and the owner's money notice took the
+ * "💶 Paid: …" shape (tests/webhook-alerts.test.mjs). The re-capture was
+ * refused unless every status, response body, database write and non-Telegram
+ * call stayed identical to the 8851b6b capture — they did.
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -538,10 +544,12 @@ test("webhook source: every real-world side effect is gated on test mode", () =>
   assert.match(w, /wasTier && !test\)/);
   assert.match(w, /churnedDomain\?\.status === "bought" && !test\)/);
   assert.match(w, /return runAsTest\(!event\.livemode, \(\) => handleEvent\(event, modeStripe, db\)\)/);
-  // Every raw Telegram send is marked in test mode.
-  const raw = w.match(/text: [a-zA-Z(]+msg\)?, parse_mode/g) ?? [];
-  assert.ok(raw.length >= 7);
-  for (const r of raw) assert.match(r, /text: testPrefixed\(msg\)/);
+  // Every Telegram send is marked in test mode. Since 2026-09-25 there is no
+  // raw Telegram fetch left in the webhook: every alert goes through
+  // sendTelegramMessage (directly, or via src/lib/notify.ts), which adds
+  // "TEST — " itself — proven by the library test below.
+  assert.ok(!w.includes("api.telegram.org"), "a raw Telegram fetch bypasses the TEST prefix");
+  assert.match(w, /sends\.owner\(/);
 });
 
 /* ══ 5. The libraries refuse in test context ═══════════════════════════════ */

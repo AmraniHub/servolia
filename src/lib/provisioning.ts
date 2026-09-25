@@ -1,5 +1,5 @@
 import { ADDONS } from "@/lib/pricing";
-import { testPrefixed } from "@/lib/testContext";
+import { notifyOwner, paidSubject } from "@/lib/notify";
 
 /**
  * Add-on provisioning dispatch.
@@ -72,20 +72,18 @@ export async function provisionAddon(ctx: ProvisionContext): Promise<ProvisionRe
   return result;
 }
 
-/** Structured founder alert so fulfilment is one known step. Best-effort. */
+/** The owner is told of the payment (Telegram + email, src/lib/notify.ts) with
+ *  the one step fulfilment needs. Awaited, bounded, never throws; "TEST — " /
+ *  "[TEST] " are added by the senders during a founder test purchase. */
 async function notifyFounder(ctx: ProvisionContext, r: ProvisionResult): Promise<void> {
-  const token = process.env.TELEGRAM_BOT_TOKEN;
-  const chatId = process.env.TELEGRAM_CHAT_ID;
-  if (!token || !chatId) return;
-  const icon = r.automated ? "✅" : "🧩";
-  // "TEST — " first when a founder test purchase is being handled.
-  const msg = testPrefixed("") +
-    `${icon} *Add-on ${r.automated ? "provisioned" : "to fulfil"}*\n` +
-    `${ADDONS[ctx.addonKey]?.name ?? ctx.addonKey}${ctx.amountEur ? ` — €${ctx.amountEur}` : ""}\n` +
-    `${ctx.email ?? "no email"}${ctx.siteSlug ? ` · ${ctx.siteSlug}` : ""}\n\n${r.message}`;
-  await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ chat_id: chatId, text: msg, parse_mode: "Markdown" }),
-  }).catch(() => {});
+  const label = ADDONS[ctx.addonKey]?.name ?? ctx.addonKey;
+  await notifyOwner({
+    subject: paidSubject(`add-on ${label}`, ctx.amountEur ?? 0, "EUR", ctx.email),
+    lines: [
+      `${r.automated ? "✅ Provisioned automatically" : "🧩 To fulfil by hand"}: ${label}`,
+      `Client: ${ctx.email ?? "no email"}${ctx.siteSlug ? ` · site ${ctx.siteSlug}` : ""}`,
+      `Next: ${r.message}`,
+    ],
+    link: "https://servolia.com/admin/clients",
+  });
 }

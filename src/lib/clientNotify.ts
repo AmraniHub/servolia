@@ -1,6 +1,7 @@
 import { supabaseAdmin } from "@/lib/supabase";
 import { sendEmail } from "@/lib/email";
 import { sendPushToClient } from "@/lib/push";
+import { bounded } from "@/lib/notify";
 import type { ClientSiteConfig } from "@/lib/clientSites";
 import { isAfterHours } from "@/lib/reportMetrics";
 
@@ -125,14 +126,18 @@ export async function notifyClientOfLead(config: ClientSiteConfig, lead: LeadAle
   </div>
 </body></html>`;
 
-    sendEmail(to, subject, html).catch(() => {});
+    /* All three go side by side and are AWAITED, each capped at 5 s
+       (src/lib/notify.ts): on Vercel a request left in flight when the
+       response is returned can be dropped with the frozen function, and this
+       email is the clinic owner's lead alert. None can throw or block the
+       others — a dead push service must never stop the email, which is the
+       whole promise of this function. */
+    const sends: Promise<unknown>[] = [bounded("client lead email", sendEmail(to, subject, html))];
 
     // Push to the client's own phone, beside the email rather than instead of
     // it. Email is the durable record; the push is what reaches someone whose
-    // inbox they will not open for two hours. Fire-and-forget on purpose: a
-    // dead push service must never stop the lead being written or the email
-    // going out, which is the whole promise of this function.
-    sendPushToClient(to, {
+    // inbox they will not open for two hours.
+    sends.push(bounded("client lead push", sendPushToClient(to, {
       title: afterHours
         ? fr ? "🌙 Demande captée hors horaires" : "🌙 Enquiry caught out of hours"
         : fr ? "Nouvelle demande" : "New enquiry",
@@ -143,12 +148,12 @@ export async function notifyClientOfLead(config: ClientSiteConfig, lead: LeadAle
         : fr ? "Ouvrez votre espace client pour la voir." : "Open your portal to see it.",
       url: "/portal",
       tag: "servolia-lead",
-    }).catch(() => {});
+    })));
 
     // Google Sheets CRM sync (per-client, optional) — same Apps Script webhook
     // pattern as Servolia's own sheet.
     if (config.sheetsWebhookUrl) {
-      fetch(config.sheetsWebhookUrl, {
+      sends.push(bounded("client sheets sync", fetch(config.sheetsWebhookUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -163,8 +168,10 @@ export async function notifyClientOfLead(config: ClientSiteConfig, lead: LeadAle
           after_hours: afterHours ? "yes" : "no",
           site: config.slug,
         }),
-      }).catch(() => {});
+        signal: AbortSignal.timeout(5_000),
+      })));
     }
+    await Promise.all(sends);
   } catch {
     /* alerts are best-effort by contract */
   }

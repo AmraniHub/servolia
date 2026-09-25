@@ -55,7 +55,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
     const out = await publishSite(config.slug, { by: "client", markBuildLive: true });
     if (!out.ok) return NextResponse.json({ ok: false, reason: out.reason }, { status: 500 });
     const wanted = !config.customDomain ? await wantedDomain(out.buildId) : null;
-    sendTelegramMessage(
+    await sendTelegramMessage(
       `She said GO - ${config.businessName}\n` +
       (out.published ? "Her site is published now" : "It was already published") +
       (config.customDomain

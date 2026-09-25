@@ -66,10 +66,10 @@ export async function POST(req: NextRequest) {
       savingUsd: Math.round(plan.monthlyUsd * 12 - plan.annualUsd),
       lang,
     });
-    sendEmail(email, tpl.subject, tpl.html).catch(() => {});
+    await sendEmail(email, tpl.subject, tpl.html).catch(() => {});
   }
 
-  sendTelegramMessage(
+  await sendTelegramMessage(
     `⬆️ *Switched to yearly — $${plan.annualUsd}*\n${siteLabel || "unnamed site"}\n${plan.name}`,
   ).catch(() => {});
 

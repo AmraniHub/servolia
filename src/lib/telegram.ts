@@ -52,7 +52,16 @@ export interface SendOptions {
   plain?: boolean;
 }
 
-/** Send a message, optionally with a row of inline buttons. Returns the message_id, or null if not configured/failed. */
+/**
+ * How long one Telegram call may take before it is given up. Callers AWAIT
+ * this function (a serverless function can be frozen the moment its response
+ * is returned, killing an un-awaited request half-sent), so a Telegram that
+ * never answers must not be able to hold a Stripe webhook open.
+ */
+export const TELEGRAM_TIMEOUT_MS = 5_000;
+
+/** Send a message, optionally with a row of inline buttons. Returns the message_id, or null if not configured/failed.
+ *  Never throws; bounded by TELEGRAM_TIMEOUT_MS per attempt; every failure is console.error'd. */
 export async function sendTelegramMessage(
   text: string,
   buttons?: InlineButton[][],
@@ -61,7 +70,7 @@ export async function sendTelegramMessage(
   const { token, chatId, configured } = creds();
   if (!configured) return null;
 
-  try {
+  const attempt = async (markdown: boolean) => {
     const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -70,15 +79,35 @@ export async function sendTelegramMessage(
         // "TEST — " in front while a founder test purchase is handled
         // (src/lib/testContext.ts); unchanged otherwise.
         text: testPrefixed(text),
-        ...(opts?.plain === true ? {} : { parse_mode: "Markdown" }),
+        ...(markdown ? { parse_mode: "Markdown" } : {}),
         disable_notification: opts?.silent === true,
         reply_markup: buttons ? { inline_keyboard: buttons } : undefined,
       }),
+      signal: AbortSignal.timeout(TELEGRAM_TIMEOUT_MS),
     });
-    const json = await res.json();
-    if (!json.ok) return null;
+    const json = (await res.json().catch(() => null)) as
+      | { ok?: boolean; description?: string; result?: { message_id?: number } }
+      | null;
+    return { status: res.status, json };
+  };
+
+  try {
+    const markdown = opts?.plain !== true;
+    let { status, json } = await attempt(markdown);
+    /* A Markdown message Telegram cannot parse (an interpolated address
+       like jean_dupont@... opens an italic run that never closes) is NOT
+       lost: it is sent again as plain text, formatting marks and all. */
+    if (!json?.ok && markdown && /can't parse entities/i.test(json?.description ?? "")) {
+      console.error(`[telegram] Markdown refused (${json?.description}); re-sending as plain text`);
+      ({ status, json } = await attempt(false));
+    }
+    if (!json?.ok || !json.result) {
+      console.error(`[telegram] sendMessage refused: HTTP ${status} ${json?.description ?? "(no body)"} | ${text.slice(0, 80)}`);
+      return null;
+    }
     return { messageId: String(json.result.message_id), chatId: String(chatId) };
-  } catch {
+  } catch (err) {
+    console.error(`[telegram] sendMessage failed: ${err instanceof Error ? `${err.name}: ${err.message}` : String(err)} | ${text.slice(0, 80)}`);
     return null;
   }
 }

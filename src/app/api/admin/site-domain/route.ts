@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
     const status = out.reason === "not-found" ? 404 : out.reason === "vercel" || out.reason === "write-failed" || out.reason === "no-db" ? 502 : 400;
     return NextResponse.json(out, { status });
   }
-  sendTelegramMessage(
+  await sendTelegramMessage(
     `Domain attached - ${slug} -> ${out.domain}\n` +
     `Send her these DNS lines:\n${out.dns.map((d) => `${d.type}  ${d.name}  ${d.value}`).join("\n")}\n` +
     `The go-live email goes by itself when https://${out.domain} serves her site.`,

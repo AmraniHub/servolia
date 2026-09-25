@@ -1,187 +1,187 @@
 {
- "plan": {
-  "status": 200,
-  "body": {
-   "received": true
+  "plan": {
+    "status": 200,
+    "body": {
+      "received": true
+    },
+    "writes": [
+      {
+        "method": "POST",
+        "table": "builds",
+        "query": "?select=id",
+        "body": {
+          "business": "Pending intake",
+          "email": "buyer@example.com",
+          "plan": "setup",
+          "plan_name": "Installation",
+          "total_price": 690,
+          "deposit_paid": 690,
+          "balance_due": 0,
+          "status": "intake",
+          "customer_id": "cus_plan1",
+          "checkout_session_id": "cs_live_plan1"
+        }
+      },
+      {
+        "method": "POST",
+        "table": "clients",
+        "query": "?select=id",
+        "body": {
+          "build_id": "row-builds",
+          "business": "buyer@example.com",
+          "email": "buyer@example.com",
+          "plan": "essentiel",
+          "monthly_amount": 149,
+          "status": "active",
+          "customer_id": "cus_plan1",
+          "subscription_id": "sub_plan1"
+        }
+      },
+      {
+        "method": "PATCH",
+        "table": "leads",
+        "query": "?email=eq.buyer@example.com&stage=in.(new,audit_sent,qualified)",
+        "body": {
+          "stage": "deposit_paid"
+        }
+      }
+    ],
+    "outbound": [
+      {
+        "to": "https://api.telegram.org/bot*/sendMessage",
+        "body": "{\"chat_id\":\"42\",\"text\":\"💶 Paid: Essentiel plan (monthly) — €839 — buyer@example.com\\n🔁 New Essentiel subscriber — €839 monthly\\nbuyer@example.com\\nInstallation collected: €690\\n🧱 Build opened — waiting on their intake form\\nNext: wait for their intake form (the welcome email links it).\\nhttps://servolia.com/admin/clients/row-clients\",\"disable_notification\":false}"
+      },
+      {
+        "to": "https://graph.facebook.com/v21.0/1394909005810177/events",
+        "body": null
+      }
+    ]
   },
-  "writes": [
-   {
-    "method": "POST",
-    "table": "builds",
-    "query": "?select=id",
+  "hosting": {
+    "status": 200,
     "body": {
-     "business": "Pending intake",
-     "email": "buyer@example.com",
-     "plan": "setup",
-     "plan_name": "Installation",
-     "total_price": 690,
-     "deposit_paid": 690,
-     "balance_due": 0,
-     "status": "intake",
-     "customer_id": "cus_plan1",
-     "checkout_session_id": "cs_live_plan1"
-    }
-   },
-   {
-    "method": "POST",
-    "table": "clients",
-    "query": "?select=id",
-    "body": {
-     "build_id": "row-builds",
-     "business": "buyer@example.com",
-     "email": "buyer@example.com",
-     "plan": "essentiel",
-     "monthly_amount": 149,
-     "status": "active",
-     "customer_id": "cus_plan1",
-     "subscription_id": "sub_plan1"
-    }
-   },
-   {
-    "method": "PATCH",
-    "table": "leads",
-    "query": "?email=eq.buyer@example.com&stage=in.(new,audit_sent,qualified)",
-    "body": {
-     "stage": "deposit_paid"
-    }
-   }
-  ],
-  "outbound": [
-   {
-    "to": "https://api.telegram.org/bot*/sendMessage",
-    "body": "{\"chat_id\":\"42\",\"text\":\"🔁 *New Essentiel subscriber — €839 monthly*\\nbuyer@example.com\\nInstallation collected: €690\\n🧱 Build opened — waiting on their intake form\\n\\n[Open in CRM](https://servolia.com/admin/clients/row-clients)\",\"parse_mode\":\"Markdown\"}"
-   },
-   {
-    "to": "https://graph.facebook.com/v21.0/1394909005810177/events",
-    "body": null
-   }
-  ]
- },
- "hosting": {
-  "status": 200,
-  "body": {
-   "received": true,
-   "line": "hosting"
+      "received": true,
+      "line": "hosting"
+    },
+    "writes": [
+      {
+        "method": "POST",
+        "table": "hosting_clients",
+        "query": "?select=id,notes",
+        "body": {
+          "business": "Harness Co",
+          "contact_name": null,
+          "email": "host@example.com",
+          "site_url": null,
+          "repo": null,
+          "branch": "main",
+          "site_root": null,
+          "vercel_project": null,
+          "plan": "hosting",
+          "monthly_usd": 8,
+          "billing_period": "monthly",
+          "status": "active",
+          "customer_id": "cus_host1",
+          "subscription_id": "sub_host1"
+        }
+      },
+      {
+        "method": "PATCH",
+        "table": "hosting_clients",
+        "query": "?id=eq.row-hosting_clients",
+        "body": {
+          "site_url": "https://harness-example.com",
+          "notes": "servolia-domain: harness-example.com | status: pending | retail: 20 | order: - | bought: - | renew: - | attached: - | warned: - | note: not-configured"
+        }
+      },
+      {
+        "method": "PATCH",
+        "table": "hosting_clients",
+        "query": "?id=eq.row-hosting_clients",
+        "body": {
+          "notes": "servolia-domain: harness-example.com | status: pending | retail: 20 | order: - | bought: - | renew: - | attached: - | warned: - | note: not-configured\nservolia-fulfilled: cs_live_host1 | at: <ts> | plan: hosting"
+        }
+      }
+    ],
+    "outbound": [
+      {
+        "to": "https://api.telegram.org/bot*/sendMessage",
+        "body": "{\"chat_id\":\"42\",\"text\":\"PAID but NOT switched on — Harness Co\\nerror (GH_TOKEN is not set)\\nThey have paid and their site is still behind the notice. Lift it by hand.\",\"disable_notification\":false}"
+      },
+      {
+        "to": "https://api.telegram.org/bot*/sendMessage",
+        "body": "{\"chat_id\":\"42\",\"text\":\"DOMAIN NOT BOUGHT - harness-example.com\\nClient paid for it: Harness Co\\nReason: not-configured\\nSet VERCEL_TOKEN, VERCEL_TEAM_ID and DOMAIN_CONTACT_JSON, then press Buy on the client's page.\\nhttps://servolia.com/admin/hosting/row-hosting_clients\",\"disable_notification\":false}"
+      },
+      {
+        "to": "https://api.telegram.org/bot*/sendMessage",
+        "body": "{\"chat_id\":\"42\",\"text\":\"💶 Paid: Hosting (monthly) — $42 — Harness Co\\nHosting paid — $42 monthly\\nHarness Co\\nhost@example.com\\nRef SV-BHOST1\\n🌐 Domain harness-example.com: NOT bought — see the alert\\nNext: buy the domain (see the alert)\\nhttps://servolia.com/admin/hosting/row-hosting_clients\",\"disable_notification\":false}"
+      }
+    ]
   },
-  "writes": [
-   {
-    "method": "POST",
-    "table": "hosting_clients",
-    "query": "?select=id,notes",
+  "invoicePaid": {
+    "status": 200,
     "body": {
-     "business": "Harness Co",
-     "contact_name": null,
-     "email": "host@example.com",
-     "site_url": null,
-     "repo": null,
-     "branch": "main",
-     "site_root": null,
-     "vercel_project": null,
-     "plan": "hosting",
-     "monthly_usd": 8,
-     "billing_period": "monthly",
-     "status": "active",
-     "customer_id": "cus_host1",
-     "subscription_id": "sub_host1"
-    }
-   },
-   {
-    "method": "PATCH",
-    "table": "hosting_clients",
-    "query": "?id=eq.row-hosting_clients",
-    "body": {
-     "site_url": "https://harness-example.com",
-     "notes": "servolia-domain: harness-example.com | status: pending | retail: 20 | order: - | bought: - | renew: - | attached: - | warned: - | note: not-configured"
-    }
-   },
-   {
-    "method": "PATCH",
-    "table": "hosting_clients",
-    "query": "?id=eq.row-hosting_clients",
-    "body": {
-     "notes": "servolia-domain: harness-example.com | status: pending | retail: 20 | order: - | bought: - | renew: - | attached: - | warned: - | note: not-configured\nservolia-fulfilled: cs_live_host1 | at: <ts> | plan: hosting"
-    }
-   }
-  ],
-  "outbound": [
-   {
-    "to": "https://api.telegram.org/bot*/sendMessage",
-    "body": "{\"chat_id\":\"42\",\"text\":\"*PAID but NOT switched on — Harness Co*\\nerror (GH_TOKEN is not set)\\nThey have paid and their site is still behind the notice. Lift it by hand.\",\"parse_mode\":\"Markdown\",\"disable_notification\":false}"
-   },
-   {
-    "to": "https://api.telegram.org/bot*/sendMessage",
-    "body": "{\"chat_id\":\"42\",\"text\":\"DOMAIN NOT BOUGHT - harness-example.com\\nClient paid for it: Harness Co\\nReason: not-configured\\nSet VERCEL_TOKEN, VERCEL_TEAM_ID and DOMAIN_CONTACT_JSON, then press Buy on the client's page.\\nhttps://servolia.com/admin/hosting/row-hosting_clients\",\"disable_notification\":false}"
-   },
-   {
-    "to": "https://api.telegram.org/bot*/sendMessage",
-    "body": "{\"chat_id\":\"42\",\"text\":\"🌐 *Hosting paid — $42 monthly*\\nHarness Co\\nhost@example.com\\nRef SV-BHOST1\\n🌐 Domain harness-example.com: NOT bought — see the alert\\n\\n[Open](https://servolia.com/admin/hosting/row-hosting_clients)\",\"parse_mode\":\"Markdown\"}"
-   }
-  ]
- },
- "invoicePaid": {
-  "status": 200,
-  "body": {
-   "received": true
+      "received": true
+    },
+    "writes": [
+      {
+        "method": "PATCH",
+        "table": "clients",
+        "query": "?or=(subscription_id.eq.sub_plan1,customer_id.eq.cus_plan1)",
+        "body": {
+          "payment_status": "ok",
+          "past_due_since": null,
+          "suspend_at": null,
+          "suspended_at": null,
+          "last_payment_failure_reason": null,
+          "open_invoice_url": null
+        }
+      },
+      {
+        "method": "PATCH",
+        "table": "hosting_clients",
+        "query": "?or=(subscription_id.eq.sub_plan1,customer_id.eq.cus_plan1)",
+        "body": {
+          "status": "active",
+          "payment_status": "ok",
+          "past_due_since": null,
+          "suspend_at": null,
+          "open_invoice_url": null
+        }
+      }
+    ],
+    "outbound": []
   },
-  "writes": [
-   {
-    "method": "PATCH",
-    "table": "clients",
-    "query": "?or=(subscription_id.eq.sub_plan1,customer_id.eq.cus_plan1)",
+  "deleted": {
+    "status": 200,
     "body": {
-     "payment_status": "ok",
-     "past_due_since": null,
-     "suspend_at": null,
-     "suspended_at": null,
-     "last_payment_failure_reason": null,
-     "open_invoice_url": null
-    }
-   },
-   {
-    "method": "PATCH",
-    "table": "hosting_clients",
-    "query": "?or=(subscription_id.eq.sub_plan1,customer_id.eq.cus_plan1)",
-    "body": {
-     "status": "active",
-     "payment_status": "ok",
-     "past_due_since": null,
-     "suspend_at": null,
-     "open_invoice_url": null
-    }
-   }
-  ],
-  "outbound": []
- },
- "deleted": {
-  "status": 200,
-  "body": {
-   "received": true
-  },
-  "writes": [
-   {
-    "method": "PATCH",
-    "table": "clients",
-    "query": "?subscription_id=eq.sub_host1",
-    "body": {
-     "status": "churned",
-     "churned_at": "<ts>"
-    }
-   },
-   {
-    "method": "PATCH",
-    "table": "hosting_clients",
-    "query": "?subscription_id=eq.sub_host1",
-    "body": {
-     "status": "churned",
-     "churned_at": "<ts>"
-    }
-   }
-  ],
-  "outbound": [
-   {
-    "to": "https://api.telegram.org/bot*/sendMessage",
-    "body": "{\"chat_id\":\"42\",\"text\":\"⚠️ *Subscription cancelled*\\nUnknown client\",\"parse_mode\":\"Markdown\"}"
-   }
-  ]
- }
+      "received": true
+    },
+    "writes": [
+      {
+        "method": "PATCH",
+        "table": "clients",
+        "query": "?subscription_id=eq.sub_host1",
+        "body": {
+          "status": "churned",
+          "churned_at": "<ts>"
+        }
+      },
+      {
+        "method": "PATCH",
+        "table": "hosting_clients",
+        "query": "?subscription_id=eq.sub_host1",
+        "body": {
+          "status": "churned",
+          "churned_at": "<ts>"
+        }
+      }
+    ],
+    "outbound": [
+      {
+        "to": "https://api.telegram.org/bot*/sendMessage",
+        "body": "{\"chat_id\":\"42\",\"text\":\"⚠️ Subscription ended: hosting — Harness Co\\n⚠️ Subscription cancelled — Harness Co\\nStripe subscription sub_host1\\nNext: decide when the site stops being served — nothing is switched off automatically.\\nhttps://servolia.com/admin/hosting/h1\",\"disable_notification\":false}"
+      }
+    ]
+  }
 }

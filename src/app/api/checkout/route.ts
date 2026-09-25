@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
 
     // Meta Conversions API — checkout started (fire and forget). Never for
     // a founder test: it would train the ad account on a fake buyer.
-    if (!co.test) sendMetaCapiEvent({
+    if (!co.test) await sendMetaCapiEvent({
       eventName: "InitiateCheckout",
       value: p.amount / 100,
       currency: "EUR",

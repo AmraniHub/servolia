@@ -517,6 +517,27 @@ export const FEATURES: SystemFeature[] = [
     code: "src/lib/telegram.ts (SendOptions) · /api/cron/daily-brief · daily-stats · weekly-seo · follow-up",
   },
   {
+    name: "Owner money alerts — every payment reaches you by Telegram AND email, before the webhook answers",
+    summary: "Every money event the Stripe webhook handles sends one notice to the owner: a plain Telegram alert and an email to OWNER_ALERT_EMAIL (default hello@servolia.com), subject '💶 Paid: <what> — <amount> — <client>' or '⚠️ Payment failed / Subscription ended: <what> — <client>'. Built 2026-09-25 after a live founder test purchase wrote the client and sent the email while its Telegram alert never arrived.",
+    how: [
+      "WHY ALERTS WENT MISSING: they were fire-and-forget — `fetch(...).catch(() => {})` and return. On Vercel a function can be frozen the moment its response is returned, and the half-sent request dies with no error. Now every send (Telegram, Resend, Meta) is AWAITED, each capped at 5 s and never throwing (src/lib/notify.ts). In the webhook a per-event `Sends` list starts them as the branch goes and waits for all of them, side by side, before the response — so three alerts cost ~one timeout, and an early return cannot leave one behind.",
+      "MARKDOWN CANNOT EAT AN ALERT: the webhook's alerts are plain text (an address like jean_dupont@… opened a Markdown italic that never closed; Telegram answered 400 and the alert vanished). As a backstop, sendTelegramMessage re-sends any Markdown message Telegram refuses to parse as plain text, and console.errors every refusal so it shows in the Vercel logs.",
+      "COVERED EVENTS: plan subscription (installation + first month) · receptionist trial kept · hosting purchase (tiers and the assistant add-on) · managed add-on · multilingual search one-off · top-up · arrears settled · extra domain order · custom work · one-off build payment · renewal (invoice.paid) · payment failed (plan and hosting) · subscription ended.",
+      "ONCE PER EVENT: each notice sits after its branch's existing replay guard (subscription id already recorded, fulfilment marker on the hosting row, top-up marker on the notes, extra domain already recorded, build already carrying the session id, receptionist purchase already complete). Branches with no guard (one-off, arrears, custom work, renewals, failures, cancellation) notify again if Stripe redelivers the same event — as their Telegram alert always did.",
+      "RENEWALS: only invoice.paid (the endpoint also receives invoice.payment_succeeded for the same invoice), never billing_reason subscription_create (its checkout already told you), never a zero-amount invoice.",
+      "TEST PURCHASES: the Telegram alert starts 'TEST —', the email goes to FOUNDER_EMAIL with '[TEST] ' on the subject (the same routing every test email has), and Meta is never called. What the CLIENT receives is unchanged.",
+      "GREETINGS: client emails greet by the first name on the payment (Stripe customer_details.name) or neutrally ('Bonjour,' / 'Hello,') — never the address's local part, which once produced 'Hi hello,'.",
+    ],
+    use: [
+      "Nothing to do. To send the owner email somewhere other than hello@servolia.com, set OWNER_ALERT_EMAIL in Vercel.",
+      "No owner email arriving while Telegram works? Resend is not configured (RESEND_API_KEY) or refused it — look for 'Resend error' in the Vercel logs. No Telegram while email works? look for '[telegram] sendMessage refused'.",
+      "Adding a money branch to the webhook: end it with `sends.owner({ subject: paidSubject(...), lines: [..., 'Next: …'], link })` AFTER its replay guard, and never start a send without `sends.add(...)` or `await` — tests/webhook-alerts.test.mjs checks both.",
+    ],
+    cost: "One extra Resend email per money event (well inside the free 3,000/month).",
+    value: "A payment you do not hear about is a client waiting on you with no one knowing. Every euro and dollar now announces itself twice, in the channel you watch and the inbox you keep.",
+    code: "src/lib/notify.ts (bounded, alert, notifyOwner, Sends) · src/lib/telegram.ts · src/lib/metaCapi.ts · src/app/api/webhooks/stripe/route.ts · src/lib/provisioning.ts · tests/webhook-alerts.test.mjs",
+  },
+  {
     name: "Scheduled jobs map (Vercel crons vs GitHub Actions)",
     summary: "Every automated job, where it's scheduled, and why there are two systems — so nobody 'rediscovers' this topology again.",
     how: [

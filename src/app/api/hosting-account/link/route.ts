@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
      delivered email from a silent Resend failure, which is exactly how two
      invites that never left were read as two successes. */
   const sent = await sendEmail(client.email, tpl.subject, tpl.html).catch(() => false);
-  sendTelegramMessage(
+  await sendTelegramMessage(
     `🔗 *Service-page link ${sent ? "sent" : "FAILED"}* — ${client.label}` +
     (sent ? `\nTo ${client.email} · ${(client.lang ?? "en").toUpperCase()}` : "\nResend refused it — try again."),
   ).catch(() => {});

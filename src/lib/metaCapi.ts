@@ -45,7 +45,8 @@ export function metaCapiConfigured(): boolean {
   return !!process.env.META_CAPI_ACCESS_TOKEN;
 }
 
-/** Send a server-side conversion event to Meta. Fire-and-forget — never throws, never blocks callers. */
+/** Send a server-side conversion event to Meta. Never throws; capped at 5 s.
+ *  AWAIT it: on Vercel an un-awaited request can die when the response is returned. */
 export async function sendMetaCapiEvent(input: CapiEventInput): Promise<void> {
   // Never for a founder test purchase (src/lib/testContext.ts): a fake buyer
   // would train the ad account's optimisation on money that never moved.
@@ -84,12 +85,18 @@ export async function sendMetaCapiEvent(input: CapiEventInput): Promise<void> {
       ],
     };
 
-    await fetch(`https://graph.facebook.com/v21.0/${datasetId}/events?access_token=${token}`, {
+    // Awaited by its callers (a frozen serverless function drops an
+    // un-awaited request), so capped: Meta being slow must not hold a
+    // webhook or a form open.
+    const res = await fetch(`https://graph.facebook.com/v21.0/${datasetId}/events?access_token=${token}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(5_000),
     });
-  } catch {
+    if (!res.ok) console.error(`[meta-capi] ${input.eventName} refused: HTTP ${res.status}`);
+  } catch (err) {
     /* never let analytics failures affect the real request */
+    console.error(`[meta-capi] ${input.eventName} failed: ${err instanceof Error ? err.message : String(err)}`);
   }
 }

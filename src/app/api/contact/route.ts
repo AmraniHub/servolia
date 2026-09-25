@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin, estimateLeadValue, type LeadSource } from "@/lib/supabase";
 import { stripeForSessionId } from "@/lib/stripeMode";
 import { isTestRequest } from "@/lib/testMode";
-import { runAsTest, testTag, testPrefixed, inTestContext, excludeTest } from "@/lib/testContext";
-import { sendEmail, auditConfirmationEmail } from "@/lib/email";
+import { runAsTest, testTag, inTestContext, excludeTest } from "@/lib/testContext";
+import { sendEmail, auditConfirmationEmail, firstNameFrom } from "@/lib/email";
+import { bounded } from "@/lib/notify";
 import { sendMetaCapiEvent } from "@/lib/metaCapi";
 import { startBuildFromIntake } from "@/lib/intakeBuild";
 import { sendTelegramMessage, telegramConfigured } from "@/lib/telegram";
@@ -233,12 +234,13 @@ async function handleContact(req: NextRequest) {
     }
 
     // ── 2. Notify Telegram ────────────────────────────────────────────────
-    const tgToken  = process.env.TELEGRAM_BOT_TOKEN;
-    const tgChatId = process.env.TELEGRAM_CHAT_ID;
-    if (tgToken && tgChatId) {
-      const msg = testPrefixed("") +
-        `🔔 *New ${type === "free-audit" ? "Free Audit Request" : type === "intake" ? "Client Intake (PAID)" : "Contact"}*\n` +
-        `*${business || businessName || name || "—"}*\n\n` +
+    // Plain text through the helper (bounded, logged, "TEST — " added by it
+    // in test context): a visitor's jean_dupont@... would break Markdown and
+    // Telegram would drop the whole alert.
+    if (telegramConfigured()) {
+      const msg =
+        `🔔 New ${type === "free-audit" ? "Free Audit Request" : type === "intake" ? "Client Intake (PAID)" : "Contact"}\n` +
+        `${business || businessName || name || "—"}\n\n` +
         `📧 ${resolvedEmail || "no email"}\n` +
         `📱 ${phone || "—"}\n` +
         `🌍 ${city ? city + ", " : ""}${country || "—"}\n` +
@@ -246,47 +248,47 @@ async function handleContact(req: NextRequest) {
         (plan || planName ? `💰 ${plan || planName}\n` : "") +
         (Array.isArray(problems) && problems.length ? `❗ ${problems.join(", ")}\n` : "") +
         (website || websiteUrl ? `🔗 ${website || websiteUrl}\n` : "") +
-        (leadId ? `\n[Open in CRM](https://servolia.com/admin/leads/${leadId})` : "");
+        (leadId ? `\nhttps://servolia.com/admin/leads/${leadId}` : "");
 
-      await fetch(`https://api.telegram.org/bot${tgToken}/sendMessage`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          chat_id: tgChatId,
-          text: msg,
-          parse_mode: "Markdown",
-          disable_web_page_preview: true,
-        }),
-      }).catch(() => {});
+      await sendTelegramMessage(msg, undefined, { plain: true });
     }
+
+    /* 3-5 go side by side and are AWAITED, each capped at 5 s and never
+       throwing (src/lib/notify.ts): on Vercel a request still in flight when
+       the response is returned can die with the frozen function. */
+    const sends: Promise<unknown>[] = [];
 
     // ── 3. Mirror to Google Sheets (backup) ───────────────────────────────
     const sheetsUrl = process.env.GOOGLE_SHEETS_WEBHOOK_URL;
     if (sheetsUrl && !inTestContext()) {
-      fetch(sheetsUrl, {
+      sends.push(bounded("sheets mirror", fetch(sheetsUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...body, lead_id: leadId, timestamp: new Date().toISOString(), source: "servolia.com" }),
-      }).catch(() => {});
+        signal: AbortSignal.timeout(5_000),
+      })));
     }
 
-    // ── 4. Send confirmation email (fire and forget) ─────────────────────
+    // ── 4. Send confirmation email ─────────────────────────────────────────
     if (email && (type === "free-audit" || type === "contact" || type === "lead-magnet")) {
-      const firstName = (name || body.ownerName || (business || businessName) || "there").split(" ")[0];
+      // A first name, or a neutral greeting ("Bonjour," — never "Bonjour there,").
+      const firstName = firstNameFrom(name || body.ownerName || business || businessName);
       const emailLang = /fr|français|french/i.test(String(language ?? "")) ? "fr" : "en";
       const tpl = auditConfirmationEmail(firstName, emailLang);
-      sendEmail(email, tpl.subject, tpl.html).catch(() => {});
+      sends.push(bounded("audit confirmation", sendEmail(email, tpl.subject, tpl.html)));
     }
 
-    // ── 5. Meta Conversions API — server-side Lead event (fire and forget) ─
+    // ── 5. Meta Conversions API — server-side Lead event ─────────────────
     if (type !== "intake") {
-      sendMetaCapiEvent({
+      sends.push(sendMetaCapiEvent({
         eventName: "Lead",
         email, phone,
         eventSourceUrl: website || websiteUrl || "https://servolia.com/free-audit",
         req,
-      });
+      }));
     }
+
+    await Promise.all(sends);
 
     return NextResponse.json({ ok: true, lead_id: leadId });
   } catch (err) {

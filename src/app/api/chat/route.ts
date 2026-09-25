@@ -7,6 +7,7 @@ import { getClientSite } from "@/lib/clientSites";
 import { notifyClientOfLead } from "@/lib/clientNotify";
 import { buildReceptionistPrompt } from "@/lib/clientPrompt";
 import { sendMetaCapiEvent } from "@/lib/metaCapi";
+import { alert } from "@/lib/notify";
 import { pricingPromptLines } from "@/lib/pricing";
 import { assistantEnabled, previewOrigin, previewable, previewBudgetOk } from "@/lib/assistantAccess";
 import { originAllowed, corsHeaders, sanitizeMessages } from "@/lib/assistant";
@@ -343,7 +344,9 @@ export async function POST(req: NextRequest) {
           const wasQualified = !!(existing as { qualified?: boolean } | null)?.qualified;
           if (isBooking && !wasQualified && config && !config.isDemo) {
             const lastUserMsg = [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
-            notifyClientOfLead(config, {
+            // Awaited (bounded, never throws): an un-awaited send can die
+            // with the serverless function once the reply is returned.
+            await notifyClientOfLead(config, {
               phone: phoneMatch?.[0] ?? null,
               email: emailMatch?.[0] ?? null,
               excerpt: lastUserMsg.slice(0, 400),
@@ -354,7 +357,7 @@ export async function POST(req: NextRequest) {
           // Ads closed loop: a booking on a client site fires a Lead event on the
           // CLIENT's pixel, so their Ads Manager sees which euro became a consultation.
           if (isBooking && config?.metaPixelId && config?.metaCapiToken) {
-            sendMetaCapiEvent({
+            await sendMetaCapiEvent({
               eventName: "Lead",
               email: emailMatch?.[0],
               phone: phoneMatch?.[0],
@@ -455,27 +458,24 @@ export async function POST(req: NextRequest) {
             .update({ lead_id: lead.id, qualified: true })
             .eq("session_id", sessionId);
 
-          sendMetaCapiEvent({
-            eventName: "Lead",
-            email: emailMatch[0],
-            phone: phoneMatch?.[0],
-            eventSourceUrl: pageUrl ? `https://servolia.com${pageUrl}` : "https://servolia.com",
-          });
-
-          const tgToken = process.env.TELEGRAM_BOT_TOKEN;
-          const tgChatId = process.env.TELEGRAM_CHAT_ID;
-          if (tgToken && tgChatId) {
-            const msg = `🤖 *Chatbot captured a lead*\n` +
-                        `*${summary.business || "Unknown business"}*\n` +
-                        `📧 ${emailMatch[0]}\n` +
-                        `🎯 ${summary.niche || "—"}\n\n` +
-                        `[Open in CRM](https://servolia.com/admin/leads/${lead.id})`;
-            fetch(`https://api.telegram.org/bot${tgToken}/sendMessage`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ chat_id: tgChatId, text: msg, parse_mode: "Markdown" }),
-            }).catch(() => {});
-          }
+          // Both awaited, side by side (each capped at 5 s, never throwing):
+          // an un-awaited send can die with the function once the reply is out.
+          // Plain text: a visitor's jean_dupont@... would break Markdown.
+          await Promise.all([
+            sendMetaCapiEvent({
+              eventName: "Lead",
+              email: emailMatch[0],
+              phone: phoneMatch?.[0],
+              eventSourceUrl: pageUrl ? `https://servolia.com${pageUrl}` : "https://servolia.com",
+            }),
+            alert(
+              `🤖 Chatbot captured a lead\n` +
+              `${summary.business || "Unknown business"}\n` +
+              `📧 ${emailMatch[0]}\n` +
+              `🎯 ${summary.niche || "—"}\n\n` +
+              `https://servolia.com/admin/leads/${lead.id}`,
+            ),
+          ]);
         }
       }
     }

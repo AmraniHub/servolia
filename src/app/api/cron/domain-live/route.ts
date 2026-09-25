@@ -44,7 +44,8 @@ export async function GET(req: NextRequest) {
     to = to || e.contactEmail;
     let sent = false;
     if (to) {
-      const greet = e.business.split(" ")[0] || to.split("@")[0];
+      // Never the address's local part: an empty name greets neutrally.
+      const greet = e.business.split(" ")[0] || "";
       const tpl = liveEmail(greet, `https://${e.domain}`, e.lang);
       sent = await sendEmail(to, tpl.subject, tpl.html).catch(() => false);
     }

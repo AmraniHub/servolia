@@ -398,13 +398,35 @@ const waBtn = (href: string, label: string) => `
  * replies within one working day, with the SLA clock on /admin/today. That
  * is what this says.
  */
+/**
+ * A first name from a full name (a Stripe customer_details.name, a form's
+ * name field): its first word, "JEAN" and "jean" tidied to "Jean". Empty
+ * when there is none, and NEVER an email address or its local part — the
+ * Essentiel welcome email once opened "Hi hello," because the buyer's
+ * address was hello@... and its local part stood in for a name.
+ */
+export function firstNameFrom(full: string | null | undefined): string {
+  const word = (full ?? "").trim().split(/\s+/)[0] ?? "";
+  if (!word || word.includes("@") || !/\p{L}/u.test(word)) return "";
+  const lower = word === word.toUpperCase() ? word.toLowerCase() : word;
+  return lower.charAt(0).toUpperCase() + lower.slice(1);
+}
+
+/** "Bonjour Jean," / "Hi Jean," — or a neutral "Bonjour," / "Hello," when no
+ *  name is known. The name is HTML-escaped. */
+export function greeting(firstName: string | null | undefined, lang: "en" | "fr"): string {
+  const name = (firstName ?? "").trim();
+  if (!name) return lang === "fr" ? "Bonjour," : "Hello,";
+  return `${lang === "fr" ? "Bonjour" : "Hi"} ${escapeHtml(name)},`;
+}
+
 export const auditConfirmationEmail = (firstName: string, lang: "en" | "fr" = "en") => {
   if (lang === "fr") {
     return {
       subject: "Bien reçu — nous vous répondons sous un jour ouvré",
       html: wrapper(`
         <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">Nous avons bien reçu votre demande.</h1>
-        <p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#3F3F46;">Bonjour ${firstName},</p>
+        <p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#3F3F46;">${greeting(firstName, "fr")}</p>
         <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#3F3F46;">
           Merci. Une personne — pas un robot — lit votre demande et vous répond sous <strong>un jour ouvré</strong>, avec ce que nous corrigerions sur votre présence en ligne et pourquoi.
         </p>
@@ -422,7 +444,7 @@ export const auditConfirmationEmail = (firstName: string, lang: "en" | "fr" = "e
     subject: "Received — a personal reply within one working day",
     html: wrapper(`
       <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">We received your request.</h1>
-      <p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#3F3F46;">Hi ${firstName},</p>
+      <p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#3F3F46;">${greeting(firstName, "en")}</p>
       <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#3F3F46;">
         Thank you. A person — not a bot — reads your request and replies within <strong>one working day</strong>, with what we would fix about your online presence and why.
       </p>
@@ -443,7 +465,7 @@ export const auditInProgressEmail = (firstName: string) => ({
   subject: "Working on your audit — quick question",
   html: wrapper(`
     <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">Quick update</h1>
-    <p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#3F3F46;">Hi ${firstName},</p>
+    <p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#3F3F46;">${greeting(firstName, "en")}</p>
     <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#3F3F46;">
       I'm writing your reply. One question helps me make it sharper:
     </p>
@@ -508,7 +530,7 @@ export const installationPaidEmail = (
       subject: `Paiement reçu — votre ${planName} démarre`,
       html: wrapper(`
         <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">Bienvenue chez Servolia 🎉</h1>
-        <p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#3F3F46;">Bonjour ${firstName},</p>
+        <p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#3F3F46;">${greeting(firstName, "fr")}</p>
         <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#3F3F46;">
           Votre paiement de ${amount.toLocaleString()} € (<strong>${planName}</strong>) vient d'être validé. La création démarre maintenant — et rien ne sera dû le jour de la livraison.
         </p>
@@ -534,7 +556,7 @@ export const installationPaidEmail = (
     subject: `Payment received — your ${planName} is under way`,
     html: wrapper(`
       <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">Welcome to Servolia 🎉</h1>
-      <p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#3F3F46;">Hi ${firstName},</p>
+      <p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#3F3F46;">${greeting(firstName, "en")}</p>
       <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#3F3F46;">
         Your €${amount.toLocaleString()} payment for the <strong>${planName}</strong> just cleared. The build officially starts now — and nothing will be owed on delivery day.
       </p>
@@ -786,7 +808,7 @@ export const newPortalMessageEmail = (firstName: string, preview: string, lang: 
       subject: "Nouvelle réponse de Servolia",
       html: wrapper(`
         <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">Vous avez un nouveau message</h1>
-        <p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#3F3F46;">Bonjour ${firstName},</p>
+        <p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#3F3F46;">${greeting(firstName, "fr")}</p>
         <p style="margin:0 0 16px;padding:16px;background:#FAFAF7;border-left:3px solid #36671E;font-size:15px;line-height:1.6;color:#18181B;">
           ${preview}
         </p>
@@ -798,7 +820,7 @@ export const newPortalMessageEmail = (firstName: string, preview: string, lang: 
     subject: "New reply from Servolia",
     html: wrapper(`
       <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">You have a new message</h1>
-      <p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#3F3F46;">Hi ${firstName},</p>
+      <p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#3F3F46;">${greeting(firstName, "en")}</p>
       <p style="margin:0 0 16px;padding:16px;background:#FAFAF7;border-left:3px solid #36671E;font-size:15px;line-height:1.6;color:#18181B;">
         ${preview}
       </p>
@@ -914,7 +936,7 @@ export const liveEmail = (firstName: string, url: string, lang: "en" | "fr" = "e
       subject: "🚀 Votre système est en ligne",
       html: wrapper(`
         <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">Vous êtes en ligne.</h1>
-        <p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#3F3F46;">Bonjour ${firstName},</p>
+        <p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#3F3F46;">${greeting(firstName, "fr")}</p>
         <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#3F3F46;">
           Votre système IA est en ligne sur <a href="${url}" style="color:#36671E;">${url}</a> et reçoit déjà du trafic.
         </p>
@@ -935,7 +957,7 @@ export const liveEmail = (firstName: string, url: string, lang: "en" | "fr" = "e
     subject: "🚀 Your system is live",
     html: wrapper(`
       <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">You're live.</h1>
-      <p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#3F3F46;">Hi ${firstName},</p>
+      <p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#3F3F46;">${greeting(firstName, "en")}</p>
       <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#3F3F46;">
         Your AI system is live at <a href="${url}" style="color:#36671E;">${url}</a> and already accepting traffic.
       </p>

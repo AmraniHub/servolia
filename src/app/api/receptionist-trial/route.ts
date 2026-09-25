@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
     const tpl = receptionistConfirmEmail({ business: row.config.businessName, domain: r.domain, link, lang });
     const sent = await sendEmail(email, tpl.subject, tpl.html).catch(() => false);
     if (!sent) return NextResponse.json({ ok: false, reason: "send-failed" }, { status: 502 });
-    sendTelegramMessage(
+    await sendTelegramMessage(
       `Trial link requested - ${row.config.businessName}\n${r.domain} · ${email}\nThey have the confirm email; nothing starts until they click.`,
       undefined, { plain: true, silent: true },
     ).catch(() => {});
@@ -110,8 +110,8 @@ export async function POST(req: NextRequest) {
       const tpl = receptionistStartedEmail({
         business: out.business, domain: out.domain, snippet: receptionistSnippet(out.slug), untilIso: out.until, link, lang: out.lang,
       });
-      sendEmail(claim.email, tpl.subject, tpl.html).catch(() => {});
-      sendTelegramMessage(
+      await sendEmail(claim.email, tpl.subject, tpl.html).catch(() => {});
+      await sendTelegramMessage(
         `Receptionist trial STARTED - ${out.business}\n${out.domain} · ${claim.email}\n` +
         `Until ${out.until.slice(0, 10)} (moves to install + 7 days when we first see the line).\n` +
         `Today's list will show it until the line is on their site.`,
@@ -134,7 +134,7 @@ export async function POST(req: NextRequest) {
     }
     const out = await checkReceptionistInstall(claim.slug);
     if (out.ok && out.restarted) {
-      sendTelegramMessage(
+      await sendTelegramMessage(
         `Receptionist INSTALLED - ${row.config.businessName}\n${row.config.receptionist!.domain}\nTheir 7 days now run to ${out.until?.slice(0, 10)}.`,
         undefined, { plain: true },
       ).catch(() => {});

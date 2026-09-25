@@ -33,11 +33,12 @@ import { billingPortalUrl } from "@/lib/clientPortal";
 import { sendTelegramMessage } from "@/lib/telegram";
 import { provisionAddon } from "@/lib/provisioning";
 import { TOPUP_PACKS, monthKey, writeTopup } from "@/lib/conversationCap";
-import { topupReceiptEmail, oneOffServicePaidEmail, receptionistPaidEmail } from "@/lib/email";
+import { topupReceiptEmail, oneOffServicePaidEmail, receptionistPaidEmail, firstNameFrom } from "@/lib/email";
 import { completeReceptionistPurchase, loadReceptionist } from "@/lib/receptionistTrial";
 import { startBuildFromIntake } from "@/lib/intakeBuild";
 import { stripeFor } from "@/lib/stripeMode";
 import { runAsTest, inTestContext, testTag, testPrefixed, excludeTest, isTestRow } from "@/lib/testContext";
+import { Sends, paidSubject, troubleSubject, money } from "@/lib/notify";
 
 export const runtime = "nodejs";
 // A subscriber whose intake beat this event has their draft generated after
@@ -167,8 +168,25 @@ type Db = NonNullable<ReturnType<typeof supabaseAdmin>>;
  * mode (live key for live events, test key for founder test events), so an
  * id read here is read in the mode it was created in. Runs inside
  * runAsTest(!event.livemode): see src/lib/testContext.ts.
+ *
+ * EVERY ALERT, EMAIL AND META EVENT IS AWAITED BEFORE THE RESPONSE GOES.
+ * They used to be fire-and-forget, and on Vercel a function can be frozen
+ * the moment its response is returned: a live founder test purchase on
+ * 2026-09-25 wrote the client and sent the email, and its Telegram alert
+ * never arrived. Each branch starts its sends on `sends` (src/lib/notify.ts,
+ * each capped at 5 s, never throwing) and they are all waited for here,
+ * side by side, whatever path the branch returns by.
  */
 async function handleEvent(event: Stripe.Event, stripe: Stripe, db: Db): Promise<NextResponse> {
+  const sends = new Sends();
+  try {
+    return await handleEventBody(event, stripe, db, sends);
+  } finally {
+    await sends.settled();
+  }
+}
+
+async function handleEventBody(event: Stripe.Event, stripe: Stripe, db: Db, sends: Sends): Promise<NextResponse> {
   const test = inTestContext();
   try {
     if (event.type === "checkout.session.completed") {
@@ -335,11 +353,11 @@ async function handleEvent(event: Stripe.Event, stripe: Stripe, db: Db): Promise
                they paid for is still off, and a console line in a serverless
                log is not something anyone reads. */
             console.error("[stripe] chatbot restore failed:", e?.message);
-            sendTelegramMessage(
-              `*PAID but NOT restored — ${session.metadata?.business || session.metadata?.ref || "a client"}*\n` +
+            sends.alert(
+              `PAID but NOT restored — ${session.metadata?.business || session.metadata?.ref || "a client"}\n` +
               `${e?.message ?? "unknown error"}\n` +
               `They have paid and the service is still off. Restore it by hand.`,
-            ).catch(() => {});
+            );
             return false;
           });
         }
@@ -363,11 +381,11 @@ async function handleEvent(event: Stripe.Event, stripe: Stripe, db: Db): Promise
             activated = outcome.changed;
           } else if (outcome.reason !== "no-repo") {
             console.error("[stripe] activation failed:", outcome.reason, outcome.detail);
-            sendTelegramMessage(
-              `*PAID but NOT switched on — ${session.metadata?.business || session.metadata?.ref || "a client"}*\n` +
+            sends.alert(
+              `PAID but NOT switched on — ${session.metadata?.business || session.metadata?.ref || "a client"}\n` +
               `${outcome.reason}${outcome.detail ? ` (${outcome.detail})` : ""}\n` +
               `They have paid and their site is still behind the notice. Lift it by hand.`,
-            ).catch(() => {});
+            );
           }
         }
 
@@ -400,14 +418,12 @@ async function handleEvent(event: Stripe.Event, stripe: Stripe, db: Db): Promise
               : "already on every page";
           } else {
             console.error("[stripe] assistant install failed:", outcome.reason, outcome.detail);
-            sendTelegramMessage(
-              `*PAID but assistant NOT installed — ${session.metadata?.business || session.metadata?.ref || "a client"}*\n` +
+            sends.alert(
+              `PAID but assistant NOT installed — ${session.metadata?.business || session.metadata?.ref || "a client"}\n` +
               `${outcome.reason}${outcome.detail ? ` (${outcome.detail})` : ""}\n` +
               `They have paid and the script is not on their site. Add it by hand:\n` +
               installSnippet(assistantSlug, brief?.widgetPosition ?? "right"),
-              undefined,
-              { plain: true },
-            ).catch(() => {});
+            );
           }
         }
 
@@ -456,7 +472,7 @@ async function handleEvent(event: Stripe.Event, stripe: Stripe, db: Db): Promise
           }
           if (!outcome.ok && !test) {
             console.error("[stripe] domain purchase failed:", domainWanted, outcome.reason, outcome.detail);
-            sendTelegramMessage(
+            sends.alert(
               [
                 `DOMAIN NOT BOUGHT - ${domainWanted}`,
                 `Client paid for it: ${session.metadata?.business || customerEmail || "unknown"}`,
@@ -466,9 +482,7 @@ async function handleEvent(event: Stripe.Event, stripe: Stripe, db: Db): Promise
                   : `Press Buy on the client's page, or buy it by hand.`,
                 hostRow?.id ? `https://servolia.com/admin/hosting/${hostRow.id}` : `https://servolia.com/admin/hosting`,
               ].join("\n"),
-              undefined,
-              { plain: true },
-            ).catch(() => {});
+            );
           }
         }
 
@@ -562,39 +576,40 @@ async function handleEvent(event: Stripe.Event, stripe: Stripe, db: Db): Promise
                 }
               : null,
           });
-          sendEmail(customerEmail, tpl.subject, tpl.html).catch(() => {});
+          sends.add("hosting receipt", sendEmail(customerEmail, tpl.subject, tpl.html));
         }
 
-        /* And tell the operator. Every other branch here notifies Telegram;
-         * this one did not, so a hosting client could pay and nobody would
-         * know until the Stripe balance was next opened. */
-        const hostTgToken = process.env.TELEGRAM_BOT_TOKEN;
-        const hostTgChatId = process.env.TELEGRAM_CHAT_ID;
-        if (hostTgToken && hostTgChatId) {
-          /* The reference is what the client will quote, so it is what the
-             operator needs in hand. A self-serve buyer is not hosted yet —
-             say so here, at the moment the money lands, rather than leaving
-             it to be discovered on the list page. */
+        /* And tell the owner (Telegram + email). A hosting client once paid
+         * with nobody knowing until the Stripe balance was next opened.
+         *
+         * The reference is what the client will quote, so it is what the
+         * operator needs in hand. A self-serve buyer is not hosted yet — say
+         * so here, at the moment the money lands, rather than leaving it to
+         * be discovered on the list page. Sent once per checkout session:
+         * a replay stopped at the fulfilment marker above. */
+        {
           const selfServe = !hostRef && isTier;
-          const adminUrl = hostRow?.id
-            ? `https://servolia.com/admin/hosting/${hostRow.id}`
-            : "https://servolia.com/admin/hosting";
-          const msg = `🌐 *${product?.name ?? "Hosting"} paid — $${amount} ${period}*\n` +
-                      `${session.metadata?.business || session.metadata?.ref || "unnamed site"}\n` +
-                      `${customerEmail ?? "no email"}\n` +
-                      (subId ? `Ref ${referenceFor(subId)}\n` : "") +
-                      (restored ? `♻️ ${session.metadata?.gate_widget} switched back on\n` : "") +
-                      (activated ? `🟢 Site switched on — the notice is lifted\n` : "") +
-                      (isAssistant && assistantInstalled ? `🤖 Assistant installed — ${assistantDetail}\n` : "") +
-                      (isAssistant && !assistantInstalled && hostRef?.repo && !hostRef.gateWidget ? `⚠️ Assistant NOT installed — see the alert\n` : "") +
-                      (isAssistant && !hostRef ? `ℹ️ Site not hosted by us — they add one line; the brief page was emailed\n` : "") +
-                      (domainWanted ? `🌐 Domain ${domainWanted}: ${domainBought ? "bought on Vercel" : "NOT bought — see the alert"}\n` : "") +
-                      (selfServe ? `⚠️ NEEDS SETUP — not hosted yet. Their handover arrives as a separate alert.\n` : "") +
-                      `\n[Open](${adminUrl})`;
-          fetch(`https://api.telegram.org/bot${hostTgToken}/sendMessage`, {
-            method: "POST", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ chat_id: hostTgChatId, text: testPrefixed(msg), parse_mode: "Markdown" }),
-          }).catch(() => {});
+          const who = session.metadata?.business || session.metadata?.ref || customerEmail;
+          sends.owner({
+            subject: paidSubject(`${product?.name ?? "Hosting"} (${period})`, amount, session.currency ?? "usd", who),
+            lines: [
+              `${product?.name ?? "Hosting"} paid — ${money(amount, session.currency ?? "usd")} ${period}`,
+              `${session.metadata?.business || session.metadata?.ref || "unnamed site"}`,
+              `${customerEmail ?? "no email"}`,
+              subId && `Ref ${referenceFor(subId)}`,
+              restored && `♻️ ${session.metadata?.gate_widget} switched back on`,
+              activated && `🟢 Site switched on — the notice is lifted`,
+              isAssistant && assistantInstalled && `🤖 Assistant installed — ${assistantDetail}`,
+              isAssistant && !assistantInstalled && hostRef?.repo && !hostRef.gateWidget && `⚠️ Assistant NOT installed — see the alert`,
+              isAssistant && !hostRef && `ℹ️ Site not hosted by us — they add one line; the brief page was emailed`,
+              domainWanted && `🌐 Domain ${domainWanted}: ${domainBought ? "bought on Vercel" : "NOT bought — see the alert"}`,
+              `Next: ${[
+                selfServe && "⚠️ NEEDS SETUP — not hosted yet; their handover arrives as a separate alert",
+                domainWanted && !domainBought && !test && "buy the domain (see the alert)",
+              ].filter(Boolean).join("; ") || "nothing flagged here (any failure above came as its own alert)"}`,
+            ],
+            link: hostRow?.id ? `https://servolia.com/admin/hosting/${hostRow.id}` : "https://servolia.com/admin/hosting",
+          });
         }
 
         /* LAST: record that this session's work is done. Written after the
@@ -664,11 +679,20 @@ async function handleEvent(event: Stripe.Event, stripe: Stripe, db: Db): Promise
               .update({ notes: writeExtraDomain(notes, rec) })
               .eq("id", (row as { id: string }).id);
 
-            await sendTelegramMessage(
-              outcome.ok
-                ? `🌐 *${ref || domain}* bought *${domain}* for $${retail}. Registered. Point it at their project when you can.`
-                : `⚠️ *${ref || domain}* PAID $${retail} for *${domain}* and the registrar refused (${outcome.reason}). Register it by hand or refund them.`,
-            );
+            // Once per domain: a replay finds it recorded (hasExtraDomain) and stops above.
+            const who = ref || (row as { business?: string | null }).business || session.customer_details?.email || domain;
+            sends.owner({
+              subject: paidSubject(`extra domain ${domain}`, retail, "usd", who),
+              lines: [
+                outcome.ok
+                  ? `🌐 ${who} bought ${domain} for ${money(retail, "usd")}. Registered.`
+                  : `⚠️ ${who} PAID ${money(retail, "usd")} for ${domain} and the registrar refused (${outcome.reason}).`,
+                outcome.ok
+                  ? `Next: point it at their project when you can.`
+                  : `Next: register it by hand or refund them.`,
+              ],
+              link: `https://servolia.com/admin/hosting/${(row as { id: string }).id}`,
+            });
           }
         }
         return NextResponse.json({ received: true });
@@ -695,14 +719,18 @@ async function handleEvent(event: Stripe.Event, stripe: Stripe, db: Db): Promise
               : "we declare your languages (hreflang), write a sitemap per language and the structured data, and email you when it is in place — within five working days.",
             lang,
           });
-          sendEmail(customerEmail, tpl.subject, tpl.html).catch(() => {});
+          sends.add("one-off receipt", sendEmail(customerEmail, tpl.subject, tpl.html));
         }
-        sendTelegramMessage(
-          `ONE-OFF PAID - multilingual search setup, $${amount}\n${siteLabel || "unnamed site"}\n${customerEmail ?? "no email"}\n` +
-          `Promised within five working days: hreflang, a sitemap per language, structured data. Confirm to the client by email when done.\n` +
-          `https://servolia.com/admin/hosting`,
-          undefined, { plain: true },
-        ).catch(() => {});
+        sends.owner({
+          subject: paidSubject("multilingual search setup (one-off)", amount, session.currency ?? "usd", siteLabel || customerEmail),
+          lines: [
+            `ONE-OFF PAID - multilingual search setup, ${money(amount, session.currency ?? "usd")}`,
+            siteLabel || "unnamed site",
+            customerEmail ?? "no email",
+            `Next: within five working days — hreflang, a sitemap per language, structured data. Confirm to the client by email when done.`,
+          ],
+          link: "https://servolia.com/admin/hosting",
+        });
         return NextResponse.json({ received: true, line: "one-off" });
       }
 
@@ -719,18 +747,19 @@ async function handleEvent(event: Stripe.Event, stripe: Stripe, db: Db): Promise
             label,
             lang: session.metadata?.lang === "fr" ? "fr" : "en",
           });
-          sendEmail(customerEmail, tpl.subject, tpl.html).catch(() => {});
+          sends.add("arrears receipt", sendEmail(customerEmail, tpl.subject, tpl.html));
         }
 
-        const tgToken = process.env.TELEGRAM_BOT_TOKEN;
-        const tgChatId = process.env.TELEGRAM_CHAT_ID;
-        if (tgToken && tgChatId) {
-          const msg = `💵 *Arrears settled — $${amount}*\n${siteLabel || "unnamed site"}\n${customerEmail ?? "no email"}`;
-          fetch(`https://api.telegram.org/bot${tgToken}/sendMessage`, {
-            method: "POST", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ chat_id: tgChatId, text: testPrefixed(msg), parse_mode: "Markdown" }),
-          }).catch(() => {});
-        }
+        sends.owner({
+          subject: paidSubject(`arrears settled (${label})`, amount, session.currency ?? "usd", siteLabel || customerEmail),
+          lines: [
+            `💵 Arrears settled — ${money(amount, session.currency ?? "usd")}`,
+            siteLabel || "unnamed site",
+            customerEmail ?? "no email",
+            `Next: check their account is back to good standing.`,
+          ],
+          link: "https://servolia.com/admin/hosting",
+        });
 
         return NextResponse.json({ received: true, line: "arrears" });
       }
@@ -784,22 +813,28 @@ async function handleEvent(event: Stripe.Event, stripe: Stripe, db: Db): Promise
               conversations: plan.conversations,
               lang,
             });
-            sendEmail(customerEmail, tpl.subject, tpl.html).catch(() => {});
+            sends.add("receptionist receipt", sendEmail(customerEmail, tpl.subject, tpl.html));
           }
-          await sendTelegramMessage(
-            `NEW CLIENT from the receptionist trial - ${out.business}\n` +
-            `${out.planName} · EUR ${Math.round(out.monthlyEur * 100) / 100}/mo equivalent · ${session.metadata?.billing ?? "monthly"} · installation waived\n` +
-            (out.linked ? `Linked to their receptionist; the meter and portal are live.\n` : `NOT LINKED to a receptionist row (slug ${session.metadata?.slug ?? "?"}) - their widget will go quiet at the end of the trial. Fix by hand.\n`) +
-            (out.clientId ? `https://servolia.com/admin/clients/${out.clientId}` : ""),
-            undefined, { plain: true },
-          ).catch(() => {});
-          sendMetaCapiEvent({
+          // Once: a replay comes back out.already and skips this block.
+          sends.owner({
+            subject: paidSubject(`${out.planName} — kept after the receptionist trial`, (session.amount_total ?? 0) / 100, session.currency ?? "eur", out.business || customerEmail),
+            lines: [
+              `NEW CLIENT from the receptionist trial - ${out.business}`,
+              `${out.planName} · EUR ${Math.round(out.monthlyEur * 100) / 100}/mo equivalent · ${session.metadata?.billing ?? "monthly"} · installation waived`,
+              customerEmail || "no email",
+              out.linked
+                ? `Next: nothing — linked to their receptionist; the meter and portal are live.`
+                : `Next: NOT LINKED to a receptionist row (slug ${session.metadata?.slug ?? "?"}) - their widget will go quiet at the end of the trial. Fix by hand.`,
+            ],
+            link: out.clientId ? `https://servolia.com/admin/clients/${out.clientId}` : "https://servolia.com/admin/clients",
+          });
+          sends.add("meta purchase", sendMetaCapiEvent({
             eventName: "Purchase",
             email: customerEmail,
             value: (session.amount_total ?? 0) / 100,
             currency: "EUR",
             eventSourceUrl: "https://servolia.com/fr/essai",
-          });
+          }));
         }
         return NextResponse.json({ received: true, line: "receptionist", already: out.already });
       }
@@ -957,12 +992,14 @@ async function handleEvent(event: Stripe.Event, stripe: Stripe, db: Db): Promise
         // Send them to the intake form — the build cannot start without it.
         // Skipped when their answers are already in: the draft email follows.
         if (customerEmail && (buildOpened || (buildReused && reusedStatus === "intake")) && !intakeAlready) {
-          const firstName = customerEmail.split("@")[0];
+          // The name on the payment, or a neutral greeting — never the
+          // address's local part ("Hi hello," for hello@...).
+          const firstName = firstNameFrom(session.customer_details?.name);
           const emailLang = session.metadata?.lang === "fr" ? "fr" : "en";
           const tpl = installationPaidEmail(firstName, planLabel, amount, emailLang, {
             sessionId: session.id, plan: planKey, billing,
           });
-          sendEmail(customerEmail, tpl.subject, tpl.html).catch(() => {});
+          sends.add("welcome email", sendEmail(customerEmail, tpl.subject, tpl.html));
         }
 
         // A subscriber who started as a lead must leave the pipeline's
@@ -988,28 +1025,37 @@ async function handleEvent(event: Stripe.Event, stripe: Stripe, db: Db): Promise
           ).catch(() => {});
         }
 
-        const tgToken = process.env.TELEGRAM_BOT_TOKEN;
-        const tgChatId = process.env.TELEGRAM_CHAT_ID;
-        if (tgToken && tgChatId) {
+        // Once per subscription: a replay stopped at the subscription_id check above.
+        {
           const billingLabel = session.metadata?.billing === "annual" ? "annual" : "monthly";
-          const msg = `🔁 *New ${planLabel} subscriber — €${amount} ${billingLabel}*\n${customerEmail ?? "no email"}\n` +
-                      `Installation collected: €${installationPaid.toLocaleString()}${billingLabel === "annual" ? " (waived — annual)" : ""}\n` +
-                      (intakeAlready ? "🧱 Build opened — their intake was already in, draft generating\n" : buildOpened ? "🧱 Build opened — waiting on their intake form\n" : "ℹ️ Existing build found — no new build opened\n") +
-                      (client ? `\n[Open in CRM](https://servolia.com/admin/clients/${client.id})` : "");
-          fetch(`https://api.telegram.org/bot${tgToken}/sendMessage`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ chat_id: tgChatId, text: testPrefixed(msg), parse_mode: "Markdown" }),
-          }).catch(() => {});
+          const cur = session.currency ?? "eur";
+          sends.owner({
+            subject: paidSubject(`${planLabel} plan (${billingLabel})`, amount, cur, customerEmail),
+            lines: [
+              `🔁 New ${planLabel} subscriber — ${money(amount, cur)} ${billingLabel}`,
+              session.customer_details?.name || null,
+              customerEmail ?? "no email",
+              `Installation collected: ${money(installationPaid, cur)}${billingLabel === "annual" ? " (waived — annual)" : ""}`,
+              intakeAlready
+                ? "🧱 Build opened — their intake was already in, draft generating"
+                : buildOpened ? "🧱 Build opened — waiting on their intake form" : "ℹ️ Existing build found — no new build opened",
+              intakeAlready
+                ? "Next: review the draft when it lands."
+                : customerEmail && (buildOpened || (buildReused && reusedStatus === "intake"))
+                  ? "Next: wait for their intake form (the welcome email links it)."
+                  : "Next: check their existing build — no intake email was sent for this purchase.",
+            ],
+            link: `https://servolia.com/admin/clients/${client.id}`,
+          });
         }
 
-        sendMetaCapiEvent({
+        sends.add("meta purchase", sendMetaCapiEvent({
           eventName: "Purchase",
           email: customerEmail,
           value: amount,
           currency: "EUR",
           eventSourceUrl: "https://servolia.com/pricing",
-        });
+        }));
 
         return NextResponse.json({ received: true });
       }
@@ -1049,15 +1095,21 @@ async function handleEvent(event: Stripe.Event, stripe: Stripe, db: Db): Promise
         }
         if (customerEmail && credited) {
           const tpl = topupReceiptEmail({ businessName: business, conversations, priceEur: pack?.priceEur ?? (session.amount_total ?? 0) / 100, month, lang });
-          sendEmail(customerEmail, tpl.subject, tpl.html).catch(() => {});
+          sends.add("top-up receipt", sendEmail(customerEmail, tpl.subject, tpl.html));
         }
-        sendTelegramMessage(
-          (credited ? `Top-up credited - ${business}\n` : `TOP-UP PAID BUT NOT CREDITED - ${customerEmail || "no email"}\n`) +
-          `+${conversations} conversations for ${month}, EUR ${(session.amount_total ?? 0) / 100}\n` +
-          (credited ? `` : `No active clients row carries that email. Credit it by hand on the client's notes: servolia-topup: +${conversations} | month: ${month} | session: ${session.id}\n`) +
-          `https://servolia.com/admin/clients`,
-          undefined, { plain: true },
-        ).catch(() => {});
+        // Once per session: a replay found its marker on the notes and returned above.
+        sends.owner({
+          subject: paidSubject(`top-up +${conversations} conversations`, (session.amount_total ?? 0) / 100, session.currency ?? "eur", business || customerEmail),
+          lines: [
+            credited ? `Top-up credited - ${business}` : `TOP-UP PAID BUT NOT CREDITED - ${customerEmail || "no email"}`,
+            `+${conversations} conversations for ${month}, EUR ${(session.amount_total ?? 0) / 100}`,
+            customerEmail || "no email",
+            credited
+              ? `Next: nothing — credited and receipted.`
+              : `Next: no active clients row carries that email. Credit it by hand on the client's notes: servolia-topup: +${conversations} | month: ${month} | session: ${session.id}`,
+          ],
+          link: "https://servolia.com/admin/clients",
+        });
         return NextResponse.json({ received: true, line: "topup", credited });
       }
 
@@ -1075,16 +1127,15 @@ async function handleEvent(event: Stripe.Event, stripe: Stripe, db: Db): Promise
               .eq("id", requestId);
           } catch { /* table may not exist yet — never drop the webhook */ }
         }
-        const tgToken = process.env.TELEGRAM_BOT_TOKEN;
-        const tgChatId = process.env.TELEGRAM_CHAT_ID;
-        if (tgToken && tgChatId) {
-          const msg = `🧾 *Custom work paid — €${amount}*\n${session.customer_details?.email ?? "no email"}` +
-            (session.metadata?.buildId ? `\n\n[Open build](https://servolia.com/admin/builds/${session.metadata.buildId})` : "");
-          fetch(`https://api.telegram.org/bot${tgToken}/sendMessage`, {
-            method: "POST", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ chat_id: tgChatId, text: testPrefixed(msg), parse_mode: "Markdown" }),
-          }).catch(() => {});
-        }
+        sends.owner({
+          subject: paidSubject("custom work", amount, session.currency ?? "eur", session.customer_details?.email),
+          lines: [
+            `🧾 Custom work paid — ${money(amount, session.currency ?? "eur")}`,
+            session.customer_details?.email ?? "no email",
+            `Next: do the requested work${requestId ? ` (request ${requestId})` : ""}.`,
+          ],
+          link: session.metadata?.buildId ? `https://servolia.com/admin/builds/${session.metadata.buildId}` : "https://servolia.com/admin/builds",
+        });
         return NextResponse.json({ received: true });
       }
 
@@ -1185,34 +1236,36 @@ async function handleEvent(event: Stripe.Event, stripe: Stripe, db: Db): Promise
       // Send the payment-received email to the client, in the language they
       // bought in (set at checkout — see /api/checkout's metadata.lang).
       if (customerEmail && build) {
-        const firstName = customerEmail.split("@")[0];
+        // The name on the payment, or a neutral greeting — never the local part.
+        const firstName = firstNameFrom(session.customer_details?.name);
         const emailLang = session.metadata?.lang === "fr" ? "fr" : "en";
         const tpl = installationPaidEmail(firstName, build.plan_name ?? "system", amountPaid, emailLang, { sessionId });
-        sendEmail(customerEmail, tpl.subject, tpl.html).catch(() => {});
+        sends.add("payment email", sendEmail(customerEmail, tpl.subject, tpl.html));
       }
 
-      // Meta Conversions API — real, confirmed revenue (fire and forget)
-      sendMetaCapiEvent({
+      // Meta Conversions API — real, confirmed revenue (never for a test: metaCapi refuses in test context)
+      sends.add("meta purchase", sendMetaCapiEvent({
         eventName: "Purchase",
         email: customerEmail,
         value: amountPaid,
         currency: "EUR",
         eventSourceUrl: "https://servolia.com/pricing",
-      });
+      }));
 
-      // Notify Telegram
-      const tgToken = process.env.TELEGRAM_BOT_TOKEN;
-      const tgChatId = process.env.TELEGRAM_CHAT_ID;
-      if (tgToken && tgChatId) {
-        const msg = `💰 *Payment received — €${amountPaid}*\n` +
-                    `${customerEmail ?? "no email"}\n` +
-                    `Plan: ${build?.plan_name ?? session.metadata?.plan ?? "?"}\n\n` +
-                    (build ? `[Open build in CRM](https://servolia.com/admin/builds/${build.id})` : "");
-        fetch(`https://api.telegram.org/bot${tgToken}/sendMessage`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ chat_id: tgChatId, text: testPrefixed(msg), parse_mode: "Markdown" }),
-        }).catch(() => {});
+      // Tell the owner. Once: a replay found the build by its session id and returned above.
+      {
+        const planName = build?.plan_name ?? session.metadata?.plan ?? "?";
+        sends.owner({
+          subject: paidSubject(`${planName} (one-off)`, amountPaid, session.currency ?? "eur", customerEmail),
+          lines: [
+            `💰 Payment received — ${money(amountPaid, session.currency ?? "eur")}`,
+            session.customer_details?.name || null,
+            customerEmail ?? "no email",
+            `Plan: ${planName}`,
+            `Next: wait for their intake form (the payment email links it).`,
+          ],
+          link: build ? `https://servolia.com/admin/builds/${build.id}` : "https://servolia.com/admin/builds",
+        });
       }
     }
 
@@ -1272,18 +1325,27 @@ async function handleEvent(event: Stripe.Event, stripe: Stripe, db: Db): Promise
             attempt: "first",
             lang,
           });
-          emailed = (await sendEmail(existing.email as string, tpl.subject, tpl.html).then(() => "yes").catch(() => "FAILED"));
+          // sendEmail answers false (it never throws) when Resend refuses: that is a failure too.
+          emailed = (await sends.add("payment failed email", sendEmail(existing.email as string, tpl.subject, tpl.html))) === true ? "yes" : "FAILED";
         }
 
-        const tgToken = process.env.TELEGRAM_BOT_TOKEN;
-        const tgChatId = process.env.TELEGRAM_CHAT_ID;
-        if (tgToken && tgChatId) {
+        {
           const told = emailed === "yes" ? "Client emailed (first failure)." : emailed === "FAILED" ? "CLIENT EMAIL FAILED - tell them by hand." : "Client already told on the first failure.";
-          const msg = `🔴 *Payment failed*\n${existing.business ?? existing.email ?? "Unknown client"}\nGrace ends: ${new Date(suspendAt).toLocaleDateString()}\n${told}\n\n[Open in CRM](https://servolia.com/admin/clients)`;
-          fetch(`https://api.telegram.org/bot${tgToken}/sendMessage`, {
-            method: "POST", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ chat_id: tgChatId, text: testPrefixed(msg), parse_mode: "Markdown" }),
-          }).catch(() => {});
+          const planName = resolvePlan(existing.plan as string | null)?.name ?? (existing.plan as string | null) ?? "plan";
+          const who = (existing.business as string | null) ?? (existing.email as string | null) ?? "Unknown client";
+          sends.owner({
+            subject: troubleSubject("Payment failed", `${planName}${invoice.amount_due ? ` — ${money(invoice.amount_due / 100, invoice.currency ?? "eur")}` : ""}`, who),
+            lines: [
+              `🔴 Payment failed — ${who}`,
+              existing.email && existing.email !== who ? String(existing.email) : null,
+              `Reason: ${String(reason).slice(0, 200)}`,
+              invoice.attempt_count ? `Attempt ${invoice.attempt_count} — Stripe retries on its own schedule.` : null,
+              `Grace ends: ${new Date(suspendAt).toLocaleDateString()}`,
+              told,
+              emailed === "FAILED" ? "Next: tell the client by hand." : "Next: watch for the retry; nothing suspends an EUR plan automatically.",
+            ],
+            link: `https://servolia.com/admin/clients/${existing.id}`,
+          });
         }
       }
     }
@@ -1350,22 +1412,25 @@ async function handleEvent(event: Stripe.Event, stripe: Stripe, db: Db): Promise
               attempt: "first",
               lang: failLang,
             });
-            sendEmail(host.email, tpl.subject, tpl.html).catch(() => {});
+            sends.add("payment failed email", sendEmail(host.email, tpl.subject, tpl.html));
           }
 
           // The site is NOT gated here. Stripe retries a failed card over
           // several days, and cutting a paid-up-until-yesterday client off the
           // moment one retry fails reads as sabotage. The grace deadline is
           // recorded; gating is a separate, later decision.
-          const tgToken = process.env.TELEGRAM_BOT_TOKEN;
-          const tgChatId = process.env.TELEGRAM_CHAT_ID;
-          if (tgToken && tgChatId) {
-            const msg = `🔴 *Hosting payment failed*\n${host.business}\nGrace ends: ${new Date(suspendAt).toLocaleDateString()}\n\n[Open](https://servolia.com/admin/hosting)`;
-            fetch(`https://api.telegram.org/bot${tgToken}/sendMessage`, {
-              method: "POST", headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ chat_id: tgChatId, text: testPrefixed(msg), parse_mode: "Markdown" }),
-            }).catch(() => {});
-          }
+          sends.owner({
+            subject: troubleSubject("Payment failed", `hosting${invoice.amount_due ? ` — ${money(invoice.amount_due / 100, invoice.currency ?? "usd")}` : ""}`, host.business || host.email),
+            lines: [
+              `🔴 Hosting payment failed — ${host.business}`,
+              host.email || null,
+              invoice.attempt_count ? `Attempt ${invoice.attempt_count} — Stripe retries on its own schedule.` : null,
+              `Grace ends: ${new Date(suspendAt).toLocaleDateString()}`,
+              !host.past_due_since && host.email && host.subscription_id ? "Client email sent with this alert (first failure)." : "Client already told on the first failure (or has no address).",
+              "Next: watch for the retry; the site stays up through the grace period.",
+            ],
+            link: `https://servolia.com/admin/hosting/${host.id}`,
+          });
         }
       }
     }
@@ -1435,12 +1500,45 @@ async function handleEvent(event: Stripe.Event, stripe: Stripe, db: Db): Promise
              their site is still dark. */
           if (!outcome.ok) {
             console.error("[stripe] restore failed:", wasHost.business, outcome.reason, outcome.detail);
-            sendTelegramMessage(
-              `*PAID but NOT restored — ${wasHost.business}*\n` +
+            sends.alert(
+              `PAID but NOT restored — ${wasHost.business}\n` +
               `${outcome.reason}${outcome.detail ? ` (${outcome.detail})` : ""}\n` +
               `They have paid and their service is still off. Restore it by hand.`,
-            ).catch(() => {});
+            );
           }
+        }
+
+        /* THE OWNER IS TOLD OF EVERY RENEWAL (2026-09-25). Only on
+           `invoice.paid`: the endpoint also receives invoice.payment_succeeded
+           for the same invoice, and answering both would say it twice. Not
+           the subscription's FIRST invoice (billing_reason
+           subscription_create): its checkout.session.completed already told
+           the owner. Not a zero invoice (a trial's opening one). */
+        if (event.type === "invoice.paid" && (invoice.amount_paid ?? 0) > 0 && invoice.billing_reason !== "subscription_create") {
+          const { data: planClient } = wasHost
+            ? { data: null }
+            : await db.from("clients").select("id, business, email, plan").or(filter)
+                .order("created_at", { ascending: false }).limit(1).maybeSingle();
+          const pc = planClient as { id: string; business: string | null; email: string | null; plan: string | null } | null;
+          const who = wasHost?.business || pc?.business || invoice.customer_name || invoice.customer_email;
+          const what = wasHost
+            ? `${resolveHostingPlan(wasHost.plan as string | null)?.name ?? "hosting"} renewal`
+            : `${resolvePlan(pc?.plan)?.name ?? "plan"} renewal`;
+          const line = invoice.lines?.data?.[0]?.description;
+          sends.owner({
+            subject: paidSubject(what, invoice.amount_paid / 100, invoice.currency ?? "eur", who),
+            lines: [
+              `🔁 ${what} — ${money(invoice.amount_paid / 100, invoice.currency ?? "eur")}`,
+              line || null,
+              invoice.customer_email || pc?.email || null,
+              invoice.billing_reason ? `Stripe: ${invoice.billing_reason}` : null,
+              wasHost?.status === "suspended" ? "Was suspended — restored by this payment (see any alert above)." : null,
+              "Next: nothing — renewal collected.",
+            ],
+            link: wasHost?.id
+              ? `https://servolia.com/admin/hosting/${wasHost.id}`
+              : pc?.id ? `https://servolia.com/admin/clients/${pc.id}` : "https://servolia.com/admin/clients",
+          });
         }
       }
     }
@@ -1469,25 +1567,30 @@ async function handleEvent(event: Stripe.Event, stripe: Stripe, db: Db): Promise
       const churnedDomain = readDomainRecord(churnedHost?.notes);
       if (churnedDomain?.status === "bought" && !test) {
         const res = await setDomainAutoRenew(churnedDomain.domain, false);
-        sendTelegramMessage(
+        sends.alert(
           `Hosting cancelled - ${churnedHost?.business ?? "client"}\n` +
           `Domain ${churnedDomain.domain}: auto-renew ${res.ok ? "switched OFF" : `NOT switched off (${res.code ?? res.status}) - do it in Vercel > Domains`}. ` +
           `It stays registered until it expires; transfer it to them if they ask.`,
-          undefined,
-          { plain: true },
-        ).catch(() => {});
+        );
       }
 
-      const tgToken = process.env.TELEGRAM_BOT_TOKEN;
-      const tgChatId = process.env.TELEGRAM_CHAT_ID;
-      if (tgToken && tgChatId) {
-        const { data: client } = await db.from("clients").select("business, email").eq("subscription_id", sub.id).maybeSingle();
-        const msg = `⚠️ *Subscription cancelled*\n${client?.business ?? client?.email ?? "Unknown client"}`;
-        fetch(`https://api.telegram.org/bot${tgToken}/sendMessage`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ chat_id: tgChatId, text: testPrefixed(msg), parse_mode: "Markdown" }),
-        }).catch(() => {});
+      {
+        const { data: client } = await db.from("clients").select("id, business, email").eq("subscription_id", sub.id).maybeSingle();
+        const who = client?.business ?? client?.email ?? churnedHost?.business ?? "Unknown client";
+        sends.owner({
+          subject: troubleSubject("Subscription ended", churnedHost ? "hosting" : "plan", who),
+          lines: [
+            `⚠️ Subscription cancelled — ${who}`,
+            client?.email && client.email !== who ? client.email : null,
+            `Stripe subscription ${sub.id}`,
+            churnedHost
+              ? "Next: decide when the site stops being served — nothing is switched off automatically."
+              : "Next: nothing is billed again; reach out if it was not intended.",
+          ],
+          link: churnedHost
+            ? `https://servolia.com/admin/hosting/${churnedHost.id}`
+            : client?.id ? `https://servolia.com/admin/clients/${client.id}` : "https://servolia.com/admin/clients",
+        });
       }
     }
   } catch (err) {

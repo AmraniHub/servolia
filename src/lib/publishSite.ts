@@ -60,7 +60,8 @@ export async function publishSite(slug: string, opts: { by: "admin" | "client"; 
     }
     to = to || (cfg?.email ?? null);
     if (to) {
-      const firstName = (cfg?.businessName ?? row.business ?? to.split("@")[0]).split(" ")[0];
+      // Never the address's local part: an empty name greets neutrally.
+      const firstName = (cfg?.businessName ?? row.business ?? "").split(" ")[0];
       const lang = cfg?.language === "fr" ? "fr" : "en";
       const tpl = liveEmail(firstName, `https://servolia.com/sites/${slug}`, lang);
       goLiveEmailed = await sendEmail(to, tpl.subject, tpl.html).catch(() => false);

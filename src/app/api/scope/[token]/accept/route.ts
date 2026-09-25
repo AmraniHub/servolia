@@ -56,16 +56,19 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
   // at this stage — not a portal user yet), the founder's ping via Telegram
   // to match every other "something just happened" notification in the app.
   if (existing.email) {
-    sendEmail(
+    await sendEmail(
       existing.email,
       scopeAcceptedEmail(existing.business_name, typedName, acceptedAt, existing.scope_text).subject,
       scopeAcceptedEmail(existing.business_name, typedName, acceptedAt, existing.scope_text).html
     ).catch(() => {});
   }
-  sendTelegramMessage(
-    `✅ *Scope accepted*\n${existing.business_name}\nBy: ${typedName}\n${existing.email ? `📧 ${existing.email}\n` : ""}` +
-    (existing.lead_id ? `\n[Open in CRM](https://servolia.com/admin/leads/${existing.lead_id})` : "")
-  ).catch(() => {});
+  // Awaited (bounded, never throws) and plain: the typed name and address
+  // are the client's own text, and one underscore would break Markdown.
+  await sendTelegramMessage(
+    `✅ Scope accepted\n${existing.business_name}\nBy: ${typedName}\n${existing.email ? `📧 ${existing.email}\n` : ""}` +
+    (existing.lead_id ? `\nhttps://servolia.com/admin/leads/${existing.lead_id}` : ""),
+    undefined, { plain: true },
+  );
 
   return NextResponse.json({ ok: true, planKey: existing.plan_key, leadId: existing.lead_id, alreadyAccepted: false });
 }

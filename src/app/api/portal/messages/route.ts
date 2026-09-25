@@ -80,13 +80,16 @@ export async function POST(req: NextRequest) {
   const { data: pref } = await db.from("chat_notification_prefs").select("telegram_muted").eq("email", email).maybeSingle();
   if (!pref?.telegram_muted) {
     const preview = text || "📷 Sent a photo";
+    // Plain: the client's own words and address, which Markdown would break
+    // on. Awaited (bounded, never throws): an un-awaited send can die with the
+    // serverless function once the response is returned.
     const msg =
-      `💬 *New portal message*\n` +
-      `${build?.business ? `*${build.business}*` : email}\n` +
+      `💬 New portal message\n` +
+      `${build?.business ? build.business : email}\n` +
       `📧 ${email}\n\n` +
       `"${preview.slice(0, 300)}"` +
-      (build?.id ? `\n\n[Open build in CRM](https://servolia.com/admin/builds/${build.id})` : "");
-    sendTelegramMessage(msg);
+      (build?.id ? `\n\nhttps://servolia.com/admin/builds/${build.id}` : "");
+    await sendTelegramMessage(msg, undefined, { plain: true });
   }
 
   return NextResponse.json({ ok: true, message: inserted });

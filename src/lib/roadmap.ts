@@ -45,6 +45,7 @@ export const INTEGRATIONS: Integration[] = [
   { label: "Email from-address", envVars: ["EMAIL_FROM"], category: "Email & alerts", required: false },
   { label: "Telegram bot token", envVars: ["TELEGRAM_BOT_TOKEN"], category: "Email & alerts", required: false, note: "instant lead + add-on alerts" },
   { label: "Telegram chat id", envVars: ["TELEGRAM_CHAT_ID"], category: "Email & alerts", required: false },
+  { label: "Owner payment-alert address", envVars: ["OWNER_ALERT_EMAIL"], category: "Email & alerts", required: false, note: "where the '💶 Paid: …' / '⚠️ Payment failed: …' email goes on every money event (beside the Telegram alert). Unset = hello@servolia.com. See /admin/system > Owner money alerts" },
   // Growth & ads
   { label: "Meta pixel id", envVars: ["NEXT_PUBLIC_META_PIXEL_ID"], category: "Growth & ads", required: false },
   { label: "Meta Conversions API token", envVars: ["META_CAPI_ACCESS_TOKEN"], category: "Growth & ads", required: false, note: "server-side ad conversion tracking" },

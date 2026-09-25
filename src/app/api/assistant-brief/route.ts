@@ -155,7 +155,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "write-failed" }, { status: 500 });
   }
 
-  sendTelegramMessage(
+  await sendTelegramMessage(
     [
       `Assistant brief ${current ? "updated" : "saved"} - ${businessName}`,
       `Ref ${referenceFor(subscriptionId)} · slug ${slug}`,

@@ -3,6 +3,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { getClientSite } from "@/lib/clientSites";
 import { sendMetaCapiEvent } from "@/lib/metaCapi";
 import { notifyClientOfLead } from "@/lib/clientNotify";
+import { alert } from "@/lib/notify";
 
 export const runtime = "nodejs";
 
@@ -66,34 +67,33 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
     } catch { /* table/column may not exist yet — never block the visitor */ }
   }
 
-  // Instant alert to the clinic owner — email + one-tap WhatsApp/call reply,
-  // with after-hours framing. Fire-and-forget by contract.
-  notifyClientOfLead(config, {
-    name, phone, email,
-    service: service && service !== "__other" ? service : null,
-    when: when || null,
-    excerpt: content,
-    source: "form",
-  }).catch(() => {});
+  /* All three AWAITED side by side, each capped at 5 s and never throwing
+     (src/lib/notify.ts): on Vercel a request still in flight when the
+     response is returned can die with the frozen function — and the first
+     one is the clinic owner's lead alert. */
+  await Promise.all([
+    // Instant alert to the clinic owner — email + one-tap WhatsApp/call reply,
+    // with after-hours framing.
+    notifyClientOfLead(config, {
+      name, phone, email,
+      service: service && service !== "__other" ? service : null,
+      when: when || null,
+      excerpt: content,
+      source: "form",
+    }).catch(() => {}),
 
-  // Client's own pixel: a form booking is a Lead event in THEIR Ads Manager.
-  if (config.metaPixelId && config.metaCapiToken) {
-    sendMetaCapiEvent({
-      eventName: "Lead", email: email || undefined, phone: phone || undefined,
-      eventSourceUrl: body.pageUrl, pixelId: config.metaPixelId, accessToken: config.metaCapiToken, req,
-    });
-  }
+    // Client's own pixel: a form booking is a Lead event in THEIR Ads Manager.
+    config.metaPixelId && config.metaCapiToken
+      ? sendMetaCapiEvent({
+          eventName: "Lead", email: email || undefined, phone: phone || undefined,
+          eventSourceUrl: body.pageUrl, pixelId: config.metaPixelId, accessToken: config.metaCapiToken, req,
+        })
+      : null,
 
-  // Founder alert (best-effort) so a new client's first leads don't go unseen.
-  const tgToken = process.env.TELEGRAM_BOT_TOKEN;
-  const tgChatId = process.env.TELEGRAM_CHAT_ID;
-  if (tgToken && tgChatId) {
-    const msg = `📝 *Booking form — ${config.businessName}*\n*${name}*\n${service && service !== "__other" ? `🦷 ${service}\n` : ""}${when ? `🗓 ${when}\n` : ""}${email ? `📧 ${email}\n` : ""}${phone ? `📱 ${phone}\n` : ""}${message ? `\n"${message}"` : ""}`;
-    fetch(`https://api.telegram.org/bot${tgToken}/sendMessage`, {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: tgChatId, text: msg, parse_mode: "Markdown" }),
-    }).catch(() => {});
-  }
+    // Founder alert so a new client's first leads don't go unseen. Plain
+    // text: a visitor's name or address would break Markdown.
+    alert(`📝 Booking form — ${config.businessName}\n${name}\n${service && service !== "__other" ? `🦷 ${service}\n` : ""}${when ? `🗓 ${when}\n` : ""}${email ? `📧 ${email}\n` : ""}${phone ? `📱 ${phone}\n` : ""}${message ? `\n"${message}"` : ""}`),
+  ]);
 
   return NextResponse.json({ ok: true });
 }

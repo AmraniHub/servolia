@@ -89,21 +89,26 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    if (config && !config.isDemo) {
-      notifyClientOfLead(config, {
-        name: cleanName || null,
-        phone: isEmail ? null : cleanContact,
-        email: isEmail ? cleanContact : null,
-        excerpt: cleanName ? `${cleanName} — ${cleanContact}` : cleanContact,
-        source: "chat",
-      }).catch(() => {});
-    }
-
-    sendTelegramMessage(
-      `⚠️ *Chat fallback capture* (AI was down)\n` +
-      `${siteSlug ? `Client site: ${siteSlug}\n` : ""}` +
-      `👤 ${cleanName || "—"}\n📞 ${cleanContact}`,
-    ).catch(() => {});
+    // Awaited side by side (each bounded, never throwing): an un-awaited send
+    // can die with the serverless function once the response is returned.
+    // Plain text: a visitor's name or address would break Markdown.
+    await Promise.all([
+      config && !config.isDemo
+        ? notifyClientOfLead(config, {
+            name: cleanName || null,
+            phone: isEmail ? null : cleanContact,
+            email: isEmail ? cleanContact : null,
+            excerpt: cleanName ? `${cleanName} — ${cleanContact}` : cleanContact,
+            source: "chat",
+          }).catch(() => {})
+        : null,
+      sendTelegramMessage(
+        `⚠️ Chat fallback capture (AI was down)\n` +
+        `${siteSlug ? `Client site: ${siteSlug}\n` : ""}` +
+        `👤 ${cleanName || "—"}\n📞 ${cleanContact}`,
+        undefined, { plain: true },
+      ),
+    ]);
 
     return NextResponse.json({ ok: true }, { headers: cors });
   } catch (err) {

@@ -122,7 +122,7 @@ export async function POST(req: NextRequest) {
   if (sent) {
     await db.from("hosting_clients").update({ notes: writeInvited(hosting.notes) }).eq("id", hosting.id);
   }
-  sendTelegramMessage(
+  await sendTelegramMessage(
     `📨 *Assistant invite ${sent ? "sent" : "FAILED"}* — ${brief.businessName} (${client.label})` +
     (sent ? `\nTo ${client.email} · ${lang.toUpperCase()}` : "\nResend refused it. Nothing was recorded, so sending again is safe."),
   ).catch(() => {});

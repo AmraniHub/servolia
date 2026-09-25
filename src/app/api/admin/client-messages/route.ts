@@ -75,7 +75,9 @@ export async function POST(req: NextRequest) {
   // Email notification is opt-out per message — the admin toggles it off for
   // quick back-and-forth chat to avoid burning Resend credits on every reply.
   if (notify !== false) {
-    const firstName = email.split("@")[0];
+    // Neutral greeting ("Hello," / "Bonjour,"): the address's local part is
+    // not a name (it greeted hello@... as "Hi hello,").
+    const firstName = "";
     const preview = text || "📷 Sent a photo";
     // Notify in the language of the client's own site (their intake language).
     let lang: "en" | "fr" = "en";
@@ -84,7 +86,7 @@ export async function POST(req: NextRequest) {
       if ((site?.config as { language?: string } | null)?.language === "fr") lang = "fr";
     }
     const tpl = newPortalMessageEmail(firstName, preview, lang);
-    sendEmail(email, tpl.subject, tpl.html).catch(() => {});
+    await sendEmail(email, tpl.subject, tpl.html).catch(() => {});
   }
 
   return NextResponse.json({ ok: true, message: inserted });

@@ -48,8 +48,8 @@ export async function POST(req: NextRequest) {
       installed: out.installed,
       lang: out.lang,
     });
-    sendEmail(out.email, tpl.subject, tpl.html).catch(() => {});
-    sendTelegramMessage(
+    await sendEmail(out.email, tpl.subject, tpl.html).catch(() => {});
+    await sendTelegramMessage(
       `🧪 *Assistant trial started* — ${out.business}\n` +
       `${out.siteUrl}\n` +
       `until ${out.until.slice(0, 10)} · tag ${out.installed === null ? "n/a" : out.installed ? `installed (${out.installDetail})` : `NOT installed — ${out.installDetail}`}`,

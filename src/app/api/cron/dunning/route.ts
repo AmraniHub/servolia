@@ -276,7 +276,7 @@ export async function GET(req: NextRequest) {
       monthlyUsd: CLIENT_PRODUCTS.chatbot.monthlyUsd,
       lang: t.lang,
     });
-    if (t.email) sendEmail(t.email, tpl.subject, tpl.html).catch(() => {});
+    if (t.email) await sendEmail(t.email, tpl.subject, tpl.html).catch(() => {});
   }
   if (nudges.nudged.length) {
     await sendTelegramMessage(
@@ -317,7 +317,7 @@ export async function GET(req: NextRequest) {
       annualUsd: CLIENT_PRODUCTS.chatbot.annualUsd,
       lang: t.lang,
     });
-    if (t.email) sendEmail(t.email, tpl.subject, tpl.html).catch(() => {});
+    if (t.email) await sendEmail(t.email, tpl.subject, tpl.html).catch(() => {});
   }
   if (trials.ended.length) {
     await sendTelegramMessage(
@@ -341,7 +341,7 @@ export async function GET(req: NextRequest) {
     if (!e.email) continue;
     const link = await receptionistLinkFor({ slug: e.slug, email: e.email, lang: e.lang });
     const tpl = receptionistNudgeEmail({ business: e.business, domain: e.domain, conversations: e.conversations, installed: e.installed, untilIso: e.until, link, lang: e.lang });
-    sendEmail(e.email, tpl.subject, tpl.html).catch(() => {});
+    await sendEmail(e.email, tpl.subject, tpl.html).catch(() => {});
   }
   for (const e of rec.ended) {
     if (!e.email) continue;
@@ -350,7 +350,7 @@ export async function GET(req: NextRequest) {
       business: e.business, domain: e.domain, conversations: e.conversations, setupEur: SETUP_PLAN.totalEur, link, lang: e.lang,
       plans: planLines.map((p) => ({ name: e.lang === "fr" ? p.nameFr : p.name, monthlyEur: p.monthlyEur, conversations: p.conversations })),
     });
-    sendEmail(e.email, tpl.subject, tpl.html).catch(() => {});
+    await sendEmail(e.email, tpl.subject, tpl.html).catch(() => {});
   }
   if (rec.installed.length || rec.nudged.length || rec.ended.length) {
     await sendTelegramMessage(
