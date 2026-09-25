@@ -28,6 +28,8 @@ export interface ExtraDomain {
   nextChargeAt?: string;
   /** Set when the registrar refused, so it is visible rather than silent. */
   failed?: string;
+  /** "<renewal date>=<price>": a price rise announced for that renewal (domainSales.writeNoticed). */
+  noticed?: string;
 }
 
 function parse(line: string): ExtraDomain | null {
@@ -45,6 +47,7 @@ function parse(line: string): ExtraDomain | null {
     ...(kv.order ? { orderId: kv.order } : {}),
     ...(kv.next ? { nextChargeAt: kv.next } : {}),
     ...(kv.failed ? { failed: kv.failed } : {}),
+    ...(kv.noticed ? { noticed: kv.noticed } : {}),
   };
 }
 
@@ -62,6 +65,7 @@ function render(d: ExtraDomain): string {
   if (d.orderId) parts.push(`order: ${d.orderId}`);
   if (d.nextChargeAt) parts.push(`next: ${d.nextChargeAt}`);
   if (d.failed) parts.push(`failed: ${d.failed}`);
+  if (d.noticed) parts.push(`noticed: ${d.noticed}`);
   return `${MARKER} ${parts.join(" | ")}`;
 }
 

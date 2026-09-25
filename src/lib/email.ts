@@ -2269,6 +2269,8 @@ export const domainOrderEmail = (o: {
 export const domainRenewalEmail = (o: {
   domain: string; stage: "notice" | "charged" | "invoice"; priceUsd: number; previousUsd: number;
   onIso: string; chargeOnIso?: string; nextIso?: string; lang: "en" | "fr";
+  /** "invoice": a plan client's domain, billed on their next plan invoice rather than charged to the card on its own. */
+  billed?: "card" | "invoice";
 }) => {
   const fr = o.lang === "fr";
   const d = `<strong>${escapeHtml(o.domain)}</strong>`;
@@ -2283,9 +2285,13 @@ export const domainRenewalEmail = (o: {
   const charge = domDate(o.chargeOnIso ?? o.onIso, fr);
   const text =
     o.stage === "notice"
-      ? (fr
-          ? `${d} se renouvelle le ${when}, pour 12 mois, au prix de ${price} par an${was}. Rien à faire de votre côté : il sera prélevé sur votre carte le ${charge}.`
-          : `${d} renews on ${when}, for 12 months, at ${price} a year${was}. Nothing to do on your side: it is charged to your card on ${charge}.`)
+      ? (o.billed === "invoice"
+          ? (fr
+              ? `${d} se renouvelle le ${when}, pour 12 mois, au prix de ${price} par an${was}. Rien à faire de votre côté : la ligne s'ajoute le ${charge} et figure sur votre facture suivante.`
+              : `${d} renews on ${when}, for 12 months, at ${price} a year${was}. Nothing to do on your side: the line is added on ${charge} and appears on your next invoice.`)
+          : (fr
+              ? `${d} se renouvelle le ${when}, pour 12 mois, au prix de ${price} par an${was}. Rien à faire de votre côté : il sera prélevé sur votre carte le ${charge}.`
+              : `${d} renews on ${when}, for 12 months, at ${price} a year${was}. Nothing to do on your side: it is charged to your card on ${charge}.`))
       : o.stage === "charged"
         ? (fr
             ? `Nous avons renouvelé ${d} pour 12 mois : ${price} prélevés sur votre carte${was}.${o.nextIso ? ` Prochain renouvellement : le ${domDate(o.nextIso, fr)}.` : ""}`

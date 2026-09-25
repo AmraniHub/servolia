@@ -39,11 +39,34 @@ const TEST_KEY = "sk_test_harness_key";
    hosting failure notice reads the subscription and opens a portal session,
    and no test may reach the real Stripe. */
 const SM = await import("../src/lib/stripeMode.ts");
+/* The Stripe customer a domain order keeps its record on (src/lib/domainOrders.ts). */
+const domainCustomer = { id: "cus_o", email: "owner.case@example.com", metadata: {} };
 SM.__setStripeFactoryForTests(() => ({
   subscriptions: { retrieve: async (id) => ({ id, customer: "cus_x", status: "active", metadata: { lang: "en" }, cancel_at_period_end: false, items: { data: [] } }) },
   checkout: { sessions: { list: async () => ({ data: [] }), retrieve: async (id) => ({ id, metadata: {} }) } },
   billingPortal: { sessions: { create: async () => ({ url: "https://billing.stripe.test/p" }) } },
+  customers: {
+    retrieve: async () => ({ ...domainCustomer, metadata: { ...domainCustomer.metadata } }),
+    update: async (_id, p) => {
+      for (const [k, v] of Object.entries(p.metadata ?? {})) { if (v === "") delete domainCustomer.metadata[k]; else domainCustomer.metadata[k] = v; }
+      return { ...domainCustomer, lastResponse: { headers: {} } };
+    },
+  },
+  paymentIntents: { retrieve: async () => ({ payment_method: "pm_card" }) },
 }));
+/* Vercel's registrar, answering as a completed purchase (a domain order). */
+function vercelAnswer(url) {
+  const json = (status, body) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
+  if (url.includes("/price")) return json(200, { years: 1, purchasePrice: 11.25, renewalPrice: 11.25, transferPrice: 11.25 });
+  if (url.includes("/availability")) return json(200, { available: true });
+  if (url.includes("/buy")) return json(200, { orderId: "ord_alerts", _links: {} });
+  if (url.includes("/registrar/orders/")) return json(200, { orderId: "ord_alerts", status: "completed", domains: [{ domainName: "order-harness.com", status: "completed", price: 11.25, purchaseType: "purchase", autoRenew: true, years: 1 }] });
+  return json(200, {});
+}
+const VERCEL_ENV = {
+  VERCEL_TOKEN: "vt_harness", VERCEL_TEAM_ID: "team_harness",
+  DOMAIN_CONTACT_JSON: JSON.stringify({ firstName: "A", lastName: "B", email: "ops@servolia.com", phone: "+212600000000", address1: "1 St", city: "Tangier", state: "TA", zip: "90000", country: "MA" }),
+};
 process.env.FOUNDER_EMAIL = "founder@example.com";
 
 /* ── A network that takes time, and a Telegram that parses like Telegram ── */
@@ -76,6 +99,7 @@ globalThis.fetch = async (input, init = {}) => {
     return harnessFetch(input, init);
   }
   const host = new URL(url).host;
+  if (host === "api.vercel.com") return vercelAnswer(url);
   if (host === "api.telegram.org" && net.hangTelegram) {
     // Never answers — only an abort ends it.
     return new Promise((_resolve, reject) => {
@@ -313,8 +337,8 @@ test("no route or library starts an alert, email, push or Meta event without awa
   /* A send is fine when its line begins with await/return/assignment, or it
      is an element of an awaited Promise.all([...]) / a ternary arm (the
      previous line ends in [ , ( ? : or =). A bare statement is the bug. */
-  // Awaited in the other session's pending edit (2026-09-25); not touched here to avoid a merge conflict.
-  const PENDING_ELSEWHERE = new Set(["src/app/api/cron/domain-billing/route.ts"]);
+  // Nothing is exempt: cron/domain-billing moved onto Sends with the domain-sales branch.
+  const PENDING_ELSEWHERE = new Set([]);
   const START = /^(if \([^)]*\) )?(sendEmail|sendTelegramMessage|sendMetaCapiEvent|notifyClientOfLead|sendPushToClient)\(/;
   const offenders = [];
   const walk = (dir) => {
@@ -472,6 +496,7 @@ test("Meta: a LIVE plan and build payment send Purchase; the same purchases in T
 const { writeFulfilment } = await import("../src/lib/fulfilment.ts");
 const { writeTopup, monthKey } = await import("../src/lib/conversationCap.ts");
 const { writeExtraDomain } = await import("../src/lib/extraDomains.ts");
+const { orderRecordMetadata } = await import("../src/lib/domainOrders.ts");
 
 function session(id, fields) {
   return evt("checkout.session.completed", {
@@ -508,6 +533,11 @@ const MONEY = [
   ["extra domain order", () => session("cs_live_dom", { mode: "payment", amount_total: 2000, metadata: { kind: "domain_addon", domain: "extra-harness.com", domain_retail_usd: "20", subscription_id: "sub_host1", ref: "harness" } }),
     { hosting_clients: [{ id: "h-dom", notes: null, business: "Harness Co" }] },
     { hosting_clients: [{ id: "h-dom", notes: writeExtraDomain(null, { domain: "extra-harness.com", retailUsd: 20, failed: "not-configured" }), business: "Harness Co" }] }, 0],
+  ["domain sold on its own (domain_order)", () => {
+    domainCustomer.metadata = {};
+    return session("cs_live_order", { mode: "payment", currency: "usd", amount_total: 2790, customer: "cus_o", payment_intent: "pi_o",
+      metadata: { kind: "domain_order", domain: "order-harness.com", domain_retail_usd: "27.9", lang: "en", name: "Harness Buyer" } });
+  }, {}, "domain-replay", 1, VERCEL_ENV],
   ["custom work", () => session("cs_live_custom", { mode: "payment", amount_total: 25000, metadata: { kind: "custom_request", requestId: "req-1", buildId: "b-1" } }), {}, null, 0],
   ["one-off build payment", () => buildPayment(true), {}, { builds: [{ id: "b-seen", checkout_session_id: "cs_live_build_a" }] }, 1],
   ["renewal (invoice.paid)", () => invoice("invoice.paid", { amount_paid: 14900, currency: "eur", billing_reason: "subscription_cycle", customer_email: "owner.case@example.com" }),
@@ -523,9 +553,9 @@ function seed(reads) {
   for (const [t, rows] of Object.entries(reads)) H.reads[t] = rows;
 }
 
-for (const [name, make, reads, replay, clientCount] of MONEY) {
+for (const [name, make, reads, replay, clientCount, env = {}] of MONEY) {
   test(`owner notice — ${name}: exactly one Telegram alert and one email to the owner, subject in the house format`, () =>
-    withEnv(LIVE, async () => {
+    withEnv({ ...LIVE, ...env }, async () => {
       clear();
       net.clientMailDelayMs = 150; // the slowest call: only an awaited client email is counted
       seed(reads);
@@ -548,17 +578,24 @@ for (const [name, make, reads, replay, clientCount] of MONEY) {
 
   if (replay) {
     test(`owner notice — ${name}: a replayed event does not notify twice`, () =>
-      withEnv(LIVE, async () => {
+      withEnv({ ...LIVE, ...env }, async () => {
         clear();
         const ev = make();
         if (replay === "hosting-replay") {
           seed({ hosting_clients: [{ id: "h-seen", notes: writeFulfilment(null, { session: ev.data.object.id, at: "2026-09-25T00:00:00.000Z", plan: ev.data.object.metadata.plan }) }] });
+        } else if (replay === "domain-replay") {
+          // The first delivery's record, on the Stripe customer.
+          domainCustomer.metadata = orderRecordMetadata({ domain: "order-harness.com", status: "bought", retailUsd: 27.9, lang: "en", session: ev.data.object.id, orderId: "ord_alerts", renewsOn: "2027-09-25" });
         } else {
           seed(replay);
         }
         await POST(request(ev, H.LIVE_WH));
         assert.equal(ownerAlerts().length, 0, `replay alerted: ${JSON.stringify(ownerAlerts())}`);
         assert.equal(ownerMails().length, 0, "replay emailed the owner");
+        if (replay === "domain-replay") {
+          // Sends NOTHING: no client email, no alert of any kind, no registrar call.
+          assert.deepEqual(delivered.map((d) => d.host), [], "a replayed domain order sent something");
+        }
       }));
   }
 }

@@ -732,16 +732,25 @@ async function handleEventBody(event: Stripe.Event, stripe: Stripe, db: Db, send
        * Its own try/catch: this handler's outer catch answers 200, so Stripe
        * never retries a throw — a client who paid must not vanish into a log.
        * A replay (Stripe's, or a "Resend" from the dashboard) finds the record
-       * on the customer and never buys twice. */
+       * on the customer, and two deliveries at once meet an atomic claim:
+       * either way nothing is bought twice and nothing is said twice.
+       * The client's email is awaited first (bounded) so the owner's notice
+       * can say whether it went. The Stripe client comes from stripeFor(), the
+       * same key as `stripe`, through the seam the tests fake. */
       if (session.mode === "payment" && session.metadata?.kind === DOMAIN_ORDER_KIND) {
+        const domainStripe = stripeFor(event.livemode) ?? stripe;
         try {
-          const res = await fulfilDomainOrder(stripe, session, test);
+          const res = await fulfilDomainOrder(domainStripe, session, test);
           if (!res) {
-            await sendTelegramMessage(testPrefixed(`⚠️ Domain order ${session.id} paid but unreadable (no domain or no customer). Check it in Stripe.`), undefined, { plain: true }).catch(() => {});
+            sends.owner({
+              subject: troubleSubject("Domain order unreadable", session.id, session.customer_details?.email),
+              lines: [`A domain order (${session.id}) was paid but carries no domain or no customer. Nothing was bought.`, "Next: open it in Stripe; buy by hand or refund."],
+              link: "https://servolia.com/admin/hosting",
+            });
             return NextResponse.json({ received: true });
           }
           const say = describeDomainOrder(res);
-          let mailNote = "";
+          let mailNote: string | null = null;
           if (say.email) {
             const rec = res.record;
             const renewsOn = rec.renewsOn ?? nextYear(new Date().toISOString().slice(0, 10));
@@ -749,34 +758,25 @@ async function handleEventBody(event: Stripe.Event, stripe: Stripe, db: Db, send
               domain: rec.domain, amountUsd: rec.retailUsd, state: say.email,
               renewsOnIso: renewsOn, chargeOnIso: chargeDateFor(renewsOn), name: rec.name, lang: rec.lang,
             });
-            const sent = res.customerEmail ? await sendEmail(res.customerEmail, tpl.subject, tpl.html).catch(() => false) : false;
-            if (!sent) mailNote = `\nClient email NOT sent${res.customerEmail ? ` to ${res.customerEmail}` : " (no address)"} - tell them yourself.`;
+            const sent = res.customerEmail ? (await sends.add("domain order email", sendEmail(res.customerEmail, tpl.subject, tpl.html))) === true : false;
+            if (!sent) mailNote = `Client email NOT sent${res.customerEmail ? ` to ${res.customerEmail}` : " (no address)"} — tell them yourself.`;
           }
-          if (say.telegram) await sendTelegramMessage(testPrefixed(say.telegram + mailNote), undefined, { plain: true }).catch(() => {});
+          if (say.owner) sends.owner({ ...say.owner, lines: [...say.owner.lines, mailNote] });
           return NextResponse.json({ received: true, ...(res.outcome === "done" ? {} : { [res.outcome]: true }) });
         } catch (err) {
           console.error("[stripe] domain order failed:", err);
-          await sendTelegramMessage(testPrefixed(
-            `⚠️ Domain order ${session.metadata?.domain ?? "?"} (${session.id}) PAID, and the handler stopped: ${err instanceof Error ? err.message : String(err)}. ` +
-            `Check the Stripe customer's servolia_domain_* metadata and Vercel > Domains before doing anything; the client may not have been emailed.`,
-          ), undefined, { plain: true }).catch(() => {});
+          sends.owner({
+            subject: troubleSubject("Domain order stopped", session.metadata?.domain ?? session.id, session.customer_details?.email),
+            lines: [
+              `The domain order ${session.metadata?.domain ?? "?"} (${session.id}) was PAID and the handler stopped: ${err instanceof Error ? err.message : String(err)}.`,
+              "Next: check the Stripe customer's servolia_domain_* metadata and Vercel > Domains before doing anything; the client may not have been emailed.",
+            ],
+            link: "https://servolia.com/admin/hosting",
+          });
           return NextResponse.json({ received: true });
         }
       }
 
-      /* ── ARREARS branch: a one-off charge clearing an old balance ─────────
-       *
-       * THIS MUST NOT FALL THROUGH. Arrears are sold in `payment` mode, so the
-       * subscription guard above does not catch them, and the next branch that
-       * would is the build-payment path at the bottom — which has no mode check
-       * at all. Without this, settling a $15 debt would open a BUILD, invent a
-       * LEAD, and email the payer that their "installation" had cleared and
-       * their site was being made, in euros. A client clearing an old invoice
-       * would be told they had just commissioned a new project.
-       *
-       * Dormant today: no client in CLIENT_REFS carries arrearsUsd, so
-       * /api/hosting-checkout refuses every arrears request with "Nothing
-       * outstanding". It stops being dormant the moment one is added. */
       /* AN EXTRA DOMAIN, BOUGHT FROM THE CLIENT'S OWN PANEL.
        *
        * The money is already taken by the time this runs, so the registrar
@@ -967,6 +967,20 @@ async function handleEventBody(event: Stripe.Event, stripe: Stripe, db: Db, send
         return NextResponse.json({ received: true, line: "one-off" });
       }
 
+      /* ── ARREARS branch: a one-off charge clearing an old balance ─────────
+       *
+       * THIS MUST NOT FALL THROUGH. Arrears are sold in `payment` mode, so the
+       * subscription guard above does not catch them, and the next branch that
+       * would is the build-payment path at the bottom — which has no mode check
+       * at all. Without this, settling a $15 debt would open a BUILD, invent a
+       * LEAD, and email the payer that their "installation" had cleared and
+       * their site was being made, in euros. A client clearing an old invoice
+       * would be told they had just commissioned a new project.
+       *
+       * Dormant today: no client in CLIENT_REFS carries arrearsUsd, so
+       * /api/hosting-checkout refuses every arrears request with "Nothing
+       * outstanding". It stops being dormant the moment one is added.
+       * (This comment sat above the extra-domain branch until 2026-09-25.) */
       if (session.mode === "payment" && session.metadata?.kind === HOSTING_METADATA_KIND) {
         const customerEmail = session.customer_details?.email ?? session.customer_email ?? null;
         const amount = (session.amount_total ?? 0) / 100;

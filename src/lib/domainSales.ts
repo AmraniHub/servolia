@@ -74,23 +74,109 @@ export function normalizeDomain(input: string | null | undefined): string | null
  * nearest .90 would put the price under what the profit rule needs.
  */
 export function retailYearlyUsd(renewalUsd: number): number {
-  const needed = (renewalUsd + DOMAIN_TARGET_PROFIT_USD + STRIPE_FIXED_USD) / (1 - STRIPE_RATE);
-  const ninety = Math.ceil(Math.round((needed - 0.9) * 100) / 100) + 0.9;
-  return Math.round(Math.max(DOMAIN_MIN_RETAIL_USD, ninety) * 100) / 100;
+  return Math.round(Math.max(DOMAIN_MIN_RETAIL_USD, ninetyUp(neededUsd(renewalUsd))) * 100) / 100;
+}
+
+/** What the client must pay for the profit rule to hold at this Vercel price. */
+function neededUsd(renewalUsd: number): number {
+  return (renewalUsd + DOMAIN_TARGET_PROFIT_USD + STRIPE_FIXED_USD) / (1 - STRIPE_RATE);
+}
+
+/** Up to the next .90 (31.20 -> 31.90, 31.90 -> 31.90, 31.91 -> 32.90). */
+function ninetyUp(n: number): number {
+  return Math.round((Math.ceil(Math.round((n - 0.9) * 100) / 100) + 0.9) * 100) / 100;
 }
 
 /**
- * WHAT A RENEWAL COSTS THE CLIENT: never less than they paid last year, and
- * more when Vercel's renewal price has risen enough that last year's figure
- * no longer leaves the target profit. The registry raises .com most years
- * and Vercel passes it on; a price frozen at purchase would lose the margin
- * a little every year. Unknown Vercel price (API down) = last year's price,
- * because a renewal is not the moment to guess upward.
+ * WHAT A RENEWAL COSTS THE CLIENT: last year's price, unless the REGISTRY
+ * raised Vercel's price enough that last year's figure no longer leaves the
+ * target profit — then the lowest .90 price that restores it.
+ *
+ * Deliberately not "today's retail price": a client who bought before the
+ * 27.90 floor or the .90 rounding existed (a plan domain at 26) keeps their
+ * price for as long as the margin holds. The floor and the rounding apply to
+ * NEW sales; a renewal only ever moves because the registry did, which is
+ * the one reason the emails give ("the registry raised its price").
+ * Unknown Vercel price (API down) = last year's price, because a renewal is
+ * not the moment to guess upward.
  */
 export function renewalRetailUsd(paidUsd: number, vercelRenewalUsd: number | null): number {
-  const floor = Number.isFinite(paidUsd) && paidUsd > 0 ? paidUsd : DOMAIN_MIN_RETAIL_USD;
-  if (vercelRenewalUsd === null || !Number.isFinite(vercelRenewalUsd)) return floor;
-  return Math.max(floor, retailYearlyUsd(vercelRenewalUsd));
+  const paid = Number.isFinite(paidUsd) && paidUsd > 0 ? paidUsd : DOMAIN_MIN_RETAIL_USD;
+  if (vercelRenewalUsd === null || !Number.isFinite(vercelRenewalUsd)) return paid;
+  if (netProfitUsd(paid, vercelRenewalUsd) >= DOMAIN_TARGET_PROFIT_USD - 0.005) return paid;
+  return Math.max(paid, ninetyUp(neededUsd(vercelRenewalUsd)));
+}
+
+/* ── The renewal calendar, shared by every domain we sell ────────────────
+ *
+ * A price rise is announced by email between 37 and 30 days before the
+ * renewal date, never later: the terms promise at least 30 days. The charge
+ * happens CHARGE_DAYS before the renewal date and NEVER exceeds what the
+ * client was told — the announced price, or last year's when no notice went
+ * out (a rise that appeared inside the 30 days waits a year). */
+
+/** Latest day a price rise may be announced: the renewal date minus this. */
+export const NOTICE_DAYS = 30;
+/** Earliest day it may be announced: NOTICE_DAYS + this, so a missed cron day is not a missed notice. */
+export const NOTICE_WINDOW_DAYS = 7;
+/** Days before the renewal date that the renewal is charged. */
+export const CHARGE_DAYS = 7;
+
+/** An ISO date `days` before another. */
+export function daysBefore(iso: string, days: number): string {
+  return new Date(Date.parse(`${iso.slice(0, 10)}T00:00:00Z`) - days * 86400000).toISOString().slice(0, 10);
+}
+
+/** The day a renewal is charged: CHARGE_DAYS before the renewal date. */
+export const chargeDateFor = (renewsOn: string) => daysBefore(renewsOn, CHARGE_DAYS);
+
+export type RenewalDecision =
+  | { kind: "notice"; price: number }
+  | { kind: "charge"; price: number; wanted: number }
+  | { kind: "wait" };
+
+/**
+ * What to do today for one domain. Pure.
+ *  - charge: from CHARGE_DAYS out, at min(wanted, what the client was told);
+ *    `wanted` is the uncapped figure, so a held-back margin can be reported.
+ *  - notice: a rise, not yet announced for this renewal date, inside the
+ *    window [renewsOn − 37, renewsOn − 30]. Recorded by the caller ONLY once
+ *    the email went out, so a failed send is retried the next day while the
+ *    window lasts, and after it the rise simply waits a year.
+ */
+export function renewalDecision(o: {
+  paidUsd: number; vercelRenewalUsd: number | null; renewsOn: string; todayIso: string;
+  noticedFor?: string; noticedUsd?: number;
+}): RenewalDecision {
+  const wanted = renewalRetailUsd(o.paidUsd, o.vercelRenewalUsd);
+  const paid = Number.isFinite(o.paidUsd) && o.paidUsd > 0 ? o.paidUsd : wanted;
+  if (o.todayIso >= chargeDateFor(o.renewsOn)) {
+    const noticed = o.noticedFor === o.renewsOn && o.noticedUsd ? o.noticedUsd : 0;
+    return { kind: "charge", price: Math.min(wanted, Math.max(paid, noticed)), wanted };
+  }
+  const rises = wanted > paid + 0.004;
+  const inWindow = o.todayIso >= daysBefore(o.renewsOn, NOTICE_DAYS + NOTICE_WINDOW_DAYS) && o.todayIso <= daysBefore(o.renewsOn, NOTICE_DAYS);
+  if (rises && o.noticedFor !== o.renewsOn && inWindow) return { kind: "notice", price: wanted };
+  return { kind: "wait" };
+}
+
+/** "2027-09-24=35.9" <-> { noticedFor, noticedUsd }: the notice marker kept in a notes line. */
+export function readNoticed(v: string | undefined): { noticedFor?: string; noticedUsd?: number } {
+  const m = /^(\d{4}-\d{2}-\d{2})=(\d+(?:\.\d+)?)$/.exec(v ?? "");
+  return m ? { noticedFor: m[1], noticedUsd: Number(m[2]) } : {};
+}
+export const writeNoticed = (renewsOn: string, price: number) => `${renewsOn}=${price}`;
+
+/**
+ * The endings a domain-only link may be made for: the common ones Vercel
+ * registers with the plain registrant contact (no extra per-registry data).
+ * The live quote still has the last word; this keeps the admin from sending
+ * a link for an ending the webhook would then fail to buy.
+ */
+export const DOMAIN_ORDER_TLDS = ["com", "org", "net", "co", "fr", "ma", "uk", "io"] as const;
+export function tldAllowed(domain: string): boolean {
+  const tld = domain.slice(domain.lastIndexOf(".") + 1);
+  return (DOMAIN_ORDER_TLDS as readonly string[]).includes(tld);
 }
 
 /** What is left after Vercel's renewal and Stripe's worst case -- for the admin's eyes. */
@@ -289,25 +375,60 @@ export async function attachDomainToProject(project: string, domain: string): Pr
 
 export type PurchaseOutcome =
   | { ok: true; orderId: string; costUsd: number }
-  | { ok: false; reason: "not-configured" | "no-contact" | "taken" | "unsupported" | "over-retail" | "error"; detail?: string };
+  | { ok: false; reason: "not-configured" | "no-contact" | "taken" | "unsupported" | "over-retail" | "error" | "unknown"; detail?: string };
 
 /**
  * The guarded purchase: quoted again at the moment of buying, refused if the
  * name has gone or if Vercel now wants more than the client paid us, and
  * only ever one year with auto-renew on.
+ *
+ * Two failures that are NOT "refused":
+ *  - the quote itself failed (Vercel down, rate-limited): reason "error",
+ *    "could not check" — never "taken", which would send the owner looking
+ *    for a competitor who does not exist;
+ *  - the BUY call died on the network or with a 5xx: reason "unknown". The
+ *    order may well have gone through; nobody may refund or re-buy until
+ *    Vercel > Domains has been looked at.
  */
 export async function purchaseDomainForClient(domain: string, retailYearlyUsd: number): Promise<PurchaseOutcome> {
   if (!isDomainSalesConfigured()) return { ok: false, reason: "not-configured" };
   if (!domainContact()) return { ok: false, reason: "no-contact" };
   const q = await domainQuote(domain);
   if (q.reason === "unsupported") return { ok: false, reason: "unsupported" };
+  if (q.reason === "error" || q.reason === "not-configured") return { ok: false, reason: "error", detail: "could not check the name with Vercel (quote failed); nothing was bought" };
   if (!q.available) return { ok: false, reason: "taken" };
   if (!(retailYearlyUsd > 0) || q.purchaseUsd > retailYearlyUsd) {
     return { ok: false, reason: "over-retail", detail: `Vercel asks ${q.purchaseUsd}, client paid ${retailYearlyUsd}` };
   }
   const res = await buyDomain(domain, q.purchaseUsd);
-  if (!res.ok) return { ok: false, reason: "error", detail: `${res.code ?? res.status}${res.message ? `: ${res.message}` : ""}` };
+  if (!res.ok) {
+    const detail = `${res.code ?? res.status}${res.message ? `: ${res.message}` : ""}`;
+    return { ok: false, reason: res.status === 0 || res.status >= 500 ? "unknown" : "error", detail };
+  }
   return { ok: true, orderId: res.data.orderId, costUsd: q.purchaseUsd };
+}
+
+/**
+ * Is this name registered in OUR Vercel team? 200 = yes (with Vercel's
+ * purchase date when it was bought there), 404 = no, anything else = could
+ * not tell. How a hand-finished purchase is verified before a record is
+ * marked bought, and how the daily audit finds a "failed" order that was in
+ * fact registered.
+ */
+export async function domainInTeam(domain: string): Promise<{ inTeam: boolean | null; boughtAt?: string }> {
+  const res = await registrar<{ domain?: { boughtAt?: number | null } }>(`/v5/domains/${encodeURIComponent(domain)}`);
+  if (res.ok) {
+    const b = res.data.domain?.boughtAt;
+    return { inTeam: true, ...(typeof b === "number" ? { boughtAt: new Date(b).toISOString() } : {}) };
+  }
+  return { inTeam: res.status === 404 ? false : null };
+}
+
+/** Does a project of this name exist in our team? null = could not tell. */
+export async function projectExists(name: string): Promise<boolean | null> {
+  const res = await registrar<unknown>(`/v9/projects/${encodeURIComponent(name)}`);
+  if (res.ok) return true;
+  return res.status === 404 ? false : null;
 }
 
 /* ── The record, kept in hosting_clients.notes ───────────────────────────
@@ -331,6 +452,8 @@ export interface DomainRecord {
   note?: string;
   /** The Vercel renewal price the margin watch last warned about, so it warns once per change. */
   warnedAt?: string;
+  /** "<renewal date>=<price>": the price rise announced for that renewal (writeNoticed). */
+  noticed?: string;
 }
 
 /**
@@ -369,6 +492,7 @@ export function readDomainRecord(notes: string | null | undefined): DomainRecord
     nextChargeAt: kv.renew && kv.renew !== "-" ? kv.renew : undefined,
     attached: kv.attached && kv.attached !== "-" ? kv.attached : undefined,
     warnedAt: kv.warned && kv.warned !== "-" ? kv.warned : undefined,
+    ...(kv.noticed && kv.noticed !== "-" ? { noticed: kv.noticed } : {}),
     note: kv.note && kv.note !== "-" ? kv.note : undefined,
   };
 }
@@ -384,6 +508,8 @@ export function writeDomainRecord(notes: string | null | undefined, rec: DomainR
     `renew: ${rec.nextChargeAt ?? "-"}`,
     `attached: ${rec.attached ?? "-"}`,
     `warned: ${rec.warnedAt ?? "-"}`,
+    // Only written when present, so a record that never had a notice keeps its old shape.
+    ...(rec.noticed ? [`noticed: ${rec.noticed}`] : []),
     `note: ${(rec.note ?? "-").replace(/\s*\|\s*/g, "/").replace(/\n/g, " ")}`,
   ].join(" | ");
   return [...kept, line].join("\n");
