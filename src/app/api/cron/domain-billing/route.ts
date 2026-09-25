@@ -34,7 +34,8 @@ export const maxDuration = 60;
  *
  * THE PRICE (renewalDecision, src/lib/domainSales.ts): last year's, unless
  * the registry raised Vercel's price enough to eat the margin. A rise is
- * emailed 37 to 30 days ahead and recorded only once the email went; the
+ * emailed 44 to 37 days before the renewal date — at least 30 days before
+ * the money moves (charge at −7) — and recorded only once the email went; the
  * charge never exceeds what the client was told. A client who bought before
  * the 27.90 floor keeps their price while the margin holds.
  *

@@ -120,7 +120,7 @@ export default function DomainOrderLink() {
         <p className="text-xs text-[#A1A1AA] mb-4">
           Priced live from Vercel (never under $27.90/yr). The client pays with their own card, the name is
           bought the moment they pay, and they get a Servolia email. Renews yearly on the same card; a price
-          rise is emailed 30 days before. Endings: .com .org .net .co .fr .ma .uk .io (Vercel still has the last word).
+          rise is emailed at least 30 days before we charge the card. Endings: .com .org .net .co .fr .ma .uk .io (Vercel still has the last word).
           The Vercel project must exist in the team.
         </p>
 

@@ -2201,7 +2201,7 @@ const domMoney = (n: number, fr: boolean) => (fr ? `${n.toFixed(2).replace(".", 
 /**
  * The client paid for a domain on its own. Says what they own, that it renews
  * on the card they just used and when, and that a price rise is announced
- * before it is charged — the promise the renewal cron keeps (30 days).
+ * at least 30 days before the card is charged — the promise the renewal cron keeps.
  *
  * Three states, because Vercel registers asynchronously:
  *  - "registered": done, attached where it was meant to be;
@@ -2239,8 +2239,8 @@ export const domainOrderEmail = (o: {
   const renewal = o.state === "failed"
     ? `<p style="margin:18px 0 0;font-size:13px;line-height:1.6;color:${MUTED};">${fr ? "Une question ? Répondez simplement à cet email." : "Questions? Just reply to this email."}</p>`
     : `${recP(fr
-    ? `<strong>Renouvellement :</strong> le ${when}, pour 12 mois, sur la carte que vous venez d'utiliser ; il est prélevé le ${charge}. Le prix suit celui du registre : ${paid} aujourd'hui, et s'il augmente, nous vous écrivons le nouveau prix au moins 30 jours avant.`
-    : `<strong>Renewal:</strong> on ${when}, for 12 more months, on the card you just used; it is charged on ${charge}. The price follows the registry's: ${paid} today, and if it rises we email you the new price at least 30 days before.`)}
+    ? `<strong>Renouvellement :</strong> le ${when}, pour 12 mois, sur la carte que vous venez d'utiliser ; il est prélevé le ${charge}. Le prix suit celui du registre : ${paid} aujourd'hui, et s'il augmente, nous vous écrivons le nouveau prix au moins 30 jours avant de prélever votre carte.`
+    : `<strong>Renewal:</strong> on ${when}, for 12 more months, on the card you just used; it is charged on ${charge}. The price follows the registry's: ${paid} today, and if it rises we email you the new price at least 30 days before we charge your card.`)}
       <p style="margin:18px 0 0;font-size:13px;line-height:1.6;color:${MUTED};">${fr
         ? `Pour arrêter le renouvellement, répondez simplement à cet email avant le ${charge}. Pour toute question, répondez aussi : une personne lit chaque message.`
         : `To stop the renewal, just reply to this email before ${charge}. For any question, reply too: a person reads every message.`}</p>`;
@@ -2259,7 +2259,7 @@ export const domainOrderEmail = (o: {
 
 /**
  * A domain's yearly renewal, in its three moments:
- *  - "notice":  the price is rising, 30 days before anything is charged;
+ *  - "notice":  the price is rising, at least 30 days before anything is charged;
  *  - "charged": a domain sold on its own was renewed on the client's card;
  *  - "invoice": a plan client's domain renewal goes on their next invoice.
  * `previousUsd` is last year's price; the rise is only mentioned when there is one.

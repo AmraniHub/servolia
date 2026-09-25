@@ -219,8 +219,8 @@ export async function createDomainOrderLink(stripe: Stripe, o: {
         product_data: {
           name: fr ? `Domaine ${domain} — 12 mois` : `Domain ${domain} — 12 months`,
           description: fr
-            ? "Enregistré par Servolia pour vous, avec protection WHOIS. Renouvelé chaque année sur cette carte, prix annoncé 30 jours avant s'il augmente. Il vous appartient."
-            : "Registered by Servolia for you, with WHOIS privacy. Renewed yearly on this card, with 30 days' notice of any price rise. Yours to keep.",
+            ? "Enregistré par Servolia pour vous, avec protection WHOIS. Renouvelé chaque année sur cette carte ; toute hausse de prix annoncée au moins 30 jours avant de prélever votre carte. Il vous appartient."
+            : "Registered by Servolia for you, with WHOIS privacy. Renewed yearly on this card; any price rise emailed at least 30 days before we charge your card. Yours to keep.",
         },
       },
     }],

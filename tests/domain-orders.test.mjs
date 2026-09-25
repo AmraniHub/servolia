@@ -183,16 +183,20 @@ test("plan and panel records carry the notice marker, and a record without one k
 
 const DEC = (today, o = {}) => S.renewalDecision({ paidUsd: 27.9, vercelRenewalUsd: 20, renewsOn: "2027-09-24", todayIso: today, ...o });
 
-test("a rise is announced between 37 and 30 days out and NEVER later; the charge is 7 days out", () => {
-  assert.equal(S.daysBefore("2027-09-24", 30), "2027-08-25");
-  assert.deepEqual(DEC("2027-08-17"), { kind: "wait" }, "day -38: too early");
-  assert.deepEqual(DEC("2027-08-18"), { kind: "notice", price: 35.9 }, "day -37: window opens");
-  assert.deepEqual(DEC("2027-08-25"), { kind: "notice", price: 35.9 }, "day -30: last day");
+test("a rise is announced 44 to 37 days out — at least 30 days before the card is charged at -7 — and NEVER later", () => {
+  assert.equal(S.NOTICE_DAYS, 37);
+  assert.equal(S.daysBefore("2027-09-24", 37), "2027-08-18");
+  // The promise is about the MONEY: the last notice day is exactly 30 days before the charge.
+  assert.equal(S.daysBefore(O.chargeDateFor("2027-09-24"), 30), S.daysBefore("2027-09-24", S.NOTICE_DAYS));
+  assert.deepEqual(DEC("2027-08-10"), { kind: "wait" }, "day -45: too early");
+  assert.deepEqual(DEC("2027-08-11"), { kind: "notice", price: 35.9 }, "day -44: window opens");
+  assert.deepEqual(DEC("2027-08-18"), { kind: "notice", price: 35.9 }, "day -37: last day (30 days before the charge)");
+  assert.deepEqual(DEC("2027-08-19"), { kind: "wait" }, "day -36: 29 days before the charge — too late");
   assert.deepEqual(DEC("2027-09-04"), { kind: "wait" }, "day -20: too late to announce; the rise waits");
   assert.deepEqual(DEC("2027-09-16"), { kind: "wait" }, "day -8: too late to announce");
   assert.deepEqual(DEC("2027-09-17"), { kind: "charge", price: 27.9, wanted: 35.9 }, "day -7: charged at last year's price");
-  assert.deepEqual(DEC("2027-08-25", { vercelRenewalUsd: 11.25 }), { kind: "wait" }, "no rise, no notice");
-  assert.deepEqual(DEC("2027-08-20", { noticedFor: "2027-09-24", noticedUsd: 35.9 }), { kind: "wait" }, "announced once");
+  assert.deepEqual(DEC("2027-08-18", { vercelRenewalUsd: 11.25 }), { kind: "wait" }, "no rise, no notice");
+  assert.deepEqual(DEC("2027-08-15", { noticedFor: "2027-09-24", noticedUsd: 35.9 }), { kind: "wait" }, "announced once");
   assert.equal(O.nextYear("2028-02-29"), "2029-03-01", "a leap day renews on the 1st of March");
   assert.equal(O.chargeDateFor("2027-09-24"), "2027-09-17");
 });
@@ -495,7 +499,7 @@ test("renewal: the notice is recorded ONLY after its email went; then charged on
   fakeVercel({ renewal: 20 });
   const stripe = fakeStripe({ metadata: O.orderRecordMetadata(DUE) });
   const fail = sent(false);
-  const [f] = await O.runDomainOrderRenewals(stripe, "2027-08-25", fail);
+  const [f] = await O.runDomainOrderRenewals(stripe, "2027-08-18", fail);
   assert.equal(f.step, "notice-failed");
   assert.equal(fail.log.length, 1);
   assert.equal(stripe.customer.metadata.servolia_domain_noticed, undefined, "an unsent notice authorises nothing");
@@ -503,11 +507,11 @@ test("renewal: the notice is recorded ONLY after its email went; then charged on
 
   const late = fakeStripe({ metadata: O.orderRecordMetadata(DUE) });
   const hook = sent(true);
-  const [n] = await O.runDomainOrderRenewals(late, "2027-08-24", hook);
+  const [n] = await O.runDomainOrderRenewals(late, "2027-08-17", hook);
   assert.equal(n.step, "noticed");
   assert.equal(n.chargeOn, "2027-09-17");
   assert.equal(late.customer.metadata.servolia_domain_noticed_usd, "35.9");
-  assert.deepEqual(await O.runDomainOrderRenewals(late, "2027-08-25", hook), [], "announced once");
+  assert.deepEqual(await O.runDomainOrderRenewals(late, "2027-08-18", hook), [], "announced once");
   assert.equal(hook.log.length, 1);
 
   const [r] = await O.runDomainOrderRenewals(late, "2027-09-18", hook);
@@ -524,8 +528,8 @@ test("renewal: the notice is recorded ONLY after its email went; then charged on
   assert.equal(stale.log.invoicesCreated.length, 0, "never a second invoice for the same year");
 });
 
-test("a rise found at day -20 or -8 is not announced and not charged: last year's price", async () => {
-  for (const day of ["2027-09-04", "2027-09-16"]) {
+test("a rise found at day -36, -20 or -8 is not announced and not charged: last year's price", async () => {
+  for (const day of ["2027-08-19", "2027-09-04", "2027-09-16"]) {
     fakeVercel({ renewal: 20 });
     const stripe = fakeStripe({ metadata: O.orderRecordMetadata(DUE) });
     const hook = sent(true);
@@ -584,6 +588,10 @@ test("the order email: price with cents, renewal AND charge date, in both langua
   const fr = orderMail({ state: "registered", lang: "fr" });
   assert.match(fr.html, /27,90&nbsp;\$/);
   assert.match(fr.html, /prélevé le 17 septembre 2027/);
+  // The promise is about the money: 30 days before the CARD is charged.
+  assert.match(en.html, /at least 30 days before we charge your card/);
+  assert.match(fr.html, /au moins 30 jours avant de prélever votre carte/);
+  assert.match(src("src/app/hosting/terms/page.tsx").replace(/\s+/g, " "), /emailed at least 30 days before we charge your card/);
   assert.match(orderMail({ state: "processing" }).html, /registry is completing/);
   const failed = orderMail({ state: "failed", lang: "fr" });
   assert.match(failed.html, /remboursé/);

@@ -109,14 +109,16 @@ export function renewalRetailUsd(paidUsd: number, vercelRenewalUsd: number | nul
 
 /* ── The renewal calendar, shared by every domain we sell ────────────────
  *
- * A price rise is announced by email between 37 and 30 days before the
- * renewal date, never later: the terms promise at least 30 days. The charge
- * happens CHARGE_DAYS before the renewal date and NEVER exceeds what the
- * client was told — the announced price, or last year's when no notice went
- * out (a rise that appeared inside the 30 days waits a year). */
+ * THE PROMISE IS 30 DAYS BEFORE THE MONEY MOVES (owner decision,
+ * 2026-09-25). The card is charged CHARGE_DAYS (7) before the renewal date,
+ * so a price rise is announced by email between 44 and 37 days before the
+ * renewal date — at least 30 days before we charge — and never later. The
+ * charge NEVER exceeds what the client was told: the announced price, or
+ * last year's when no notice went out (a rise that appeared too late waits
+ * a year). */
 
-/** Latest day a price rise may be announced: the renewal date minus this. */
-export const NOTICE_DAYS = 30;
+/** Latest day a price rise may be announced: the renewal date minus this (30 days before the charge + CHARGE_DAYS). */
+export const NOTICE_DAYS = 37;
 /** Earliest day it may be announced: NOTICE_DAYS + this, so a missed cron day is not a missed notice. */
 export const NOTICE_WINDOW_DAYS = 7;
 /** Days before the renewal date that the renewal is charged. */
@@ -140,7 +142,8 @@ export type RenewalDecision =
  *  - charge: from CHARGE_DAYS out, at min(wanted, what the client was told);
  *    `wanted` is the uncapped figure, so a held-back margin can be reported.
  *  - notice: a rise, not yet announced for this renewal date, inside the
- *    window [renewsOn − 37, renewsOn − 30]. Recorded by the caller ONLY once
+ *    window [renewsOn − 44, renewsOn − 37] (at least 30 days before the
+ *    charge on renewsOn − 7). Recorded by the caller ONLY once
  *    the email went out, so a failed send is retried the next day while the
  *    window lasts, and after it the rise simply waits a year.
  */

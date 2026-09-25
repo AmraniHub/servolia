@@ -164,7 +164,7 @@ export default function HostingTerms() {
                 raises its price, the renewal goes up with it, and we email you the new price
                 before it is charged. A domain bought on its own, without a plan, renews each year
                 on the card it was paid with, seven days before its renewal date, and a price rise is
-                emailed at least 30 days before; the renewal is never charged above the price that
+                emailed at least 30 days before we charge your card; the renewal is never charged above the price that
                 email announced. To stop a renewal, reply to any email from us before the charge
                 date it names.
               </p>
