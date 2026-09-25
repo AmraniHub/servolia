@@ -19,11 +19,14 @@ import { usd } from "@/lib/hosting";
  * webhook also refuses to buy when `owned_domain` is present, whatever else
  * the session says.
  *
- * THE DOMAIN PRICE IS TYPED BY THE ADMIN, not computed. The live price rule
- * (retailYearlyUsd in src/lib/domainSales.ts) rounds to whole dollars with a
- * 26 floor; the owner's rule of a .90 price with a 27.90 floor lives on the
- * unmerged domain-sales branch. Until that lands, the admin types it and it
- * must be 10-80 and end in .90.
+ * THE DOMAIN PRICE IS TYPED BY THE ADMIN, not computed: 10-80 and ending in
+ * .90. retailYearlyUsd (src/lib/domainSales.ts) gives the house price for a
+ * new sale (.90, floor 27.90) and is the figure to type; the renewals that
+ * follow are priced by renewalDecision from what the client paid.
+ *
+ * AFTER THE FIRST YEAR (domain-sales branch): the domain-billing cron renews
+ * it on the hosting subscription's invoice, and a cancellation switches its
+ * Vercel auto-renew off — see the section at the end of this file.
  *
  * The email template lives here rather than in src/lib/email.ts only to keep
  * this change clear of two branches that are rewriting email.ts right now.
@@ -32,6 +35,8 @@ import { usd } from "@/lib/hosting";
 export const MAX_TRIAL_DAYS = 30;
 export const OWNED_DOMAIN_MIN_USD = 10;
 export const OWNED_DOMAIN_MAX_USD = 80;
+/** A domain sold as "first year" must stay registered at least this long (~11 months). */
+export const MIN_FIRST_YEAR_DAYS = 335;
 
 /** Line prefix in hosting_clients.notes. Deliberately NOT "servolia-domain:",
  *  which readDomainRecord owns: that record is for domains we bought for the
@@ -96,8 +101,8 @@ export function parseOwnedDomainLink(body: Record<string, unknown>): ParseResult
  * token and team as the registrar calls (VERCEL_TOKEN, VERCEL_TEAM_ID).
  * Anything but a clear yes refuses the link.
  */
-export async function verifyOwnedDomain(domain: string, project: string): Promise<{ ok: true } | { ok: false; error: string; status: number }> {
-  const inTeam = await registrar<{ domain?: { name?: string; boughtAt?: number | null } }>(`/v5/domains/${encodeURIComponent(domain)}`);
+export async function verifyOwnedDomain(domain: string, project: string, now = Date.now()): Promise<{ ok: true } | { ok: false; error: string; status: number }> {
+  const inTeam = await registrar<{ domain?: { name?: string; boughtAt?: number | null; expiresAt?: number | null } }>(`/v5/domains/${encodeURIComponent(domain)}`);
   if (!inTeam.ok) {
     if (inTeam.code === "not_configured") return { ok: false, status: 503, error: "VERCEL_TOKEN / VERCEL_TEAM_ID are not set, so the domain cannot be checked." };
     if (inTeam.status === 404) return { ok: false, status: 400, error: `${domain} is not a domain in our Vercel team. Nothing was created.` };
@@ -110,6 +115,14 @@ export async function verifyOwnedDomain(domain: string, project: string): Promis
      renewal would be charged for a name Vercel does not renew for us. */
   if (typeof inTeam.data.domain?.boughtAt !== "number") {
     return { ok: false, status: 400, error: `${domain} is in our Vercel team but was NOT registered through Vercel (no purchase date), so it is not ours to sell a year of. Nothing was created.` };
+  }
+  /* A "first year" must be a real year: the client pays today for twelve
+     months, and the renewal is billed a year on. A registration that ends
+     sooner would leave them paying for months Vercel does not cover. */
+  const exp = inTeam.data.domain?.expiresAt;
+  if (typeof exp !== "number" || exp < now + MIN_FIRST_YEAR_DAYS * 86_400_000) {
+    const when = typeof exp === "number" ? new Date(exp).toISOString().slice(0, 10) : "an unknown date";
+    return { ok: false, status: 400, error: `${domain}'s registration ends ${when}, less than ${MIN_FIRST_YEAR_DAYS} days away: a "first year" sold today would not be a year. Renew it at Vercel first, or sell it as a domain order. Nothing was created.` };
   }
   const attached = await registrar<{ name?: string }>(
     `/v9/projects/${encodeURIComponent(project)}/domains/${encodeURIComponent(domain)}`,
@@ -208,6 +221,8 @@ export interface OwnedDomainNote {
   keptUntil?: string;
   /** YYYY-MM-DD: the day Vercel auto-renew was switched off after the hosting ended. */
   renewalOff?: string;
+  /** YYYY-MM-DD: a Vercel expiry too far from our date to follow; recorded so it is reported once. */
+  vercelMismatch?: string;
 }
 
 export function readOwnedDomainNote(notes: string | null | undefined): OwnedDomainNote | null {
@@ -229,6 +244,7 @@ export function readOwnedDomainNote(notes: string | null | undefined): OwnedDoma
     ...(kv.noticed ? { noticed: kv.noticed } : {}),
     ...(kv.kept ? { keptUntil: kv.kept } : {}),
     ...(kv["renewal-off"] ? { renewalOff: kv["renewal-off"] } : {}),
+    ...(kv["vercel-expiry"] ? { vercelMismatch: kv["vercel-expiry"] } : {}),
   };
 }
 
@@ -246,6 +262,7 @@ export function writeOwnedDomainNote(notes: string | null | undefined, rec: Owne
     ...(rec.noticed ? [`noticed: ${rec.noticed}`] : []),
     ...(rec.keptUntil ? [`kept: ${rec.keptUntil}`] : []),
     ...(rec.renewalOff ? [`renewal-off: ${rec.renewalOff}`] : []),
+    ...(rec.vercelMismatch ? [`vercel-expiry: ${rec.vercelMismatch}`] : []),
   ].join(" | ");
   return [...kept, line].join("\n");
 }
@@ -253,75 +270,156 @@ export function writeOwnedDomainNote(notes: string | null | undefined, rec: Owne
 /* ── The owned domain's life after the first year (domain-sales branch) ──── */
 
 export const OWNED_RENEWAL_ITEM_KIND = "owned_domain_renewal";
+/** Vercel's expiry is followed only when it is this close to our own date. */
+export const EXPIRY_FOLLOW_DAYS = 30;
+/** Days after a billed year starts before "Vercel did not renew it" is an alarm. */
+export const RENEWAL_GRACE_DAYS = 5;
+
+const dayMs = 86_400_000;
+const daysBetween = (a: string, b: string) => Math.abs(Date.parse(`${a}T00:00:00Z`) - Date.parse(`${b}T00:00:00Z`)) / dayMs;
+const plusDays = (iso: string, n: number) => new Date(Date.parse(`${iso}T00:00:00Z`) + n * dayMs).toISOString().slice(0, 10);
 
 /**
- * The next date a year must be billed for. Vercel's actual expiry wins when
- * readable and it is later than the last year we billed: that corrects a note
- * dated from the client's payment for a domain registered days earlier, and
- * follows Vercel after it renews. While a billed year has not been renewed by
- * Vercel yet (expiry <= billed), the note's own date stands — otherwise the
- * year just billed would be billed again. Pure.
+ * The next date a year must be billed for, given Vercel's actual expiry
+ * (null when unreadable). Pure.
+ *  - Vercel's date is followed only when it is within EXPIRY_FOLLOW_DAYS of
+ *    ours: that corrects a note dated from the client's payment for a domain
+ *    registered days earlier. A date further off is not a small correction
+ *    (a manual renewal, a wrong domain): our date stands and `mismatch` asks
+ *    for it to be reported (once — the caller records vercelMismatch).
+ *  - While the year we billed has not been renewed yet (expiry <= billed),
+ *    our date stands: that case is renewalCheck's to judge, never a reason
+ *    to drag the date back and bill the year again.
  */
-export function effectiveRenewsOn(note: OwnedDomainNote, vercelExpiry: string | null): string {
-  if (vercelExpiry && (!note.billed || vercelExpiry > note.billed)) return vercelExpiry;
-  return note.renewsOn;
+export function renewalDateFrom(note: OwnedDomainNote, vercelExpiry: string | null): { renewsOn: string; mismatch?: string } {
+  if (!vercelExpiry || vercelExpiry === note.renewsOn) return { renewsOn: note.renewsOn };
+  if (note.billed && vercelExpiry <= note.billed) return { renewsOn: note.renewsOn };
+  if (!note.renewsOn || daysBetween(vercelExpiry, note.renewsOn) <= EXPIRY_FOLLOW_DAYS) return { renewsOn: vercelExpiry };
+  return { renewsOn: note.renewsOn, mismatch: vercelExpiry };
+}
+
+/**
+ * Was the year we last billed actually renewed by Vercel? The next year is
+ * never billed until it was (expiry > billed). `alarm` once RENEWAL_GRACE_DAYS
+ * have passed since that year began and it still has not: the client paid
+ * for a year Vercel did not give them. Pure; `registration` is what Vercel
+ * says ("gone" = no longer in our team, "unreadable" = could not ask).
+ */
+export function renewalCheck(
+  note: OwnedDomainNote,
+  registration: { state: "ok"; expiry: string | null } | { state: "gone" } | { state: "unreadable" },
+  todayIso: string,
+): { ok: true } | { ok: false; alarm: boolean; why: string } {
+  if (!note.billed) return { ok: true };
+  if (registration.state === "ok" && registration.expiry && registration.expiry > note.billed) return { ok: true };
+  const why = registration.state === "gone" ? "the domain is no longer in our Vercel team"
+    : registration.state === "unreadable" ? "Vercel could not be read"
+    : `Vercel's registration still ends ${registration.expiry ?? "(unknown)"}`;
+  return { ok: false, alarm: todayIso > plusDays(note.billed, RENEWAL_GRACE_DAYS), why };
 }
 
 export interface OwnedCancelOutcome {
   /** "off": auto-renew switched off. "kept": a paid year starts on keptUntil. "failed": Vercel refused. "test": nothing touched. */
   result: "off" | "kept" | "failed" | "test";
   keptUntil?: string;
-  /** Unbilled renewal lines deleted: the subscription that would have carried them has ended. */
+  /** Unbilled renewal lines deleted (pending, or on a draft invoice): nothing will ever collect them. */
   deletedPending: string[];
+  /** Unpaid (open) invoices voided because they carried only a renewal line for a year not started. */
+  voided: string[];
+  /** Unpaid invoices carrying such a line NEXT TO other charges: the line must be credited by hand. */
+  mixed: string[];
   detail?: string;
 }
 
 /**
- * The hosting that carried an owned domain has ENDED. Its renewal lines that
- * were never invoiced are deleted (no invoice will ever carry them). If a
- * renewal line WAS paid for a year that has not started, Vercel's auto-renew
- * stays on until that date — the client bought that year — and the daily
- * cron switches it off after (finishKeptOwnedDomain). Otherwise auto-renew is
- * switched off now: the domain stays registered until it expires and is the
- * client's to transfer. `test` never reaches Vercel.
+ * The hosting that carried an owned domain has ENDED.
+ *  - A renewal line never invoiced, or on a DRAFT invoice, is deleted.
+ *  - An UNPAID (open) invoice for a year that has not started: voided when
+ *    it carries only renewal lines — we are switching the renewal off, so a
+ *    payable year must not be left behind. One that also carries other
+ *    charges cannot lose a single line in Stripe: it is reported (`mixed`)
+ *    for a credit note by hand.
+ *  - A renewal line PAID for a year that has not started keeps Vercel's
+ *    auto-renew on until that date — the client bought that year — and the
+ *    daily cron switches it off once Vercel has renewed it.
+ *  - Otherwise auto-renew goes off now: the domain stays registered until it
+ *    expires and is the client's to transfer.
+ * `test` never reaches Vercel and deletes or voids nothing.
  */
 export async function ownedDomainOnCancel(
   stripe: Stripe, customerId: string | null, note: OwnedDomainNote, todayIso: string, test: boolean,
   setAutoRenew: (domain: string, on: boolean) => Promise<{ ok: boolean; code?: string; status?: number; message?: string }>,
 ): Promise<OwnedCancelOutcome> {
   const deletedPending: string[] = [];
+  const voided: string[] = [];
+  const mixed: string[] = [];
   let paidAhead: string | undefined;
   if (customerId) {
     const items = (await stripe.invoiceItems.list({ customer: customerId, limit: 50 })).data
       .filter((i) => i.metadata?.kind === OWNED_RENEWAL_ITEM_KIND && i.metadata?.domain === note.domain);
     for (const item of items) {
       const invoiceId = typeof item.invoice === "string" ? item.invoice : item.invoice?.id ?? null;
+      const yearStart = item.metadata?.renews_on ?? "";
       if (!invoiceId) {
         if (!test) { await stripe.invoiceItems.del(item.id); deletedPending.push(item.id); }
         continue;
       }
       const inv = await stripe.invoices.retrieve(invoiceId);
-      const yearStart = item.metadata?.renews_on;
-      if (inv.status === "paid" && yearStart && yearStart >= todayIso && (!paidAhead || yearStart > paidAhead)) paidAhead = yearStart;
+      const notStarted = yearStart >= todayIso;
+      if (inv.status === "paid") {
+        if (notStarted && (!paidAhead || yearStart > paidAhead)) paidAhead = yearStart;
+      } else if (notStarted && inv.status === "draft") {
+        if (!test) { await stripe.invoiceItems.del(item.id); deletedPending.push(item.id); }
+      } else if (notStarted && (inv.status === "open" || inv.status === "uncollectible")) {
+        const lines = inv.lines?.data ?? [];
+        const onlyRenewal = lines.length > 0 && lines.every((l) => l.metadata?.kind === OWNED_RENEWAL_ITEM_KIND);
+        if (onlyRenewal) {
+          if (!test) { await stripe.invoices.voidInvoice(invoiceId); voided.push(invoiceId); }
+        } else {
+          mixed.push(invoiceId);
+        }
+      }
     }
   }
-  if (test) return { result: "test", deletedPending, detail: "TEST: Vercel not touched" };
-  if (paidAhead) return { result: "kept", keptUntil: paidAhead, deletedPending };
+  const base = { deletedPending, voided, mixed };
+  if (test) return { result: "test", ...base, detail: "TEST: Vercel not touched" };
+  if (paidAhead) return { result: "kept", keptUntil: paidAhead, ...base };
   const off = await setAutoRenew(note.domain, false);
   return off.ok
-    ? { result: "off", deletedPending }
-    : { result: "failed", deletedPending, detail: `${off.code ?? off.status}${off.message ? `: ${off.message}` : ""}` };
+    ? { result: "off", ...base }
+    : { result: "failed", ...base, detail: `${off.code ?? off.status}${off.message ? `: ${off.message}` : ""}` };
 }
 
 /** One line for the cancellation notice. */
 export function ownedCancelLine(domain: string, o: OwnedCancelOutcome): string {
-  const pending = o.deletedPending.length ? ` Unbilled renewal line${o.deletedPending.length === 1 ? "" : "s"} removed (${o.deletedPending.join(", ")}).` : "";
+  const extra = [
+    o.deletedPending.length ? `Unbilled renewal line${o.deletedPending.length === 1 ? "" : "s"} removed (${o.deletedPending.join(", ")}).` : "",
+    o.voided.length ? `Unpaid renewal invoice${o.voided.length === 1 ? "" : "s"} voided (${o.voided.join(", ")}).` : "",
+    o.mixed.length ? `⚠️ Unpaid invoice${o.mixed.length === 1 ? "" : "s"} ${o.mixed.join(", ")} still carr${o.mixed.length === 1 ? "ies" : "y"} the domain's renewal next to other charges: credit that line by hand (Stripe > invoice > Create credit note).` : "",
+  ].filter(Boolean).join(" ");
+  const tail = extra ? ` ${extra}` : "";
   switch (o.result) {
-    case "off": return `🌐 Owned domain ${domain}: Vercel auto-renew switched OFF. It stays registered until it expires; transfer it to them if they ask.${pending}`;
-    case "kept": return `🌐 Owned domain ${domain}: auto-renew KEPT ON until ${o.keptUntil} — the client already paid for the year from that date; the daily domain check switches it off after.${pending}`;
-    case "failed": return `⚠️ Owned domain ${domain}: auto-renew NOT switched off (${o.detail}) — do it in Vercel > Domains.${pending}`;
-    default: return `Owned domain ${domain}: TEST — Vercel not touched.${pending}`;
+    case "off": return `🌐 Owned domain ${domain}: Vercel auto-renew switched OFF. It stays registered until it expires; transfer it to them if they ask.${tail}`;
+    case "kept": return `🌐 Owned domain ${domain}: auto-renew KEPT ON until ${o.keptUntil} — the client already paid for the year from that date; the daily domain check switches it off once Vercel has renewed it.${tail}`;
+    case "failed": return `⚠️ Owned domain ${domain}: auto-renew NOT switched off (${o.detail}) — do it in Vercel > Domains.${tail}`;
+    default: return `Owned domain ${domain}: TEST — Vercel not touched.${tail}`;
   }
+}
+
+/**
+ * The client came back (invoice.paid put an ended row back to active): the
+ * domain renews again. Vercel auto-renew back ON, the cancellation markers
+ * cleared. Returns the note to write, or why not. `test` never reaches Vercel.
+ */
+export async function ownedDomainOnReturn(
+  note: OwnedDomainNote, test: boolean,
+  setAutoRenew: (domain: string, on: boolean) => Promise<{ ok: boolean; code?: string; status?: number; message?: string }>,
+): Promise<{ ok: true; note: OwnedDomainNote } | { ok: false; detail: string } | null> {
+  if (!note.renewalOff && !note.keptUntil) return null;
+  if (test) return { ok: false, detail: "TEST: Vercel not touched" };
+  const on = await setAutoRenew(note.domain, true);
+  if (!on.ok) return { ok: false, detail: `${on.code ?? on.status}${on.message ? `: ${on.message}` : ""}` };
+  return { ok: true, note: { ...note, renewalOff: undefined, keptUntil: undefined } };
 }
 
 const dateLong = (iso: string, fr: boolean) =>

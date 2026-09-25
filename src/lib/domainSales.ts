@@ -452,9 +452,21 @@ export async function domainInTeam(domain: string, notBefore?: string): Promise<
  * null when it cannot be read or the name was not bought through Vercel.
  */
 export async function domainExpiry(domain: string): Promise<string | null> {
+  const r = await domainRegistration(domain);
+  return r.state === "ok" ? r.expiry : null;
+}
+
+/**
+ * What Vercel says about our registration of `domain`: "ok" with its expiry
+ * (YYYY-MM-DD, null if not bought through Vercel), "gone" when it is no
+ * longer in our team (404), "unreadable" for anything else — so a network
+ * blip is never mistaken for a domain that disappeared.
+ */
+export async function domainRegistration(domain: string): Promise<{ state: "ok"; expiry: string | null } | { state: "gone" } | { state: "unreadable" }> {
   const res = await registrar<{ domain?: { expiresAt?: number | null } }>(`/v5/domains/${encodeURIComponent(domain)}`);
-  const e = res.ok ? res.data.domain?.expiresAt : null;
-  return typeof e === "number" && Number.isFinite(e) ? new Date(e).toISOString().slice(0, 10) : null;
+  if (!res.ok) return { state: res.status === 404 ? "gone" : "unreadable" };
+  const e = res.data.domain?.expiresAt;
+  return { state: "ok", expiry: typeof e === "number" && Number.isFinite(e) ? new Date(e).toISOString().slice(0, 10) : null };
 }
 
 /** Does a project of this name exist in our team? null = could not tell. */

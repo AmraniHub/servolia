@@ -42,7 +42,7 @@ import { stripeFor } from "@/lib/stripeMode";
 import { runAsTest, inTestContext, testTag, testPrefixed, excludeTest, isTestRow } from "@/lib/testContext";
 import { Sends, paidSubject, troubleSubject, money, emailOutcome, type EmailOutcome } from "@/lib/notify";
 import { addWorkingDays, hasOneOff, writeOneOff, type OneOffOrder, type OneOffLeadData } from "@/lib/oneOffOrders";
-import { readOwnedDomainMeta, trialEndFor, writeOwnedDomainNote, ownedDomainPaidEmail, ownedDomainOwnerLines, readOwnedDomainNote, ownedDomainOnCancel, ownedCancelLine } from "@/lib/ownedDomain";
+import { readOwnedDomainMeta, trialEndFor, writeOwnedDomainNote, ownedDomainPaidEmail, ownedDomainOwnerLines, readOwnedDomainNote, ownedDomainOnCancel, ownedCancelLine, ownedDomainOnReturn } from "@/lib/ownedDomain";
 
 export const runtime = "nodejs";
 // A subscriber whose intake beat this event has their draft generated after
@@ -1722,8 +1722,32 @@ async function handleEventBody(event: Stripe.Event, stripe: Stripe, db: Db, send
          * destroys the evidence that they were suspended.
          */
         const { data: wasHost } = await db.from("hosting_clients")
-          .select("id, business, status, plan, repo, branch, site_root, subscription_id")
+          .select("id, business, status, plan, repo, branch, site_root, subscription_id, notes")
           .or(filter).maybeSingle();
+
+        /* A CLIENT WHO CAME BACK with a domain we already owned
+         * (src/lib/ownedDomain.ts): their cancellation switched its Vercel
+         * auto-renew off (or scheduled it); a paid invoice putting the row
+         * back to active switches it on again and clears the markers, so the
+         * domain-billing cron renews it as before. Only on `invoice.paid`
+         * (its twin payment_succeeded would do it twice), and never in test. */
+        if (event.type === "invoice.paid" && wasHost?.id && wasHost.status === "churned") {
+          const ownedNote = readOwnedDomainNote(wasHost.notes);
+          if (ownedNote) {
+            try {
+              const back = await ownedDomainOnReturn(ownedNote, test, setDomainAutoRenew);
+              if (back?.ok) {
+                const notes = writeOwnedDomainNote(wasHost.notes, back.note);
+                await db.from("hosting_clients").update({ notes }).eq("id", wasHost.id);
+                sends.alert(`${wasHost.business ?? "A client"} is back: owned domain ${ownedNote.domain} — Vercel auto-renew switched back ON; its renewals are billed again.`);
+              } else if (back && !back.ok && !test) {
+                sends.alert(`${wasHost.business ?? "A client"} is back, but owned domain ${ownedNote.domain}'s Vercel auto-renew is still OFF (${back.detail}) — switch it on in Vercel > Domains, then clear renewal-off on the row.`);
+              }
+            } catch (err) {
+              sends.alert(`${wasHost.business ?? "A client"} is back; owned domain ${ownedNote.domain}: could not switch auto-renew back on (${err instanceof Error ? err.message : String(err)}) — do it in Vercel > Domains.`);
+            }
+          }
+        }
 
         await db.from("hosting_clients").update({
           status: "active",

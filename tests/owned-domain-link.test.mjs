@@ -164,7 +164,7 @@ test("route: validates, checks Vercel, and only then creates the session through
 
 /* ══ 3. Ownership is checked with Vercel, and a no is a refusal ═══════════ */
 
-async function withVercel(answers, fn, { boughtAt } = {}) {
+async function withVercel(answers, fn, { boughtAt, expiresAt } = {}) {
   const before = globalThis.fetch;
   const calls = [];
   globalThis.fetch = async (input, init = {}) => {
@@ -172,7 +172,7 @@ async function withVercel(answers, fn, { boughtAt } = {}) {
     calls.push({ url, method: init.method ?? "GET" });
     const u = new URL(url);
     const status = answers(u.pathname) ?? 404;
-    const body = status === 200 ? { domain: { name: "ithardigital.com", boughtAt: boughtAt === undefined ? Date.parse("2026-09-20T10:00:00Z") : boughtAt }, name: "ithardigital.com" } : { error: { code: "not_found", message: "Not found" } };
+    const body = status === 200 ? { domain: { name: "ithardigital.com", boughtAt: boughtAt === undefined ? Date.parse("2026-09-20T10:00:00Z") : boughtAt, expiresAt: expiresAt === undefined ? Date.now() + 365 * 86400000 : expiresAt }, name: "ithardigital.com" } : { error: { code: "not_found", message: "Not found" } };
     return new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
   };
   try { return { out: await fn(), calls }; } finally { globalThis.fetch = before; }
@@ -192,6 +192,19 @@ test("verify: in the team but NOT registered through Vercel (boughtAt null) -> r
   assert.equal(out.status, 400);
   assert.match(out.error, /NOT registered through Vercel/);
   assert.equal(calls.length, 1, "refused before the project is even asked");
+});
+
+test("verify: a 'first year' must be a real year — Ithar's (bought 2026-09-25, expires 2027-09-25) passes; one expiring within ~11 months is refused", async () => {
+  const bought = Date.parse("2026-09-25T09:00:00Z");
+  const expires = Date.parse("2027-09-25T09:00:00Z");
+  const ithar = await withVercel(() => 200, () => OD.verifyOwnedDomain("ithardigital.com", "ithar-digital", Date.parse("2026-09-25T12:00:00Z")), { boughtAt: bought, expiresAt: expires });
+  assert.deepEqual(ithar.out, { ok: true });
+  const late = await withVercel(() => 200, () => OD.verifyOwnedDomain("ithardigital.com", "ithar-digital", Date.parse("2026-12-01T12:00:00Z")), { boughtAt: bought, expiresAt: expires });
+  assert.equal(late.out.ok, false, "sold in December, it ends in September: not a year");
+  assert.match(late.out.error, /registration ends 2027-09-25, less than 335 days away/);
+  const unknown = await withVercel(() => 200, () => OD.verifyOwnedDomain("ithardigital.com", "ithar-digital"), { boughtAt: bought, expiresAt: null });
+  assert.equal(unknown.out.ok, false);
+  assert.match(unknown.out.error, /ends an unknown date/);
 });
 
 test("verify: not in our team -> refused, clear error", async () => {

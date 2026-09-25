@@ -36,13 +36,16 @@ Object.assign(process.env, { VERCEL_TOKEN: "vt", VERCEL_TEAM_ID: "team_x" });
 
 /* Stripe through the seam: the customer's invoice items and their invoices. */
 const SM = await import("../src/lib/stripeMode.ts");
-const stripeState = { items: [], invoices: {}, deleted: [] };
+const stripeState = { items: [], invoices: {}, deleted: [], voided: [] };
 SM.__setStripeFactoryForTests(() => ({
   invoiceItems: {
     list: async () => ({ data: stripeState.items }),
     del: async (id) => { stripeState.deleted.push(id); return { id, deleted: true }; },
   },
-  invoices: { retrieve: async (id) => stripeState.invoices[id] },
+  invoices: {
+    retrieve: async (id) => stripeState.invoices[id],
+    voidInvoice: async (id) => { stripeState.voided.push(id); return { id, status: "void" }; },
+  },
 }));
 
 const TODAY = new Date().toISOString().slice(0, 10);
@@ -53,7 +56,7 @@ const item = (id, invoice, renewsOn) => ({ id, invoice, metadata: { kind: "owned
 function reset({ items = [], invoices = {}, status = 204 } = {}) {
   H.reset();
   autoRenew.length = 0;
-  Object.assign(stripeState, { items, invoices, deleted: [] });
+  Object.assign(stripeState, { items, invoices, deleted: [], voided: [] });
   vercel.autoRenewStatus = status;
   H.reads.hosting_clients = [{ id: "h-owned", business: "Ithar Digital", notes: OD.writeOwnedDomainNote(null, NOTE) }];
 }
@@ -110,6 +113,52 @@ test("a hosting with no owned domain ends exactly as before (no Vercel call, sub
   assert.match(telegram().find((x) => x.includes("Subscription ended")), /Subscription ended: hosting — Plain Co/);
 });
 
+const renewalLine = { metadata: { kind: "owned_domain_renewal", domain: "ithardigital.com" } };
+
+test("M3: an UNPAID invoice carrying only the renewal of a year not started is VOIDED — no payable year left behind", async () => {
+  reset({ items: [item("ii_open", "in_open", day(20))], invoices: { in_open: { id: "in_open", status: "open", lines: { data: [renewalLine] } } } });
+  await POST(request(H.subscriptionDeleted(true), H.LIVE_WH));
+  assert.deepEqual(stripeState.voided, ["in_open"]);
+  assert.deepEqual(autoRenew.map((a) => a.body), [{ autoRenew: false }], "and auto-renew goes off: that year was never paid");
+  assert.match(telegram().find((x) => x.includes("Subscription ended")), /Unpaid renewal invoice voided \(in_open\)/);
+});
+
+test("M3: an unpaid invoice with the renewal NEXT TO other charges is not voided whole — the owner is told to credit that line", async () => {
+  reset({ items: [item("ii_mixed", "in_mixed", day(20))], invoices: { in_mixed: { id: "in_mixed", status: "open", lines: { data: [renewalLine, { metadata: {} }] } } } });
+  await POST(request(H.subscriptionDeleted(true), H.LIVE_WH));
+  assert.deepEqual(stripeState.voided, []);
+  assert.match(telegram().find((x) => x.includes("Subscription ended")), /Unpaid invoice in_mixed still carries the domain's renewal next to other charges: credit that line by hand/);
+});
+
+test("M3: a renewal line on a DRAFT invoice is removed", async () => {
+  reset({ items: [item("ii_draft", "in_draft", day(20))], invoices: { in_draft: { id: "in_draft", status: "draft", lines: { data: [renewalLine] } } } });
+  await POST(request(H.subscriptionDeleted(true), H.LIVE_WH));
+  assert.deepEqual(stripeState.deleted, ["ii_draft"]);
+  assert.deepEqual(stripeState.voided, []);
+});
+
+/* invoice.paid on a row whose hosting had ENDED: the client is back. */
+function invoicePaid() {
+  return { id: "evt_back_1", object: "event", type: "invoice.paid", livemode: true, created: 1790000000, api_version: "2025-01-01",
+    data: { object: { id: "in_back", object: "invoice", customer: "cus_host1", subscription: "sub_host1", amount_paid: 9600, currency: "usd", billing_reason: "subscription_cycle" } } };
+}
+
+test("M3: a client who COMES BACK (invoice.paid on an ended row) gets Vercel auto-renew back ON and the markers cleared", async () => {
+  reset();
+  H.reads.hosting_clients = [{ id: "h-owned", business: "Ithar Digital", status: "churned", plan: "hosting_lite", notes: OD.writeOwnedDomainNote(null, { ...NOTE, renewalOff: "2027-10-01" }) }];
+  await POST(request(invoicePaid(), H.LIVE_WH));
+  assert.deepEqual(autoRenew.map((a) => a.body), [{ autoRenew: true }]);
+  const n = noteWrites().at(-1);
+  assert.equal(n.renewalOff, undefined);
+  assert.equal(n.keptUntil, undefined);
+  assert.ok(telegram().some((t) => /is back: owned domain ithardigital\.com — Vercel auto-renew switched back ON/.test(t)), JSON.stringify(telegram()));
+  // An active row paying its normal renewal: nothing to switch.
+  reset();
+  H.reads.hosting_clients = [{ id: "h-owned", business: "Ithar Digital", status: "active", plan: "hosting_lite", notes: OD.writeOwnedDomainNote(null, NOTE) }];
+  await POST(request(invoicePaid(), H.LIVE_WH));
+  assert.deepEqual(autoRenew, []);
+});
+
 test("a founder TEST cancellation never reaches Vercel and deletes nothing", async () => {
   reset({ items: [item("ii_pending", null, day(200))] });
   Object.assign(process.env, { STRIPE_TEST_SECRET_KEY: "sk_test_harness", STRIPE_TEST_WEBHOOK_SECRET: H.TEST_WH });
@@ -126,9 +175,15 @@ test("a founder TEST cancellation never reaches Vercel and deletes nothing", asy
 });
 
 test("the pure pieces: renewal date sync and the notice line", () => {
-  assert.equal(OD.effectiveRenewsOn({ renewsOn: "2027-09-25" }, "2027-09-20"), "2027-09-20", "Vercel's real expiry wins before the first bill");
-  assert.equal(OD.effectiveRenewsOn({ renewsOn: "2028-09-20", billed: "2027-09-20" }, "2027-09-20"), "2028-09-20", "billed, not yet renewed: ours stands");
-  assert.equal(OD.effectiveRenewsOn({ renewsOn: "2027-09-25" }, null), "2027-09-25", "unreadable: ours");
+  assert.deepEqual(OD.renewalDateFrom({ renewsOn: "2027-09-25" }, "2027-09-20"), { renewsOn: "2027-09-20" }, "5 days off: Vercel's real expiry is followed");
+  assert.deepEqual(OD.renewalDateFrom({ renewsOn: "2027-09-25" }, "2028-03-01"), { renewsOn: "2027-09-25", mismatch: "2028-03-01" }, "months off: ours stands, reported");
+  assert.deepEqual(OD.renewalDateFrom({ renewsOn: "2028-09-20", billed: "2027-09-20" }, "2027-09-20"), { renewsOn: "2028-09-20" }, "billed, not yet renewed: ours stands");
+  assert.deepEqual(OD.renewalDateFrom({ renewsOn: "2027-09-25" }, null), { renewsOn: "2027-09-25" }, "unreadable: ours");
+  const n = { renewsOn: "2028-09-25", billed: "2027-09-25" };
+  assert.deepEqual(OD.renewalCheck(n, { state: "ok", expiry: "2028-09-25" }, "2027-10-01"), { ok: true });
+  assert.equal(OD.renewalCheck(n, { state: "ok", expiry: "2027-09-25" }, "2027-09-30").alarm, false, "day +5: not yet");
+  assert.equal(OD.renewalCheck(n, { state: "ok", expiry: "2027-09-25" }, "2027-10-01").alarm, true, "day +6: alarm");
+  assert.equal(OD.renewalCheck(n, { state: "unreadable" }, "2027-10-01").ok, false, "unreadable never counts as renewed");
   const round = OD.readOwnedDomainNote(OD.writeOwnedDomainNote(null, { ...NOTE, billed: "2027-09-20", noticed: "2028-09-20=35.9", keptUntil: "2028-09-20" }));
   assert.equal(round.billed, "2027-09-20");
   assert.equal(round.noticed, "2028-09-20=35.9");
