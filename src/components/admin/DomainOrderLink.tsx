@@ -23,6 +23,8 @@ export default function DomainOrderLink() {
      renewal. Stop is two clicks (no confirm(): the in-app browser answers
      every confirm with "no", silently). */
   const [existing, setExisting] = useState("");
+  // Only needed when several Stripe customers hold the same name (the server says so).
+  const [existingCustomer, setExistingCustomer] = useState("");
   const [manageBusy, setManageBusy] = useState(false);
   const [manageMsg, setManageMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [armStop, setArmStop] = useState(false);
@@ -36,7 +38,7 @@ export default function DomainOrderLink() {
       const res = await fetch("/api/admin/domain-order/manage", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action, domain: existing }),
+        body: JSON.stringify({ action, domain: existing, ...(existingCustomer.trim() ? { customer: existingCustomer.trim() } : {}) }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
@@ -44,7 +46,10 @@ export default function DomainOrderLink() {
         ok: !(data.problems?.length),
         text: action === "mark-bought"
           ? `Marked bought, renews ${data.record?.renewsOn}. ${data.attach === "done" ? "Attached to its project. " : data.attach === "failed" ? `NOT attached (${data.attachDetail}). ` : ""}${data.emailed ? `Client emailed (${data.email}).` : "Client NOT emailed — tell them yourself."}`
-          : `Stopped. ${[...(data.voided ?? []), ...(data.problems ?? [])].join("; ") || "Renewal switched off at Vercel."}`,
+          : `Stopped. ${[
+              ...(data.voided ?? []), ...(data.problems ?? []),
+              ...(data.keptUntil ? [`Vercel auto-renew stays ON until ${data.keptUntil}: that year is already paid for. The daily sweep switches it off after.`] : []),
+            ].join("; ") || "Renewal switched off at Vercel."}`,
       });
     } catch (err) {
       setManageMsg({ ok: false, text: err instanceof Error ? err.message : "Failed" });
@@ -120,7 +125,7 @@ export default function DomainOrderLink() {
         <p className="text-xs text-[#A1A1AA] mb-4">
           Priced live from Vercel (never under $27.90/yr). The client pays with their own card, the name is
           bought the moment they pay, and they get a Servolia email. Renews yearly on the same card; a price
-          rise is emailed at least 30 days before we charge the card. Endings: .com .org .net .co .fr .ma .uk .io (Vercel still has the last word).
+          rise is emailed at least 30 days before we charge the card. Endings: .com .org .net .co .uk .io (not .fr / .ma: registry eligibility rules; Vercel still has the last word).
           The Vercel project must exist in the team.
         </p>
 
@@ -172,6 +177,7 @@ export default function DomainOrderLink() {
         <label className={label}>Existing order</label>
         <div className="flex flex-wrap items-center gap-2">
           <input className={`${field} max-w-xs`} value={existing} onChange={(e) => { setExisting(e.target.value); setArmStop(false); }} placeholder="domain of an order already paid" />
+          <input className={`${field} max-w-[11rem]`} value={existingCustomer} onChange={(e) => { setExistingCustomer(e.target.value); setArmStop(false); }} placeholder="cus_… (if asked)" />
           <button type="button" disabled={manageBusy || !existing} onClick={() => manage("mark-bought")}
             className="h-9 px-3 rounded-lg bg-white border border-[#E8E6E0] text-sm font-semibold hover:bg-[#FAFAF7] disabled:opacity-50">
             Mark bought
@@ -182,9 +188,10 @@ export default function DomainOrderLink() {
           </button>
         </div>
         <p className="text-xs text-[#A1A1AA] mt-2">
-          Mark bought: after finishing a purchase by hand — checks the name is in our Vercel team, sets the renewal a year
-          after purchase, attaches it and emails the client. Stop renewing: voids its renewal invoice and switches
-          Vercel&apos;s auto-renew off.
+          Mark bought: after finishing a purchase by hand — refuses unless Vercel shows we BOUGHT the name (after the
+          order) and the payment was not refunded; sets the renewal a year after purchase, attaches it and emails the
+          client. Stop renewing (bought orders only): voids its renewal invoice and switches Vercel&apos;s auto-renew
+          off — unless the next year is already paid, then it stays on until that date.
         </p>
         {manageMsg ? (
           <p className={`mt-2 text-sm rounded-lg p-3 ${manageMsg.ok ? "bg-[#D1FAE5] text-[#065F46]" : "bg-[#FEE2E2] text-[#991B1B]"}`}>{manageMsg.text}</p>

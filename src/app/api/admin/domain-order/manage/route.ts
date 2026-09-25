@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
     if (str("action") === "stop") {
       const r = await stopDomainOrder(stripe, str("domain"), customer);
       if (!r.ok) return NextResponse.json({ error: r.error }, { status: 409 });
-      return NextResponse.json({ ok: true, record: r.record, voided: r.voided, problems: r.problems });
+      return NextResponse.json({ ok: true, record: r.record, voided: r.voided, problems: r.problems, keptUntil: r.keptUntil ?? null });
     }
     return NextResponse.json({ error: "Unknown action" }, { status: 400 });
   } catch (err) {

@@ -71,23 +71,33 @@ export async function GET(req: NextRequest) {
 
   /**
    * A plan or panel domain, one year: notice, charge, or nothing. `save`
-   * writes the new record into the row's notes; `idem` keys the invoice item.
+   * writes the new record into the row's notes and returns the database's
+   * error, if any; `idem` keys the invoice item.
    */
   async function planDomain(o: {
     row: { id: string; business: string | null; email: string | null; customer_id: string | null };
     domain: string; paidUsd: number; renewsOn: string; noticed?: string; idem: string;
-    save: (patch: { retailUsd?: number; nextChargeAt?: string; noticed?: string | undefined }) => Promise<void>;
+    save: (patch: { retailUsd?: number; nextChargeAt?: string; noticed?: string | undefined }) => Promise<string | null>;
   }) {
     if (today < daysBefore(o.renewsOn, NOTICE_DAYS + NOTICE_WINDOW_DAYS)) return;
     const d = renewalDecision({ paidUsd: o.paidUsd, vercelRenewalUsd: await currentRenewalUsd(o.domain), renewsOn: o.renewsOn, todayIso: today, ...readNoticed(o.noticed) });
     if (d.kind === "wait") return;
+    if (d.kind === "no-price") {
+      // Never billed at a guessed figure; reported every day until someone sets it.
+      failed.push(`${o.domain} (${o.row.business}): no stored price on the row (retail) — NOT renewed. Set it to what the client pays before ${chargeDateFor(o.renewsOn)}.`);
+      return;
+    }
     const lang = o.row.email ? langFor(refKeyForEmail(o.row.email)) : "en";
     if (d.kind === "notice") {
       const tpl = domainRenewalEmail({ domain: o.domain, stage: "notice", priceUsd: d.price, previousUsd: o.paidUsd, onIso: o.renewsOn, chargeOnIso: chargeDateFor(o.renewsOn), lang, billed: "invoice" });
       // Recorded only once it went: otherwise it is retried tomorrow, and after the window the rise waits a year.
       if (await mail(o.row.email, tpl, `${o.domain} price-rise notice`)) {
-        await o.save({ noticed: writeNoticed(o.renewsOn, d.price) });
-        noticed.push(`${o.domain} (${o.row.business}): price-rise notice sent, $${o.paidUsd.toFixed(2)} -> $${d.price.toFixed(2)} from ${o.renewsOn}`);
+        const err = await o.save({ noticed: writeNoticed(o.renewsOn, d.price) });
+        /* The email went but the record did not: the notice does not count
+           (the charge stays at last year's price) and it may be sent again
+           tomorrow. Said out loud rather than assumed. */
+        if (err) failed.push(`${o.domain} (${o.row.business}): price-rise notice SENT but NOT recorded (${err}) — it does not count yet; tomorrow's run may email it again.`);
+        else noticed.push(`${o.domain} (${o.row.business}): price-rise notice sent, $${o.paidUsd.toFixed(2)} -> $${d.price.toFixed(2)} from ${o.renewsOn}`);
       }
       return;
     }
@@ -98,7 +108,13 @@ export async function GET(req: NextRequest) {
         { idempotencyKey: o.idem },
       );
       const next = nextChargeDate(new Date(`${o.renewsOn}T00:00:00Z`), "annual").toISOString().slice(0, 10);
-      await o.save({ retailUsd: d.price, nextChargeAt: next, noticed: undefined });
+      const err = await o.save({ retailUsd: d.price, nextChargeAt: next, noticed: undefined });
+      if (err) {
+        /* The line IS on their account, the date did not move: within 24 h
+           the idempotency key stops a second line; after that it would not. */
+        failed.push(`${o.domain} (${o.row.business}): renewal line ADDED ($${d.price.toFixed(2)}) but the row was NOT updated (${err}). Set its renew date to ${next} today, or tomorrow's run adds a second line.`);
+        return;
+      }
       charged.push(`${o.domain} $${d.price.toFixed(2)}${was(d.price, o.paidUsd)} (${o.row.business}) — next ${next}`);
       if (d.wanted > d.price + 0.004) warnings.push(`${o.domain} (${o.row.business}): billed $${d.price.toFixed(2)}, not the $${d.wanted.toFixed(2)} Vercel's price now needs — the rise was not announced 30 days ahead. Next year's notice will carry it.`);
       const tpl = domainRenewalEmail({ domain: o.domain, stage: "invoice", priceUsd: d.price, previousUsd: o.paidUsd, onIso: o.renewsOn, lang });
@@ -128,7 +144,8 @@ export async function GET(req: NextRequest) {
         const { data: fresh } = await db.from("hosting_clients").select("notes").eq("id", row.id).maybeSingle();
         const notes = (fresh as { notes?: string | null } | null)?.notes ?? row.notes;
         const cur = readDomainRecord(notes) ?? rec;
-        await db.from("hosting_clients").update({ notes: writeDomainRecord(notes, { ...cur, ...patch }) }).eq("id", row.id);
+        const { error: upErr } = await db.from("hosting_clients").update({ notes: writeDomainRecord(notes, { ...cur, ...patch }) }).eq("id", row.id);
+        return upErr ? upErr.message : null;
       },
     });
   }
@@ -154,7 +171,8 @@ export async function GET(req: NextRequest) {
           const { data: fresh } = await db.from("hosting_clients").select("notes").eq("id", row.id).maybeSingle();
           const notes = (fresh as { notes?: string | null } | null)?.notes ?? row.notes;
           const cur = readExtraDomains(notes).find((d) => d.domain === rec.domain) ?? rec;
-          await db.from("hosting_clients").update({ notes: writeExtraDomain(notes, { ...cur, ...patch }) }).eq("id", row.id);
+          const { error: upErr } = await db.from("hosting_clients").update({ notes: writeExtraDomain(notes, { ...cur, ...patch }) }).eq("id", row.id);
+          return upErr ? upErr.message : null;
         },
       });
     }
@@ -173,7 +191,9 @@ export async function GET(req: NextRequest) {
   }
   for (const o of orders) {
     const who = o.email ?? o.customer;
-    if (o.step === "notice-failed") {
+    if (o.step === "no-price") {
+      failed.push(`${o.domain} (order, ${who}): ${o.detail}`);
+    } else if (o.step === "notice-failed") {
       failed.push(`${o.domain} (order, ${who}): price-rise notice NOT sent (${o.detail}); retried tomorrow while the notice window lasts, then the rise waits a year.`);
     } else if (o.step === "noticed") {
       noticed.push(`${o.domain} (order, ${who}): price-rise notice sent, $${o.previousUsd.toFixed(2)} -> $${o.priceUsd.toFixed(2)}, charged ${o.chargeOn}`);
@@ -192,7 +212,10 @@ export async function GET(req: NextRequest) {
   }
   try {
     for (const s of await sweepStoppedOrders(stripe)) {
-      (s.problems.length ? failed : checks).push(`${s.domain} (order, ${s.customer}) stopped: ${[...s.voided, ...s.problems].join("; ") || "renewal switched off"}`);
+      (s.problems.length ? failed : checks).push(`${s.domain} (order, ${s.customer}) stopped: ${[
+        ...s.voided, ...s.problems,
+        ...(s.keptUntil ? [`Vercel auto-renew kept ON until ${s.keptUntil} (that year is already paid); switched off after it`] : []),
+      ].join("; ") || "renewal switched off"}`);
     }
     checks.push(...(await auditDomainOrders(stripe)));
   } catch (e) {

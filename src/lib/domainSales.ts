@@ -99,9 +99,13 @@ function ninetyUp(n: number): number {
  * the one reason the emails give ("the registry raised its price").
  * Unknown Vercel price (API down) = last year's price, because a renewal is
  * not the moment to guess upward.
+ *
+ * NULL when there is no stored price: a renewal is never billed at a figure
+ * nobody agreed to (not even the floor). The caller refuses and reports it.
  */
-export function renewalRetailUsd(paidUsd: number, vercelRenewalUsd: number | null): number {
-  const paid = Number.isFinite(paidUsd) && paidUsd > 0 ? paidUsd : DOMAIN_MIN_RETAIL_USD;
+export function renewalRetailUsd(paidUsd: number, vercelRenewalUsd: number | null): number | null {
+  if (!Number.isFinite(paidUsd) || !(paidUsd > 0)) return null;
+  const paid = paidUsd;
   if (vercelRenewalUsd === null || !Number.isFinite(vercelRenewalUsd)) return paid;
   if (netProfitUsd(paid, vercelRenewalUsd) >= DOMAIN_TARGET_PROFIT_USD - 0.005) return paid;
   return Math.max(paid, ninetyUp(neededUsd(vercelRenewalUsd)));
@@ -135,6 +139,7 @@ export const chargeDateFor = (renewsOn: string) => daysBefore(renewsOn, CHARGE_D
 export type RenewalDecision =
   | { kind: "notice"; price: number }
   | { kind: "charge"; price: number; wanted: number }
+  | { kind: "no-price" }
   | { kind: "wait" };
 
 /**
@@ -146,19 +151,23 @@ export type RenewalDecision =
  *    charge on renewsOn − 7). Recorded by the caller ONLY once
  *    the email went out, so a failed send is retried the next day while the
  *    window lasts, and after it the rise simply waits a year.
+ *  - no-price: the record has no price, and the renewal is close (from the
+ *    first notice day): nothing is billed, the caller reports it every day.
  */
 export function renewalDecision(o: {
   paidUsd: number; vercelRenewalUsd: number | null; renewsOn: string; todayIso: string;
   noticedFor?: string; noticedUsd?: number;
 }): RenewalDecision {
+  if (o.todayIso < daysBefore(o.renewsOn, NOTICE_DAYS + NOTICE_WINDOW_DAYS)) return { kind: "wait" };
   const wanted = renewalRetailUsd(o.paidUsd, o.vercelRenewalUsd);
-  const paid = Number.isFinite(o.paidUsd) && o.paidUsd > 0 ? o.paidUsd : wanted;
+  if (wanted === null) return { kind: "no-price" };
+  const paid = o.paidUsd;
   if (o.todayIso >= chargeDateFor(o.renewsOn)) {
     const noticed = o.noticedFor === o.renewsOn && o.noticedUsd ? o.noticedUsd : 0;
     return { kind: "charge", price: Math.min(wanted, Math.max(paid, noticed)), wanted };
   }
   const rises = wanted > paid + 0.004;
-  const inWindow = o.todayIso >= daysBefore(o.renewsOn, NOTICE_DAYS + NOTICE_WINDOW_DAYS) && o.todayIso <= daysBefore(o.renewsOn, NOTICE_DAYS);
+  const inWindow = o.todayIso <= daysBefore(o.renewsOn, NOTICE_DAYS);
   if (rises && o.noticedFor !== o.renewsOn && inWindow) return { kind: "notice", price: wanted };
   return { kind: "wait" };
 }
@@ -171,17 +180,19 @@ export function readNoticed(v: string | undefined): { noticedFor?: string; notic
 export const writeNoticed = (renewsOn: string, price: number) => `${renewsOn}=${price}`;
 
 /**
- * The endings a domain-only link may be made for: the common ones Vercel
- * registers with the plain registrant contact (no extra per-registry data).
- * The live quote still has the last word; this keeps the admin from sending
- * a link for an ending the webhook would then fail to buy.
+ * The endings a domain-only link may be made for: the common generic ones
+ * Vercel registers with the plain registrant contact. .fr and .ma are NOT
+ * here: both registries have eligibility rules (an EU / Moroccan presence)
+ * that a Servolia LLC registrant may not meet, and nothing on the quote
+ * path proves Vercel will sell them to us. The live quote still has the
+ * last word; this keeps the admin from sending a link the webhook would
+ * then fail to buy.
  */
-export const DOMAIN_ORDER_TLDS = ["com", "org", "net", "co", "fr", "ma", "uk", "io"] as const;
+export const DOMAIN_ORDER_TLDS = ["com", "org", "net", "co", "uk", "io"] as const;
 export function tldAllowed(domain: string): boolean {
   const tld = domain.slice(domain.lastIndexOf(".") + 1);
   return (DOMAIN_ORDER_TLDS as readonly string[]).includes(tld);
 }
-
 /** What is left after Vercel's renewal and Stripe's worst case -- for the admin's eyes. */
 export function netProfitUsd(retailUsd: number, renewalUsd: number): number {
   return Math.round((retailUsd * (1 - STRIPE_RATE) - STRIPE_FIXED_USD - renewalUsd) * 100) / 100;
@@ -418,13 +429,22 @@ export async function purchaseDomainForClient(domain: string, retailYearlyUsd: n
  * marked bought, and how the daily audit finds a "failed" order that was in
  * fact registered.
  */
-export async function domainInTeam(domain: string): Promise<{ inTeam: boolean | null; boughtAt?: string }> {
+export async function domainInTeam(domain: string, notBefore?: string): Promise<{ inTeam: boolean | null; boughtAt?: string; why?: string }> {
   const res = await registrar<{ domain?: { boughtAt?: number | null } }>(`/v5/domains/${encodeURIComponent(domain)}`);
   if (res.ok) {
+    /* OURS means BOUGHT THROUGH VERCEL, for this order. A name merely added
+       to the team (a client's own domain pointed at a project) comes back
+       200 with boughtAt null, and one bought before the order was claimed
+       is some other purchase: neither may start a client's renewals. */
     const b = res.data.domain?.boughtAt;
-    return { inTeam: true, ...(typeof b === "number" ? { boughtAt: new Date(b).toISOString() } : {}) };
+    if (typeof b !== "number") return { inTeam: false, why: "it is in our Vercel team but was NOT bought through Vercel (no purchase date)" };
+    const boughtAt = new Date(b).toISOString();
+    if (notBefore && Date.parse(boughtAt) < Date.parse(notBefore)) {
+      return { inTeam: false, boughtAt, why: `Vercel's purchase (${boughtAt.slice(0, 10)}) is older than this order (${notBefore.slice(0, 10)})` };
+    }
+    return { inTeam: true, boughtAt };
   }
-  return { inTeam: res.status === 404 ? false : null };
+  return { inTeam: res.status === 404 ? false : null, ...(res.status === 404 ? { why: "it is not in our Vercel team" } : {}) };
 }
 
 /** Does a project of this name exist in our team? null = could not tell. */

@@ -1,4 +1,5 @@
 import type Stripe from "stripe";
+import { randomUUID } from "node:crypto";
 import {
   attachDomainToProject, canBuyDomains, currentRenewalUsd, domainOrder, domainQuote, normalizeDomain,
   purchaseDomainForClient, renewalDecision, daysBefore, chargeDateFor, NOTICE_DAYS, NOTICE_WINDOW_DAYS,
@@ -85,6 +86,14 @@ export interface DomainOrderRecord {
   noticedUsd?: number;
   /** ISO date renewal was switched off (invoices voided, Vercel auto-renew off). */
   renewalOff?: string;
+  /** A stopped order whose next year was ALREADY PAID: Vercel auto-renew stays on until this date. */
+  keptUntil?: string;
+  /** A random id per claim: tells our own replayed write from another delivery's. */
+  claimId?: string;
+  /** "<renewsOn>:<n>": declined charge attempts for that year, recorded BEFORE anything else. */
+  attempts?: string;
+  /** "<renewsOn>:<n>": empty drafts deleted for that year, so the next invoice gets a fresh idempotency key. */
+  resets?: string;
   note?: string;
 }
 
@@ -93,9 +102,16 @@ const KEYS: Record<keyof DomainOrderRecord, string> = {
   domain: P, status: `${P}_status`, retailUsd: `${P}_retail`, lang: `${P}_lang`, name: `${P}_name`,
   project: `${P}_project`, attached: `${P}_attached`, orderId: `${P}_order`, session: `${P}_session`,
   claimedAt: `${P}_claimed`, placedAt: `${P}_placed`, boughtAt: `${P}_bought`, renewsOn: `${P}_renews`,
-  noticedFor: `${P}_noticed`, noticedUsd: `${P}_noticed_usd`, renewalOff: `${P}_renewal_off`, note: `${P}_note`,
+  noticedFor: `${P}_noticed`, noticedUsd: `${P}_noticed_usd`, renewalOff: `${P}_renewal_off`,
+  keptUntil: `${P}_kept_until`, claimId: `${P}_claim_id`, attempts: `${P}_attempts`, resets: `${P}_resets`, note: `${P}_note`,
 };
-const TEXT_FIELDS = ["name", "project", "attached", "orderId", "session", "claimedAt", "placedAt", "boughtAt", "renewsOn", "noticedFor", "renewalOff", "note"] as const;
+const TEXT_FIELDS = ["name", "project", "attached", "orderId", "session", "claimedAt", "placedAt", "boughtAt", "renewsOn", "noticedFor", "renewalOff", "keptUntil", "claimId", "attempts", "resets", "note"] as const;
+
+/** "<renewsOn>:<n>" -> n for that renewal date, 0 for any other. */
+export function countFor(v: string | undefined, renewsOn: string): number {
+  const [d, n] = (v ?? "").split(":");
+  return d === renewsOn ? Number(n) || 0 : 0;
+}
 
 export function readOrderRecord(meta: Record<string, string> | null | undefined): DomainOrderRecord | null {
   const m = meta ?? {};
@@ -288,6 +304,11 @@ export interface FulfilResult {
   cardSaved: boolean;
 }
 
+/**
+ * Stripe's answers to a reused idempotency key with DIFFERENT parameters
+ * (400, StripeIdempotencyError) or while the first request is still in
+ * flight (409). Either means another delivery holds the claim.
+ */
 function isIdempotencyClash(err: unknown): boolean {
   const e = err as { statusCode?: number; type?: string; code?: string } | null;
   return e?.statusCode === 409 || e?.type === "StripeIdempotencyError" || e?.type === "idempotency_error" || e?.code === "idempotency_key_in_use";
@@ -295,11 +316,16 @@ function isIdempotencyClash(err: unknown): boolean {
 
 /**
  * Idempotent on the customer, and the claim is ATOMIC: it is written with
- * the idempotency key `domain-claim-<session id>`. Stripe answers a second
- * request with that key as a replay (Idempotent-Replayed: true) or, while
- * the first is still in flight, with a 409 — either way this delivery is not
- * the one that buys, and it stops. Two deliveries racing through the read
- * above therefore make one registrar call between them.
+ * the idempotency key `domain-claim-<session id>` and a random claim id, so
+ * two deliveries never send the same parameters. Stripe answers the second
+ * with a 400 (same key, different parameters) or, while the first is still
+ * in flight, a 409: that delivery is not the one that buys, and it stops.
+ *
+ * A REPLAYED answer (Idempotent-Replayed: true) is not automatically someone
+ * else's: stripe-node retries a request whose response was lost, with the
+ * same key and parameters, and gets our own write back as a replay. So the
+ * replayed metadata's claim id is compared with ours: equal = our write,
+ * carry on and buy; different = another delivery's, stop.
  *
  * `test` never reaches the registrar (and registrar() refuses on its own in
  * a test context too). `pollMs`: the waits between reads of an order Vercel
@@ -326,10 +352,12 @@ export async function fulfilDomainOrder(
 
   const base: DomainOrderRecord = {
     domain, status: "claimed", retailUsd: retail, lang, name, project, session: session.id, claimedAt: new Date().toISOString(),
+    claimId: randomUUID(),
   };
   try {
     const claimed = await stripe.customers.update(customerId, { metadata: orderRecordMetadata(base) }, { idempotencyKey: `domain-claim-${session.id}` });
-    if (claimed.lastResponse?.headers?.["idempotent-replayed"] === "true") return { ...none, domain, record: base, outcome: "concurrent" };
+    const replayed = claimed.lastResponse?.headers?.["idempotent-replayed"] === "true";
+    if (replayed && claimed.metadata?.[KEYS.claimId] !== base.claimId) return { ...none, domain, record: base, outcome: "concurrent" };
   } catch (err) {
     if (isIdempotencyClash(err)) return { ...none, domain, record: base, outcome: "concurrent" };
     throw err;
@@ -589,12 +617,31 @@ export type MarkResult =
   | { ok: false; error: string };
 
 /**
+ * Was the payment that opened this order refunded? true / false, or null
+ * when it cannot be read. An order with no session on record (set up by
+ * hand) has nothing to check: false.
+ */
+async function orderRefunded(stripe: Stripe, rec: DomainOrderRecord): Promise<boolean | null> {
+  if (!rec.session) return false;
+  try {
+    const s = await stripe.checkout.sessions.retrieve(rec.session, { expand: ["payment_intent.latest_charge"] });
+    const pi = s.payment_intent as Stripe.PaymentIntent | string | null;
+    const charge = pi && typeof pi !== "string" ? (pi.latest_charge as Stripe.Charge | string | null) : null;
+    if (!charge || typeof charge === "string") return null;
+    return charge.refunded === true || (charge.amount_refunded ?? 0) > 0;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * An order finished by hand (failed, unknown, interrupted, stuck) is marked
- * bought — but only once Vercel says the name really is in our team, so a
- * wrong click cannot start charging a client for a domain nobody owns. The
- * purchase date is Vercel's when it has one, the renewal a year after it;
- * the domain is attached to the recorded project. The caller emails the
- * client.
+ * bought — but only when Vercel says WE BOUGHT the name, through Vercel, after
+ * this order was claimed (domainInTeam), and the client's payment was not
+ * refunded: a wrong click must not start charging a client for a domain
+ * nobody bought for them, or one they were paid back for. The purchase date
+ * is Vercel's, the renewal a year after it; the domain is attached to the
+ * recorded project. The caller emails the client.
  */
 export async function markDomainOrderBought(stripe: Stripe, domainInput: string, customerId?: string): Promise<MarkResult> {
   const domain = normalizeDomain(domainInput);
@@ -604,10 +651,13 @@ export async function markDomainOrderBought(stripe: Stripe, domainInput: string,
   const { customer, record } = found;
   if (record.status === "bought") return { ok: false, error: `${domain} is already marked bought (renews ${record.renewsOn ?? "?"}).` };
   if (record.status === "stopped") return { ok: false, error: `${domain} was stopped at the client's request.` };
-  const team = await domainInTeam(domain);
-  if (team.inTeam === false) return { ok: false, error: `${domain} is NOT in our Vercel team. Buy it first (vercel domains buy ${domain}), then mark it bought.` };
+  const refunded = await orderRefunded(stripe, record);
+  if (refunded === true) return { ok: false, error: `The payment for ${domain} (${record.session}) was refunded. It cannot be marked bought: nothing may be renewed on it.` };
+  if (refunded === null) return { ok: false, error: `Could not read the payment for ${domain} (${record.session}) to check for a refund. Try again.` };
+  const team = await domainInTeam(domain, record.claimedAt ?? record.placedAt);
+  if (team.inTeam === false) return { ok: false, error: `${domain} cannot be marked bought: ${team.why ?? "it is not ours"}. Buy it first (vercel domains buy ${domain}), then mark it bought.` };
   if (team.inTeam === null) return { ok: false, error: "Could not check Vercel right now. Try again." };
-  const boughtAt = (team.boughtAt ?? new Date().toISOString()).slice(0, 10);
+  const boughtAt = team.boughtAt!.slice(0, 10);
   let attach: "done" | "failed" | "none" = "none";
   let attachDetail: string | undefined;
   if (record.project && record.attached !== record.project) {
@@ -623,12 +673,25 @@ export async function markDomainOrderBought(stripe: Stripe, domainInput: string,
   return { ok: true, record: next, customer: customer.id, email: customer.email ?? null, attach, attachDetail };
 }
 
+export interface RenewalOffResult {
+  record: DomainOrderRecord;
+  voided: string[];
+  problems: string[];
+  /** Set when a year is already PAID for: Vercel auto-renew stays on until this date. */
+  keptUntil?: string;
+}
+
 /**
  * Switch a domain's renewal off: every draft renewal invoice deleted, every
  * open one voided, Vercel's auto-renew set off. Idempotent; records the day
  * it all succeeded so the daily sweep does not repeat it.
+ *
+ * EXCEPT A YEAR ALREADY PAID FOR. A paid renewal invoice whose year starts
+ * today or later means the client has bought that year: auto-renew stays ON
+ * until that date so Vercel actually renews it, and the daily sweep switches
+ * it off once the date has passed. Paid invoices are never touched.
  */
-async function switchRenewalOff(stripe: Stripe, customerId: string, rec: DomainOrderRecord): Promise<{ record: DomainOrderRecord; voided: string[]; problems: string[] }> {
+async function switchRenewalOff(stripe: Stripe, customerId: string, rec: DomainOrderRecord, todayIso: string): Promise<RenewalOffResult> {
   const voided: string[] = [];
   const problems: string[] = [];
   const invoices = (await stripe.invoices.list({ customer: customerId, limit: 20 })).data.filter((i) => i.metadata?.kind === RENEWAL_INVOICE_KIND);
@@ -640,37 +703,67 @@ async function switchRenewalOff(stripe: Stripe, customerId: string, rec: DomainO
       problems.push(`${inv.id}: ${e instanceof Error ? e.message : String(e)}`);
     }
   }
+  const paidAhead = invoices
+    .filter((i) => i.status === "paid" && typeof i.metadata?.renews_on === "string" && i.metadata.renews_on >= todayIso)
+    .map((i) => i.metadata!.renews_on as string)
+    .sort()
+    .pop();
+  if (paidAhead) {
+    const record: DomainOrderRecord = { ...rec, keptUntil: paidAhead };
+    if (rec.keptUntil !== paidAhead) await stripe.customers.update(customerId, { metadata: orderRecordMetadata(record) });
+    return { record, voided, problems, keptUntil: paidAhead };
+  }
   const off = await setDomainAutoRenew(rec.domain, false);
   if (!off.ok) problems.push(`Vercel auto-renew still ON (${off.code ?? off.status}${off.message ? `: ${off.message}` : ""})`);
-  const record: DomainOrderRecord = problems.length ? rec : { ...rec, renewalOff: new Date().toISOString().slice(0, 10) };
+  const record: DomainOrderRecord = problems.length ? rec : { ...rec, keptUntil: undefined, renewalOff: todayIso };
   if (!problems.length) await stripe.customers.update(customerId, { metadata: orderRecordMetadata(record) });
   return { record, voided, problems };
 }
 
 export type StopResult =
-  | { ok: true; record: DomainOrderRecord; voided: string[]; problems: string[] }
+  | ({ ok: true } & RenewalOffResult)
   | { ok: false; error: string };
 
-/** The client asked not to renew: status stopped, then switchRenewalOff. */
-export async function stopDomainOrder(stripe: Stripe, domainInput: string, customerId?: string): Promise<StopResult> {
+/**
+ * The client asked not to renew: status stopped, then switchRenewalOff.
+ * Only a BOUGHT order renews, so only a bought order can be stopped; the
+ * others are refused with what to do instead.
+ */
+export async function stopDomainOrder(stripe: Stripe, domainInput: string, customerId?: string, todayIso = new Date().toISOString().slice(0, 10)): Promise<StopResult> {
   const domain = normalizeDomain(domainInput);
   if (!domain) return { ok: false, error: "Not a valid domain name." };
   const found = await customerFor(stripe, domain, customerId);
   if ("error" in found) return { ok: false, error: found.error };
+  const st = found.record.status;
+  if (st !== "bought") {
+    const why: Record<string, string> = {
+      stopped: "it is already stopped.",
+      failed: "it was never registered, so nothing renews. Refund the client if that is not done.",
+      unknown: "its purchase outcome is unknown. Check Vercel > Domains, mark it bought (then stop it) or refund.",
+      claimed: "its purchase never finished. Check Vercel > Domains, mark it bought (then stop it) or refund.",
+      purchasing: "Vercel is still registering it. Wait for the 15-minute check to confirm it, then stop it.",
+    };
+    return { ok: false, error: `${domain} cannot be stopped: ${why[st] ?? st}` };
+  }
   const stopped: DomainOrderRecord = { ...found.record, status: "stopped", noticedFor: undefined, noticedUsd: undefined };
   await stripe.customers.update(found.customer.id, { metadata: orderRecordMetadata(stopped) });
-  const r = await switchRenewalOff(stripe, found.customer.id, stopped);
+  const r = await switchRenewalOff(stripe, found.customer.id, stopped, todayIso);
   return { ok: true, ...r };
 }
 
-/** Daily: any stopped order whose renewal is not yet switched off (set by hand in Stripe, or a Vercel call that failed). */
-export async function sweepStoppedOrders(stripe: Stripe): Promise<{ domain: string; customer: string; voided: string[]; problems: string[] }[]> {
-  const out: { domain: string; customer: string; voided: string[]; problems: string[] }[] = [];
+/**
+ * Daily: any stopped order whose renewal is not yet switched off (set by
+ * hand in Stripe, a Vercel call that failed, or a paid year now past). A
+ * record kept on until a paid year's date is silent until that date.
+ */
+export async function sweepStoppedOrders(stripe: Stripe, todayIso = new Date().toISOString().slice(0, 10)): Promise<{ domain: string; customer: string; voided: string[]; problems: string[]; keptUntil?: string }[]> {
+  const out: { domain: string; customer: string; voided: string[]; problems: string[]; keptUntil?: string }[] = [];
   for (const c of await customersIn(stripe, "stopped")) {
     const rec = readOrderRecord(c.metadata);
     if (!rec || rec.renewalOff) continue;
-    const r = await switchRenewalOff(stripe, c.id, rec);
-    out.push({ domain: rec.domain, customer: c.id, voided: r.voided, problems: r.problems });
+    if (rec.keptUntil && todayIso <= rec.keptUntil) continue;
+    const r = await switchRenewalOff(stripe, c.id, rec, todayIso);
+    out.push({ domain: rec.domain, customer: c.id, voided: r.voided, problems: r.problems, ...(r.keptUntil ? { keptUntil: r.keptUntil } : {}) });
   }
   return out;
 }
@@ -678,9 +771,9 @@ export async function sweepStoppedOrders(stripe: Stripe): Promise<{ domain: stri
 /**
  * Daily, from the domain-billing cron (so at most once a day): records that
  * need a human. A bought record with no renewal date is never renewed; a
- * failed or unknown record whose name IS in our Vercel team is a domain we
- * pay for and nobody is charged for; a claim with no outcome is a purchase
- * that stopped half way.
+ * failed or unknown record whose name WE BOUGHT through Vercel after its
+ * claim is a domain we pay for and nobody is charged for; a claim with no
+ * outcome is a purchase that stopped half way.
  */
 export async function auditDomainOrders(stripe: Stripe, now = new Date()): Promise<string[]> {
   const lines: string[] = [];
@@ -692,9 +785,9 @@ export async function auditDomainOrders(stripe: Stripe, now = new Date()): Promi
     for (const c of await customersIn(stripe, status)) {
       const rec = readOrderRecord(c.metadata);
       if (!rec) continue;
-      const team = await domainInTeam(rec.domain);
-      if (team.inTeam) lines.push(`${rec.domain} (${c.id}) is recorded ${status} but IS registered in our Vercel team. ${handFinishLine(rec.domain, c.id)}`);
-      else if (status === "unknown") lines.push(`${rec.domain} (${c.id}): purchase outcome still unknown and not in our Vercel team${team.inTeam === null ? " (Vercel unreadable)" : ""}. Buy it and mark it bought, or refund.`);
+      const team = await domainInTeam(rec.domain, rec.claimedAt ?? rec.placedAt);
+      if (team.inTeam) lines.push(`${rec.domain} (${c.id}) is recorded ${status} but WAS BOUGHT through Vercel on ${team.boughtAt?.slice(0, 10)}. ${handFinishLine(rec.domain, c.id)}`);
+      else if (status === "unknown") lines.push(`${rec.domain} (${c.id}): purchase outcome still unknown and not bought by us (${team.inTeam === null ? "Vercel unreadable" : team.why}). Buy it and mark it bought, or refund.`);
     }
   }
   for (const c of await customersIn(stripe, "claimed")) {
@@ -726,7 +819,7 @@ export interface RenewalReport {
   customer: string;
   email: string | null;
   lang: "en" | "fr";
-  step: "noticed" | "notice-failed" | "charged" | "charge-failed" | "gave-up";
+  step: "noticed" | "notice-failed" | "charged" | "charge-failed" | "gave-up" | "no-price";
   priceUsd: number;
   previousUsd: number;
   renewsOn: string;
@@ -747,12 +840,18 @@ export interface RenewalReport {
  * authorise a higher charge. A failed send is retried the next day while the
  * notice window lasts.
  *
+ * NO PRICE: a record without a stored price is never billed at a guessed
+ * figure; it is reported every day from the first notice day.
+ *
  * CHARGE: a one-line invoice on the saved card, auto_advance OFF — this cron
- * is its only collector, once a day, at most MAX_CHARGE_ATTEMPTS times, the
- * attempt count kept on the invoice. The invoice is found again by its
- * metadata (Stripe's idempotency keys last 24 hours, retries span days). A
- * draft that is still empty after its line was added is deleted, never
- * finalised at 0. The record's date only moves after a successful payment.
+ * is its only collector, once a day, at most MAX_CHARGE_ATTEMPTS times. The
+ * attempt count is written to the CUSTOMER first (`attempts`), then to the
+ * invoice as a courtesy, so a failed invoice update cannot lose a count. The
+ * invoice is found again by its metadata (Stripe's idempotency keys last 24
+ * hours, retries span days). A draft still empty after its line was added is
+ * deleted, never finalised at 0, and the next invoice for that year gets a
+ * fresh idempotency key (`resets`), so a replayed key cannot hand back the
+ * deleted one. The record's date only moves after a successful payment.
  */
 export async function runDomainOrderRenewals(
   stripe: Stripe, todayIso: string,
@@ -764,13 +863,19 @@ export async function runDomainOrderRenewals(
     if (!rec || !rec.renewsOn) continue;
     // Vercel is only asked when something could happen: from the first notice day.
     if (todayIso < daysBefore(rec.renewsOn, NOTICE_DAYS + NOTICE_WINDOW_DAYS)) continue;
+    const renewsOn = rec.renewsOn;
+    const common = {
+      domain: rec.domain, customer: c.id, email: c.email ?? null, lang: rec.lang,
+      previousUsd: rec.retailUsd, renewsOn, chargeOn: chargeDateFor(renewsOn),
+    };
     const vercel = await currentRenewalUsd(rec.domain);
     const step = renewalStep(rec, todayIso, vercel);
     if (step.kind === "wait") continue;
-    const base = {
-      domain: rec.domain, customer: c.id, email: c.email ?? null, lang: rec.lang, priceUsd: step.price,
-      previousUsd: rec.retailUsd, renewsOn: rec.renewsOn, chargeOn: chargeDateFor(rec.renewsOn),
-    };
+    if (step.kind === "no-price") {
+      out.push({ ...common, priceUsd: 0, step: "no-price", detail: `no stored price (${KEYS.retailUsd}) — not renewed. Set it in Stripe to what the client paid.` });
+      continue;
+    }
+    const base = { ...common, priceUsd: step.price };
 
     if (step.kind === "notice") {
       const report: RenewalReport = { ...base, step: "noticed" };
@@ -778,39 +883,41 @@ export async function runDomainOrderRenewals(
         out.push({ ...base, step: "notice-failed", detail: c.email ? "email not sent" : "no email on the customer" });
         continue;
       }
-      await stripe.customers.update(c.id, { metadata: orderRecordMetadata({ ...rec, noticedFor: rec.renewsOn, noticedUsd: step.price }) });
+      await stripe.customers.update(c.id, { metadata: orderRecordMetadata({ ...rec, noticedFor: renewsOn, noticedUsd: step.price }) });
       out.push(report);
       continue;
     }
 
-    const key = `domain-order-${c.id}-${rec.renewsOn}`;
-    let attempts = 0;
+    const key = `domain-order-${c.id}-${renewsOn}`;
+    let attempts = countFor(rec.attempts, renewsOn);
+    const resets = countFor(rec.resets, renewsOn);
     try {
       const existing = (await stripe.invoices.list({ customer: c.id, limit: 20 })).data.find(
-        (i) => i.metadata?.kind === RENEWAL_INVOICE_KIND && i.metadata?.renews_on === rec.renewsOn && i.status !== "void",
+        (i) => i.metadata?.kind === RENEWAL_INVOICE_KIND && i.metadata?.renews_on === renewsOn && i.status !== "void",
       );
-      attempts = Number(existing?.metadata?.attempts ?? 0) || 0;
-      if (existing?.metadata?.gave_up) continue; // reported once, when it gave up
+      attempts = Math.max(attempts, Number(existing?.metadata?.attempts ?? 0) || 0);
+      if (existing?.status !== "paid" && attempts >= MAX_CHARGE_ATTEMPTS) continue; // reported once, when it gave up
       let inv = existing ?? await stripe.invoices.create({
         customer: c.id,
         collection_method: "charge_automatically",
         auto_advance: false,
         pending_invoice_items_behavior: "exclude",
-        description: `Domain ${rec.domain} — renewal, 12 months from ${rec.renewsOn}`,
-        metadata: { kind: RENEWAL_INVOICE_KIND, domain: rec.domain, renews_on: rec.renewsOn, attempts: "0" },
-      }, { idempotencyKey: `${key}-invoice` });
+        description: `Domain ${rec.domain} — renewal, 12 months from ${renewsOn}`,
+        metadata: { kind: RENEWAL_INVOICE_KIND, domain: rec.domain, renews_on: renewsOn, attempts: String(attempts) },
+      }, { idempotencyKey: `${key}-invoice-r${resets}` });
       if (inv.status === "draft" && !((inv.total ?? 0) > 0)) {
         await stripe.invoiceItems.create({
           customer: c.id,
           invoice: inv.id,
           currency: "usd",
           amount: Math.round(step.price * 100),
-          description: `Domain ${rec.domain} — 12 months from ${rec.renewsOn}`,
-        }, { idempotencyKey: `${key}-item` });
+          description: `Domain ${rec.domain} — 12 months from ${renewsOn}`,
+        }, { idempotencyKey: `${key}-item-${inv.id}` });
         inv = await stripe.invoices.retrieve(inv.id!);
         if (inv.status === "draft" && !((inv.total ?? 0) > 0)) {
           await stripe.invoices.del(inv.id!);
-          throw new Error(`invoice ${inv.id} was still empty after its line was added; deleted, retried tomorrow`);
+          await stripe.customers.update(c.id, { metadata: { [KEYS.resets]: `${renewsOn}:${resets + 1}` } });
+          throw new Error(`invoice ${inv.id} was still empty after its line was added; deleted, retried tomorrow with a fresh invoice`);
         }
       }
       if (inv.status === "draft") inv = await stripe.invoices.finalizeInvoice(inv.id!, { auto_advance: false });
@@ -820,16 +927,20 @@ export async function runDomainOrderRenewals(
         } catch (e) {
           attempts += 1;
           const gaveUp = attempts >= MAX_CHARGE_ATTEMPTS;
-          await stripe.invoices.update(inv.id!, { metadata: { attempts: String(attempts), ...(gaveUp ? { gave_up: new Date().toISOString().slice(0, 10) } : {}) } });
+          // The customer first: the count survives a failed invoice update.
+          await stripe.customers.update(c.id, { metadata: { [KEYS.attempts]: `${renewsOn}:${attempts}` } });
+          try {
+            await stripe.invoices.update(inv.id!, { metadata: { attempts: String(attempts), ...(gaveUp ? { gave_up: todayIso } : {}) } });
+          } catch { /* the customer holds the count */ }
           throw Object.assign(e instanceof Error ? e : new Error(String(e)), { gaveUp });
         }
       }
       if (inv.status !== "paid") throw new Error(`invoice ${inv.id} is ${inv.status}`);
       if (!((inv.amount_paid ?? 0) > 0)) throw new Error(`invoice ${inv.id} was paid for 0 — check it in Stripe`);
       const charged = (inv.amount_paid ?? 0) / 100;
-      const next = nextYear(rec.renewsOn);
+      const next = nextYear(renewsOn);
       await stripe.customers.update(c.id, {
-        metadata: orderRecordMetadata({ ...rec, retailUsd: charged, renewsOn: next, noticedFor: undefined, noticedUsd: undefined }),
+        metadata: orderRecordMetadata({ ...rec, retailUsd: charged, renewsOn: next, noticedFor: undefined, noticedUsd: undefined, attempts: undefined, resets: undefined }),
       });
       out.push({
         ...base, priceUsd: charged, step: "charged", nextRenewsOn: next,

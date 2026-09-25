@@ -56,7 +56,7 @@ function fakeVercel({
   return calls;
 }
 
-function fakeStripe({ metadata = {}, invoices = [], payFails = false, email = "ithar@example.com", customers = null, emptyItems = false } = {}) {
+function fakeStripe({ metadata = {}, invoices = [], payFails = false, email = "ithar@example.com", customers = null, emptyItems = false, loseClaimResponse = false, invoiceUpdateFails = false, refunded = false } = {}) {
   const log = { sessions: [], customerUpdates: [], invoicesCreated: [], items: [], paid: [], finalized: [], deleted: [], voided: [], invoiceUpdates: [] };
   // Stripe never stores a "" value: setting one deletes the key.
   const clean = (m) => Object.fromEntries(Object.entries(m).filter(([, v]) => v !== ""));
@@ -68,19 +68,37 @@ function fakeStripe({ metadata = {}, invoices = [], payFails = false, email = "i
   const find = (id) => all.find((x) => x.id === id) ?? customer;
   return {
     log, customer, all, invById,
-    checkout: { sessions: { create: async (p) => { log.sessions.push(p); return { url: "https://checkout.stripe.com/c/pay/cs_live_x" }; } } },
+    checkout: {
+      sessions: {
+        create: async (p) => { log.sessions.push(p); return { url: "https://checkout.stripe.com/c/pay/cs_live_x" }; },
+        retrieve: async (id) => ({ id, payment_intent: { id: "pi_1", latest_charge: { id: "ch_1", refunded, amount_refunded: refunded ? 2790 : 0 } } }),
+      },
+    },
     customers: {
       retrieve: async (id) => snap(find(id)),
+      /* Like Stripe: the same idempotency key with the SAME parameters is a
+         replay of the first answer (Idempotent-Replayed: true); with
+         DIFFERENT parameters it is a 400 StripeIdempotencyError. */
       update: async (id, p, opts = {}) => {
+        const params = JSON.stringify(p);
         if (opts.idempotencyKey && seenKeys.has(opts.idempotencyKey)) {
-          return { ...seenKeys.get(opts.idempotencyKey), lastResponse: { headers: { "idempotent-replayed": "true" } } };
+          const seen = seenKeys.get(opts.idempotencyKey);
+          if (seen.params !== params) {
+            throw Object.assign(new Error("Keys for idempotent requests can only be used with the same parameters they were first used with."), { statusCode: 400, type: "StripeIdempotencyError" });
+          }
+          return { ...seen.res, lastResponse: { headers: { "idempotent-replayed": "true" } } };
         }
         const c = find(id);
         log.customerUpdates.push({ id, ...p, key: opts.idempotencyKey });
         timeline.push(`stripe customer ${p.metadata?.servolia_domain_status ?? "?"}`);
         for (const [k, v] of Object.entries(p.metadata ?? {})) { if (v === "") delete c.metadata[k]; else c.metadata[k] = v; }
         const res = { ...snap(c), lastResponse: { headers: {} } };
-        if (opts.idempotencyKey) seenKeys.set(opts.idempotencyKey, res);
+        if (opts.idempotencyKey) seenKeys.set(opts.idempotencyKey, { params, res });
+        /* The write landed, the response was lost, and stripe-node's own retry
+           (same key, same parameters) got the replay back. */
+        if (loseClaimResponse && opts.idempotencyKey?.startsWith("domain-claim-")) {
+          return { ...res, lastResponse: { headers: { "idempotent-replayed": "true" } } };
+        }
         return res;
       },
       search: async ({ query }) => {
@@ -92,7 +110,7 @@ function fakeStripe({ metadata = {}, invoices = [], payFails = false, email = "i
     invoices: {
       list: async () => ({ data: [...invById.values()].map((i) => ({ ...i, metadata: { ...i.metadata } })) }),
       retrieve: async (id) => ({ ...invById.get(id) }),
-      create: async (p) => { const inv = { id: `in_${log.invoicesCreated.length + 1}`, status: "draft", total: 0, metadata: { ...p.metadata } }; log.invoicesCreated.push(p); invById.set(inv.id, inv); return { ...inv }; },
+      create: async (p, o) => { const inv = { id: `in_${log.invoicesCreated.length + 1}`, status: "draft", total: 0, metadata: { ...p.metadata } }; log.invoicesCreated.push({ ...p, key: o?.idempotencyKey }); invById.set(inv.id, inv); return { ...inv }; },
       finalizeInvoice: async (id, p) => { log.finalized.push({ id, ...p }); const inv = invById.get(id); inv.status = "open"; return { ...inv }; },
       pay: async (id) => {
         if (payFails) throw new Error("card_declined");
@@ -101,7 +119,10 @@ function fakeStripe({ metadata = {}, invoices = [], payFails = false, email = "i
         log.paid.push(id);
         return { ...inv };
       },
-      update: async (id, p) => { log.invoiceUpdates.push({ id, ...p }); const inv = invById.get(id); Object.assign(inv.metadata, p.metadata ?? {}); return { ...inv }; },
+      update: async (id, p) => {
+        if (invoiceUpdateFails) throw new Error("invoice update failed");
+        log.invoiceUpdates.push({ id, ...p }); const inv = invById.get(id); Object.assign(inv.metadata, p.metadata ?? {}); return { ...inv };
+      },
       del: async (id) => { log.deleted.push(id); invById.delete(id); return { id, deleted: true }; },
       voidInvoice: async (id) => { log.voided.push(id); invById.get(id).status = "void"; return { ...invById.get(id) }; },
     },
@@ -149,6 +170,11 @@ test("a renewal moves only when the REGISTRY moved: never to the new floor or ro
   // ...and rises only when the registry takes the margin under target.
   assert.equal(S.renewalRetailUsd(26, 13), 27.9, "13 at Vercel leaves 11.40 at 26: rises to the .90 that keeps 13");
   assert.ok(S.netProfitUsd(S.renewalRetailUsd(26, 13), 13) >= S.DOMAIN_TARGET_PROFIT_USD - 0.01);
+  // No stored price: nothing to renew at — never the floor, never a guess.
+  assert.equal(S.renewalRetailUsd(0, 11.25), null);
+  assert.equal(S.renewalRetailUsd(NaN, 11.25), null);
+  assert.deepEqual(S.renewalDecision({ paidUsd: 0, vercelRenewalUsd: 11.25, renewsOn: "2027-09-24", todayIso: "2027-09-17" }), { kind: "no-price" });
+  assert.deepEqual(S.renewalDecision({ paidUsd: 0, vercelRenewalUsd: 11.25, renewsOn: "2027-09-24", todayIso: "2027-06-01" }), { kind: "wait" }, "not reported months ahead");
 });
 
 /* ── 2. The record ────────────────────────────────────────────────────── */
@@ -243,7 +269,9 @@ test("no link for a taken name, an ending we do not sell, a bad email, a missing
   fakeVercel();
   assert.equal(await no({ domain: "shop.store" }), false, ".store is not on the list");
   assert.equal(await no({ domain: "x.de" }), false);
-  for (const tld of ["com", "org", "net", "co", "io", "ma", "uk", "fr"]) assert.equal(S.tldAllowed(`x.${tld}`), true, tld);
+  for (const tld of ["com", "org", "net", "co", "io", "uk"]) assert.equal(S.tldAllowed(`x.${tld}`), true, tld);
+  // Registry eligibility rules a US LLC registrant may not meet.
+  for (const tld of ["fr", "ma"]) assert.equal(await no({ domain: `x.${tld}` }), false, `.${tld} refused`);
   assert.equal(await no({ domain: "x.com", email: "nope" }), false);
   assert.equal(await no({ domain: "x.com", project: "../other" }), false);
   fakeVercel({ project: false });
@@ -294,11 +322,35 @@ test("TWO DELIVERIES AT ONCE make one registrar call: the second meets the claim
   assert.deepEqual([a.outcome, b.outcome].sort(), ["concurrent", "done"]);
   const quiet = [a, b].find((x) => x.outcome === "concurrent");
   assert.deepEqual(O.describeDomainOrder(quiet), { owner: null, email: null }, "the second says nothing");
+  // The second got Stripe's 400 (same key, different parameters): each claim carries its own id.
+  const claims = stripe.log.customerUpdates.filter((u) => u.key === "domain-claim-cs_live_1");
+  assert.equal(claims.length, 1, "one claim written");
   // A 409 (the first still in flight) counts the same.
   const clash = fakeStripe();
   clash.customers.update = async () => { throw Object.assign(new Error("another request in progress"), { statusCode: 409, type: "StripeIdempotencyError" }); };
   const c = await O.fulfilDomainOrder(clash, SESSION, false, NOPOLL);
   assert.equal(c.outcome, "concurrent");
+});
+
+test("a LOST RESPONSE on the claim (stripe-node's retry gets our own write replayed) still buys — once", async () => {
+  const calls = fakeVercel();
+  const stripe = fakeStripe({ loseClaimResponse: true });
+  const r = await O.fulfilDomainOrder(stripe, SESSION, false, NOPOLL);
+  assert.equal(r.outcome, "done", "our own replayed write is not 'someone else'");
+  assert.equal(r.record.status, "bought");
+  assert.equal(buys(calls), 1);
+});
+
+test("a replay carrying ANOTHER delivery's claim id stops", async () => {
+  const calls = fakeVercel();
+  const stripe = fakeStripe();
+  stripe.customers.update = async (_id, p) => ({
+    metadata: { ...p.metadata, servolia_domain_claim_id: "someone-else" },
+    lastResponse: { headers: { "idempotent-replayed": "true" } },
+  });
+  const r = await O.fulfilDomainOrder(stripe, SESSION, false, NOPOLL);
+  assert.equal(r.outcome, "concurrent");
+  assert.equal(buys(calls), 0);
 });
 
 test("a replayed checkout.session.completed never buys twice and says nothing twice", async () => {
@@ -424,13 +476,18 @@ test("attach refused: bought, owner told exactly where to add it", async () => {
 
 const FAILED_REC = { domain: "ithardigital.com", status: "failed", retailUsd: 27.9, lang: "en", project: "ithar-digital", note: "unknown (502)" };
 
-test("mark bought: refused unless the name is in our Vercel team; then dated from Vercel's purchase, attached, a year to run", async () => {
+test("mark bought: refused unless WE BOUGHT the name through Vercel after the order; then dated from Vercel's purchase, attached", async () => {
   fakeVercel({ inTeam: false });
   const stripe = fakeStripe({ metadata: O.orderRecordMetadata(FAILED_REC) });
   const no = await O.markDomainOrderBought(stripe, "ithardigital.com");
   assert.equal(no.ok, false);
-  assert.match(no.error, /NOT in our Vercel team/);
+  assert.match(no.error, /not in our Vercel team/);
   assert.equal(stripe.customer.metadata.servolia_domain_status, "failed", "nothing written");
+  // In the team but never bought through Vercel (a client's own domain added to a project): not ours.
+  fakeVercel({ inTeam: true, teamBoughtAt: null });
+  const added = await O.markDomainOrderBought(stripe, "ithardigital.com");
+  assert.equal(added.ok, false);
+  assert.match(added.error, /NOT bought through Vercel/);
   const calls = fakeVercel({ inTeam: true, teamBoughtAt: Date.parse("2026-09-24T22:00:00Z") });
   const ok = await O.markDomainOrderBought(stripe, "ithardigital.com");
   assert.equal(ok.ok, true);
@@ -440,6 +497,23 @@ test("mark bought: refused unless the name is in our Vercel team; then dated fro
   assert.equal(ok.attach, "done");
   assert.ok(calls.some((c) => c.url.includes("/v10/projects/ithar-digital/domains")));
   assert.equal((await O.markDomainOrderBought(stripe, "ithardigital.com")).ok, false, "already bought");
+});
+
+test("mark bought: a Vercel purchase OLDER than the order's claim is some other purchase; a refunded payment is never marked", async () => {
+  fakeVercel({ inTeam: true, teamBoughtAt: Date.parse("2026-01-01T00:00:00Z") });
+  const claimed = fakeStripe({ metadata: O.orderRecordMetadata({ ...FAILED_REC, claimedAt: "2026-09-24T10:00:00.000Z" }) });
+  const old = await O.markDomainOrderBought(claimed, "ithardigital.com");
+  assert.equal(old.ok, false);
+  assert.match(old.error, /older than this order/);
+
+  fakeVercel({ inTeam: true, teamBoughtAt: Date.parse("2026-09-24T22:00:00Z") });
+  const refunded = fakeStripe({ metadata: O.orderRecordMetadata({ ...FAILED_REC, session: "cs_live_1" }), refunded: true });
+  const r = await O.markDomainOrderBought(refunded, "ithardigital.com");
+  assert.equal(r.ok, false);
+  assert.match(r.error, /was refunded/);
+  assert.equal(refunded.customer.metadata.servolia_domain_status, "failed");
+  const paid = fakeStripe({ metadata: O.orderRecordMetadata({ ...FAILED_REC, session: "cs_live_1" }) });
+  assert.equal((await O.markDomainOrderBought(paid, "ithardigital.com")).ok, true, "not refunded: allowed");
 });
 
 test("stop renewing: draft deleted, open invoice voided, Vercel auto-renew OFF; the daily sweep catches a stop set by hand", async () => {
@@ -475,7 +549,40 @@ test("stop renewing: draft deleted, open invoice voided, Vercel auto-renew OFF; 
   assert.equal(stuck.customer.metadata.servolia_domain_renewal_off, undefined, "retried tomorrow");
 });
 
-test("the daily audit: bought with no renewal date, failed-but-registered, a claim that never finished", async () => {
+test("stop after a PAID renewal: auto-renew stays ON until that paid year's date, then the sweep switches it off", async () => {
+  let calls = fakeVercel();
+  const stripe = fakeStripe({
+    metadata: O.orderRecordMetadata({ ...FAILED_REC, status: "bought", retailUsd: 27.9, renewsOn: "2028-09-24" }),
+    invoices: [{ id: "in_p", status: "paid", total: 2790, amount_paid: 2790, metadata: { kind: "domain_order_renewal", renews_on: "2027-09-24" } }],
+  });
+  const r = await O.stopDomainOrder(stripe, "ithardigital.com", undefined, "2027-09-20");
+  assert.equal(r.ok, true);
+  assert.equal(r.keptUntil, "2027-09-24", "the client paid for the year from 2027-09-24");
+  assert.equal(calls.some((c) => c.url.includes("/auto-renew")), false, "auto-renew NOT switched off");
+  assert.deepEqual(stripe.log.voided, [], "a paid invoice is never touched");
+  assert.equal(stripe.customer.metadata.servolia_domain_kept_until, "2027-09-24");
+  assert.equal(stripe.customer.metadata.servolia_domain_renewal_off, undefined);
+  assert.deepEqual(await O.sweepStoppedOrders(stripe, "2027-09-24"), [], "silent through the paid date");
+  calls = fakeVercel();
+  const [s] = await O.sweepStoppedOrders(stripe, "2027-09-25");
+  assert.equal(s.keptUntil, undefined);
+  assert.deepEqual(calls.find((c) => c.url.includes("/auto-renew")).body, { autoRenew: false }, "switched off once the paid year has started");
+  assert.equal(stripe.customer.metadata.servolia_domain_renewal_off, "2027-09-25");
+});
+
+test("stop is only for a bought order; the others say what to do instead", async () => {
+  const calls = fakeVercel();
+  for (const [status, re] of [["failed", /never registered/], ["unknown", /outcome is unknown/], ["purchasing", /still registering/], ["claimed", /never finished/], ["stopped", /already stopped/]]) {
+    const stripe = fakeStripe({ metadata: O.orderRecordMetadata({ ...FAILED_REC, status }) });
+    const r = await O.stopDomainOrder(stripe, "ithardigital.com");
+    assert.equal(r.ok, false, status);
+    assert.match(r.error, re, status);
+    assert.equal(stripe.customer.metadata.servolia_domain_status, status, `${status}: nothing written`);
+  }
+  assert.equal(calls.some((c) => c.url.includes("/auto-renew")), false);
+});
+
+test("the daily audit: bought with no renewal date, failed-but-bought-by-us, a claim that never finished", async () => {
   fakeVercel({ inTeam: true });
   const cs = [
     { id: "cus_a", email: null, metadata: O.orderRecordMetadata({ domain: "a.com", status: "bought", retailUsd: 27.9, lang: "en" }) },
@@ -486,8 +593,12 @@ test("the daily audit: bought with no renewal date, failed-but-registered, a cla
   const lines = await O.auditDomainOrders(fakeStripe({ customers: cs }), new Date("2026-09-24T12:00:00Z"));
   assert.equal(lines.length, 3, lines.join("\n"));
   assert.match(lines.join("\n"), /a\.com .*NO renewal date/);
-  assert.match(lines.join("\n"), /b\.com .*recorded failed but IS registered/);
+  assert.match(lines.join("\n"), /b\.com .*recorded failed but WAS BOUGHT through Vercel on 2026-09-24/);
   assert.match(lines.join("\n"), /c\.com .*claimed .*never finished/);
+  // In the team with no purchase date: not ours, never suggested for "mark bought".
+  fakeVercel({ inTeam: true, teamBoughtAt: null });
+  const none = await O.auditDomainOrders(fakeStripe({ customers: [cs[1]] }), new Date("2026-09-24T12:00:00Z"));
+  assert.deepEqual(none, []);
 });
 
 /* ── 7. A year later ──────────────────────────────────────────────────── */
@@ -556,6 +667,11 @@ test("an empty draft gets its line; one still empty after that is DELETED, never
   assert.equal(empty.log.finalized.length, 0, "never finalised");
   assert.deepEqual(empty.log.deleted, ["in_1"]);
   assert.equal(empty.customer.metadata.servolia_domain_renews, "2027-09-24");
+  assert.equal(empty.log.invoicesCreated[0].key, "domain-order-cus_1-2027-09-24-invoice-r0");
+  // The next run must NOT reuse that key (it would replay the deleted invoice): a fresh suffix.
+  assert.equal(empty.customer.metadata.servolia_domain_resets, "2027-09-24:1");
+  await O.runDomainOrderRenewals(empty, "2027-09-19", sent());
+  assert.equal(empty.log.invoicesCreated[1].key, "domain-order-cus_1-2027-09-24-invoice-r1");
 
   const zero = fakeStripe({ metadata: O.orderRecordMetadata(DUE), invoices: [{ id: "in_8", status: "paid", total: 0, amount_paid: 0, metadata: { kind: "domain_order_renewal", renews_on: "2027-09-24" } }] });
   assert.equal((await O.runDomainOrderRenewals(zero, "2027-09-18", sent()))[0].step, "charge-failed", "a 0 payment is never a renewal");
@@ -573,6 +689,28 @@ test("a declined card: one invoice, one attempt a day, stops after MAX_CHARGE_AT
   assert.equal(stripe.log.invoicesCreated.length, 1, "one invoice for the year");
   assert.equal(stripe.log.items.length, 1, "one line on it");
   assert.equal(stripe.customer.metadata.servolia_domain_renews, "2027-09-24", "the date never moved");
+});
+
+test("a declined attempt is COUNTED even when the invoice update fails: the customer holds the count", async () => {
+  fakeVercel();
+  const stripe = fakeStripe({ metadata: O.orderRecordMetadata(DUE), payFails: true, invoiceUpdateFails: true });
+  const steps = [];
+  for (const day of ["2027-09-17", "2027-09-18", "2027-09-19", "2027-09-20", "2027-09-21"]) {
+    const [r] = await O.runDomainOrderRenewals(stripe, day, sent());
+    steps.push(r ? `${r.step}:${r.attempts}` : "silent");
+  }
+  assert.deepEqual(steps, ["charge-failed:1", "charge-failed:2", "charge-failed:3", "gave-up:4", "silent"]);
+  assert.equal(stripe.customer.metadata.servolia_domain_attempts, "2027-09-24:4");
+});
+
+test("a renewal with no stored price is refused and reported, never billed at the floor", async () => {
+  fakeVercel();
+  const stripe = fakeStripe({ metadata: O.orderRecordMetadata({ ...DUE, retailUsd: 0 }) });
+  const [r] = await O.runDomainOrderRenewals(stripe, "2027-09-18", sent());
+  assert.equal(r.step, "no-price");
+  assert.match(r.detail, /no stored price/);
+  assert.equal(stripe.log.invoicesCreated.length, 0);
+  assert.equal(stripe.log.items.length, 0);
 });
 
 /* ── 8. What the client reads ─────────────────────────────────────────── */

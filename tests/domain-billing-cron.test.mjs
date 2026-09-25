@@ -18,11 +18,15 @@ await H.bootHarness();
 const harnessFetch = globalThis.fetch;
 
 /* Vercel's renewal price and Resend's answer, per test. */
-const net = { renewal: 11.25, resendOk: true };
+const net = { renewal: 11.25, resendOk: true, patchFails: false };
 const resend = [];
 globalThis.fetch = async (input, init = {}) => {
   const url = String(typeof input === "string" ? input : input.url);
   const json = (status, body) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
+  // A Supabase write that fails (the row update after an email went out).
+  if (net.patchFails && url.includes("/rest/v1/hosting_clients") && (init.method ?? "GET").toUpperCase() === "PATCH") {
+    return json(500, { code: "XX000", message: "database unavailable" });
+  }
   if (url.startsWith("https://api.vercel.com")) {
     if (url.includes("/price")) return json(200, { years: 1, purchasePrice: net.renewal, renewalPrice: net.renewal, transferPrice: net.renewal });
     return json(404, {});
@@ -52,11 +56,11 @@ const { NextRequest } = await import("next/server");
 
 const day = (n) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
 
-async function run({ inDays, paid = 26, renewal = 11.25, resendOk = true }) {
+async function run({ inDays, paid = 26, renewal = 11.25, resendOk = true, patchFails = false }) {
   H.reset();
   items.length = 0;
   resend.length = 0;
-  Object.assign(net, { renewal, resendOk });
+  Object.assign(net, { renewal, resendOk, patchFails });
   const renewsOn = day(inDays);
   H.reads.hosting_clients = [{
     id: "h1", business: "Harness Co", email: "client@example.com", customer_id: "cus_h", billing_period: "monthly", status: "active",
@@ -102,6 +106,23 @@ test("H1: a rise found at day -36 or -20 is not announced; at the charge it bill
   const charge = await run({ inDays: 7, paid: 26, renewal: 20 });
   assert.equal(items[0].amount, 2600, "no notice went out: last year's price");
   assert.ok(charge.body.warnings.some((w) => /billed \$26\.00, not the \$35\.90/.test(w)), JSON.stringify(charge.body.warnings));
+});
+
+test("a notice emailed but NOT saved (Supabase write failed) does not count, and says so; a failed charge-day save is loud", async () => {
+  const r = await run({ inDays: 37, paid: 26, renewal: 20, patchFails: true });
+  assert.equal(r.clientMails.length, 1, "the email did go");
+  assert.equal(r.body.noticed.length, 0, "not reported as a recorded notice");
+  assert.ok(r.body.failed.some((f) => /price-rise notice SENT but NOT recorded \(database unavailable\)/.test(f)), JSON.stringify(r.body.failed));
+  const c = await run({ inDays: 7, paid: 26, renewal: 11.25, patchFails: true });
+  assert.equal(items.length, 1, "the line was added");
+  assert.equal(c.body.charged.length, 0, "not reported as a clean renewal");
+  assert.ok(c.body.failed.some((f) => /renewal line ADDED \(\$26\.00\) but the row was NOT updated/.test(f)), JSON.stringify(c.body.failed));
+});
+
+test("a plan domain with no stored price is refused and reported, never billed at the floor", async () => {
+  const r = await run({ inDays: 7, paid: 0, renewal: 11.25 });
+  assert.equal(items.length, 0);
+  assert.ok(r.body.failed.some((f) => /no stored price on the row .* NOT renewed/.test(f)), JSON.stringify(r.body.failed));
 });
 
 test("the cron refuses without CRON_SECRET, even to a caller sending 'Bearer undefined'", async () => {
