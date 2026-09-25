@@ -30,6 +30,13 @@ create table if not exists rate_limits (
   window_start timestamptz not null default now()
 );
 
+-- Row level security ON, with NO policies: the public anon key can neither
+-- read nor write the limiter's counters. The server is unaffected — every
+-- reader and writer of this table (src/lib/security.ts rateLimited, used by
+-- the admin login, and the function below) uses the service-role client,
+-- which bypasses RLS. Enabling it twice is a no-op.
+alter table rate_limits enable row level security;
+
 -- 3. Count one hit on `p_key` and return the new count, in ONE statement, so
 --    parallel requests each get their own number (src/lib/atomicLimit.ts).
 --    A window older than p_window_seconds starts again at 1.

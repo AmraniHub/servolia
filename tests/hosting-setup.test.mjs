@@ -309,54 +309,117 @@ test("a host that is not a public domain is never probed", async () => {
   assert.equal(p.dns.error, "not-a-public-domain");
   assert.equal(p.tls, null);
   assert.equal(p.http, null);
-  assert.equal(S.isMeasured(p), false);
 });
 
-test("isMeasured: no resolver error AND a real HTTP status", () => {
-  assert.equal(S.isMeasured(null), false);
-  assert.equal(S.isMeasured(probe()), false, "no HTTP answer");
-  assert.equal(S.isMeasured(probe({ http: HTTP_OLD_HOST })), true, "the old host answering is a measurement");
-  assert.equal(S.isMeasured(probe({ http: HTTP_OLD_HOST, dnsError: "ETIMEOUT" })), false);
-  assert.equal(S.isMeasured(probe({ http: { status: null, servedByUs: false, attached: null, finalHost: null, error: "ECONNREFUSED" } })), false);
+test("L4: not one connection to the client's host until DNS points to Vercel", async () => {
+  const calls = { tls: 0, http: 0 };
+  const seams = {
+    tls: async () => { calls.tls += 1; return { ok: true }; },
+    http: async () => { calls.http += 1; return HTTP_OK; },
+  };
+  const notPointed = { ns: [], a: { "acme.com": ["93.184.1.1"], "www.acme.com": ["93.184.1.1"] }, cname: {}, vercelIps: [] };
+  const p1 = await P.probeHost({ host: "acme.com", vercelProject: "p" }, new Date(NOW), { ...seams, gather: async () => notPointed });
+  assert.equal(p1.dns.pointed, false);
+  assert.equal(p1.http, null);
+  assert.equal(p1.tls, null);
+  assert.deepEqual(calls, { tls: 0, http: 0 }, "its old host is never fetched");
+  const pointed = { ns: [], a: { "acme.com": ["216.150.1.65"], "www.acme.com": ["216.150.1.65"] }, cname: {}, vercelIps: [] };
+  const p2 = await P.probeHost({ host: "acme.com", vercelProject: "p" }, new Date(NOW), { ...seams, gather: async () => pointed });
+  assert.equal(p2.dns.pointed, true);
+  assert.deepEqual(calls, { tls: 1, http: 1 });
 });
 
-/* ── Milestones: news only when it flips after a real measurement ──────── */
+/* ── L3: DNS pinning, for every request and every hop ──────────────────── */
 
-test("planTransition: no baseline from a failed probe; baseline at the first measurement; then one claim per flip", () => {
-  const notPointed = S.computeChecklist(onboarded(), ctx(), probe({ http: HTTP_OLD_HOST }));
-  const failed = S.planTransition(null, notPointed, NOW, false);
-  assert.equal(failed.next.baselineAt, undefined, "a failed first probe is never the baseline");
-  assert.deepEqual(failed.send, []);
+const fakeResolve = (table) => (host, _opts, cb) => {
+  const list = table[host];
+  if (!list) return cb(Object.assign(new Error("ENOTFOUND"), { code: "ENOTFOUND" }), []);
+  cb(null, list.map((address) => ({ address, family: address.includes(":") ? 6 : 4 })));
+};
+const lookupOnce = (lookup, host, opts = {}) => new Promise((resolve) => lookup(host, opts, (err, a, f) => resolve({ err, a, f })));
 
-  const base = S.planTransition(failed.next, notPointed, LATER(15), true);
-  assert.equal(base.next.baselineAt, LATER(15));
-  assert.deepEqual(base.send, []);
+test("publicOnlyLookup refuses any non-public A or AAAA answer, and passes public ones through", async () => {
+  const lookup = P.publicOnlyLookup(fakeResolve({
+    "loop.test": ["127.0.0.1"], "v6loop.test": ["::1"], "meta.test": ["169.254.169.254"], "ula.test": ["fd00::1"],
+    "ll.test": ["fe80::1"], "mapped.test": ["::ffff:10.0.0.1"], "mixed.test": ["216.150.1.65", "10.0.0.5"],
+    "ok.test": ["216.150.1.65"], "ok6.test": ["2606:4700::6810:84e5"],
+  }));
+  for (const h of ["loop.test", "v6loop.test", "meta.test", "ula.test", "ll.test", "mapped.test", "mixed.test"]) {
+    const r = await lookupOnce(lookup, h);
+    assert.equal(r.err?.code, "ENOTPUBLIC", h);
+  }
+  assert.deepEqual(await lookupOnce(lookup, "ok.test"), { err: null, a: "216.150.1.65", f: 4 });
+  const six = await lookupOnce(lookup, "ok6.test", { all: true });
+  assert.equal(six.err, null);
+  assert.deepEqual(six.a.map((x) => x.address), ["2606:4700::6810:84e5"]);
+  assert.equal((await lookupOnce(lookup, "nx.test")).err.code, "ENOTFOUND");
+});
 
-  const pointed = S.computeChecklist(onboarded(), ctx(), probe({ pointed: true, http: HTTP_OLD_HOST }));
-  const flip = S.planTransition(base.next, pointed, LATER(30), true);
+test("the pinned fetch never connects to a private address — the first request or a redirect hop", async () => {
+  // First request: localhost resolves to loopback on every machine; refused before any socket.
+  await assert.rejects(P.pinnedFetch("https://localhost/", {}), (e) => e.code === "ENOTPUBLIC");
+  // A redirect hop on the client's own domain whose name resolves privately.
+  const hopFetch = P.makePinnedFetch(fakeResolve({ "internal.acme.com": ["10.0.0.7"] }));
+  const impl = async (url, init) => url === "https://acme.com/"
+    ? new Response(null, { status: 302, headers: { location: "https://internal.acme.com/" } })
+    : hopFetch(url, init);
+  const out = await P.safeFetch("https://acme.com/", impl);
+  assert.equal(out.status, null);
+  assert.equal(out.stopped, "ENOTPUBLIC", "refused at connect time, on the hop");
+  // The DEFAULT fetch is the pinned one, and the certificate check is pinned too.
+  assert.equal((await P.safeFetch("https://localhost/")).stopped, "ENOTPUBLIC", "safeFetch's default refuses loopback");
+  const tlsOut = await P.checkTls("localhost", 3000);
+  assert.equal(tlsOut.ok, false);
+  assert.equal(tlsOut.error, "ENOTPUBLIC", "the TLS handshake never reaches loopback");
+  assert.equal(P.isPublicIpv6("2001:db8::1"), false);
+  // DNS64 (this workstation's 4G link answers every name this way): judged by the IPv4 inside.
+  assert.equal(P.isPublicIpv6("64:ff9b::d896:1001"), true, "216.150.16.1, a Vercel address");
+  assert.equal(P.isPublicIpv6("64:ff9b::216.150.16.1"), true);
+  assert.equal(P.isPublicIpv6("64:ff9b::7f00:1"), false, "127.0.0.1 behind NAT64 is still loopback");
+  assert.equal(P.isPublicIpv6("64:ff9b::a9fe:a9fe"), false, "169.254.169.254 behind NAT64");
+  assert.equal(P.isPublicIpv6("::ffff:d896:1001"), true);
+  assert.equal(P.isPublicIpv6("::ffff:7f00:1"), false);
+  const dns64 = P.publicOnlyLookup(fakeResolve({ "site.test": ["216.150.16.1", "64:ff9b::d896:1001"], "evil.test": ["216.150.16.1", "64:ff9b::7f00:1"] }));
+  assert.equal((await lookupOnce(dns64, "site.test")).err, null, "a DNS64 answer for a public site is allowed");
+  assert.equal((await lookupOnce(dns64, "evil.test")).err.code, "ENOTPUBLIC", "one loopback answer behind NAT64 refuses it");
+  assert.equal(P.isPublicIpv6("2a00:1450:4007::200e"), true);
+});
+
+/* ── Milestones: claimed, sent, settled — once ─────────────────────────── */
+
+test("planTransition: every milestone of a NEW client is news, claimed not stamped; a stale claim becomes UNCONFIRMED", () => {
+  const notPointed = S.computeChecklist(onboarded(), ctx(), probe());
+  const first = S.planTransition(null, notPointed, NOW);
+  assert.deepEqual(first.send, []);
+  assert.equal("baselineAt" in first.next, false, "no baseline any more");
+
+  const pointed = S.computeChecklist(onboarded(), ctx(), probe({ pointed: true }));
+  const flip = S.planTransition(first.next, pointed, LATER(15));
   assert.deepEqual(flip.send, ["dns"]);
   assert.match(flip.next.mail.dns, /^claim:1:/, "claimed, NOT marked sent");
   assert.deepEqual(flip.notify, ["dns"]);
-  const again = S.planTransition(flip.next, pointed, LATER(31), true);
-  assert.deepEqual(again.send, [], "a fresh claim is someone else's send in progress");
-  const stale = S.planTransition(flip.next, pointed, LATER(45), true);
-  assert.deepEqual(stale.send, ["dns"], "a claim older than ten minutes is a crashed send: retried");
-  assert.match(stale.next.mail.dns, /^claim:2:/);
-  assert.deepEqual(stale.notify, [], "the founder is told once");
+  const again = S.planTransition(flip.next, pointed, LATER(16));
+  assert.deepEqual(again.send, [], "a standing claim is someone else's send in progress");
+  assert.deepEqual(again.unconfirmed, []);
 
-  // Already live at the first measurement: silent.
+  const stale = S.planTransition(flip.next, pointed, LATER(30));
+  assert.deepEqual(stale.send, [], "a stale claim is NEVER retried: it may have gone");
+  assert.deepEqual(stale.unconfirmed, ["dns"]);
+  assert.equal(stale.next.mail.dns, `unconfirmed:${LATER(30)}`);
+  const after = S.planTransition(stale.next, pointed, LATER(45));
+  assert.deepEqual(after.unconfirmed, [], "settled once: the founder is told once");
+  assert.deepEqual(after.send, []);
+
+  // L1: already live at the very first check — still news, the live email once.
   const liveList = S.computeChecklist(onboarded(), ctx(), LIVE());
-  const silent = S.planTransition(null, liveList, NOW, true);
-  assert.deepEqual(silent.send, []);
-  assert.match(silent.next.mail.live, /^baseline:/);
-  // Both flipping at once: ONE email, the live one.
-  const both = S.planTransition(base.next, liveList, LATER(30), true);
-  assert.deepEqual(both.send, ["live"]);
-  assert.match(both.next.mail.dns, /^covered:/);
+  const firstLive = S.planTransition(null, liveList, NOW);
+  assert.deepEqual(firstLive.send, ["live"]);
+  assert.match(firstLive.next.mail.dns, /^covered:/, "one email, the bigger one");
   // Settling.
   assert.equal(S.settleClaim("claim:2:x", true, LATER(50)), LATER(50));
   assert.equal(S.settleClaim("claim:2:x", false, LATER(50)), `failed:2:${LATER(50)}`);
   assert.equal(S.mailAttempt(`failed:${S.MAX_MAIL_TRIES}:${NOW}`, Date.parse(NOW)), null, "gives up after the last try");
+  assert.equal(S.mailAttempt(`claim:1:${NOW}`, Date.parse(NOW) + 86_400_000), null, "a claim is never taken again");
 });
 
 test("onboardOverdue: one working day, weekends skipped", () => {
@@ -408,22 +471,17 @@ function deps(store, probeRef, log, { send, now } = {}) {
 }
 const newLog = () => ({ emails: [], owner: [] });
 
-test("NEW client: baseline only after a real measurement, then each milestone emailed once, stamped only after the send", async () => {
+test("NEW client: each milestone emailed once, stamped only after the send; racing checks send one", async () => {
   const store = memStore(onboarded());
   const ref = { current: probe({ dnsError: "ETIMEOUT" }) };
   const log = newLog();
   let clock = Date.parse(NOW);
   const d = deps(store, ref, log, { now: () => new Date(clock) });
 
-  await R.runSetupCheck("row-1", d);                       // failed probe
-  assert.equal(store.row.setup.baselineAt, undefined, "a failed first probe sets no baseline");
-
-  clock += 15 * 60_000; ref.current = probe({ http: HTTP_OLD_HOST });
-  await R.runSetupCheck("row-1", d);                       // first real measurement: not pointed
-  assert.ok(store.row.setup.baselineAt);
+  await R.runSetupCheck("row-1", d);                       // resolver failed: nothing done, nothing sent
   assert.equal(log.emails.length, 0);
 
-  clock += 15 * 60_000; ref.current = probe({ pointed: true, http: HTTP_OLD_HOST });
+  clock += 15 * 60_000; ref.current = probe({ pointed: true });
   const r = await R.runSetupCheck("row-1", d);             // flip
   assert.deepEqual(r.sent, ["dns"]);
   assert.equal(log.emails.length, 1);
@@ -439,23 +497,44 @@ test("NEW client: baseline only after a real measurement, then each milestone em
   await R.runSetupCheck("row-1", d);
   assert.equal(log.emails.length, 1, "run again: nothing new");
 
-  // Three checks racing to the SAME milestone:
   clock += 15 * 60_000; ref.current = LIVE();
   await Promise.all([R.runSetupCheck("row-1", d), R.runSetupCheck("row-1", d), R.runSetupCheck("row-1", d)]);
   assert.equal(log.emails.filter((m) => /is live on Servolia hosting/.test(m.subject)).length, 1, "one live email from three racing checks");
   assert.equal(log.owner.filter((o) => /LIVE/.test(o.subject)).length, 1);
 });
 
-test("a first measurement that is already live is silent — no email, no notice", async () => {
+test("L1: a NEW client whose site is only measurable once live still gets the live email — once", async () => {
   const store = memStore(onboarded());
   const log = newLog();
-  await R.runSetupCheck("row-1", deps(store, { current: LIVE() }, log));
-  assert.equal(log.emails.length + log.owner.length, 0);
-  assert.match(store.row.setup.mail.live, /^baseline:/);
+  const d = deps(store, { current: LIVE() }, log);
+  const out = await R.runSetupCheck("row-1", d);
+  assert.deepEqual(out.sent, ["live"]);
+  assert.equal(log.emails.length, 1);
+  assert.match(log.emails[0].subject, /is live on Servolia hosting/);
+  await R.runSetupCheck("row-1", d);
+  assert.equal(log.emails.length, 1, "not twice");
+});
+
+test("L2: a claim left standing (crash mid-send) becomes UNCONFIRMED — never resent, the founder told once", async () => {
+  const claimAt = new Date(Date.parse(NOW) - 30 * 60_000).toISOString();
+  const store = memStore(onboarded({ setup: { rev: 3, checkedAt: claimAt, mail: { dns: `claim:1:${claimAt}` }, owner: { dns: claimAt } } }));
+  const log = newLog();
+  const d = deps(store, { current: probe({ pointed: true }) }, log);
+  const out = await R.runSetupCheck("row-1", d);
+  assert.deepEqual(out.sent, []);
+  assert.equal(log.emails.length, 0, "never resent");
+  assert.equal(store.row.setup.mail.dns, `unconfirmed:${NOW}`);
+  assert.equal(log.owner.length, 1);
+  assert.match(log.owner[0].subject, /UNCONFIRMED/);
+  assert.ok(log.owner[0].lines.some((l) => /Check Resend/.test(l)));
+  await R.runSetupCheck("row-1", d);
+  await R.runSetupCheck("row-1", d);
+  assert.equal(log.owner.length, 1, "told once");
+  assert.equal(log.emails.length, 0);
 });
 
 test("a FAILED send is not stamped sent: retried at the next check, the founder told once", async () => {
-  const store = memStore(onboarded({ setup: { rev: 1, baselineAt: NOW, checkedAt: NOW } }));
+  const store = memStore(onboarded({ setup: { rev: 1, checkedAt: NOW } }));
   const log = newLog();
   let ok = false;
   let clock = Date.parse(NOW);
@@ -493,6 +572,87 @@ test("ESTABLISHED client: never emailed or announced — even after a failed pro
   assert.equal(adminView.applies, true, "the admin still sees it, read-only");
 });
 
+/* ── M1: a re-checkout by an existing client is still an existing client ─ */
+
+const KNOWN_EMAIL = "samiramousa77@hotmail.com"; // a CLIENT_REFS client
+
+function fakeDb(rows, { fail = false } = {}) {
+  const log = { queries: 0 };
+  const db = {
+    from() {
+      const q = { f: [] };
+      const b = {
+        select(cols) { q.cols = cols; return b; },
+        ilike(c, v) { q.f.push(["ilike", c, v]); return b; },
+        lt(c, v) { q.f.push(["lt", c, v]); return b; },
+        neq(c, v) { q.f.push(["neq", c, v]); return b; },
+        not(c, o, v) { q.f.push(["not", c, o, v]); return b; },
+        limit() { return b; },
+        then(res, rej) {
+          if (q.cols === "is_test") return Promise.resolve({ data: [], error: null }).then(res, rej);
+          log.queries += 1;
+          log.last = q.f;
+          if (fail) return Promise.resolve({ data: null, error: { message: "boom" } }).then(res, rej);
+          const pat = q.f.find((x) => x[0] === "ilike")[2].replace(/\\([%_])/g, "$1").toLowerCase();
+          const before = q.f.find((x) => x[0] === "lt")[2];
+          const not = q.f.find((x) => x[0] === "neq")[2];
+          const data = rows.filter((r) => r.email.toLowerCase() === pat && r.created_at < before && r.id !== not && r.is_test !== true);
+          return Promise.resolve({ data, error: null }).then(res, rej);
+        },
+      };
+      return b;
+    },
+  };
+  return { db, log };
+}
+
+test("M1: established by reference, or by an older real row for the same email; test rows never", async () => {
+  const today = { id: "new", email: KNOWN_EMAIL.toUpperCase(), created_at: "2026-09-26T09:00:00Z", started_at: null, is_test: false };
+  assert.equal(await R.establishedRow(today), true, "a known client reference, whatever the row's date");
+  assert.equal(await R.establishedRow({ ...today, is_test: true }), false, "a founder test row is never established");
+
+  const { db, log } = fakeDb([
+    { id: "old", email: "Returning@Client.com", created_at: "2026-09-01T00:00:00Z" },
+    { id: "old-test", email: "tester@x.com", created_at: "2026-09-01T00:00:00Z", is_test: true },
+    { id: "near", email: "returningXclient@client.com", created_at: "2026-09-01T00:00:00Z" },
+  ]);
+  const older = R.olderRowLookup(db);
+  const back = { id: "new-2", email: "returning@client.com", created_at: "2026-09-26T09:00:00Z", started_at: null, is_test: false };
+  assert.equal(await R.establishedRow(back, older), true, "re-checkout: an older row for the same address (case-insensitive)");
+  assert.equal(await R.establishedRow(back, older), true);
+  assert.equal(log.queries, 1, "cached per request: one query per address");
+  assert.ok(log.last.some((f) => f[0] === "lt" && f[2] === S.SETUP_TRACKER_SINCE), "only rows from before the cutover");
+  assert.ok(log.last.some((f) => f[0] === "not" && f[1] === "is_test"), "never a test row");
+  assert.equal(await R.establishedRow({ ...back, id: "n3", email: "tester@x.com" }, older), false, "an older TEST row does not count");
+  assert.equal(await R.establishedRow({ ...back, id: "n4", email: "brand-new@client.com" }, older), false, "a genuinely new client");
+  assert.equal(await R.establishedRow({ ...back, id: "n5", email: "returning_client@client.com" }, older), false, "underscore is not a wildcard");
+  const broken = R.olderRowLookup(fakeDb([], { fail: true }).db);
+  assert.equal(await R.establishedRow(back, broken), true, "cannot tell: leave the row alone");
+});
+
+test("M1: a re-checkout row is never written, emailed or announced — and the cron skips it", async () => {
+  const again = onboarded({ id: "row-1", email: "returning@client.com", created_at: "2026-09-26T09:00:00.000Z" });
+  const store = memStore(again);
+  store.olderRow = async (email) => email === "returning@client.com";
+  const log = newLog();
+  const out = await R.runSetupCheck("row-1", deps(store, { current: LIVE() }, log));
+  assert.equal(out.established, true);
+  assert.equal(log.emails.length + log.owner.length, 0, "no 'your site is live' about a site we have hosted for months");
+  assert.equal(store.writes, 0);
+
+  const loaded = [];
+  const spy = { canWrite: store.canWrite, cas: store.cas, olderRow: store.olderRow, load: async (id) => { loaded.push(id); return store.load(id); } };
+  await R.recheckHostingSetups({
+    budgetMs: 5000,
+    deps: deps(spy, { current: LIVE() }, newLog()),
+    listRows: async () => [
+      { id: "ref-client", email: KNOWN_EMAIL, setup: null, created_at: "2026-09-26T09:00:00Z", started_at: null, is_test: false },
+      { id: "row-1", email: "returning@client.com", setup: null, created_at: "2026-09-26T09:00:00Z", started_at: null, is_test: false },
+    ],
+  });
+  assert.deepEqual(loaded, [], "neither is picked up");
+});
+
 test("the cron pass skips established clients and finished setups; checks new, incomplete ones", async () => {
   const loaded = [];
   const store = memStore(onboarded({ id: "new-1" }));
@@ -523,20 +683,20 @@ test("runSetupCheck without the setup column: shows the checklist, stores nothin
 });
 
 test("a TEST row — even one created before the cutover — runs inside the test context", async () => {
-  const store = memStore(onboarded({ is_test: true, created_at: "2026-09-12T09:00:00.000Z", setup: { baselineAt: NOW, checkedAt: NOW } }));
+  const store = memStore(onboarded({ is_test: true, created_at: "2026-09-12T09:00:00.000Z", setup: { checkedAt: NOW } }));
   const log = newLog();
   await R.runSetupCheck("row-1", deps(store, { current: probe({ pointed: true, http: HTTP_OLD_HOST }) }, log));
   assert.equal(log.emails.length, 1);
   assert.equal(log.emails[0].test, true, "sendEmail reroutes to FOUNDER_EMAIL with [TEST]");
   assert.equal(log.owner[0].test, true);
-  const live = memStore(onboarded({ setup: { baselineAt: NOW, checkedAt: NOW } }));
+  const live = memStore(onboarded({ setup: { checkedAt: NOW } }));
   const log2 = newLog();
   await R.runSetupCheck("row-1", deps(live, { current: probe({ pointed: true, http: HTTP_OLD_HOST }) }, log2));
   assert.equal(log2.emails[0].test, false);
 });
 
 test("the retry after a lost race uses the RELOADED row's context", async () => {
-  const store = memStore(onboarded({ setup: { baselineAt: NOW, checkedAt: NOW } }));
+  const store = memStore(onboarded({ setup: { checkedAt: NOW } }));
   const realCas = store.cas.bind(store);
   let first = true;
   store.cas = async (id, prevRev, next) => {
@@ -571,6 +731,19 @@ test("the founder's tick: 'on our hosting' needs the Vercel project; complete re
   assert.deepEqual(await R.tickHandStep(memStore(row(), { writable: false }), "row-1", "forms", true), { ok: false, reason: "no-column" });
 });
 
+test("the SQL: additive column, the atomic limiter function for the service role only, RLS on rate_limits with no policy", () => {
+  const sql = src("supabase/2026-09-25-hosting-setup.sql");
+  assert.match(sql, /alter table hosting_clients add column if not exists setup jsonb;/);
+  assert.match(sql, /alter table rate_limits enable row level security;/);
+  assert.doesNotMatch(sql, /create policy/i, "no policy: only the service role (which bypasses RLS) may touch it");
+  assert.match(sql, /create or replace function servolia_rate_hit\(p_key text, p_window_seconds int\)/);
+  assert.match(sql, /revoke all on function servolia_rate_hit\(text, int\) from anon, authenticated;/);
+  assert.match(sql, /grant execute on function servolia_rate_hit\(text, int\) to service_role;/);
+  assert.doesNotMatch(sql.replace(/--.*$/gm, ""), /\b(update|delete)\s+(from\s+)?hosting_clients\b/i, "no existing row is changed");
+  // Every reader/writer of rate_limits is the service-role client.
+  assert.match(src("src/lib/security.ts"), /const db = supabaseAdmin\(\);/);
+});
+
 test("the tick endpoint takes only real booleans", () => {
   const route = src("src/app/api/admin/hosting/[id]/setup/route.ts");
   assert.match(route, /typeof body\?\.done !== "boolean"/);
@@ -586,7 +759,7 @@ test("page views: established -> no checklist; a stale check re-measures only if
   const view = await R.checklistForView(stale, { lang: "en", allowProbe: async () => { asked += 1; return false; } });
   assert.equal(asked, 1, "the limiter was asked");
   assert.equal(view.checkedAt, "2026-09-01T00:00:00.000Z", "refused: the stored check is served");
-  assert.match(src("src/app/hosting/account/page.tsx"), /allowProbe: async \(\) => !\(await rateLimited\(`setup-check:\$\{setupSub\}`, 4, 600\)\)/, "the same limiter as Check again");
+  assert.match(src("src/app/hosting/account/page.tsx"), /allowProbe: async \(\) => !\(await rateLimited\(`setup-view:\$\{setupSub\}`, 6, 600\)\)/, "its own key: a page view never uses up Check again");
 });
 
 test("contextFor: the address given, else the reference's, else a business name that is a domain", async () => {
@@ -628,7 +801,7 @@ test("the owner notice is alerts-fix's notifyOwner; every send is awaited throug
 });
 
 test("a HANGING client send is capped and UNCONFIRMED: never retried (it may have gone), the founder told to check", async () => {
-  const store = memStore(onboarded({ setup: { rev: 1, baselineAt: NOW, checkedAt: NOW } }));
+  const store = memStore(onboarded({ setup: { rev: 1, checkedAt: NOW } }));
   const log = newLog();
   const d = deps(store, { current: probe({ pointed: true, http: HTTP_OLD_HOST }) }, log, { send: () => new Promise(() => {}) });
   const t = Date.now();

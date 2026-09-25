@@ -35,7 +35,7 @@ import { hasAssistantSubscription } from "@/lib/assistantAccess";
 import { ASSISTANT_SITES } from "@/lib/assistantSites";
 import { assistantLinkFor } from "@/lib/upgrade";
 import SetupTracker from "@/components/client/SetupTracker";
-import { loadSetupRow, checklistForView } from "@/lib/hostingSetupRun";
+import { loadSetupRow, checklistForView, establishedRow, olderRowLookup } from "@/lib/hostingSetupRun";
 import { noticedQuiet, siteTile, type Checklist, type SetupRow } from "@/lib/hostingSetup";
 import { rateLimited } from "@/lib/security";
 
@@ -359,10 +359,14 @@ export default async function AccountPage({
   /* The whole row, not just its notes: the setup checklist reads the plan,
      the site address, the recorded repo/project and the stored checks. */
   let setupRow: SetupRow | null = null;
+  /* An existing client — by date, by reference, or by an older row for the
+     same email (a re-checkout) — never sees the tracker. */
+  let setupEstablished = true;
   if (!isDemo && subId) {
     const db = supabaseAdmin();
     const row = db ? await loadSetupRow(db, { subscriptionId: subId }) : null;
     setupRow = row;
+    setupEstablished = row && db ? await establishedRow(row, olderRowLookup(db)) : true;
     rowNotes = (row as { notes?: string | null } | null)?.notes ?? null;
     domainRec = readDomainRecord(row?.notes);
     const state = copyState(readCopyRequest((row as { notes?: string | null } | null)?.notes));
@@ -458,7 +462,9 @@ export default async function AccountPage({
     ? await checklistForView(setupRow, {
         lang: ctxLang,
         setupHref: linkToken ? `/hosting/setup?t=${encodeURIComponent(linkToken)}` : null,
-        allowProbe: async () => !(await rateLimited(`setup-check:${setupSub}`, 4, 600)),
+        established: setupEstablished,
+        /* Its own limit, so opening the page never uses up "Check again". */
+        allowProbe: async () => !(await rateLimited(`setup-view:${setupSub}`, 6, 600)),
       })
     : null;
   const tile = siteTile({ lang: ctxLang, checklist: setupList, health });

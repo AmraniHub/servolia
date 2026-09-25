@@ -1,4 +1,6 @@
 import { Resolver } from "node:dns/promises";
+import dns from "node:dns";
+import https from "node:https";
 import tls from "node:tls";
 import { registrar } from "@/lib/domainSales";
 import { dnsLinesFrom, isApexDomain } from "@/lib/siteDomain";
@@ -24,14 +26,15 @@ import type { Probe, RecordCheck } from "@/lib/hostingSetup";
  * would call every one of our own sites "not pointed". So the check accepts
  * Vercel's known ranges plus whatever cname.vercel-dns.com answers today.
  *
- * WHAT IS FETCHED, AND WHERE IT MAY GO. The address a client typed is fetched
- * (so the first check records a real measurement — hostingSetup.isMeasured)
- * only when every address it resolves to is public. Redirects are never
- * followed blindly: at most two hops, each https and on the same registrable
- * domain, or the fetch stops where it is. A client's site that redirects to
- * 169.254.169.254, to localhost, to plain http or to another domain is
- * reported as "stopped", never visited. The certificate check runs only once
- * DNS points to Vercel.
+ * WHAT IS FETCHED, AND WHERE IT MAY GO. Nothing is fetched and no TLS
+ * handshake is made until DNS points the address at Vercel. Every connection
+ * then goes through publicOnlyLookup: the name is resolved once, by us, and
+ * the connection refused if any answer (A or AAAA) is not public — so a DNS
+ * server that answers differently the second time has no second time.
+ * Redirects are never followed blindly: at most two hops, each https, port
+ * 443 and on the same registrable domain, each hop pinned the same way, or
+ * the fetch stops where it is. A redirect to 169.254.169.254, localhost,
+ * plain http or another domain is reported as "stopped", never visited.
  */
 
 const VERCEL_PREFIXES = ["76.76.21.", "66.33.60.", "216.150.1.", "216.150.16.", "216.198.79.", "64.29.17."];
@@ -58,6 +61,93 @@ export function isPublicIpv4(ip: string): boolean {
   if (a === 100 && b >= 64 && b <= 127) return false;
   return true;
 }
+
+/** The IPv4 address carried in the last 32 bits of an IPv6 address written
+ *  "…:d896:1001" or "…:216.150.16.1"; null if it cannot be read. */
+function embeddedIpv4(a: string): string | null {
+  const dotted = a.match(/:(\d{1,3}(?:\.\d{1,3}){3})$/);
+  if (dotted) return dotted[1];
+  const hex = a.match(/:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/);
+  if (!hex) return null;
+  const hi = parseInt(hex[1], 16);
+  const lo = parseInt(hex[2], 16);
+  return `${hi >> 8}.${hi & 255}.${lo >> 8}.${lo & 255}`;
+}
+
+/**
+ * A routable public IPv6 address: global unicast (2000::/3), not the
+ * documentation range. Loopback, link-local, unique-local and multicast are
+ * not. IPv4-mapped (::ffff:a.b.c.d) and NAT64 (64:ff9b::/96) addresses carry
+ * an IPv4 address and are judged BY it: a DNS64 resolver (measured on this
+ * workstation's 4G link, 2026-09-25) answers every name with such AAAA records
+ * next to the real A records, and refusing the whole prefix would refuse every
+ * site — while 64:ff9b::7f00:1 is still loopback and still refused.
+ */
+export function isPublicIpv6(ip: string): boolean {
+  const a = ip.toLowerCase().split("%")[0];
+  if (!a.includes(":")) return false;
+  if (a.startsWith("::ffff:") || a.startsWith("64:ff9b::")) {
+    const v4 = embeddedIpv4(a);
+    return v4 ? isPublicIpv4(v4) : false;
+  }
+  if (a.startsWith("2001:db8:")) return false;
+  const first = a.startsWith("::") ? 0 : parseInt(a.split(":")[0] || "0", 16);
+  return first >= 0x2000 && first <= 0x3fff;
+}
+
+export function isPublicIp(ip: string): boolean {
+  return ip.includes(":") ? isPublicIpv6(ip) : isPublicIpv4(ip);
+}
+
+type LookupAll = (hostname: string, options: dns.LookupAllOptions, cb: (err: NodeJS.ErrnoException | null, addresses: dns.LookupAddress[]) => void) => void;
+
+/**
+ * DNS PINNING. A `lookup` for node's https/tls that resolves the name ITSELF
+ * and refuses to connect when any answer — A or AAAA — is not public. The
+ * address checked is the address connected to: there is no second lookup a
+ * rebinding DNS server could answer differently. Used for the first request,
+ * every redirect hop, and the certificate check.
+ */
+export function publicOnlyLookup(resolve: LookupAll = dns.lookup as unknown as LookupAll) {
+  return (hostname: string, options: dns.LookupOptions, callback: (...args: unknown[]) => void): void => {
+    resolve(hostname, { family: options.family, hints: options.hints, all: true }, (err, addresses) => {
+      if (err) return callback(err);
+      const list = Array.isArray(addresses) ? addresses : [];
+      if (!list.length || list.some((x) => !isPublicIp(x.address))) {
+        return callback(Object.assign(new Error(`refused: ${hostname} resolves to a non-public address`), { code: "ENOTPUBLIC" }));
+      }
+      if (options.all) return callback(null, list);
+      return callback(null, list[0].address, list[0].family);
+    });
+  };
+}
+
+/**
+ * GET without following redirects, over node's https with the pinned lookup.
+ * Resolves to a bodiless Response carrying the status and headers; the body
+ * is never read. `resolve` is a test seam for the DNS answer.
+ */
+export function makePinnedFetch(resolve?: LookupAll): FetchLike {
+  return (url, init) => new Promise<Response>((done, fail) => {
+    const req = https.request(url, {
+      method: "GET",
+      headers: Object.fromEntries(new Headers(init.headers ?? {}).entries()),
+      lookup: publicOnlyLookup(resolve) as unknown as https.RequestOptions["lookup"],
+      signal: init.signal ?? undefined,
+    }, (res) => {
+      const headers = new Headers();
+      for (const [k, v] of Object.entries(res.headers)) if (v !== undefined) headers.set(k, Array.isArray(v) ? v.join(", ") : String(v));
+      const status = res.statusCode ?? 0;
+      res.destroy();
+      if (status < 200 || status > 599) return fail(Object.assign(new Error(`status ${status}`), { code: "EBADSTATUS" }));
+      done(new Response(null, { status, headers }));
+    });
+    req.on("error", fail);
+    req.end();
+  });
+}
+
+export const pinnedFetch: FetchLike = makePinnedFetch();
 
 /** "shop.cabinet.co.uk" -> "cabinet.co.uk"; an apex returns itself. */
 export function registrableOf(host: string): string {
@@ -160,7 +250,10 @@ export function checkTls(host: string, timeoutMs = 6000): Promise<NonNullable<Pr
     let settled = false;
     const finish = (v: NonNullable<Probe["tls"]>) => { if (!settled) { settled = true; resolve(v); } };
     try {
-      const socket = tls.connect({ host, port: 443, servername: host, rejectUnauthorized: false, timeout: timeoutMs }, () => {
+      const socket = tls.connect({
+        host, port: 443, servername: host, rejectUnauthorized: false, timeout: timeoutMs,
+        lookup: publicOnlyLookup() as unknown as tls.ConnectionOptions["lookup"],
+      }, () => {
         const cert = socket.getPeerCertificate();
         const ok = socket.authorized === true;
         finish({
@@ -211,7 +304,7 @@ export interface SafeFetchResult {
  * else stops the fetch where it stands and says why; the refused target is
  * never requested.
  */
-export async function safeFetch(startUrl: string, fetchImpl: FetchLike = fetch, opts: { maxHops?: number; timeoutMs?: number } = {}): Promise<SafeFetchResult> {
+export async function safeFetch(startUrl: string, fetchImpl: FetchLike = pinnedFetch, opts: { maxHops?: number; timeoutMs?: number } = {}): Promise<SafeFetchResult> {
   const maxHops = opts.maxHops ?? 2;
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), opts.timeoutMs ?? 8000);
@@ -239,8 +332,8 @@ export async function safeFetch(startUrl: string, fetchImpl: FetchLike = fetch, 
       url = next.href;
     }
   } catch (e) {
-    const cause = (e as { cause?: { code?: string } }).cause?.code;
-    return { status: null, headers: null, finalUrl: url, stopped: cause ?? (e instanceof Error ? e.name : "error") };
+    const err = e as { code?: string; cause?: { code?: string } };
+    return { status: null, headers: null, finalUrl: url, stopped: err.code ?? err.cause?.code ?? (e instanceof Error ? e.name : "error") };
   } finally {
     clearTimeout(timer);
   }
@@ -272,22 +365,33 @@ async function vercelConfig(host: string, project: string | null): Promise<Recor
  * Every live check for one host. Never throws; a check that could not run
  * leaves its step open and says so, it never passes it.
  */
-export async function probeHost(target: { host: string; vercelProject: string | null }, now = new Date()): Promise<Probe> {
+export async function probeHost(
+  target: { host: string; vercelProject: string | null },
+  now = new Date(),
+  /** Test seams: the DNS answers, and the two network checks. */
+  seams: {
+    gather?: (expected: ExpectedRecord[], host: string) => Promise<DnsAnswers>;
+    tls?: typeof checkTls;
+    http?: typeof checkHttp;
+  } = {},
+): Promise<Probe> {
+  const gather = seams.gather ?? gatherDns;
+  const tlsCheck = seams.tls ?? checkTls;
+  const httpCheck = seams.http ?? checkHttp;
   const at = now.toISOString();
   const host = hostFrom(target.host);
   if (!host) {
     return { at, host: target.host, dns: { pointed: false, viaNameservers: false, records: [], error: "not-a-public-domain" }, tls: null, http: null };
   }
   const expected = expectedRecords(host, await vercelConfig(host, target.vercelProject));
-  const answers = await gatherDns(expected, host);
-  const dns = judgeDns(expected, answers);
-  // Fetched only when every address it resolves to is public: a name that
-  // resolves into a private network is reported, never visited.
-  const addrs = answers.a[host] ?? [];
-  const reachable = addrs.length > 0 && addrs.every(isPublicIpv4);
+  const dnsResult = judgeDns(expected, await gather(expected, host));
+  // Not one connection to a client's host until it points at Vercel: before
+  // that it is their old host (or anywhere they typed), and nothing we would
+  // learn from it is used.
+  if (!dnsResult.pointed) return { at, host, dns: dnsResult, tls: null, http: null };
   const [tlsResult, http] = await Promise.all([
-    dns.pointed ? checkTls(host) : Promise.resolve(null),
-    reachable ? checkHttp(host, target.vercelProject, dns.pointed) : Promise.resolve(null),
+    tlsCheck(host),
+    httpCheck(host, target.vercelProject, true),
   ]);
-  return { at, host, dns, tls: tlsResult, http };
+  return { at, host, dns: dnsResult, tls: tlsResult, http };
 }

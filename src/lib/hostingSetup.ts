@@ -49,11 +49,23 @@ export type Lang = "en" | "fr";
  * Deliberately wider than "active or past_due": a suspended or churned client
  * from before the cutover is an existing subscriber too, and nothing here has
  * any business writing to their row. Test rows are never established.
+ *
+ * A ROW IS NOT THE CLIENT. An existing client who checks out again gets a
+ * fresh row dated today, which by date alone would look new — and would be
+ * told "your site is live" about a site we have hosted for months. So a row
+ * is also established when its email is a known client reference
+ * (CLIENT_REFS) or when an older non-test row with the same email was created
+ * before the cutover. Those two facts are looked up by the caller
+ * (src/lib/hostingSetupRun.ts establishedRow) and passed in here.
  */
 export const SETUP_TRACKER_SINCE = "2026-09-25T00:00:00Z";
 
-export function isEstablished(row: { is_test?: boolean | null; created_at?: string | null; started_at?: string | null }): boolean {
+export function isEstablished(
+  row: { is_test?: boolean | null; created_at?: string | null; started_at?: string | null },
+  client: { knownClient?: boolean; olderRow?: boolean } = {},
+): boolean {
   if (row.is_test === true) return false;
+  if (client.knownClient || client.olderRow) return true;
   const born = Date.parse(row.created_at ?? row.started_at ?? "");
   // No date at all: treat as existing. Leaving a real row alone is the safe mistake.
   return !Number.isFinite(born) || born < Date.parse(SETUP_TRACKER_SINCE);
@@ -108,10 +120,6 @@ export interface Probe {
  */
 export interface SetupState {
   rev?: number;
-  /** The first check that actually MEASURED something (see isMeasured).
-   *  Before it, every check is silent; at it, what is already done is
-   *  stamped as baseline; after it, a milestone reached is emailed. */
-  baselineAt?: string;
   /** When the setup form arrived. */
   detailsAt?: string;
   /** The founder's ticks: step -> when. */
@@ -120,14 +128,14 @@ export interface SetupState {
   seen?: Partial<Record<StepId, string>>;
   /**
    * The client's milestone emails:
-   *   "claim:<n>:<iso>"   being sent now (attempt n); a claim older than ten
-   *                       minutes is a crashed send and may be taken again
+   *   "claim:<n>:<iso>"   being sent now (attempt n); a claim still standing
+   *                       after ten minutes is a send that never reported back
+   *                       — it becomes "unconfirmed", never retried
    *   "<iso>"             sent — written only AFTER the send succeeded
    *   "failed:<n>:<iso>"  attempt n refused; retried on the next check, up to 5
    *   "unconfirmed:<iso>" no answer inside the send cap: it may have gone, so
    *                       it is NEVER retried (a retry could email them twice);
    *                       the founder is told to check Resend
-   *   "baseline:<iso>"    already done at the first measured check: not news
    *   "covered:<iso>"     a bigger milestone's email said it at the same moment
    *   "no-address:<iso>"  nobody to send it to
    */
@@ -545,16 +553,6 @@ export function doneSteps(list: Checklist): StepId[] {
 
 /* ── What changed since the last check ─────────────────────────────────── */
 
-/**
- * Did this check actually MEASURE the address? DNS answered without a
- * resolver error AND the site gave an HTTP status. A timed-out lookup or a
- * fetch that never connected measured nothing, so it can neither set the
- * baseline nor be read as "not pointed yet".
- */
-export function isMeasured(probe: Probe | null | undefined): boolean {
-  return Boolean(probe && !probe.dns.error && typeof probe.http?.status === "number");
-}
-
 export const MAX_MAIL_TRIES = 5;
 const CLAIM_STALE_MS = 10 * 60_000;
 
@@ -565,15 +563,21 @@ function parseStamp(s: string | undefined): { kind: string; n: number; at: numbe
   return m ? { kind: m[1], n: Number(m[2]), at: Date.parse(m[3]) } : { kind: "final", n: 0, at: NaN };
 }
 
+/** A claim left standing past ten minutes: the send never reported back. */
+export function isStaleClaim(stamp: string | undefined, nowMs: number): boolean {
+  const s = parseStamp(stamp);
+  return Boolean(s && s.kind === "claim" && nowMs - s.at > CLAIM_STALE_MS);
+}
+
 /**
  * May this milestone's email be sent now, and as which attempt? Null when it
- * is settled (sent, baseline, covered, no address, or out of tries) or is
- * being sent by someone else right now.
+ * is settled (sent, covered, unconfirmed, no address, out of tries) or a claim
+ * is standing — a claim is never taken again: whoever holds it either settles
+ * it or, past ten minutes, it is settled "unconfirmed".
  */
-export function mailAttempt(stamp: string | undefined, nowMs: number): number | null {
+export function mailAttempt(stamp: string | undefined): number | null {
   const s = parseStamp(stamp);
   if (!s) return 1;
-  if (s.kind === "claim") return nowMs - s.at > CLAIM_STALE_MS ? s.n + 1 : null;
   if (s.kind === "failed") return s.n < MAX_MAIL_TRIES ? s.n + 1 : null;
   return null;
 }
@@ -586,28 +590,30 @@ export interface Transition {
   claims: Partial<Record<Milestone, string>>;
   /** Milestones to tell the founder about now. */
   notify: Milestone[];
+  /** Stale claims settled "unconfirmed" by this check: the founder is told, once. */
+  unconfirmed: Milestone[];
 }
 
 /**
  * The state to store after a check, and which milestone messages it earns.
  *
- * A MILESTONE IS NEWS ONLY WHEN IT FLIPS AFTER A REAL MEASUREMENT. Until a
- * check has measured the address (isMeasured), every check is silent and no
- * baseline is set — a failed first probe is never taken as the starting
- * point. The first measured check is the baseline: milestones already done
- * then are stamped "baseline", not sent. After it, a milestone that is done
- * and not yet settled is claimed for sending.
+ * Only NEW clients reach this (established ones are never written), so every
+ * milestone is news: a milestone that is done and not yet settled is CLAIMED
+ * for sending — including one that was already done at the very first check,
+ * so a client whose site only became measurable once live still hears it.
  *
  * NOTHING IS STAMPED "SENT" HERE. The caller writes `next` (with the claims)
  * as a compare-and-swap, sends, and only then settles each claim: the send
- * time on success, "failed:<n>" on failure (retried next check, up to
- * MAX_MAIL_TRIES). Of two checks racing, only the one whose write lands holds
- * the claim, so one email goes out.
+ * time on success, "failed:<n>" when Resend refused (retried next check, up to
+ * MAX_MAIL_TRIES), "unconfirmed" when no answer came in time. A claim still
+ * standing after ten minutes (the process died mid-send) is settled
+ * "unconfirmed" here — it may have gone, so it is never retried — and the
+ * founder is told once, because that settlement happens in one CAS write.
  *
  * Both milestones due at once send ONE email, the live one; the domain
  * milestone is marked covered by it.
  */
-export function planTransition(prev: SetupState | null | undefined, list: Checklist, nowIso: string, measured: boolean): Transition {
+export function planTransition(prev: SetupState | null | undefined, list: Checklist, nowIso: string): Transition {
   const before = prev ?? {};
   const nowMs = Date.parse(nowIso);
   const done = doneSteps(list);
@@ -617,43 +623,39 @@ export function planTransition(prev: SetupState | null | undefined, list: Checkl
   const owner = { ...(before.owner ?? {}) };
   const next: SetupState = { ...before, rev: (before.rev ?? 0) + 1, seen, mail, owner, checkedAt: nowIso };
 
+  const unconfirmed: Milestone[] = [];
+  for (const m of MILESTONES) {
+    if (isStaleClaim(mail[m], nowMs)) {
+      mail[m] = `unconfirmed:${nowIso}`;
+      unconfirmed.push(m);
+    }
+  }
+
   const send: Milestone[] = [];
   const claims: Partial<Record<Milestone, string>> = {};
   const notify: Milestone[] = [];
-
-  if (!before.baselineAt) {
-    if (measured) {
-      next.baselineAt = nowIso;
-      for (const m of MILESTONES) {
-        if (!done.includes(m) || mail[m]) continue;
-        mail[m] = `baseline:${nowIso}`;
-        owner[m] = owner[m] ?? `baseline:${nowIso}`;
-      }
+  const due = MILESTONES.filter((m) => done.includes(m) && mailAttempt(mail[m]) !== null);
+  const pick: Milestone | null = due.includes("live") ? "live" : due.includes("dns") ? "dns" : null;
+  if (pick) {
+    const n = mailAttempt(mail[pick]) ?? 1;
+    claims[pick] = `claim:${n}:${nowIso}`;
+    mail[pick] = claims[pick];
+    send.push(pick);
+    // Any domain email still pending (never sent, or refused) is said by the
+    // live email; sending it afterwards would read backwards.
+    if (pick === "live" && due.includes("dns")) {
+      mail.dns = `covered:${nowIso}`;
+      owner.dns = owner.dns ?? `covered:${nowIso}`;
     }
-  } else {
-    const due = MILESTONES.filter((m) => done.includes(m) && mailAttempt(mail[m], nowMs) !== null);
-    const pick: Milestone | null = due.includes("live") ? "live" : due.includes("dns") ? "dns" : null;
-    if (pick) {
-      const n = mailAttempt(mail[pick], nowMs) ?? 1;
-      claims[pick] = `claim:${n}:${nowIso}`;
-      mail[pick] = claims[pick];
-      send.push(pick);
-      // Any domain email still pending (never sent, failed, or a stale claim)
-      // is said by the live email; sending it afterwards would read backwards.
-      if (pick === "live" && due.includes("dns")) {
-        mail.dns = `covered:${nowIso}`;
-        owner.dns = owner.dns ?? `covered:${nowIso}`;
-      }
-      if (!owner[pick]) {
-        notify.push(pick);
-        owner[pick] = nowIso;
-      }
+    if (!owner[pick]) {
+      notify.push(pick);
+      owner[pick] = nowIso;
     }
   }
 
   if (list.complete && !before.completeAt) next.completeAt = nowIso;
   if (!list.complete && before.completeAt) delete next.completeAt; // a step was undone
-  return { next, send, claims, notify };
+  return { next, send, claims, notify, unconfirmed };
 }
 
 /**

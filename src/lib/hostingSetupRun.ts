@@ -1,12 +1,12 @@
 import { supabaseAdmin } from "@/lib/supabase";
 import { sendEmail } from "@/lib/email";
-import { runAsTest, testColumnReady } from "@/lib/testContext";
+import { runAsTest, testColumnReady, excludeTest } from "@/lib/testContext";
 import { accountLinkFor, setupLinkFor, referenceFor, subscriptionContext } from "@/lib/upgrade";
 import { clientRefFor, refKeyForEmail, knownSiteUrl } from "@/lib/clientRefs";
 import { readDomainRecord } from "@/lib/domainSales";
 import { HOSTING_TIERS } from "@/lib/hosting";
 import {
-  computeChecklist, planTransition, checklistApplies, isEstablished, isMeasured, settleClaim,
+  computeChecklist, planTransition, checklistApplies, isEstablished, settleClaim, SETUP_TRACKER_SINCE,
   type Checklist, type HandStep, type Lang, type Milestone, type Probe, type SetupContext, type SetupRow, type SetupState,
 } from "@/lib/hostingSetup";
 import { probeHost, hostFrom } from "@/lib/hostingSetupProbe";
@@ -20,9 +20,12 @@ import { notifyOwner, bounded, emailOutcome, type OwnerNotice } from "@/lib/noti
  * and the founder's "Run checks now" all call — so a milestone reached by any
  * of them is announced exactly once, by whichever got there first.
  *
- * ESTABLISHED CLIENTS ARE NEVER WRITTEN TO (isEstablished: a real row created
- * before SETUP_TRACKER_SINCE). For them a check only computes and returns;
- * nothing is stored, emailed or announced, and the cron does not pick them up.
+ * ESTABLISHED CLIENTS ARE NEVER WRITTEN TO (establishedRow: a real row created
+ * before SETUP_TRACKER_SINCE, OR whose email is a known client reference, OR
+ * whose email already has an older real row from before the cutover — an
+ * existing client who checked out again). For them a check only computes and
+ * returns; nothing is stored, emailed or announced, and the cron does not
+ * pick them up.
  *
  * STORAGE is hosting_clients.setup (jsonb, supabase/2026-09-25-hosting-setup.sql).
  * Until that SQL has run, everything still COMPUTES but nothing is stored and
@@ -72,6 +75,55 @@ async function columns(db: unknown): Promise<string> {
 
 type Db = NonNullable<ReturnType<typeof supabaseAdmin>>;
 
+/* ── Is this an existing client? ───────────────────────────────────────── */
+
+/** Does this email have an older real (non-test) row from before the cutover? */
+export type OlderRowLookup = (email: string, excludeId: string) => Promise<boolean>;
+
+/**
+ * One cheap query per email, cached for the life of the lookup — create one
+ * per request (supabaseStore does) so a cron pass over many rows asks once
+ * per address. Exact, case-insensitive match: the pattern is escaped and the
+ * answer compared again in code. A failed lookup answers TRUE — when we cannot
+ * tell whether someone is an existing subscriber, their row is left alone.
+ */
+export function olderRowLookup(db: Db): OlderRowLookup {
+  const cache = new Map<string, Promise<boolean>>();
+  return (email, excludeId) => {
+    const e = email.trim().toLowerCase();
+    const key = `${e}|${excludeId}`;
+    let hit = cache.get(key);
+    if (!hit) {
+      hit = (async () => {
+        const pattern = e.replace(/[%_]/g, (c) => `\\${c}`);
+        const { data, error } = await excludeTest(db, (live) => live(db
+          .from("hosting_clients")
+          .select("id, email")
+          .ilike("email", pattern)
+          .lt("created_at", SETUP_TRACKER_SINCE)
+          .neq("id", excludeId))
+          .limit(5));
+        if (error) return true;
+        return ((data ?? []) as { email: string | null }[]).some((r) => (r.email ?? "").trim().toLowerCase() === e);
+      })().catch(() => true);
+      cache.set(key, hit);
+    }
+    return hit;
+  };
+}
+
+/** The full rule: the row's own date, a known reference, or an older row. */
+export async function establishedRow(
+  row: Pick<SetupRow, "id" | "email" | "created_at" | "started_at" | "is_test">,
+  older?: OlderRowLookup,
+): Promise<boolean> {
+  if (row.is_test === true) return false;
+  const knownClient = Boolean(clientRefFor(refKeyForEmail(row.email)));
+  if (isEstablished(row, { knownClient })) return true;
+  if (!row.email || !older) return false;
+  return isEstablished(row, { olderRow: await older(row.email, row.id) });
+}
+
 /** One hosting row, by id or by subscription, with whatever columns exist. */
 export async function loadSetupRow(db: Db, by: { id: string } | { subscriptionId: string }): Promise<SetupRow | null> {
   const q = db.from("hosting_clients").select(await columns(db));
@@ -93,12 +145,15 @@ export interface SetupStore {
   cas(id: string, prevRev: number | undefined, next: SetupState): Promise<boolean>;
   /** False until supabase/2026-09-25-hosting-setup.sql has run. */
   canWrite(): Promise<boolean>;
+  /** Older-row lookup for establishedRow; one cache per store (per request). */
+  olderRow?: OlderRowLookup;
 }
 
 export function supabaseStore(db: Db): SetupStore {
   return {
     load: (id) => loadSetupRow(db, { id }),
     canWrite: () => setupColumnReady(db),
+    olderRow: olderRowLookup(db),
     async cas(id, prevRev, next) {
       const base = db.from("hosting_clients").update({ setup: next }).eq("id", id);
       const guarded = prevRev === undefined ? base.is("setup->>rev", null) : base.eq("setup->>rev", String(prevRev));
@@ -127,7 +182,7 @@ export async function mutateState(
   for (let attempt = 0; attempt < 3; attempt++) {
     const row = await store.load(id);
     if (!row) return { ok: false, reason: "not-found" };
-    if (isEstablished(row)) return { ok: false, reason: "established" };
+    if (await establishedRow(row, store.olderRow)) return { ok: false, reason: "established" };
     const state = row.setup ?? {};
     const next = fn(structuredClone(state), row);
     if (!next) return { ok: false, reason: "unchanged" };
@@ -183,10 +238,12 @@ const viewProbes = new Map<string, { probe: Probe; at: number }>();
  */
 export async function checklistForView(
   row: SetupRow,
-  opts: { lang: Lang; setupHref?: string | null; allowProbe?: () => Promise<boolean>; includeEstablished?: boolean; now?: Date },
+  opts: { lang: Lang; setupHref?: string | null; allowProbe?: () => Promise<boolean>; includeEstablished?: boolean; now?: Date; established?: boolean },
 ): Promise<Checklist | null> {
   if (!checklistApplies(row.plan)) return null;
-  const established = isEstablished(row);
+  // The caller passes the full answer (establishedRow, with the older-row
+  // lookup); without it, the rules that need no database.
+  const established = opts.established ?? isEstablished(row, { knownClient: Boolean(clientRefFor(refKeyForEmail(row.email))) });
   if (established && !opts.includeEstablished) return null;
   const ctx = contextFor(row, opts.setupHref ?? null);
   const now = opts.now ?? new Date();
@@ -268,7 +325,7 @@ export async function runSetupCheck(rowId: string, deps: RunDeps, viewLang: Lang
     let ctx = await ctxOf(first);
     const probe = ctx.host ? await deps.probe({ host: ctx.host, vercelProject: first.vercel_project }, now) : null;
 
-    const established = isEstablished(first);
+    const established = await establishedRow(first, deps.store.olderRow);
     if (established || !(await deps.store.canWrite())) {
       return { ok: true, checklist: computeChecklist(first, ctx, probe, viewLang), sent: [], notified: [], stored: false, established };
     }
@@ -279,7 +336,7 @@ export async function runSetupCheck(rowId: string, deps: RunDeps, viewLang: Lang
       if (attempt > 0) ctx = await ctxOf(row); // the reloaded row's own address, links and flags
       const state = row.setup ?? {};
       const list = computeChecklist(row, ctx, probe, "en");
-      const tr = planTransition(state, list, nowIso, isMeasured(probe));
+      const tr = planTransition(state, list, nowIso);
       if (probe) tr.next.probe = probe; else delete tr.next.probe;
       /* The CLAIMS ride in this write. Only the check whose write lands holds
          them, so of several racing checks one sends. */
@@ -312,6 +369,19 @@ export async function runSetupCheck(rowId: string, deps: RunDeps, viewLang: Lang
             return { ...s, mail: { ...s.mail, [m]: settleClaim(claim, sent, deps.now().toISOString()) } };
           });
         }
+      }
+      /* A claim that never reported back: it may have gone, so it is not
+         retried — the founder is told, once (this settlement is one CAS). */
+      for (const m of tr.unconfirmed) {
+        await bounded("setup owner notice", () => deps.notifyOwner({
+          subject: `Hosting: setup email UNCONFIRMED - ${row.business || row.email || "a hosting client"}`,
+          lines: [
+            `The "${m === "live" ? "your site is live" : "your domain now points to us"}" email to ${row.email ?? "the client"} was started but never reported back.`,
+            "It may have gone. Check Resend before sending it again; it will not be retried.",
+            reference ? `Ref ${reference}` : null,
+          ],
+          link: `https://servolia.com/admin/hosting/${row.id}`,
+        }));
       }
       for (const m of tr.notify) {
         const who = row.business || row.email || "a hosting client";
@@ -378,7 +448,7 @@ export async function recordDetailsReceived(subscriptionId: string, now = new Da
     const db = supabaseAdmin();
     if (!db || !(await setupColumnReady(db))) return false;
     const row = await loadSetupRow(db, { subscriptionId });
-    if (!row || isEstablished(row)) return false;
+    if (!row || (await establishedRow(row, olderRowLookup(db)))) return false;
     const out = await mutateState(supabaseStore(db), row.id, (s) => (s.detailsAt ? null : { ...s, detailsAt: now.toISOString() }));
     return out.ok;
   } catch {
@@ -393,12 +463,12 @@ export async function recordDetailsReceived(subscriptionId: string, now = new Da
  * first, a few at a time, inside a time budget (the domain-live cron gives it
  * what is left of its minute). Established clients are never picked up.
  */
-type CronRow = { id: string; setup: SetupState | null; created_at: string | null; started_at: string | null; is_test?: boolean | null };
+type CronRow = { id: string; email?: string | null; setup: SetupState | null; created_at: string | null; started_at: string | null; is_test?: boolean | null };
 
 async function listCronRows(db: Db): Promise<CronRow[] | string> {
   const hasTest = await testColumnReady(db);
   const { data, error } = await db.from("hosting_clients")
-    .select(`id, setup, created_at, started_at${hasTest ? ", is_test" : ""}`)
+    .select(`id, email, setup, created_at, started_at${hasTest ? ", is_test" : ""}`)
     .in("plan", [...HOSTING_TIERS])
     .in("status", ["active", "past_due"])
     .not("subscription_id", "is", null);
@@ -420,8 +490,14 @@ export async function recheckHostingSetups(opts: { budgetMs: number; deps?: RunD
   if (typeof listed === "string") return { checked: 0, sent, errors: [listed] };
 
   // Established clients are never picked up: their rows are not the tracker's.
-  const pending = listed
-    .filter((r) => !isEstablished(r) && !r.setup?.completeAt)
+  // One older-row lookup for the whole pass, cached per address.
+  const eligible: CronRow[] = [];
+  for (const r of listed) {
+    if (r.setup?.completeAt) continue;
+    if (await establishedRow({ ...r, email: r.email ?? null }, deps.store.olderRow)) continue;
+    eligible.push(r);
+  }
+  const pending = eligible
     .sort((a, b) => (a.setup?.checkedAt ?? "").localeCompare(b.setup?.checkedAt ?? ""));
 
   let checked = 0;
