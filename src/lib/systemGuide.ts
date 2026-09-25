@@ -85,12 +85,12 @@ export const FEATURES: SystemFeature[] = [
     ],
     use: [
       "Turn it on, buy a plan / hosting / top-up / add-on with 4242 4242 4242 4242, and follow the emails and the portal as the client would. A small 'TEST MODE' pill shows on every page of that browser.",
-      "When done: node scripts/test-mode-cleanup.mjs prints every is_test row it would delete (and what the foreign keys cascade); --apply deletes exactly those, and only rows tagged is_test.",
+      "When done: /admin/settings > Test records > 'Find test records' lists every is_test row it would delete (with the notes markers that go with it, what the foreign keys cascade, and any receptionist trial it reverts); 'Remove these N' then a second click deletes exactly that list, and only rows tagged is_test. It runs on the server (POST /api/admin/test-mode/cleanup, src/lib/testCleanup.ts), so no service key is needed on the laptop; it refuses, deleting nothing, if any selected row is not a test row, if a real row is linked to one, or if the list changed since you looked. The same logic is also node scripts/test-mode-cleanup.mjs (dry run, then --apply) where a service key exists.",
       "Every test purchase is made in FOUNDER_EMAIL's name (the checkout locks it), and every email sent while a test event is handled goes to FOUNDER_EMAIL with '[TEST] ' in the subject — never to anyone else.",
     ],
     cost: "None. Test-mode Stripe charges no money. A test plan purchase can generate a draft site, which costs one Claude call like any draft.",
     value: "Every product can be walked end to end on the real deployment before a client does it, without a staging copy that drifts from production and without a single invented euro in the numbers.",
-    code: "src/lib/testMode.ts · src/lib/testContext.ts · src/lib/stripeMode.ts · src/app/api/admin/test-mode · src/app/api/webhooks/stripe · supabase/2026-09-24-test-mode.sql · scripts/test-mode-cleanup.mjs · tests/test-mode.test.mjs",
+    code: "src/lib/testMode.ts · src/lib/testContext.ts · src/lib/stripeMode.ts · src/app/api/admin/test-mode · src/app/api/webhooks/stripe · supabase/2026-09-24-test-mode.sql · src/lib/testCleanup.ts · src/app/api/admin/test-mode/cleanup · scripts/test-mode-cleanup.mjs · tests/test-mode.test.mjs · tests/test-cleanup.test.mjs",
   },
   {
     name: "Traffic analytics (first-party)",

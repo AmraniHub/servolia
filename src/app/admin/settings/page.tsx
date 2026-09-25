@@ -6,6 +6,7 @@ import { costBreakdown, integrationStatus, openRoadmap, stripeMode } from "./_da
 import { testModeAvailable } from "@/lib/stripeMode";
 import { testModeUntil } from "@/lib/testMode";
 import TestModeToggle from "@/components/admin/TestModeToggle";
+import TestCleanup from "@/components/admin/TestCleanup";
 
 export const dynamic = "force-dynamic";
 
@@ -90,6 +91,8 @@ export default async function SettingsOverview() {
 
       {/* Founder test mode (src/lib/testMode.ts) */}
       <TestModeToggle until={testUntil ? new Date(testUntil).toISOString() : null} available={testModeAvailable()} />
+      {/* ...and removing what it left behind, server-side (src/lib/testCleanup.ts) */}
+      <TestCleanup />
 
       {/* Database */}
       <div className="flex items-start gap-3 p-5 rounded-xl bg-white border border-[#E8E6E0] mb-8">
