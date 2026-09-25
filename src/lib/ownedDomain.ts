@@ -231,6 +231,8 @@ export interface OwnedDomainNote {
   attempts?: string;
   /** YYYY-MM-DD: the day the cron found the hosting cancelled or ending (reported once, nothing billed). */
   subEnding?: string;
+  /** Why keptUntil: "paid" (a paid year starts then) or "hosting" (the hosting runs until then). */
+  keptWhy?: "paid" | "hosting";
 }
 
 export function readOwnedDomainNote(notes: string | null | undefined): OwnedDomainNote | null {
@@ -256,6 +258,7 @@ export function readOwnedDomainNote(notes: string | null | undefined): OwnedDoma
     ...(kv["vercel-gone"] ? { vercelGone: kv["vercel-gone"] } : {}),
     ...(kv.attempts ? { attempts: kv.attempts } : {}),
     ...(kv["sub-ending"] ? { subEnding: kv["sub-ending"] } : {}),
+    ...(kv["kept-why"] === "paid" || kv["kept-why"] === "hosting" ? { keptWhy: kv["kept-why"] as "paid" | "hosting" } : {}),
   };
 }
 
@@ -277,6 +280,7 @@ export function writeOwnedDomainNote(notes: string | null | undefined, rec: Owne
     ...(rec.vercelGone ? [`vercel-gone: ${rec.vercelGone}`] : []),
     ...(rec.attempts ? [`attempts: ${rec.attempts}`] : []),
     ...(rec.subEnding ? [`sub-ending: ${rec.subEnding}`] : []),
+    ...(rec.keptWhy ? [`kept-why: ${rec.keptWhy}`] : []),
   ].join(" | ");
   return [...kept, line].join("\n");
 }
@@ -369,7 +373,7 @@ export function subscriptionPaymentMethod(sub: Stripe.Subscription | null | unde
 
 export type OwnInvoiceResult =
   | { ok: true; chargedUsd: number; invoiceId: string; receiptSent: boolean }
-  | { ok: false; declined: boolean; detail: string; invoiceId?: string; alreadyPending?: boolean };
+  | { ok: false; declined: boolean; detail: string; invoiceId?: string; alreadyPending?: boolean; lineUsd?: number };
 
 /** Every page of a Stripe list call, bounded (a customer with 1,000+ items is not a real case). */
 async function allPages<T extends { id?: string }>(page: (startingAfter?: string) => Promise<{ data: T[]; has_more?: boolean }>, maxPages = 10): Promise<T[]> {
@@ -413,14 +417,29 @@ export async function chargeOwnedRenewalInvoice(stripe: Stripe, o: {
 
   const items = (await allPages((after) => stripe.invoiceItems.list({ customer: o.customerId, limit: 100, ...(after ? { starting_after: after } : {}) })))
     .filter((i) => tagged(i.metadata) && i.id !== o.ignoreItem);
+  /* Is this invoice the DOMAIN'S OWN (tagged itself, or carrying nothing but
+     the tagged line)? Only such an invoice may be collected here. A tagged
+     line sitting on any other invoice — the hosting subscription's — is
+     billed WITH that invoice: never paid, finalised or stamped through the
+     domain path, and what counts is the LINE's amount, not the invoice's. */
+  const ownInvoice = (inv: Stripe.Invoice) => tagged(inv.metadata) ||
+    ((inv.lines?.data?.length ?? 0) > 0 && (inv.lines?.data ?? []).every((l) => tagged(l.metadata)));
   let existing: Stripe.Invoice | undefined;
+  let lineCents: number | null = null;
   for (const item of items) {
     const invoiceId = typeof item.invoice === "string" ? item.invoice : item.invoice?.id ?? null;
+    const lineUsd = (item.amount ?? 0) / 100;
     if (!invoiceId) {
-      return { ok: false, declined: false, alreadyPending: true, detail: `a line for the year from ${o.renewsOn} is already on the account (${item.id}), waiting for the hosting invoice — not charged twice` };
+      return { ok: false, declined: false, alreadyPending: true, lineUsd, detail: `a line for the year from ${o.renewsOn} is already on the account (${item.id}, $${lineUsd.toFixed(2)}), waiting for the hosting invoice — not charged twice` };
     }
     const inv = await stripe.invoices.retrieve(invoiceId);
-    if (inv.status !== "void") { existing = inv; break; }
+    if (inv.status === "void") continue;
+    if (!ownInvoice(inv)) {
+      return { ok: false, declined: false, alreadyPending: true, lineUsd, invoiceId: inv.id!, detail: `the year from ${o.renewsOn} is already a $${lineUsd.toFixed(2)} line on invoice ${inv.id} (${inv.status}) with the hosting — billed there, not charged by the domain path` };
+    }
+    existing = inv;
+    lineCents = item.amount ?? null;
+    break;
   }
   if (!existing) {
     existing = (await allPages((after) => stripe.invoices.list({ customer: o.customerId, limit: 100, ...(after ? { starting_after: after } : {}) })))
@@ -440,6 +459,7 @@ export async function chargeOwnedRenewalInvoice(stripe: Stripe, o: {
       customer: o.customerId, invoice: inv.id, currency: "usd", amount: Math.round(o.amountUsd * 100),
       description: `Domain ${o.domain} — 12 months from ${o.renewsOn}`, metadata: tag,
     }, { idempotencyKey: `${o.keyPrefix}-item-${inv.id}` });
+    lineCents = Math.round(o.amountUsd * 100);
     inv = await stripe.invoices.retrieve(inv.id!);
     if (inv.status === "draft" && !((inv.total ?? 0) > 0)) {
       await stripe.invoices.del(inv.id!);
@@ -464,7 +484,11 @@ export async function chargeOwnedRenewalInvoice(stripe: Stripe, o: {
   }
   if (inv.status !== "paid") return { ok: false, declined: false, detail: `invoice ${inv.id} is ${inv.status}`, invoiceId: inv.id! };
   if (!((inv.amount_paid ?? 0) > 0)) return { ok: false, declined: false, detail: `invoice ${inv.id} was paid for 0 — check it in Stripe`, invoiceId: inv.id! };
-  return { ok: true, chargedUsd: (inv.amount_paid ?? 0) / 100, invoiceId: inv.id!, receiptSent: inv.metadata?.receipt === "sent" };
+  /* What the client paid FOR THIS YEAR: the tagged line, never the
+     invoice total (which could carry anything else). */
+  const taggedSum = (inv.lines?.data ?? []).filter((l) => tagged(l.metadata)).reduce((n, l) => n + (l.amount ?? 0), 0);
+  const cents = lineCents ?? (taggedSum > 0 ? taggedSum : inv.amount_paid ?? 0);
+  return { ok: true, chargedUsd: cents / 100, invoiceId: inv.id!, receiptSent: inv.metadata?.receipt === "sent" };
 }
 
 /** After the renewal receipt went: recorded on the invoice so no later run sends it again. */

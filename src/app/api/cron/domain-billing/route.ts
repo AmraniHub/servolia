@@ -94,7 +94,7 @@ export async function GET(req: NextRequest) {
      * renewal date). Returns what was charged, or why not; `silent` = already
      * reported (the retry cap).
      */
-    standalone?: (priceUsd: number) => Promise<{ ok: true; chargedUsd: number; invoiceId: string; receiptSent?: boolean } | { ok: false; detail: string; silent?: boolean; alreadyBilled?: boolean }>;
+    standalone?: (priceUsd: number) => Promise<{ ok: true; chargedUsd: number; invoiceId: string; receiptSent?: boolean } | { ok: false; detail: string; silent?: boolean; alreadyBilled?: boolean; lineUsd?: number }>;
     /** Records that the renewal receipt for this invoice went, so no later run sends it again. */
     markReceipt?: (invoiceId: string) => Promise<void>;
   }) {
@@ -128,7 +128,8 @@ export async function GET(req: NextRequest) {
           /* The year is already on its way (a line waiting for the hosting
              invoice): not charged twice; the row just moves on. */
           const next = nextChargeDate(new Date(`${o.renewsOn}T00:00:00Z`), "annual").toISOString().slice(0, 10);
-          const err = await o.save({ retailUsd: d.price, nextChargeAt: next, noticed: undefined });
+          // The price of record is the LINE the client is billed, not today's figure.
+          const err = await o.save({ retailUsd: res.lineUsd ?? d.price, nextChargeAt: next, noticed: undefined });
           (err ? failed : checks).push(`${o.domain} (${o.row.business}): ${res.detail}${err ? ` — row NOT updated (${err})` : `; row moved to ${next}`}.`);
           return;
         }
@@ -160,7 +161,7 @@ export async function GET(req: NextRequest) {
          idempotency key has expired. Found = the row is only brought up to
          date. */
       const tag = o.item?.metadata ?? { kind: PLAN_RENEWAL_ITEM_KIND, domain: o.domain, renews_on: o.renewsOn };
-      const already = (await stripe.invoiceItems.list({ customer: o.row.customer_id, limit: 100 })).data.some(
+      const already = (await stripe.invoiceItems.list({ customer: o.row.customer_id, limit: 100 })).data.find(
         (i) => i.metadata?.kind === tag.kind && i.metadata?.domain === o.domain && i.metadata?.renews_on === o.renewsOn,
       );
       if (already) {
@@ -176,7 +177,9 @@ export async function GET(req: NextRequest) {
         );
       }
       const next = nextChargeDate(new Date(`${o.renewsOn}T00:00:00Z`), "annual").toISOString().slice(0, 10);
-      const err = await o.save({ retailUsd: d.price, nextChargeAt: next, noticed: undefined });
+      // An earlier run's line: the price of record is what THAT line bills.
+      const billedUsd = already ? (already.amount ?? 0) / 100 || d.price : d.price;
+      const err = await o.save({ retailUsd: billedUsd, nextChargeAt: next, noticed: undefined });
       if (err) {
         /* The line IS on their account, the date did not move: within 24 h
            the idempotency key stops a second line; after that it would not. */
@@ -343,9 +346,23 @@ export async function GET(req: NextRequest) {
           const ahead = row.customer_id ? await paidYearAhead(stripe, row.customer_id, note.domain, today) : undefined;
           let renewal: string;
           const patch: Partial<OwnedDomainNote> = { subEnding: today };
+          /* When the hosting keeps running PAST the domain's expiry (cancelled at
+             period end, the period ending after the domain renews), the site
+             is still ours to serve until then: auto-renew stays on and goes off
+             only once the hosting has ended. The owner is told either way. */
+          const s2 = sub as typeof sub & { cancel_at?: number | null };
+          const running = ["active", "trialing", "past_due"].includes(sub.status);
+          const hostingEnd = !running ? null
+            : typeof s2.cancel_at === "number" ? new Date(s2.cancel_at * 1000).toISOString().slice(0, 10)
+            : nextHostingInvoiceDate(sub);
           if (ahead) {
             patch.keptUntil = ahead;
+            patch.keptWhy = "paid";
             renewal = `Vercel auto-renew KEPT ON until ${ahead} (that year is already paid); switched off after it.`;
+          } else if (hostingEnd && reg.expiry && hostingEnd > reg.expiry) {
+            patch.keptUntil = hostingEnd;
+            patch.keptWhy = "hosting";
+            renewal = `Vercel auto-renew KEPT ON until the hosting ends on ${hostingEnd} (the domain expires ${reg.expiry}, before it); switched off after that.`;
           } else {
             const off = await setDomainAutoRenew(note.domain, false);
             if (off.ok) patch.renewalOff = today;
@@ -359,12 +376,18 @@ export async function GET(req: NextRequest) {
       /* Reinstated (the client took the cancellation back): the markers go
          and Vercel auto-renew comes back on, so the renewal runs as normal. */
       if (note.subEnding) {
+        /* Came back after the domain EXPIRED: switching auto-renew on renews
+           nothing. Not billed until Vercel shows it renewed again. */
+        if (reg.expiry && reg.expiry < today) {
+          failed.push(`${note.domain} (${row.business}): the hosting is active again but the domain EXPIRED on ${reg.expiry} while it was cancelled — renew it by hand in Vercel (if the registry still allows it); its renewal is not billed until Vercel shows it renewed.`);
+          continue;
+        }
         const on = note.renewalOff ? await setDomainAutoRenew(note.domain, true) : { ok: true as const };
         if (!on.ok) {
           failed.push(`${note.domain} (${row.business}): the hosting is active again but Vercel auto-renew could NOT be switched back on — do it in Vercel > Domains; nothing billed today.`);
           continue;
         }
-        const err = await saveOwned({ subEnding: undefined, renewalOff: undefined, keptUntil: undefined });
+        const err = await saveOwned({ subEnding: undefined, renewalOff: undefined, keptUntil: undefined, keptWhy: undefined });
         checks.push(`${note.domain} (${row.business}): the hosting is active again — renewal back on${note.renewalOff ? ", Vercel auto-renew switched back ON" : ""}${err ? ` (note NOT saved: ${err})` : ""}.`);
         if (err) continue;
       }
@@ -393,7 +416,7 @@ export async function GET(req: NextRequest) {
             paymentMethod, keyPrefix: `owned-${row.id}-${renewsOn}`, todayIso: today,
           });
           if (res.ok) return res;
-          if (res.alreadyPending) return { ok: false as const, detail: res.detail, alreadyBilled: true };
+          if (res.alreadyPending) return { ok: false as const, detail: res.detail, alreadyBilled: true, lineUsd: res.lineUsd };
           if (!res.declined) return { ok: false as const, detail: res.detail };
           const n = attempts + 1;
           const err = await saveOwned({ attempts: `${renewsOn}:${n}` });
@@ -430,7 +453,8 @@ export async function GET(req: NextRequest) {
     if (row.status !== "churned" && !note?.subEnding) continue;
     if (!note?.keptUntil || note.renewalOff || today <= note.keptUntil) continue;
     const reg = await domainRegistration(note.domain);
-    if (!(reg.state === "ok" && reg.expiry && reg.expiry > note.keptUntil)) {
+    // Kept for the HOSTING (it ran past the domain's expiry): off once the hosting ended — no paid year to wait for.
+    if (note.keptWhy !== "hosting" && !(reg.state === "ok" && reg.expiry && reg.expiry > note.keptUntil)) {
       const check = renewalCheck({ ...note, billed: note.keptUntil }, reg, today);
       if (!check.ok && check.alarm) failed.push(`${note.domain} (${row.business}, hosting ended): the paid year from ${note.keptUntil} was NOT renewed by Vercel (${check.why}) — renew it by hand or refund that year. Auto-renew left ON.`);
       continue;
@@ -438,8 +462,8 @@ export async function GET(req: NextRequest) {
     const off = await setDomainAutoRenew(note.domain, false);
     if (!off.ok) { failed.push(`${note.domain} (${row.business}, hosting ended): Vercel auto-renew NOT switched off (${off.code ?? off.status}) — retried tomorrow; or do it in Vercel > Domains.`); continue; }
     const { error: upErr } = await db.from("hosting_clients")
-      .update({ notes: writeOwnedDomainNote(row.notes, { ...note, keptUntil: undefined, renewalOff: today }) }).eq("id", row.id);
-    checks.push(`${note.domain} (${row.business}, hosting ended): the paid year from ${note.keptUntil} was renewed by Vercel (to ${reg.expiry}); auto-renew switched OFF${upErr ? ` (note NOT updated: ${upErr.message})` : ""}.`);
+      .update({ notes: writeOwnedDomainNote(row.notes, { ...note, keptUntil: undefined, keptWhy: undefined, renewalOff: today }) }).eq("id", row.id);
+    checks.push(`${note.domain} (${row.business}, hosting ended): ${note.keptWhy === "hosting" ? `the hosting ended on ${note.keptUntil}` : `the paid year from ${note.keptUntil} was renewed by Vercel (to ${reg.state === "ok" ? reg.expiry : "?"})`}; auto-renew switched OFF${upErr ? ` (note NOT updated: ${upErr.message})` : ""}.`);
   }
 
   /* DOMAINS SOLD ON THEIR OWN (src/lib/domainOrders.ts). */

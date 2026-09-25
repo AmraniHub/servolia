@@ -62,7 +62,7 @@ SM.__setStripeFactoryForTests(() => ({
       return {};
     },
     // What is already on the account (the lines added so far): the second-line guard reads this.
-    list: async () => ({ data: items.map((i, n) => ({ id: `ii_${n}`, invoice: i.invoice ?? null, metadata: i.metadata ?? {} })) }),
+    list: async () => ({ data: items.map((i, n) => ({ id: `ii_${n}`, invoice: i.invoice ?? null, amount: i.amount, metadata: i.metadata ?? {} })) }),
   },
   customers: { search: async () => ({ data: [], has_more: false }) },
   invoices: {
@@ -341,17 +341,71 @@ const seedPaid = ({ hidden = false, receipt = null } = {}) => {
   items.push({ invoice: "in_paid", amount: 2790, metadata: { kind: "owned_domain_renewal", domain: "ithardigital.com", renews_on: "2027-09-25" } });
 };
 
-test("Ithar CANCELLED AT PERIOD END: the renewal is NOT charged, the owner told once, Vercel auto-renew off", async () => {
+test("Ithar CANCELLED AT PERIOD END: the renewal is NOT charged, the owner told once; the hosting runs to 2027-10-09, past the domain's 2027-09-25 expiry, so auto-renew stays ON until then", async () => {
   const r = await at("2027-09-18", { cancelAtPeriodEnd: true });
   assert.equal(ownInvoices().length + items.length, 0, "nothing billed on either path");
-  assert.ok(r.body.failed.some((f) => /Ithar Digital cancelled — domain ithardigital\.com renewal 2027-09-25 NOT charged \(the hosting subscription is cancelled at the end of its period\); decide: renew at our cost, let it lapse, or ask the client\. Vercel auto-renew switched OFF/.test(f)), JSON.stringify(r.body.failed));
-  assert.deepEqual(autoRenew, [{ autoRenew: false }]);
+  assert.ok(r.body.failed.some((f) => /Ithar Digital cancelled — domain ithardigital\.com renewal 2027-09-25 NOT charged \(the hosting subscription is cancelled at the end of its period\); decide: renew at our cost, let it lapse, or ask the client\. Vercel auto-renew KEPT ON until the hosting ends on 2027-10-09 \(the domain expires 2027-09-25, before it\)/.test(f)), JSON.stringify(r.body.failed));
+  assert.deepEqual(autoRenew, [], "the site is still served until 2027-10-09");
   assert.equal(ownedNote(r).subEnding, "2027-09-18");
-  assert.equal(ownedNote(r).renewalOff, "2027-09-18");
-  const again = await at("2027-09-19", { cancelAtPeriodEnd: true, note: { subEnding: "2027-09-18", renewalOff: "2027-09-18" } });
+  assert.equal(ownedNote(r).keptUntil, "2027-10-09");
+  assert.equal(ownedNote(r).keptWhy, "hosting");
+  const again = await at("2027-09-19", { cancelAtPeriodEnd: true, note: { subEnding: "2027-09-18", keptUntil: "2027-10-09", keptWhy: "hosting" } });
   assert.equal(again.body.failed.length, 0, "told once");
   assert.deepEqual(autoRenew, []);
+  // After the hosting has ended: off, with no "paid year" check (none was paid).
+  const off = await at("2027-10-10", { cancelAtPeriodEnd: true, expiry: "2028-09-25", note: { subEnding: "2027-09-18", keptUntil: "2027-10-09", keptWhy: "hosting" } });
+  assert.deepEqual(autoRenew, [{ autoRenew: false }]);
+  assert.ok(off.body.checks.some((c) => /the hosting ended on 2027-10-09; auto-renew switched OFF/.test(c)), JSON.stringify(off.body.checks));
+});
+
+test("cancelled at period end with the hosting ending BEFORE the domain expires: auto-renew OFF now", async () => {
+  const r = await at("2027-09-18", { cancelAtPeriodEnd: true, hostingNext: "2027-09-20" });
+  assert.deepEqual(autoRenew, [{ autoRenew: false }]);
+  assert.ok(r.body.failed.some((f) => /renewal 2027-09-25 NOT charged .* Vercel auto-renew switched OFF/.test(f)));
+  assert.equal(ownedNote(r).renewalOff, "2027-09-18");
+});
+
+test("M: the year's $27.90 line already sits on a $217.90 HOSTING invoice (paid, or open): never collected by the domain path; $27.90 recorded as billed", async () => {
+  for (const status of ["paid", "open"]) {
+    items.length = 0; invoices.length = 0; payCalls.length = 0;
+    const tag = { kind: "owned_domain_renewal", domain: "ithardigital.com", renews_on: "2027-09-25" };
+    invoices.push({ id: "in_host", customer: "cus_ithar", status, total: 21790, amount_paid: status === "paid" ? 21790 : 0, metadata: {},
+      lines: { data: [{ metadata: tag, amount: 2790 }, { metadata: {}, amount: 19000 }] } });
+    items.push({ invoice: "in_host", amount: 2790, metadata: tag });
+    const r = await at("2027-09-18", { keepItems: true });
+    assert.equal(payCalls.length, 0, `${status}: the hosting invoice is never paid by the domain path`);
+    assert.equal(invoices.find((i) => i.id === "in_host").metadata.last_attempt, undefined, `${status}: never stamped`);
+    assert.equal(ownInvoices().length, 0, `${status}: no invoice of its own`);
+    assert.ok(r.body.checks.some((c) => /already a \$27\.90 line on invoice in_host .* billed there, not charged by the domain path/.test(c)), JSON.stringify(r.body.checks));
+    const n = ownedNote(r);
+    assert.equal(n.billed, "2027-09-25");
+    assert.equal(n.usd, 27.9, `${status}: the line's amount, never the invoice's 217.90`);
+    assert.equal(r.clientMails.length, 0, "no receipt for a charge the domain path did not make");
+  }
+});
+
+test("M: the domain's OWN invoice paid for more than its line (an extra charge on it): $27.90 recorded, never the total", async () => {
+  items.length = 0; invoices.length = 0; payCalls.length = 0;
+  const tag = { kind: "owned_domain_renewal", domain: "ithardigital.com", renews_on: "2027-09-25" };
+  invoices.push({ id: "in_own_x", customer: "cus_ithar", status: "paid", total: 3000, amount_paid: 3000, metadata: { ...tag, receipt: "sent" },
+    lines: { data: [{ metadata: tag, amount: 2790 }, { metadata: {}, amount: 210 }] } });
+  items.push({ invoice: "in_own_x", amount: 2790, metadata: tag });
+  const r = await at("2027-09-18", { keepItems: true });
+  assert.equal(ownedNote(r).usd, 27.9, "the tagged line, not the invoice's 30.00");
+  assert.ok(r.body.charged.some((c) => /\$27\.90 .* on its own invoice in_own_x/.test(c)), JSON.stringify(r.body.charged));
+});
+
+test("kept for the HOSTING: off once the hosting ended even if Vercel did not renew — there is no paid year to alarm about", async () => {
+  const r = await at("2027-10-10", { cancelAtPeriodEnd: true, expiry: "2027-09-25", note: { subEnding: "2027-09-18", keptUntil: "2027-10-09", keptWhy: "hosting" } });
+  assert.deepEqual(autoRenew, [{ autoRenew: false }]);
+  assert.equal(r.body.failed.filter((f) => /NOT renewed by Vercel/.test(f)).length, 0);
+});
+
+test("reinstated AFTER the domain expired: not billed, the owner told to renew by hand", async () => {
+  const r = await at("2027-09-18", { expiry: "2027-09-10", note: { subEnding: "2027-09-01", renewalOff: "2027-09-01" } });
   assert.equal(ownInvoices().length + items.length, 0);
+  assert.deepEqual(autoRenew, [], "switching auto-renew on would renew nothing");
+  assert.ok(r.body.failed.some((f) => /active again but the domain EXPIRED on 2027-09-10 .* renew it by hand in Vercel/.test(f)), JSON.stringify(r.body.failed));
 });
 
 test("a subscription already CANCELED (its deletion webhook missed) is treated the same", async () => {
