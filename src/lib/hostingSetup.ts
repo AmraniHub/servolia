@@ -123,7 +123,10 @@ export interface SetupState {
    *   "claim:<n>:<iso>"   being sent now (attempt n); a claim older than ten
    *                       minutes is a crashed send and may be taken again
    *   "<iso>"             sent — written only AFTER the send succeeded
-   *   "failed:<n>:<iso>"  attempt n failed; retried on the next check, up to 5
+   *   "failed:<n>:<iso>"  attempt n refused; retried on the next check, up to 5
+   *   "unconfirmed:<iso>" no answer inside the send cap: it may have gone, so
+   *                       it is NEVER retried (a retry could email them twice);
+   *                       the founder is told to check Resend
    *   "baseline:<iso>"    already done at the first measured check: not news
    *   "covered:<iso>"     a bigger milestone's email said it at the same moment
    *   "no-address:<iso>"  nobody to send it to
@@ -653,9 +656,15 @@ export function planTransition(prev: SetupState | null | undefined, list: Checkl
   return { next, send, claims, notify };
 }
 
-/** What a claim becomes once the send has resolved. */
-export function settleClaim(claim: string, sent: boolean | null, nowIso: string): string {
+/**
+ * What a claim becomes once the send has resolved. `sent` follows
+ * src/lib/notify.ts emailOutcome: true = Resend accepted it, false = refused
+ * (retried), undefined = no answer in time (unconfirmed: never retried, since
+ * it may already be in their inbox), null = no address on file.
+ */
+export function settleClaim(claim: string, sent: boolean | null | undefined, nowIso: string): string {
   if (sent === null) return `no-address:${nowIso}`;
+  if (sent === undefined) return `unconfirmed:${nowIso}`;
   if (sent) return nowIso;
   const n = parseStamp(claim)?.n ?? 1;
   return `failed:${n}:${nowIso}`;

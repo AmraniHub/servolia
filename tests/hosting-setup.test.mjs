@@ -459,9 +459,9 @@ test("a FAILED send is not stamped sent: retried at the next check, the founder 
   const log = newLog();
   let ok = false;
   let clock = Date.parse(NOW);
-  const d = deps(store, { current: probe({ pointed: true, http: HTTP_OLD_HOST }) }, log, { send: () => { if (!ok) throw new Error("resend down"); return true; }, now: () => new Date(clock) });
+  const d = deps(store, { current: probe({ pointed: true, http: HTTP_OLD_HOST }) }, log, { send: () => ok /* Resend refused: sendEmail answers false */, now: () => new Date(clock) });
   const first = await R.runSetupCheck("row-1", d);
-  assert.deepEqual(first.sent, [], "a throwing send is not reported as sent");
+  assert.deepEqual(first.sent, [], "a refused send is not reported as sent");
   assert.match(store.row.setup.mail.dns, /^failed:1:/);
   assert.ok(log.owner[0].lines.some((l) => /FAILED/.test(l)));
   ok = true; clock += 15 * 60_000;
@@ -616,7 +616,7 @@ test("milestone emails: measured fact, what is left, portal link, reference — 
 
 test("the owner notice is alerts-fix's notifyOwner; every send is awaited through bounded()", () => {
   const run = src("src/lib/hostingSetupRun.ts");
-  assert.match(run, /import \{ notifyOwner, bounded, type OwnerNotice \} from "@\/lib\/notify"/);
+  assert.match(run, /import \{ notifyOwner, bounded, emailOutcome, type OwnerNotice \} from "@\/lib\/notify"/);
   assert.doesNotMatch(run, /notifyOwnerShim|notifyOwnerLocal/);
   assert.match(run, /await bounded\("setup milestone email"/);
   assert.match(run, /await bounded\("setup owner notice"/);
@@ -627,7 +627,7 @@ test("the owner notice is alerts-fix's notifyOwner; every send is awaited throug
   assert.match(src("src/app/api/hosting-account/link/route.ts"), /await bounded\("account link email"/);
 });
 
-test("a HANGING client send is capped: settled 'failed' and retried, never left in flight", async () => {
+test("a HANGING client send is capped and UNCONFIRMED: never retried (it may have gone), the founder told to check", async () => {
   const store = memStore(onboarded({ setup: { rev: 1, baselineAt: NOW, checkedAt: NOW } }));
   const log = newLog();
   const d = deps(store, { current: probe({ pointed: true, http: HTTP_OLD_HOST }) }, log, { send: () => new Promise(() => {}) });
@@ -636,6 +636,12 @@ test("a HANGING client send is capped: settled 'failed' and retried, never left 
   const took = Date.now() - t;
   assert.ok(took < 9000, `returned in ${took} ms`);
   assert.deepEqual(out.sent, []);
-  assert.match(store.row.setup.mail.dns, /^failed:1:/);
-  assert.ok(log.owner[0].lines.some((l) => /FAILED/.test(l)));
+  assert.match(store.row.setup.mail.dns, /^unconfirmed:/);
+  assert.ok(log.owner[0].lines.some((l) => /UNCONFIRMED.*Check Resend/.test(l)));
+  assert.equal(S.mailAttempt(store.row.setup.mail.dns, Date.parse(NOW) + 86_400_000), null, "never retried, even a day later");
+  // Next check: nothing is sent again.
+  const again = await R.runSetupCheck("row-1", deps(store, { current: probe({ pointed: true, http: HTTP_OLD_HOST }) }, log));
+  assert.deepEqual(again.sent, []);
+  assert.equal(log.emails.length, 1, "one attempt in total");
+  assert.equal(S.settleClaim("claim:1:x", undefined, NOW), `unconfirmed:${NOW}`);
 });

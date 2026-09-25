@@ -11,7 +11,7 @@ import {
 } from "@/lib/hostingSetup";
 import { probeHost, hostFrom } from "@/lib/hostingSetupProbe";
 import { setupMilestoneEmail } from "@/lib/hostingSetupEmails";
-import { notifyOwner, bounded, type OwnerNotice } from "@/lib/notify";
+import { notifyOwner, bounded, emailOutcome, type OwnerNotice } from "@/lib/notify";
 
 /**
  * THE SETUP TRACKER'S MOVING PARTS: storage, the check, the milestone emails.
@@ -37,9 +37,11 @@ import { notifyOwner, bounded, type OwnerNotice } from "@/lib/notify";
  *
  * EVERY SEND IS AWAITED AND BOUNDED (src/lib/notify.ts bounded, 5 s): on
  * Vercel a request still in flight when the function returns can die with
- * it, and a hung Resend or Telegram must not hold the cron's minute. A send
- * that hangs past the cap counts as not sent: its claim is settled "failed"
- * and retried at the next check.
+ * it, and a hung Resend or Telegram must not hold the cron's minute. The
+ * client email's outcome follows alerts-fix's emailOutcome: accepted = sent;
+ * refused = "failed", retried at the next check; no answer inside the cap =
+ * "unconfirmed" — it may have gone, so it is never retried (that could email
+ * the client twice) and the founder is told to check Resend.
  */
 
 /* ── Is the column there yet? ───────────────────────────────────────────── */
@@ -286,19 +288,20 @@ export async function runSetupCheck(rowId: string, deps: RunDeps, viewLang: Lang
       const stored: SetupRow = { ...row, setup: tr.next };
       const reference = row.subscription_id ? referenceFor(row.subscription_id) : null;
       const host = ctx.host ?? "";
-      const outcome: Partial<Record<Milestone, boolean | null>> = {};
+      const outcome: Partial<Record<Milestone, boolean | null | undefined>> = {};
       if (tr.send.length) {
         const lang = await deps.langOf(row);
         const portalUrl = row.subscription_id ? await deps.accountLink(row.subscription_id) : null;
         const clientList = computeChecklist(stored, ctx, probe, lang);
         for (const m of tr.send) {
-          let sent: boolean | null = null;
+          let sent: boolean | null | undefined = null;
           if (row.email) {
             const mail = setupMilestoneEmail({
               milestone: m, lang, host, business: row.business ?? "", reference, portalUrl, checkedAt: nowIso, checklist: clientList,
             });
             const to = row.email;
-            sent = (await bounded("setup milestone email", () => deps.sendEmail(to, mail.subject, mail.html))) === true;
+            const r = await bounded("setup milestone email", () => deps.sendEmail(to, mail.subject, mail.html));
+            sent = r === true ? true : r === false ? false : undefined;
           }
           outcome[m] = sent;
           /* Settled only now that the send has resolved, and only if our
@@ -318,9 +321,10 @@ export async function runSetupCheck(rowId: string, deps: RunDeps, viewLang: Lang
           lines: [
             m === "live" ? `https://${host} answered 200 from our Vercel project (checked ${nowIso}).` : `${host} answers from Vercel (checked ${nowIso}).`,
             reference ? `Ref ${reference}` : null,
-            outcome[m] === true ? `Client emailed (${row.email}).`
-              : outcome[m] === false ? `Client email to ${row.email} FAILED - retried at the next checks; tell them yourself if it keeps failing.`
-              : "No client address on file - tell them yourself.",
+            outcome[m] === null ? "No client address on file - tell them yourself."
+              : emailOutcome(outcome[m] as boolean | undefined) === "sent" ? `Client emailed (${row.email}).`
+              : emailOutcome(outcome[m] as boolean | undefined) === "failed" ? `Client email to ${row.email} FAILED - retried at the next checks; tell them yourself if it keeps failing.`
+              : `Client email to ${row.email} UNCONFIRMED - no answer from Resend in time; it may have gone. Check Resend before sending it again (it will not be retried).`,
             left.length ? `Still open: ${left.join(", ")}` : "Every setup step is done.",
           ],
           link: `https://servolia.com/admin/hosting/${row.id}`,
