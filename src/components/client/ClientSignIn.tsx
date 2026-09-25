@@ -26,6 +26,13 @@ const T = {
     expired: "That link has expired — signing in works just as well.",
     dropped: "The connection dropped. Try again.",
     noPassword: "No password yet? Reply to any email from us and we will set one up.",
+    linkTitle: "No password? Get your link by email",
+    linkBody: "Enter the address you paid with. If it has a Servolia hosting plan, we email the link to your service page there.",
+    linkSubmit: "Email me my link",
+    linkBusy: "Sending…",
+    linkSent: "If that address has a Servolia hosting plan, the link is on its way. Check your inbox (and spam) in a minute.",
+    linkInvalid: "That does not look like an email address.",
+    linkTooMany: "Too many requests from here. Try again in an hour.",
   },
   fr: {
     title: "Votre service",
@@ -38,6 +45,13 @@ const T = {
     expired: "Ce lien a expiré — la connexion fonctionne tout aussi bien.",
     dropped: "La connexion a été interrompue. Réessayez.",
     noPassword: "Pas encore de mot de passe ? Répondez à l'un de nos emails et nous vous en créons un.",
+    linkTitle: "Pas de mot de passe ? Recevez votre lien par email",
+    linkBody: "Indiquez l'adresse avec laquelle vous avez payé. Si elle a une formule d'hébergement Servolia, nous y envoyons le lien vers votre page de service.",
+    linkSubmit: "M'envoyer mon lien",
+    linkBusy: "Envoi…",
+    linkSent: "Si cette adresse a une formule d'hébergement Servolia, le lien est en route. Regardez votre boîte (et les spams) d'ici une minute.",
+    linkInvalid: "Cette adresse email ne semble pas valide.",
+    linkTooMany: "Trop de demandes depuis cette connexion. Réessayez dans une heure.",
   },
 };
 
@@ -106,6 +120,59 @@ export default function ClientSignIn({ lang, hadToken }: { lang: "en" | "fr"; ha
       </form>
       {error ? <p className="mt-3 text-[13.5px] text-[#B45309]">{error}</p> : null}
       <p className="mt-4 text-[12.5px] text-[#8A8A80] leading-relaxed">{t.noPassword}</p>
+      <EmailMyLink lang={lang} />
     </div>
+  );
+}
+
+/**
+ * The way back in for a client with no password: the signed link, emailed to
+ * the address on their plan. The answer on screen is the same whether or not
+ * the address is a client (see /api/hosting-account/link).
+ */
+function EmailMyLink({ lang }: { lang: "en" | "fr" }) {
+  const t = T[lang];
+  const [email, setEmail] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  async function send(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setMsg(null);
+    try {
+      const r = await fetch("/api/hosting-account/link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      if (r.status === 429) setMsg({ ok: false, text: t.linkTooMany });
+      else if (r.status === 400) setMsg({ ok: false, text: t.linkInvalid });
+      else if (r.ok) setMsg({ ok: true, text: t.linkSent });
+      else setMsg({ ok: false, text: t.dropped });
+    } catch {
+      setMsg({ ok: false, text: t.dropped });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form onSubmit={send} className="mt-5 pt-5 border-t border-[#F0EFEA]" data-testid="email-my-link">
+      <p className="text-[13.5px] font-bold text-[#18181B] mb-1">{t.linkTitle}</p>
+      <p className="text-[12.5px] text-[#71717A] leading-relaxed mb-3">{t.linkBody}</p>
+      <div className="flex gap-2">
+        <input
+          type="email" value={email} required autoComplete="email" placeholder="you@example.com"
+          onChange={(e) => setEmail(e.target.value)}
+          aria-label={t.linkTitle}
+          className="min-w-0 flex-1 h-10 px-3 rounded-lg border border-[#E2E6DD] bg-white text-[14px]"
+        />
+        <button type="submit" disabled={busy || !email} className="h-10 px-4 rounded-lg border border-[#36671E] text-[#36671E] text-[13px] font-bold disabled:opacity-40 shrink-0">
+          {busy ? t.linkBusy : t.linkSubmit}
+        </button>
+      </div>
+      {msg ? <p className={`mt-2 text-[12.5px] ${msg.ok ? "text-[#36671E]" : "text-[#B45309]"}`}>{msg.text}</p> : null}
+    </form>
   );
 }

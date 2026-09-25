@@ -15,6 +15,9 @@ import { assistantSlugFor } from "@/lib/assistant";
 import { assistantInstalled } from "@/lib/assistantInstall";
 import { getClientSite } from "@/lib/clientSites";
 import { clientRefFor, refKeyForEmail, knownSiteUrl } from "@/lib/clientRefs";
+import HostingSetupTracker from "@/components/admin/HostingSetupTracker";
+import { checklistForView, setupColumnReady } from "@/lib/hostingSetupRun";
+import type { SetupRow } from "@/lib/hostingSetup";
 
 export const dynamic = "force-dynamic";
 
@@ -83,6 +86,13 @@ export default async function HostingClientPage({ params }: { params: Promise<{ 
     }
   }
 
+  /* The setup checklist the client sees, from the last stored check (the
+     founder runs a fresh one with the button, so opening this page never
+     probes a client's domain by itself). Null for a non-hosting plan. */
+  const setupList = await checklistForView(c as SetupRow, { lang: "en", probeIfStale: false });
+  const setupStored = await setupColumnReady(db);
+  const setupMail = ((c as SetupRow).setup?.mail ?? {}) as Record<string, string>;
+
   const period = c.billing_period === "annual" ? "yearly" : "monthly";
   const usd = (n: number) => `$${Number(n).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
 
@@ -123,6 +133,10 @@ export default async function HostingClientPage({ params }: { params: Promise<{ 
           </div>
         ))}
       </div>
+
+      {setupList ? (
+        <HostingSetupTracker id={c.id} initial={setupList} stored={setupStored} mail={setupMail} />
+      ) : null}
 
       {siteUrl ? (
         <p className="text-sm text-[#52525B] mb-6">

@@ -3,6 +3,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { sendTelegramMessage } from "@/lib/telegram";
 import { readUpgradeToken, subscriptionContext, referenceFor } from "@/lib/upgrade";
 import { readDomainRecord, writeDomainRecord } from "@/lib/domainSales";
+import { recordDetailsReceived } from "@/lib/hostingSetupRun";
 
 export const runtime = "nodejs";
 
@@ -69,6 +70,10 @@ export async function POST(req: NextRequest) {
       .maybeSingle();
     if (error) console.error("[hosting-setup] update failed:", error.message);
     rowId = data?.id ?? null;
+    /* The checklist's "Site details" step, stamped with the moment it arrived
+       (the notes line above says the same by date, and is what the checklist
+       falls back to before supabase/2026-09-25-hosting-setup.sql has run). */
+    if (rowId) await recordDetailsReceived(subscriptionId);
   }
 
   /* Loud, and with everything in it. This is the message that turns a payment

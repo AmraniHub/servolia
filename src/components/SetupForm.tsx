@@ -56,6 +56,7 @@ const T = {
     required: "Please fill in your website address and platform",
     error: "That did not send. Try again in a moment.",
     ref: "Your reference",
+    follow: "Follow your setup, step by step",
   },
   fr: {
     siteUrl: "L'adresse de votre site",
@@ -77,6 +78,7 @@ const T = {
     required: "Indiquez l'adresse de votre site et la plateforme",
     error: "L'envoi a échoué. Réessayez dans un instant.",
     ref: "Votre référence",
+    follow: "Suivre la mise en place, étape par étape",
   },
 };
 
@@ -131,6 +133,14 @@ export default function SetupForm({
         <CheckCircle2 className="w-11 h-11 text-[#36671E] mx-auto mb-4" />
         <h2 className="text-[19px] font-black text-[#161A15] mb-2">{t.doneTitle}</h2>
         <p className="text-[15px] text-[#3F3F46] leading-relaxed">{t.doneBody}</p>
+        {/* The same signed link opens their service page, where the setup
+            checklist shows each step as it happens. */}
+        <a
+          href={`/hosting/account?t=${encodeURIComponent(token)}`}
+          className="inline-flex items-center justify-center mt-5 h-11 px-5 rounded-xl bg-[#36671E] text-[#FAFAF7] text-[14px] font-bold hover:opacity-90 transition"
+        >
+          {t.follow} &rarr;
+        </a>
         <p className="mt-5 text-[12px] text-[#5E6659]">
           {t.ref} <span className="font-bold tabular-nums">{reference}</span>
         </p>

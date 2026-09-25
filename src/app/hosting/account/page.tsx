@@ -34,6 +34,9 @@ import { clientRefFor } from "@/lib/clientRefs";
 import { hasAssistantSubscription } from "@/lib/assistantAccess";
 import { ASSISTANT_SITES } from "@/lib/assistantSites";
 import { assistantLinkFor } from "@/lib/upgrade";
+import SetupTracker from "@/components/client/SetupTracker";
+import { loadSetupRow, checklistForView } from "@/lib/hostingSetupRun";
+import { noticedQuiet, siteTile, type Checklist, type SetupRow } from "@/lib/hostingSetup";
 
 export const metadata: Metadata = {
   title: "Your service",
@@ -352,11 +355,13 @@ export default async function AccountPage({
   /* Domains bought from this panel after the plan. Their own records, so the
      one that came with the plan is untouched. */
   let extraDomains: { domain: string; nextChargeAt?: string; failed?: string }[] = [];
+  /* The whole row, not just its notes: the setup checklist reads the plan,
+     the site address, the recorded repo/project and the stored checks. */
+  let setupRow: SetupRow | null = null;
   if (!isDemo && subId) {
     const db = supabaseAdmin();
-    const { data: row } = db
-      ? await db.from("hosting_clients").select("notes").eq("subscription_id", subId).maybeSingle()
-      : { data: null };
+    const row = db ? await loadSetupRow(db, { subscriptionId: subId }) : null;
+    setupRow = row;
     rowNotes = (row as { notes?: string | null } | null)?.notes ?? null;
     domainRec = readDomainRecord(row?.notes);
     const state = copyState(readCopyRequest((row as { notes?: string | null } | null)?.notes));
@@ -439,6 +444,20 @@ export default async function AccountPage({
     : dashPage === "overview"
       ? await siteHealth(ctx.ref, ctx.siteLabel ? `https://${ctx.siteLabel.replace(/^https?:\/\//, "")}` : null)
       : { up: null, status: null, lastChange: null, recentChanges: 0 };
+
+  /* THE SETUP CHECKLIST — paid, details, on our servers, DNS, https, live,
+     forms (and the mailbox on Business). Overview only, hosting tiers only.
+     Measured now when the last stored check is stale, never stored from a
+     page view. Until its `live` step passes, nothing on this page calls the
+     site "online" (siteTile / noticedQuiet). */
+  const setupList: Checklist | null = !isDemo && setupRow && dashPage === "overview"
+    ? await checklistForView(setupRow, {
+        lang: ctxLang,
+        setupHref: linkToken ? `/hosting/setup?t=${encodeURIComponent(linkToken)}` : null,
+        probeIfStale: true,
+      })
+    : null;
+  const tile = siteTile({ lang: ctxLang, checklist: setupList, health });
 
   const siteFolders = isDemo
     ? ["", "css", "img", "js"]
@@ -619,6 +638,10 @@ export default async function AccountPage({
         <p className="text-[14px] text-[#71717A] leading-relaxed mb-6 max-w-2xl">{featureIntro(dashPage, ctxLang)}</p>
       ) : <div className="mb-6" />}
 
+      {setupList?.applies ? (
+        <SetupTracker initial={setupList} token={linkToken} lang={ctxLang} />
+      ) : null}
+
       {dashPage === "overview" ? (
         <StatTiles
           tiles={[
@@ -627,10 +650,13 @@ export default async function AccountPage({
               /* What a fetch of their site just returned, not what our row
                  believes. A panel that reports "Active" from a database while
                  the site is down is the one thing that destroys a status
-                 page. */
-              value: health.up === null ? t.siteUnknown : health.up ? t.siteUp : t.siteDown,
-              live: health.up === true,
-              hint: ctx.siteLabel || undefined,
+                 page. And while their hosting is still being set up, the
+                 address answering (from their OLD host) is not "Online" with
+                 us: the tile says "Setting up" until the checklist's live
+                 step has passed. */
+              value: tile.value,
+              live: tile.live,
+              hint: tile.hint ?? (ctx.siteLabel || undefined),
             },
             { label: t.tilePlan, value: copy.heading, hint: amount !== null ? `${money(amount)} / ${per}` : undefined },
             { label: ending ? t.endsOn : t.renews, value: date ?? t.renewsNever },
@@ -649,7 +675,14 @@ export default async function AccountPage({
 
       {dashPage === "overview" ? (
         <div className="mb-6">
-          <Recommendations items={recs} heading={recCopy.heading} sub={recCopy.sub} quiet={recCopy.quiet} />
+          {/* The empty-state line says only what was measured on this load:
+              "online" needs the setup's live check AND an answer just now. */}
+          <Recommendations
+            items={recs}
+            heading={recCopy.heading}
+            sub={recCopy.sub}
+            quiet={noticedQuiet({ lang: ctxLang, checklist: setupList, health })}
+          />
         </div>
       ) : null}
 

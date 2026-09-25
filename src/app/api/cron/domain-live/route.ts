@@ -3,6 +3,8 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { checkPendingDomains } from "@/lib/siteDomain";
 import { sendEmail, liveEmail } from "@/lib/email";
 import { sendTelegramMessage } from "@/lib/telegram";
+import { recheckHostingSetups } from "@/lib/hostingSetupRun";
+import { rateLimited } from "@/lib/security";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -23,6 +25,7 @@ export async function GET(req: NextRequest) {
   if (req.headers.get("authorization") !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const started = Date.now();
   const out = await checkPendingDomains();
   const db = supabaseAdmin();
 
@@ -58,5 +61,24 @@ export async function GET(req: NextRequest) {
   if (out.errors.length) {
     await sendTelegramMessage(`Domain check hit errors\n${out.errors.map((x) => `- ${x}`).join("\n")}`, undefined, { plain: true }).catch(() => {});
   }
-  return NextResponse.json({ ok: true, live: out.live.length, waiting: out.waiting.length, errors: out.errors.length });
+
+  /* HOSTING SETUP — the same quarter-hourly job re-checks every hosting client
+     whose setup checklist is not complete (DNS, certificate, site answering
+     from us) and sends each milestone email once (src/lib/hostingSetupRun.ts).
+     Time-boxed to what is left of this minute, at most 15 seconds; whatever
+     is not reached is checked first on the next run. */
+  const left = Math.min(15_000, 55_000 - (Date.now() - started));
+  const setup = left >= 2_000
+    ? await recheckHostingSetups({ budgetMs: left })
+    : { checked: 0, sent: [] as string[], errors: [] as string[], skipped: "no time left this run" };
+  if (setup.skipped?.startsWith("setup column missing") && !(await rateLimited("setup-column-missing", 1, 86_400))) {
+    await sendTelegramMessage(`Hosting setup tracker is not storing anything: ${setup.skipped}. No milestone email can go out until it is run.`, undefined, { plain: true }).catch(() => {});
+  }
+  if (setup.errors.length) {
+    await sendTelegramMessage(`Hosting setup check hit errors\n${setup.errors.map((x) => `- ${x}`).join("\n")}`, undefined, { plain: true }).catch(() => {});
+  }
+  return NextResponse.json({
+    ok: true, live: out.live.length, waiting: out.waiting.length, errors: out.errors.length,
+    setup: { checked: setup.checked, sent: setup.sent.length, errors: setup.errors.length, skipped: setup.skipped ?? null },
+  });
 }

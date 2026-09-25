@@ -852,6 +852,30 @@ export const FEATURES: SystemFeature[] = [
     value: "You always know what's missing without digging through code — and the daily-read part is one click away instead of at the bottom of a long scroll.",
     code: "src/lib/roadmap.ts · src/app/admin/settings/{page,layout,_data}.tsx · .../security · .../integrations · .../costs · .../roadmap · src/components/admin/SettingsTabs.tsx",
   },
+  {
+    name: "Hosting setup tracker — from paying to live, measured",
+    summary: "Every hosting client (Essential, Complete, Business) sees a checklist at the top of their service page: paid, site details, set up on our servers, domain pointed, https, live, forms tested (and the mailbox on Business). Auto steps are measured; hand steps are yours to tick. The client is emailed once when their domain points to us and once when the site is live; you are told once too.",
+    how: [
+      "ONE SOURCE: src/lib/hostingSetup.ts computes the checklist from the row, what we know of the client (CLIENT_REFS), and the last live check. The portal, /admin/hosting/<id>, the cron and the client's 'Check again' button all use it.",
+      "AUTO (measured): Paid = the row. Site details = the setup form arrived (stamp, or the 'Platform:' line it writes in notes; a client already in CLIENT_REFS or with a repo recorded needs no form). Domain pointed = a live DNS lookup that every required record answers from Vercel (A in Vercel's ranges, CNAME to vercel-dns, or Vercel nameservers). https = a TLS handshake with a verified certificate. Live = HTTP 200 over https with Vercel's own headers, on their own host, and on the project recorded for them when Vercel's API can say (src/lib/hostingSetupProbe.ts).",
+      "HAND (ticked by you): 'Your site set up on our hosting' (also done the moment a repo or Vercel project is saved on the row), 'Contact forms (and tracking) tested', and on Business 'Business email on your domain'. The client sees 'We're doing this' with the date it started; the onboarding step carries the only timeframe already promised in writing (SetupForm: we get in touch within one working day). /hosting/terms promises no setup timeframe, so none is invented for the other hand steps.",
+      "ORDER IS SAFETY: the DNS step waits until the site is on our servers, because pointing a domain at Vercel before that takes the client's live site down. https and live only count once DNS points to us, so a certificate or a 200 from their OLD host is never read as ours.",
+      "NO FALSE 'ONLINE': until the live step passes, the status tile says 'Setting up · n of m done' and 'What we noticed' says setup is in progress. 'Online' needs the live step AND an answer on that very page load (noticedQuiet / siteTile).",
+      "AUTOMATIC RE-CHECKS: the quarter-hourly /api/cron/domain-live gives its leftover time (max 15 s) to recheckHostingSetups(): every hosting row whose setup is not complete, oldest check first, four at a time. 'Check again' on the portal runs the same check (4 per subscription per 10 min, 20 per IP per hour).",
+      "EMAILS, ONCE: a milestone is news only when it FLIPS. The first check of a client whose domain already points here is a silent baseline (an existing client is never told news they have had for months). Stamps live in hosting_clients.setup and every write is a compare-and-swap on setup.rev, so cron, 'Check again' and your button racing to the same milestone send one email. Domain and live flipping together send only the live email. Templates: src/lib/hostingSetupEmails.ts, each with the service-page link. Your copy goes to Telegram and to OWNER_ALERT_EMAIL (default hello@servolia.com).",
+      "TEST ROWS run the same code inside the test context, so their emails reach FOUNDER_EMAIL marked [TEST]; an example.com domain simply fails its DNS check.",
+      "WAY BACK IN: the sign-in screen on /hosting/account now has 'Email me my link' (POST /api/hosting-account/link { email }). Same answer and same timing for a client and a stranger (the lookup and send run after the response), only the address on the row is emailed, 5 per IP and 3 per address per hour.",
+      "NEEDS supabase/2026-09-25-hosting-setup.sql (one nullable jsonb column). Until it runs, the checklist still shows (measured on each visit) but nothing is stored, no milestone email is sent, ticks answer 'run the SQL first', and the cron Telegrams you once a day.",
+    ],
+    use: [
+      "/admin/hosting/<id> → 'Setup checklist': press 'Run checks now' to measure immediately; 'Mark done' on each hand step when it is true.",
+      "Once the SQL has run, open each EXISTING hosting client once and tick 'Contact forms tested' (and the mailbox on Business) if that is already true, or their page will keep showing it as 'We're doing this'.",
+      "A client asks 'what is happening?': their service page answers it. The link is in every setup email, and 'Email me my link' recovers it.",
+    ],
+    cost: "None beyond the existing cron: a few DNS lookups, one TLS handshake and one HTTP request per incomplete client per quarter hour.",
+    value: "The stretch between paying and being hosted is where a new client decides whether we are real. They now see each step, who is doing it, and when it passed, and hear from us the moment their domain and their site go live.",
+    code: "src/lib/hostingSetup.ts · src/lib/hostingSetupProbe.ts · src/lib/hostingSetupRun.ts · src/lib/hostingSetupEmails.ts · src/components/client/SetupTracker.tsx · src/components/admin/HostingSetupTracker.tsx · /api/hosting-setup/check · /api/admin/hosting/[id]/setup · /api/cron/domain-live · /api/hosting-account/link · supabase/2026-09-25-hosting-setup.sql · tests/hosting-setup.test.mjs · tests/hosting-link-email.test.mjs",
+  },
 ];
 
 /* ── 4. What it costs to run ────────────────────────────────────────────── */

@@ -1,10 +1,13 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
-import { clientRefFor } from "@/lib/clientRefs";
-import { accountLinkFor } from "@/lib/upgrade";
+import { clientRefFor, refKeyForEmail } from "@/lib/clientRefs";
+import { accountLinkFor, subscriptionContext } from "@/lib/upgrade";
 import { sendEmail, accountLinkEmail } from "@/lib/email";
 import { sendTelegramMessage } from "@/lib/telegram";
-import { excludeTest } from "@/lib/testContext";
+import { excludeTest, runAsTest } from "@/lib/testContext";
+import { founderTestBrowser } from "@/lib/testMode";
+import { rateLimited, clientIp } from "@/lib/security";
+import { normalizeEmail, emailKey, sendLinkForEmail, type LinkRow } from "@/lib/accountLinkByEmail";
 
 export const runtime = "nodejs";
 
@@ -17,6 +20,12 @@ export const runtime = "nodejs";
  * posted by the browser, and the response is the same whether or not
  * anything was sent: the ref is guessable, and a different answer would tell
  * a stranger which businesses are clients.
+ *
+ * TWO WAYS IN (2026-09-25): `ref` as before, or `email` from the sign-in
+ * screen on /hosting/account — for a self-serve buyer who has no ref and no
+ * password. The email mode is rate-limited before any lookup and does its
+ * lookup and send after the response, so the answer is identical in body AND
+ * timing for a client and a stranger (src/lib/accountLinkByEmail.ts).
  */
 export async function POST(req: NextRequest) {
   /* `?ref=` as well as a JSON body, and a request naming nobody is a 400
@@ -25,13 +34,16 @@ export async function POST(req: NextRequest) {
      as the literal `'{ref:x}'`, and answering ok to that told an operator
      two emails had gone out when none had. */
   const body = await req.json().catch(() => ({}));
+  const same = NextResponse.json({ ok: true });
+
+  if (typeof body?.email === "string") return byEmail(req, body.email, same);
+
   const fromBody = typeof body?.ref === "string" ? body.ref : "";
   const ref = (req.nextUrl.searchParams.get("ref") || fromBody).trim().toLowerCase();
-  const same = NextResponse.json({ ok: true });
 
   if (!ref) {
     return NextResponse.json(
-      { ok: false, error: "no-ref", hint: "POST /api/hosting-account/link?ref=<client>" },
+      { ok: false, error: "no-ref", hint: "POST /api/hosting-account/link?ref=<client> or { email }" },
       { status: 400 },
     );
   }
@@ -66,5 +78,67 @@ export async function POST(req: NextRequest) {
     `🔗 *Service-page link ${sent ? "sent" : "FAILED"}* — ${client.label}` +
     (sent ? `\nTo ${client.email} · ${(client.lang ?? "en").toUpperCase()}` : "\nResend refused it — try again."),
   ).catch(() => {});
+  return same;
+}
+
+/** Run after the response where Next can; inline where it cannot (tests). */
+function later(task: () => Promise<unknown>): void {
+  try {
+    after(task);
+  } catch {
+    void task().catch(() => {});
+  }
+}
+
+const plainLabel = (s: string | null | undefined) => String(s ?? "").replace(/[<>&"]/g, "").slice(0, 120);
+
+async function byEmail(req: NextRequest, raw: string, same: NextResponse): Promise<NextResponse> {
+  const email = normalizeEmail(raw);
+  // A malformed address says so: the format is the browser's own input and
+  // tells nothing about who is a client.
+  if (!email) return NextResponse.json({ ok: false, error: "invalid-email" }, { status: 400 });
+
+  if (
+    (await rateLimited(`link-email-ip:${clientIp(req.headers)}`, 5, 3600)) ||
+    (await rateLimited(`link-email:${emailKey(email)}`, 3, 3600))
+  ) {
+    return NextResponse.json({ ok: false, error: "rate-limited" }, { status: 429, headers: { "Retry-After": "3600" } });
+  }
+
+  const origin = req.nextUrl.origin;
+  const keepTest = await founderTestBrowser().catch(() => false);
+  later(async () => {
+    const db = supabaseAdmin();
+    if (!db) return;
+    const outcome = await sendLinkForEmail(email, {
+      async findRows(e) {
+        const pattern = e.replace(/[%_]/g, (c) => `\\${c}`);
+        const { data } = await excludeTest(db, (live) => live(db
+          .from("hosting_clients")
+          .select("id, email, subscription_id, business, status")
+          .ilike("email", pattern)
+          .in("status", ["active", "past_due"]))
+          .order("created_at", { ascending: false })
+          .limit(5), { keepTest });
+        return (data ?? []) as LinkRow[];
+      },
+      async send(row) {
+        const test = keepTest && (await db.from("hosting_clients").select("is_test").eq("id", row.id).maybeSingle()).data?.is_test === true;
+        return runAsTest(test, async () => {
+          const ref = clientRefFor(refKeyForEmail(row.email));
+          const lang = ref?.lang ?? (await subscriptionContext(row.subscription_id!).catch(() => null))?.lang ?? "en";
+          const url = await accountLinkFor(row.subscription_id!, origin);
+          const tpl = accountLinkEmail({ url, siteLabel: plainLabel(ref?.label || row.business), lang });
+          const sent = await sendEmail(row.email!, tpl.subject, tpl.html).catch(() => false);
+          await sendTelegramMessage(
+            `Service-page link ${sent ? "sent" : "FAILED"} (asked for by email) - ${plainLabel(row.business) || row.email}`,
+            undefined, { plain: true, silent: sent },
+          ).catch(() => null);
+          return sent;
+        });
+      },
+    });
+    if (outcome === "failed") console.error("[hosting-account/link] email send failed");
+  });
   return same;
 }

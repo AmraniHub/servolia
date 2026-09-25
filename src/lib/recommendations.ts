@@ -56,7 +56,9 @@ const COPY = {
     staleAction:
       "You can change the words and photos yourself from this panel, in about a minute — or tell us what to change.",
     staleCta: "Open your files",
-    quiet: "Nothing needs your attention. Your site is online and up to date.",
+    /* Only the list being empty. Whether the site is online is measured, and
+       said by noticedQuiet() in src/lib/hostingSetup.ts, never assumed here. */
+    quiet: "Nothing needs your attention.",
     heading: "What we noticed",
     sub: "Each of these comes from looking at your site, not from a list.",
   },
@@ -79,7 +81,7 @@ const COPY = {
     staleAction:
       "Vous pouvez changer les textes et les photos vous-même depuis cet espace, en une minute — ou nous dire quoi changer.",
     staleCta: "Ouvrir vos fichiers",
-    quiet: "Rien ne demande votre attention. Votre site est en ligne et à jour.",
+    quiet: "Rien ne demande votre attention.",
     heading: "Ce que nous avons remarqué",
     sub: "Chaque point vient de l'observation de votre site, pas d'une liste toute faite.",
   },
