@@ -3,6 +3,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { excludeTest } from "@/lib/testContext";
 import { sendEmail, paymentFailedEmail } from "@/lib/email";
 import { sendTelegramMessage } from "@/lib/telegram";
+import { bounded } from "@/lib/notify";
 import { subscriptionContext } from "@/lib/upgrade";
 import { billingPortalUrl } from "@/lib/clientPortal";
 import { resolveHostingPlan, productCopy, HOSTING_TIERS } from "@/lib/hosting";
@@ -144,8 +145,9 @@ export async function GET(req: NextRequest) {
     });
     /* Marked only when the send actually succeeded, so a Resend outage means
        this client is tried again tomorrow rather than silently written off as
-       warned. */
-    if (await sendEmail(c.email, tpl.subject, tpl.html)) {
+       warned. Capped at 5 s (src/lib/notify.ts): an unanswered send counts as
+       not confirmed, so it is tried again tomorrow too. */
+    if ((await bounded("dunning final notice", sendEmail(c.email, tpl.subject, tpl.html))) === true) {
       sent++;
       const { error: markErr } = await db
         .from("hosting_clients").update({ payment_status: NOTIFIED }).eq("id", c.id);
@@ -276,7 +278,7 @@ export async function GET(req: NextRequest) {
       monthlyUsd: CLIENT_PRODUCTS.chatbot.monthlyUsd,
       lang: t.lang,
     });
-    if (t.email) await sendEmail(t.email, tpl.subject, tpl.html).catch(() => {});
+    if (t.email) await bounded("assistant trial email", sendEmail(t.email, tpl.subject, tpl.html));
   }
   if (nudges.nudged.length) {
     await sendTelegramMessage(
@@ -317,7 +319,7 @@ export async function GET(req: NextRequest) {
       annualUsd: CLIENT_PRODUCTS.chatbot.annualUsd,
       lang: t.lang,
     });
-    if (t.email) await sendEmail(t.email, tpl.subject, tpl.html).catch(() => {});
+    if (t.email) await bounded("assistant trial email", sendEmail(t.email, tpl.subject, tpl.html));
   }
   if (trials.ended.length) {
     await sendTelegramMessage(
@@ -341,7 +343,7 @@ export async function GET(req: NextRequest) {
     if (!e.email) continue;
     const link = await receptionistLinkFor({ slug: e.slug, email: e.email, lang: e.lang });
     const tpl = receptionistNudgeEmail({ business: e.business, domain: e.domain, conversations: e.conversations, installed: e.installed, untilIso: e.until, link, lang: e.lang });
-    await sendEmail(e.email, tpl.subject, tpl.html).catch(() => {});
+    await bounded("receptionist trial email", sendEmail(e.email, tpl.subject, tpl.html));
   }
   for (const e of rec.ended) {
     if (!e.email) continue;
@@ -350,7 +352,7 @@ export async function GET(req: NextRequest) {
       business: e.business, domain: e.domain, conversations: e.conversations, setupEur: SETUP_PLAN.totalEur, link, lang: e.lang,
       plans: planLines.map((p) => ({ name: e.lang === "fr" ? p.nameFr : p.name, monthlyEur: p.monthlyEur, conversations: p.conversations })),
     });
-    await sendEmail(e.email, tpl.subject, tpl.html).catch(() => {});
+    await bounded("receptionist trial email", sendEmail(e.email, tpl.subject, tpl.html));
   }
   if (rec.installed.length || rec.nudged.length || rec.ended.length) {
     await sendTelegramMessage(

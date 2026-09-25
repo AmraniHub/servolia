@@ -102,6 +102,20 @@ export function writeOneOff(notes: string | null | undefined, rec: OneOffOrder):
   return [...keep, render(rec)].join("\n");
 }
 
+/**
+ * Notes an admin form submits, with the one-off orders as the DATABASE has
+ * them. The hosting setup form saves the whole notes field; opened before a
+ * payment recorded an order (or saved with the line edited away), it would
+ * erase a promise the client paid for. So every `servolia-oneoff:` line comes
+ * from `current`, never from the form — /admin/today's Done is how one
+ * changes — and every other line is the form's.
+ */
+export function keepOneOffs(current: string | null | undefined, submitted: string): string {
+  const human = submitted.split("\n").filter((l) => !l.trimStart().startsWith(MARKER));
+  const orders = (current ?? "").split("\n").filter((l) => l.startsWith(MARKER));
+  return [...human, ...orders].join("\n").trim();
+}
+
 /** The notes with that order marked done today (unchanged when it is not there). */
 export function markOneOffDone(notes: string | null | undefined, session: string, on: Date = new Date()): string | null {
   const o = readOneOffs(notes).find((x) => x.session === session);

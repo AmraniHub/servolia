@@ -26,6 +26,7 @@ import assert from "node:assert/strict";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import { execFileSync } from "node:child_process";
 import * as H from "./webhook-harness.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -55,7 +56,8 @@ const refused = [];
 /* clientMailDelayMs: an email to anyone but the owner takes this long. Set
    above everything else, an un-awaited client email cannot finish inside the
    time the awaited sends take and pass by luck. */
-const net = { delayMs: 25, clientMailDelayMs: 25, hangTelegram: false };
+const net = { delayMs: 25, clientMailDelayMs: 25, hangTelegram: false, clientMail: "ok" };
+// clientMail: "ok" | "refuse" (Resend answers 422) | "hang" (Resend never answers) — for mail to anyone but the owner.
 
 /** Legacy Markdown, as Telegram's parser sees it: an odd number of _ or *
  *  outside a link leaves an entity unclosed. */
@@ -81,7 +83,12 @@ globalThis.fetch = async (input, init = {}) => {
     });
   }
   const toOwner = host === "api.resend.com" && [JSON.parse(String(init.body ?? "{}")).to].flat().includes(OWNER);
+  if (host === "api.resend.com" && !toOwner && net.clientMail === "hang") return new Promise(() => {});
   await new Promise((r) => setTimeout(r, host === "api.resend.com" && !toOwner ? net.clientMailDelayMs : net.delayMs));
+  if (host === "api.resend.com" && !toOwner && net.clientMail === "refuse") {
+    refused.push({ resend: true });
+    return new Response(JSON.stringify({ statusCode: 422, name: "validation_error", message: "The to address is invalid." }), { status: 422, headers: { "content-type": "application/json" } });
+  }
   if (host === "api.telegram.org" && url.includes("/sendMessage")) {
     const body = JSON.parse(String(init.body));
     if (body.parse_mode === "Markdown" && unparsable(body.text)) {
@@ -102,6 +109,7 @@ function clear() {
   net.delayMs = 25;
   net.clientMailDelayMs = 25;
   net.hangTelegram = false;
+  net.clientMail = "ok";
 }
 
 function withEnv(vars, fn) {
@@ -491,8 +499,8 @@ const MONEY = [
   ["multilingual one-off (no hosting row: a lead)", () => session("cs_live_seo", { mode: "payment", amount_total: 14500, metadata: { kind: "hosting", plan: "seo_multilingual", business: "Harness Co", lang: "en" } }),
     {}, { leads: [{ id: "l-seen" }] }, 1],
   ["multilingual one-off (on the hosting row)", () => session("cs_live_seo", { mode: "payment", amount_total: 14500, metadata: { kind: "hosting", plan: "seo_multilingual", business: "Harness Co", lang: "en" } }),
-    { hosting_clients: [{ id: "h-seo", business: "Harness Co", notes: null }] },
-    { hosting_clients: [{ id: "h-seo", business: "Harness Co", notes: writeOneOff(null, SEO_ORDER) }] }, 1],
+    { hosting_clients: [{ id: "h-seo", business: "Harness Co", email: "owner.case@example.com", status: "active", notes: null }] },
+    { hosting_clients: [{ id: "h-seo", business: "Harness Co", email: "owner.case@example.com", status: "active", notes: writeOneOff(null, SEO_ORDER) }] }, 1],
   ["top-up", () => session("cs_live_top", { mode: "payment", amount_total: 4900, metadata: { kind: "topup", conversations: "50", pack: "pack50", lang: "fr" } }),
     { clients: [{ id: "c-top", business: "Cabinet Top", notes: null }] },
     { clients: [{ id: "c-top", business: "Cabinet Top", notes: writeTopup(null, { conversations: 50, month: monthKey(new Date(1790000000 * 1000)), session: "cs_live_top" }) }] }, 1],
@@ -601,7 +609,7 @@ const writesTo = (table, method) => H.writes.filter((w) => w.table === table && 
 test("multilingual: paid Monday 2026-09-21 → recorded on the client's hosting row, due 2026-09-28, and the owner is told the date", () =>
   withEnv(LIVE, async () => {
     clear();
-    seed({ hosting_clients: [{ id: "h-seo", business: "Harness Co", notes: "servolia-fulfilled: session: cs_old | at: x | plan: hosting" }] });
+    seed({ hosting_clients: [{ id: "h-seo", business: "Harness Co", email: "Owner.Case@example.com", status: "active", notes: "servolia-fulfilled: session: cs_old | at: x | plan: hosting" }] });
     await POST(request(seo(true), H.LIVE_WH));
     const [patch] = writesTo("hosting_clients", "PATCH");
     assert.ok(patch, "nothing written to the hosting row");
@@ -627,6 +635,7 @@ test("multilingual: no hosting row → a one-off lead the admin sees, with its d
     const [lead] = writesTo("leads", "POST");
     assert.ok(lead, "no record at all");
     assert.equal(lead.body.source, "one-off");
+    assert.equal(lead.body.stage, "one_off", "a one-off lead must not count as an installation paid / won");
     assert.equal(lead.body.email, "owner.case@example.com");
     assert.deepEqual(lead.body.raw_data, { type: "oneoff", service: "seo_multilingual", session: "cs_live_seo", paidAt: "2026-09-21", dueAt: "2026-09-28", amountUsd: 145, siteLabel: "Harness Co" });
     assert.equal(lead.body.is_test, undefined, "a live order tagged test");
@@ -710,6 +719,197 @@ test("oneOffOrders: working days skip weekends; the marker is idempotent per ses
   assert.equal(O.markOneOffDone(done, "cs_live_seo", new Date("2026-12-01T00:00:00Z")), done, "done re-stamped");
   assert.equal(O.markOneOffDone(once, "cs_other"), null);
   assert.ok(O.hasOneOff(once, "cs_live_seo") && !O.hasOneOff(once, "cs_other"));
+});
+
+/* ══ 7. Follow-ups: outcomes stated, stores checked, rows matched exactly ═ */
+
+const hostFail = () => invoice("invoice.payment_failed", { amount_due: 4200, currency: "usd", attempt_count: 1, subscription: "sub_hf", customer: "cus_hf" });
+const hostFailRow = { hosting_clients: [{ id: "h-fail", past_due_since: null, business: "Harness Host", email: "owner.case@example.com", plan: "hosting", subscription_id: "sub_hf", payment_status: "ok" }] };
+
+test("M1 hosting payment failed: the owner alert states what the client email REALLY did (sent / FAILED)", () =>
+  withEnv(LIVE, async () => {
+    clear();
+    seed(hostFailRow);
+    await POST(request(hostFail(), H.LIVE_WH));
+    assert.ok(ownerMails()[0].text.includes("Client emailed (first failure)."), ownerMails()[0].text);
+    clear();
+    seed(hostFailRow);
+    net.clientMail = "refuse";
+    await POST(request(hostFail(), H.LIVE_WH));
+    const t = ownerMails()[0].text;
+    assert.ok(t.includes("CLIENT EMAIL FAILED — tell them by hand."), t);
+    assert.ok(t.includes("Next: tell the client by hand."), t);
+    assert.ok(ownerAlerts()[0].includes("CLIENT EMAIL FAILED"));
+  }));
+
+test("M1/LOW hosting payment failed, Resend never answers: 'NOT CONFIRMED — check', not 'FAILED'", () =>
+  withEnv(LIVE, async () => {
+    clear();
+    seed(hostFailRow);
+    net.clientMail = "hang";
+    await POST(request(hostFail(), H.LIVE_WH));
+    const t = ownerMails()[0].text;
+    assert.ok(t.includes("Client email NOT CONFIRMED"), t);
+    assert.ok(!t.includes("FAILED"), "a timeout reported as a failure");
+    assert.ok(t.includes("Next: check the email went"), t);
+  }));
+
+test("emailOutcome: true sent, false failed, undefined (the 5 s cap) unconfirmed; the EUR failure line uses it", async () => {
+  const { emailOutcome } = await import("../src/lib/notify.ts");
+  assert.equal(emailOutcome(true), "sent");
+  assert.equal(emailOutcome(false), "failed");
+  assert.equal(emailOutcome(undefined), "unconfirmed");
+  const w = src("src/app/api/webhooks/stripe/route.ts");
+  assert.match(w, /emailed = emailOutcome\(await sends\.add\("payment failed email", sendEmail\(existing\.email/);
+  assert.match(w, /hostEmailed = emailOutcome\(await sends\.add\("payment failed email", sendEmail\(host\.email/);
+});
+
+test("M2 multilingual: the owner alert says whether the client's receipt went (sent / FAILED — email them by hand)", () =>
+  withEnv(LIVE, async () => {
+    clear();
+    await POST(request(seo(true), H.LIVE_WH));
+    assert.ok(ownerMails()[0].text.includes("Receipt: sent."), ownerMails()[0].text);
+    clear();
+    net.clientMail = "refuse";
+    await POST(request(seo(true), H.LIVE_WH));
+    assert.ok(ownerMails()[0].text.includes("Receipt: FAILED — email them by hand."), ownerMails()[0].text);
+    assert.ok(ownerAlerts()[0].includes("Receipt: FAILED"));
+  }));
+
+test("M2 multilingual: recorded as a lead first, the client buys hosting, Stripe redelivers → no second order anywhere", () =>
+  withEnv(LIVE, async () => {
+    clear();
+    seed({
+      // Now a hosting row matches the buyer…
+      hosting_clients: [{ id: "h-new", business: "Harness Co", email: "owner.case@example.com", status: "active", notes: null }],
+      // …but the first delivery already wrote the order as a lead.
+      leads: [{ id: "l-first" }],
+    });
+    const res = await POST(request(seo(true), H.LIVE_WH));
+    assert.deepEqual(await res.json(), { received: true, line: "one-off", replay: true });
+    assert.equal(H.writes.length, 0, JSON.stringify(H.writes));
+    assert.equal(delivered.length, 0);
+    const check = supaCalls.find((c) => c.method === "GET" && c.url.includes("/hosting_clients?") && c.url.includes("notes=like."));
+    assert.ok(check && check.url.includes("cs_live_seo"), "the hosting rows were not searched for this session");
+  }));
+
+test("M2 multilingual: an order already on ANOTHER hosting row (not the one the lookup would pick) is a replay too", () =>
+  withEnv(LIVE, async () => {
+    clear();
+    seed({ hosting_clients: [
+      { id: "h-other", business: "Old row", email: "someone@else.fr", status: "churned", notes: writeOneOff(null, SEO_ORDER) },
+      { id: "h-now", business: "Harness Co", email: "owner.case@example.com", status: "active", notes: null },
+    ] });
+    await POST(request(seo(true), H.LIVE_WH));
+    assert.equal(H.writes.length, 0, JSON.stringify(H.writes));
+  }));
+
+test("LOW one-off lookup: exact case-insensitive address (ilike wildcards filtered out), active row preferred over a newer one", () =>
+  withEnv(LIVE, async () => {
+    clear();
+    seed({ hosting_clients: [
+      { id: "h-wildcard", email: "jeanXdupont@cabinet.fr", status: "active", created_at: "2026-09-01", business: "Wrong", notes: null },
+      { id: "h-newer-churned", email: "Jean_Dupont@Cabinet.fr", status: "churned", created_at: "2026-09-10", business: "Old", notes: null },
+      { id: "h-active", email: "jean_dupont@cabinet.fr", status: "active", created_at: "2025-01-01", business: "Right", notes: null },
+    ] });
+    await POST(request(seo(true, "jean_dupont@cabinet.fr"), H.LIVE_WH));
+    const [patch] = writesTo("hosting_clients", "PATCH");
+    assert.ok(patch, JSON.stringify(H.writes));
+    assert.match(patch.query, /id=eq\.h-active/);
+  }));
+
+test("LOW one-off lookup: the ref's repository is asked FIRST; the address only when the repo finds nothing", () =>
+  withEnv(LIVE, async () => {
+    const { clientRefFor } = await import("../src/lib/clientRefs.ts");
+    const repo = clientRefFor("goodscochina")?.repo;
+    assert.ok(repo, "fixture: goodscochina must carry a repo");
+    clear();
+    seed({ hosting_clients: [{ id: "h-repo", email: "other@addr.fr", status: "active", business: "Goods Co", notes: null }] });
+    const e = seo(true);
+    e.data.object.metadata.ref = "goodscochina";
+    await POST(request(e, H.LIVE_WH));
+    const lookups = supaCalls.filter((c) => c.method === "GET" && c.url.includes("/hosting_clients?") && !c.url.includes("notes=like."));
+    assert.ok(lookups[0]?.url.includes(`repo=eq.${repo}`), JSON.stringify(lookups.map((c) => c.url)));
+    assert.ok(!lookups.some((c) => c.url.includes("email=ilike.")), "asked by address although the repo matched");
+    assert.match(writesTo("hosting_clients", "PATCH")[0].query, /id=eq\.h-repo/);
+  }));
+
+test("LOW one_off leads are not pipeline: no lead-SLA deadline, not an open lead, not 'installation paid'", async () => {
+  const { collectDeadlines } = await import("../src/lib/deadlines.ts");
+  clear();
+  seed({ leads: [{ id: "l-oo", business: "One-off Co", email: "x@y.z", stage: "one_off", created_at: "2026-01-01T00:00:00Z", last_contacted_at: null }] });
+  const events = await collectDeadlines();
+  assert.ok(!events.some((e) => e.kind === "sla"), JSON.stringify(events));
+  clear();
+  assert.match(src("src/app/admin/analytics/page.tsx"), /\["live","lost","deposit_paid","one_off"\]/);
+  assert.match(src("src/app/admin/leads/page.tsx"), /\["live", "lost", "deposit_paid", "one_off"\]/);
+  assert.match(src("src/components/admin/LeadStageSelect.tsx"), /key: "one_off"/);
+});
+
+test("LOW the hosting setup form cannot wipe a recorded one-off order", async () => {
+  const { keepOneOffs, readOneOffs, writeOneOff: w } = await import("../src/lib/oneOffOrders.ts");
+  const db = w("servolia-fulfilled: session: cs_a | at: x | plan: hosting", SEO_ORDER);
+  // Form opened before the order was recorded: no marker in what it sends.
+  const merged = keepOneOffs(db, "Migrated 2026-09-20\nservolia-fulfilled: session: cs_a | at: x | plan: hosting");
+  assert.ok(merged.startsWith("Migrated 2026-09-20\n"), merged);
+  assert.equal(readOneOffs(merged).length, 1);
+  assert.equal(readOneOffs(merged)[0].session, "cs_live_seo");
+  // A hand-edited marker in the form does not override the database's.
+  const edited = keepOneOffs(db, "servolia-oneoff: service: seo_multilingual | session: cs_live_seo | paid: x | due: 2099-01-01 | amount: 0");
+  assert.equal(readOneOffs(edited)[0].dueAt, "2026-09-28");
+  assert.equal(readOneOffs(edited).length, 1);
+  assert.match(src("src/app/api/admin/hosting/[id]/route.ts"), /mergedNotes = keepOneOffs\(/);
+});
+
+test("LOW a subscription_update invoice says 'plan changed', not 'renewal'", () =>
+  withEnv(LIVE, async () => {
+    clear();
+    seed({ clients: [{ id: "c-up", business: "Cabinet Up", email: "owner.case@example.com", plan: "essentiel" }] });
+    await POST(request(invoice("invoice.paid", { amount_paid: 50000, currency: "eur", billing_reason: "subscription_update" }), H.LIVE_WH));
+    const [o] = ownerMails();
+    assert.ok(o, "no notice for a plan change");
+    assert.match(o.subject, /plan changed/);
+    assert.ok(!/renewal/.test(o.subject), o.subject);
+    clear();
+    seed({ clients: [{ id: "c-up", business: "Cabinet Up", email: "owner.case@example.com", plan: "essentiel" }] });
+    await POST(request(invoice("invoice.paid", { amount_paid: 14900, currency: "eur", billing_reason: "subscription_cycle" }), H.LIVE_WH));
+    assert.match(ownerMails()[0].subject, /renewal/);
+  }));
+
+test("LOW the dunning cron caps every email at 5 s; the final notice is marked only when confirmed", () => {
+  const d = src("src/app/api/cron/dunning/route.ts");
+  const sends = d.match(/sendEmail\(/g) ?? [];
+  const capped = d.match(/bounded\("[^"]+", sendEmail\(/g) ?? [];
+  assert.ok(sends.length >= 5);
+  assert.equal(capped.length, sends.length, "a dunning email without the 5 s cap");
+  assert.match(d, /if \(\(await bounded\("dunning final notice", sendEmail\([^)]*\)\)\) === true\) \{/);
+});
+
+test("LOW every Checkout session is card-only (no delayed method the webhook would never fulfil)", () => {
+  const files = execFileSync("git", ["grep", "-l", "checkout.sessions.create", "--", "src"], { cwd: ROOT, encoding: "utf8" }).split("\n").filter(Boolean);
+  assert.ok(files.length >= 9, files.join(", "));
+  const bad = [];
+  for (const f of files) {
+    const s = src(f);
+    let i = 0;
+    while ((i = s.indexOf("checkout.sessions.create({", i)) !== -1) {
+      const head = s.slice(i, i + 700);
+      if (!head.includes('payment_method_types: ["card"]')) bad.push(`${f}@${s.slice(0, i).split("\n").length}`);
+      i += 10;
+    }
+  }
+  assert.deepEqual(bad, []);
+});
+
+test("M3 chat: a booking's clinic alert and Meta Lead run after the reply, and the Lead only on the FIRST booking", () => {
+  const c = src("src/app/api/chat/route.ts");
+  const block = c.slice(c.indexOf("const firstBooking = isBooking && !wasQualified;"), c.indexOf("} catch { /* table/column may not exist yet"));
+  assert.ok(block.length > 100, "firstBooking block not found");
+  assert.match(block, /if \(firstBooking && config\) \{/);
+  assert.match(block, /after\(\(\) => Promise\.all\(\[/);
+  assert.ok(block.includes("notifyClientOfLead(site") && block.includes("sendMetaCapiEvent({"), "both sends inside the first-booking after()");
+  assert.ok(!/await (notifyClientOfLead|sendMetaCapiEvent)/.test(c), "the patient waits on a send again");
+  assert.ok(!/if \(isBooking && config\?\.metaPixelId/.test(c), "a Meta Lead fires on every booking message again");
 });
 
 test("OWNER_ALERT_EMAIL redirects the owner email; hello@servolia.com is only the default", () =>

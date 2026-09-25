@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { probeGate } from "@/lib/hostingGate";
 import { attachDomainToProject, readDomainRecord, writeDomainRecord } from "@/lib/domainSales";
 import { isTestRow } from "@/lib/testContext";
+import { keepOneOffs } from "@/lib/oneOffOrders";
 
 export const runtime = "nodejs";
 
@@ -62,6 +63,16 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
     }
   }
 
+  /* The form sends the whole notes field. Paid one-off orders
+     (servolia-oneoff:, src/lib/oneOffOrders.ts) are taken from the row as it
+     is NOW, not from the form: a form opened before a payment recorded one
+     would otherwise erase it on save. */
+  let mergedNotes = notes;
+  if (notes) {
+    const { data: cur } = await db.from("hosting_clients").select("notes").eq("id", id).maybeSingle();
+    mergedNotes = keepOneOffs((cur as { notes?: string | null } | null)?.notes, notes);
+  }
+
   const { error } = await db
     .from("hosting_clients")
     .update({
@@ -70,7 +81,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
       site_root: siteRoot || null,
       vercel_project: vercelProject || null,
       ...(siteUrl ? { site_url: siteUrl } : {}),
-      ...(notes ? { notes } : {}),
+      ...(mergedNotes ? { notes: mergedNotes } : {}),
       updated_at: new Date().toISOString(),
     })
     .eq("id", id);

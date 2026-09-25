@@ -10,6 +10,9 @@ const STAGES = [
   { key: "deposit_paid", label: "Installation paid", bg: "#EEF5EA", fg: "#36671E" },
   { key: "live",         label: "Live",         bg: "#D1FAE5", fg: "#065F46" },
   { key: "lost",         label: "Lost",         bg: "#FEE2E2", fg: "#991B1B" },
+  // A paid one-off order with no hosting row (src/lib/oneOffOrders.ts):
+  // neither pipeline nor a won installation.
+  { key: "one_off",      label: "One-off order", bg: "#F4F4F5", fg: "#3F3F46" },
 ];
 
 export default function LeadStageSelect({ leadId, initialStage }: { leadId: string; initialStage: string }) {

@@ -55,6 +55,10 @@ export async function domainCheckoutUrl({
 
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
+      /* Card only, like every other checkout here: a delayed method completes
+         the session unpaid and the webhook (which does not handle
+         async_payment_succeeded) would never register the domain. */
+      payment_method_types: ["card"],
       customer,
       line_items: [
         {

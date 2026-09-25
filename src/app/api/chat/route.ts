@@ -339,33 +339,45 @@ export async function POST(req: NextRequest) {
             after(() => checkConversationCap(siteSlug));
           }
 
-          // Alert the clinic owner the FIRST time this conversation becomes a
-          // booking (transition only — a long chat can never spam them).
-          const wasQualified = !!(existing as { qualified?: boolean } | null)?.qualified;
-          if (isBooking && !wasQualified && config && !config.isDemo) {
-            const lastUserMsg = [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
-            // Awaited (bounded, never throws): an un-awaited send can die
-            // with the serverless function once the reply is returned.
-            await notifyClientOfLead(config, {
-              phone: phoneMatch?.[0] ?? null,
-              email: emailMatch?.[0] ?? null,
-              excerpt: lastUserMsg.slice(0, 400),
-              source: "chat",
-            }).catch(() => {});
-          }
+          /* THE FIRST TIME this conversation becomes a booking — a transition,
+             so a long chat can never spam the clinic owner, and never counts
+             one patient as several Leads in her Ads Manager (a Lead event per
+             booking message inflated her cost-per-lead picture).
 
-          // Ads closed loop: a booking on a client site fires a Lead event on the
-          // CLIENT's pixel, so their Ads Manager sees which euro became a consultation.
-          if (isBooking && config?.metaPixelId && config?.metaCapiToken) {
-            await sendMetaCapiEvent({
-              eventName: "Lead",
-              email: emailMatch?.[0],
-              phone: phoneMatch?.[0],
-              eventSourceUrl: pageUrl,
-              pixelId: config.metaPixelId,
-              accessToken: config.metaCapiToken,
-              req,
-            });
+             Both run AFTER the reply (next/server after()): the patient is
+             not kept waiting for an email, a push and Meta. On Vercel after()
+             is carried by waitUntil, which keeps the invocation alive until
+             the work settles (Next 16 docs, functions/after.md "Platform
+             Support"), within this route's maxDuration of 30 s; each send is
+             itself capped at 5 s (src/lib/notify.ts) and never throws. */
+          const wasQualified = !!(existing as { qualified?: boolean } | null)?.qualified;
+          const firstBooking = isBooking && !wasQualified;
+          if (firstBooking && config) {
+            const site = config;
+            const lastUserMsg = [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
+            after(() => Promise.all([
+              // The clinic owner's alert (never for a demo site).
+              !site.isDemo
+                ? notifyClientOfLead(site, {
+                    phone: phoneMatch?.[0] ?? null,
+                    email: emailMatch?.[0] ?? null,
+                    excerpt: lastUserMsg.slice(0, 400),
+                    source: "chat",
+                  }).catch(() => {})
+                : null,
+              // Ads closed loop: the CLIENT's pixel sees which euro became a consultation.
+              site.metaPixelId && site.metaCapiToken
+                ? sendMetaCapiEvent({
+                    eventName: "Lead",
+                    email: emailMatch?.[0],
+                    phone: phoneMatch?.[0],
+                    eventSourceUrl: pageUrl,
+                    pixelId: site.metaPixelId,
+                    accessToken: site.metaCapiToken,
+                    req,
+                  })
+                : null,
+            ]).then(() => undefined));
           }
         } catch { /* table/column may not exist yet — reply still returns */ }
       }
@@ -458,10 +470,11 @@ export async function POST(req: NextRequest) {
             .update({ lead_id: lead.id, qualified: true })
             .eq("session_id", sessionId);
 
-          // Both awaited, side by side (each capped at 5 s, never throwing):
-          // an un-awaited send can die with the function once the reply is out.
+          // Both after the reply (next/server after(), carried by waitUntil on
+          // Vercel), side by side, each capped at 5 s and never throwing: the
+          // visitor is not kept waiting for them, and they are not dropped.
           // Plain text: a visitor's jean_dupont@... would break Markdown.
-          await Promise.all([
+          after(() => Promise.all([
             sendMetaCapiEvent({
               eventName: "Lead",
               email: emailMatch[0],
@@ -475,7 +488,7 @@ export async function POST(req: NextRequest) {
               `🎯 ${summary.niche || "—"}\n\n` +
               `https://servolia.com/admin/leads/${lead.id}`,
             ),
-          ]);
+          ]).then(() => undefined));
         }
       }
     }

@@ -86,6 +86,8 @@ export async function POST(req: NextRequest) {
     const stripeOnce = stripeClient;
     const once = await stripeOnce.checkout.sessions.create({
       mode: "payment",
+      // Card only: see the main session below.
+      payment_method_types: ["card"],
       locale: lang,
       ...((co.buyer || email) ? { customer_email: co.buyer || email } : {}),
       line_items: [
@@ -225,6 +227,11 @@ export async function POST(req: NextRequest) {
     const oneOff = Boolean(hostingPlan.oneOffUsd);
     const session = await stripe.checkout.sessions.create({
       mode: oneOff ? "payment" : "subscription",
+      /* Card only, like every other checkout here: a delayed method (SEPA,
+         bank transfer) completes the session unpaid, and the webhook only
+         fulfils a PAID session — the later async_payment_succeeded event is
+         not handled, so that buyer would pay and receive nothing. */
+      payment_method_types: ["card"],
       // Renders Stripe's whole checkout page in the client's language.
       locale: lang,
       /* An agreed address wins over anything the browser sent. Setting

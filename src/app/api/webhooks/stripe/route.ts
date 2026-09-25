@@ -38,7 +38,7 @@ import { completeReceptionistPurchase, loadReceptionist } from "@/lib/receptioni
 import { startBuildFromIntake } from "@/lib/intakeBuild";
 import { stripeFor } from "@/lib/stripeMode";
 import { runAsTest, inTestContext, testTag, testPrefixed, excludeTest, isTestRow } from "@/lib/testContext";
-import { Sends, paidSubject, troubleSubject, money } from "@/lib/notify";
+import { Sends, paidSubject, troubleSubject, money, emailOutcome, type EmailOutcome } from "@/lib/notify";
 import { addWorkingDays, hasOneOff, writeOneOff, type OneOffOrder, type OneOffLeadData } from "@/lib/oneOffOrders";
 
 export const runtime = "nodejs";
@@ -66,6 +66,15 @@ export const maxDuration = 120;
  */
 
 const GRACE_DAYS = 14; // Vercel-style: banner immediately, hard suspend after this many days.
+
+/** The line a payment-failed owner alert carries about the CLIENT's email,
+ *  from what the awaited send really did (src/lib/notify.ts emailOutcome). */
+function clientFailureLine(o: EmailOutcome | "not-this-time", otherwise = "Client already told on the first failure."): string {
+  return o === "sent" ? "Client emailed (first failure)."
+    : o === "failed" ? "CLIENT EMAIL FAILED — tell them by hand."
+    : o === "unconfirmed" ? "Client email NOT CONFIRMED (no answer from Resend within 5 s) — check it went."
+    : otherwise;
+}
 
 export async function POST(req: NextRequest) {
   const key = process.env.STRIPE_SECRET_KEY;
@@ -727,39 +736,67 @@ async function handleEventBody(event: Stripe.Event, stripe: Stripe, db: Db, send
           dueAt: addWorkingDays(paidOn, 5),
           amountUsd: amount,
         };
+        /* ALREADY RECORDED? Asked of BOTH stores before anything is written:
+           a first delivery may have written a lead (no hosting row then) and
+           the client bought hosting since, so a redelivery would now find a
+           row and record the same order a second time. `like` on the notes
+           is a superset (`_` in a session id is a wildcard); hasOneOff is the
+           exact check. */
+        const [{ data: rowsWithIt }, { data: leadWithIt }] = await Promise.all([
+          db.from("hosting_clients").select("id, notes").like("notes", `%${session.id}%`).limit(10),
+          db.from("leads").select("id")
+            .eq("raw_data->>type", "oneoff").eq("raw_data->>session", session.id).limit(1).maybeSingle(),
+        ]);
+        const onRow = ((rowsWithIt ?? []) as { id: string; notes: string | null }[]).some((r) => hasOneOff(r.notes, session.id));
+        if (onRow || leadWithIt) {
+          return NextResponse.json({ received: true, line: "one-off", replay: true });
+        }
+
+        /* WHOSE ROW. The ref's repository first (the site the checkout was
+           opened for), then the buyer's address by exact, case-insensitive
+           equality — `ilike` alone treats `_` and `%` in an address as
+           wildcards, so it is only a superset that the filter below narrows.
+           Among several matches an active row wins, then the newest. A test
+           purchase considers only test rows. */
+        type HostRow = { id: string; business: string | null; notes: string | null; email: string | null; status: string | null; created_at: string | null };
         const onlyThisMode = <Q,>(q: Q, live: <T>(x: T) => T) =>
           test ? (q as unknown as { eq(c: string, v: boolean): Q }).eq("is_test", true) : live(q);
-        let host: { id: string; business: string | null; notes: string | null } | null = null;
-        if (customerEmail) {
-          ({ data: host } = await excludeTest(db, (live) => onlyThisMode(
-            db.from("hosting_clients").select("id, business, notes").ilike("email", customerEmail), live,
-          ).order("created_at", { ascending: false }).limit(1).maybeSingle()));
-        }
+        const best = (rows: HostRow[]): HostRow | null =>
+          [...rows].sort((a, b) =>
+            Number(b.status === "active") - Number(a.status === "active") ||
+            String(b.created_at ?? "").localeCompare(String(a.created_at ?? "")))[0] ?? null;
+        const COLS = "id, business, notes, email, status, created_at";
+        let host: HostRow | null = null;
         const refRepo = clientRefFor(session.metadata?.ref ?? "")?.repo;
-        if (!host && refRepo) {
-          ({ data: host } = await excludeTest(db, (live) => onlyThisMode(
-            db.from("hosting_clients").select("id, business, notes").eq("repo", refRepo), live,
-          ).order("created_at", { ascending: false }).limit(1).maybeSingle()));
+        if (refRepo) {
+          const { data } = await excludeTest(db, (live) => onlyThisMode(
+            db.from("hosting_clients").select(COLS).eq("repo", refRepo), live,
+          ).limit(20));
+          host = best((data ?? []) as HostRow[]);
+        }
+        if (!host && customerEmail) {
+          const want = customerEmail.trim().toLowerCase();
+          const { data } = await excludeTest(db, (live) => onlyThisMode(
+            db.from("hosting_clients").select(COLS).ilike("email", customerEmail.trim()), live,
+          ).limit(20));
+          host = best(((data ?? []) as HostRow[]).filter((r) => (r.email ?? "").trim().toLowerCase() === want));
         }
         let recordedAt: string | null = null;
         if (host) {
-          if (hasOneOff(host.notes, session.id)) {
-            return NextResponse.json({ received: true, line: "one-off", replay: true });
-          }
           const { error } = await db.from("hosting_clients")
             .update({ notes: writeOneOff(host.notes, order) }).eq("id", host.id);
           if (error) console.error("[stripe] one-off record failed:", error.message);
           else recordedAt = `https://servolia.com/admin/hosting/${host.id}`;
         } else {
-          const { data: seen } = await db.from("leads").select("id")
-            .eq("raw_data->>type", "oneoff").eq("raw_data->>session", session.id).limit(1).maybeSingle();
-          if (seen) return NextResponse.json({ received: true, line: "one-off", replay: true });
           const raw: OneOffLeadData = { type: "oneoff", ...order, siteLabel };
           const { data: lead, error } = await db.from("leads").insert({
             business: siteLabel || customerEmail || "One-off order",
             email: customerEmail,
             source: "one-off",
-            stage: "deposit_paid", // they have paid — this is not a guess
+            /* A stage of its own: not "deposit_paid"/"live" (both count as an
+               installation won), not "new" (a lead to answer within 48 h).
+               Listed on /admin/today with its due date instead. */
+            stage: "one_off",
             plan_interest: "seo_multilingual",
             value_estimate: 0, // a one-off already paid is not pipeline
             raw_data: raw,
@@ -769,6 +806,9 @@ async function handleEventBody(event: Stripe.Event, stripe: Stripe, db: Db, send
           else recordedAt = `https://servolia.com/admin/leads/${(lead as { id: string }).id}`;
         }
 
+        // Awaited before the owner is told, so the alert says whether the
+        // client actually has their confirmation.
+        let receipt: EmailOutcome | "no-address" = "no-address";
         if (customerEmail) {
           const tpl = oneOffServicePaidEmail({
             productName: product ? productCopy(product, lang).heading : "Multilingual search setup",
@@ -779,7 +819,7 @@ async function handleEventBody(event: Stripe.Event, stripe: Stripe, db: Db, send
               : "we declare your languages (hreflang), write a sitemap per language and the structured data, and email you when it is in place — within five working days.",
             lang,
           });
-          sends.add("one-off receipt", sendEmail(customerEmail, tpl.subject, tpl.html));
+          receipt = emailOutcome(await sends.add("one-off receipt", sendEmail(customerEmail, tpl.subject, tpl.html)));
         }
         sends.owner({
           subject: paidSubject("multilingual search setup (one-off)", amount, session.currency ?? "usd", siteLabel || customerEmail),
@@ -788,6 +828,10 @@ async function handleEventBody(event: Stripe.Event, stripe: Stripe, db: Db, send
             siteLabel || "unnamed site",
             customerEmail ?? "no email",
             `DUE ${order.dueAt} (five working days from ${order.paidAt})`,
+            receipt === "sent" ? "Receipt: sent."
+              : receipt === "failed" ? "Receipt: FAILED — email them by hand."
+              : receipt === "unconfirmed" ? "Receipt: NOT CONFIRMED (no answer from Resend within 5 s) — check it went, or email them by hand."
+              : "Receipt: none — no address on the payment. Reach them by hand.",
             recordedAt
               ? host ? `Recorded on ${host.business ?? "their"} hosting row; on /admin/today until marked done.` : `No hosting row for this client — recorded as a lead; on /admin/today until marked done.`
               : `⚠️ NOT RECORDED (database error) — note the due date by hand.`,
@@ -1363,7 +1407,7 @@ async function handleEventBody(event: Stripe.Event, stripe: Stripe, db: Db, send
            update above means this is the FIRST failure; Stripe's retries
            land here again and are silent. No stop date is promised: nothing
            suspends an EUR client automatically today. */
-        let emailed = "no";
+        let emailed: EmailOutcome | "not-this-time" = "not-this-time";
         if (!existing.past_due_since && existing.email && subscriptionId) {
           const plan = resolvePlan(existing.plan as string | null);
           let lang: "en" | "fr" = "fr";
@@ -1389,12 +1433,14 @@ async function handleEventBody(event: Stripe.Event, stripe: Stripe, db: Db, send
             attempt: "first",
             lang,
           });
-          // sendEmail answers false (it never throws) when Resend refuses: that is a failure too.
-          emailed = (await sends.add("payment failed email", sendEmail(existing.email as string, tpl.subject, tpl.html))) === true ? "yes" : "FAILED";
+          // Awaited: the alert below states what really happened. sendEmail
+          // answers false (never throws) when Resend refuses; a 5 s timeout
+          // is "not confirmed", not "failed".
+          emailed = emailOutcome(await sends.add("payment failed email", sendEmail(existing.email as string, tpl.subject, tpl.html)));
         }
 
         {
-          const told = emailed === "yes" ? "Client emailed (first failure)." : emailed === "FAILED" ? "CLIENT EMAIL FAILED - tell them by hand." : "Client already told on the first failure.";
+          const told = clientFailureLine(emailed);
           const planName = resolvePlan(existing.plan as string | null)?.name ?? (existing.plan as string | null) ?? "plan";
           const who = (existing.business as string | null) ?? (existing.email as string | null) ?? "Unknown client";
           sends.owner({
@@ -1406,7 +1452,9 @@ async function handleEventBody(event: Stripe.Event, stripe: Stripe, db: Db, send
               invoice.attempt_count ? `Attempt ${invoice.attempt_count} — Stripe retries on its own schedule.` : null,
               `Grace ends: ${new Date(suspendAt).toLocaleDateString()}`,
               told,
-              emailed === "FAILED" ? "Next: tell the client by hand." : "Next: watch for the retry; nothing suspends an EUR plan automatically.",
+              emailed === "failed" ? "Next: tell the client by hand."
+                : emailed === "unconfirmed" ? "Next: check the email went (Resend logs), or tell the client by hand."
+                : "Next: watch for the retry; nothing suspends an EUR plan automatically.",
             ],
             link: `https://servolia.com/admin/clients/${existing.id}`,
           });
@@ -1456,6 +1504,7 @@ async function handleEventBody(event: Stripe.Event, stripe: Stripe, db: Db, send
            * update above, and that is the flag. Without the guard a client
            * gets four identical warnings for one expired card, which reads as
            * dunning by machine gun. */
+          let hostEmailed: EmailOutcome | "not-this-time" = "not-this-time";
           if (!host.past_due_since && host.email && host.subscription_id) {
             const failedPlan = resolveHostingPlan(host.plan);
             const ctx = await subscriptionContext(host.subscription_id, event.livemode);
@@ -1476,7 +1525,8 @@ async function handleEventBody(event: Stripe.Event, stripe: Stripe, db: Db, send
               attempt: "first",
               lang: failLang,
             });
-            sends.add("payment failed email", sendEmail(host.email, tpl.subject, tpl.html));
+            // Awaited: the alert below says what really happened to it.
+            hostEmailed = emailOutcome(await sends.add("payment failed email", sendEmail(host.email, tpl.subject, tpl.html)));
           }
 
           // The site is NOT gated here. Stripe retries a failed card over
@@ -1490,8 +1540,13 @@ async function handleEventBody(event: Stripe.Event, stripe: Stripe, db: Db, send
               host.email || null,
               invoice.attempt_count ? `Attempt ${invoice.attempt_count} — Stripe retries on its own schedule.` : null,
               `Grace ends: ${new Date(suspendAt).toLocaleDateString()}`,
-              !host.past_due_since && host.email && host.subscription_id ? "Client email sent with this alert (first failure)." : "Client already told on the first failure (or has no address).",
-              "Next: watch for the retry; the site stays up through the grace period.",
+              clientFailureLine(hostEmailed,
+                host.past_due_since ? "Client already told on the first failure."
+                  : !host.email ? "No address on file — the client was NOT told."
+                  : "Client NOT told (no subscription on the row for their billing link)."),
+              hostEmailed === "failed" || (hostEmailed === "not-this-time" && !host.past_due_since) ? "Next: tell the client by hand."
+                : hostEmailed === "unconfirmed" ? "Next: check the email went (Resend logs), or tell the client by hand."
+                : "Next: watch for the retry; the site stays up through the grace period.",
             ],
             link: `https://servolia.com/admin/hosting/${host.id}`,
           });
@@ -1585,19 +1640,26 @@ async function handleEventBody(event: Stripe.Event, stripe: Stripe, db: Db, send
                 .order("created_at", { ascending: false }).limit(1).maybeSingle();
           const pc = planClient as { id: string; business: string | null; email: string | null; plan: string | null } | null;
           const who = wasHost?.business || pc?.business || invoice.customer_name || invoice.customer_email;
+          /* subscription_update is a plan CHANGE (the switch to yearly, a
+             tier change, their proration) — not a renewal, and saying
+             "renewal" hides that the client's plan just moved. */
+          const planChange = invoice.billing_reason === "subscription_update";
+          const kind = planChange ? "plan changed" : "renewal";
           const what = wasHost
-            ? `${resolveHostingPlan(wasHost.plan as string | null)?.name ?? "hosting"} renewal`
-            : `${resolvePlan(pc?.plan)?.name ?? "plan"} renewal`;
+            ? `${resolveHostingPlan(wasHost.plan as string | null)?.name ?? "hosting"} ${kind}`
+            : `${resolvePlan(pc?.plan)?.name ?? "plan"} ${kind}`;
           const line = invoice.lines?.data?.[0]?.description;
           sends.owner({
             subject: paidSubject(what, invoice.amount_paid / 100, invoice.currency ?? "eur", who),
             lines: [
-              `🔁 ${what} — ${money(invoice.amount_paid / 100, invoice.currency ?? "eur")}`,
+              `${planChange ? "🔀" : "🔁"} ${what} — ${money(invoice.amount_paid / 100, invoice.currency ?? "eur")}`,
               line || null,
               invoice.customer_email || pc?.email || null,
               invoice.billing_reason ? `Stripe: ${invoice.billing_reason}` : null,
               wasHost?.status === "suspended" ? "Was suspended — restored by this payment (see any alert above)." : null,
-              "Next: nothing — renewal collected.",
+              planChange
+                ? "Next: check their row shows the new plan and billing period."
+                : "Next: nothing — renewal collected.",
             ],
             link: wasHost?.id
               ? `https://servolia.com/admin/hosting/${wasHost.id}`

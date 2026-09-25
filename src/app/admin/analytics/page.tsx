@@ -78,7 +78,8 @@ export default async function AnalyticsPage() {
     : 0;
 
   // ── Pipeline value (all-time open leads, not creation-date windowed) ────
-  const openLeads = allLeads.filter(l => !["live","lost","deposit_paid"].includes(l.stage));
+  // one_off: a paid one-off order (src/lib/oneOffOrders.ts) — not pipeline, not won.
+  const openLeads = allLeads.filter(l => !["live","lost","deposit_paid","one_off"].includes(l.stage));
   const pipelineValue = openLeads.reduce((s,l) => s + Number(l.value_estimate ?? 0), 0);
   const wonValue = allLeads.filter(l => l.stage === "deposit_paid" || l.stage === "live")
     .reduce((s,l) => s + Number(l.value_estimate ?? 0), 0);

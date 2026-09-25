@@ -28,7 +28,7 @@ function ageHours(l: Lead): number {
   return (Date.now() - new Date(ref).getTime()) / 3_600_000;
 }
 function slaStatus(l: Lead): "fresh" | "warn" | "overdue" {
-  if (["live", "lost", "deposit_paid"].includes(l.stage)) return "fresh";
+  if (["live", "lost", "deposit_paid", "one_off"].includes(l.stage)) return "fresh";
   const h = ageHours(l);
   if (h > 48) return "overdue";
   if (h > 24) return "warn";

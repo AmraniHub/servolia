@@ -68,6 +68,19 @@ export async function bounded<T>(
   }
 }
 
+/**
+ * What an awaited, bounded sendEmail actually did, for an alert to say:
+ *   true      → "sent"         (Resend accepted it)
+ *   false     → "failed"       (Resend refused, or is not configured)
+ *   undefined → "unconfirmed"  (no answer inside the 5 s cap — it may still
+ *                               have gone; saying FAILED would send the owner
+ *                               to email a client twice)
+ */
+export type EmailOutcome = "sent" | "failed" | "unconfirmed";
+export function emailOutcome(result: boolean | undefined): EmailOutcome {
+  return result === true ? "sent" : result === false ? "failed" : "unconfirmed";
+}
+
 /** One plain-text Telegram alert, awaited and bounded. "TEST — " is added by
  *  sendTelegramMessage itself during a founder test purchase. */
 export function alert(text: string, opts: Omit<SendOptions, "plain"> = {}) {

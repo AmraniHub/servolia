@@ -109,7 +109,8 @@ export async function collectDeadlines(): Promise<DeadlineEvent[]> {
 
   // 4. LEAD SLA — a deal going cold has a due date: last contact + 2 days.
   for (const l of ((leads.data ?? []) as LeadRow[])) {
-    if (["deposit_paid", "live", "lost"].includes(l.stage)) continue;
+    // one_off: a paid one-off order, listed on /admin/today with its own due date.
+    if (["deposit_paid", "live", "lost", "one_off"].includes(l.stage)) continue;
     const ref = l.last_contacted_at ?? l.created_at;
     const due = toLocalDay(ref);
     due.setDate(due.getDate() + LEAD_SLA_DAYS);
