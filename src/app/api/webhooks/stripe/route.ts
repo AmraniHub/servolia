@@ -42,7 +42,7 @@ import { stripeFor } from "@/lib/stripeMode";
 import { runAsTest, inTestContext, testTag, testPrefixed, excludeTest, isTestRow } from "@/lib/testContext";
 import { Sends, paidSubject, troubleSubject, money, emailOutcome, type EmailOutcome } from "@/lib/notify";
 import { addWorkingDays, hasOneOff, writeOneOff, type OneOffOrder, type OneOffLeadData } from "@/lib/oneOffOrders";
-import { readOwnedDomainMeta, trialEndFor, writeOwnedDomainNote, ownedDomainPaidEmail, ownedDomainOwnerLines, readOwnedDomainNote, ownedDomainOnCancel, ownedCancelLine, ownedDomainOnReturn } from "@/lib/ownedDomain";
+import { readOwnedDomainMeta, trialEndFor, writeOwnedDomainNote, ownedDomainPaidEmail, ownedDomainOwnerLines, readOwnedDomainNote, ownedDomainOnCancel, ownedCancelLine, ownedDomainOnReturn, subscriptionPaymentMethod } from "@/lib/ownedDomain";
 
 export const runtime = "nodejs";
 // A subscriber whose intake beat this event has their draft generated after
@@ -1876,7 +1876,9 @@ async function handleEventBody(event: Stripe.Event, stripe: Stripe, db: Db, send
         try {
           const today = new Date().toISOString().slice(0, 10);
           const customerId = typeof sub.customer === "string" ? sub.customer : sub.customer?.id ?? null;
-          const out = await ownedDomainOnCancel(stripeFor(event.livemode) ?? stripe, customerId, ownedNote, today, test, setDomainAutoRenew);
+          const out = await ownedDomainOnCancel(stripeFor(event.livemode) ?? stripe, customerId, ownedNote, today, test, setDomainAutoRenew, {
+            paymentMethod: subscriptionPaymentMethod(sub), rowId: churnedHost.id,
+          });
           ownedLine = ownedCancelLine(ownedNote.domain, out);
           ownedKept = out.keptUntil;
           if (out.result === "off" || out.result === "kept") {

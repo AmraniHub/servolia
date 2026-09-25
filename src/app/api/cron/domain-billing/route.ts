@@ -7,7 +7,7 @@ import {
   renewalDecision, readNoticed, writeNoticed, daysBefore, chargeDateFor, NOTICE_DAYS, NOTICE_WINDOW_DAYS,
   domainRegistration, setDomainAutoRenew,
 } from "@/lib/domainSales";
-import { runDomainOrderRenewals, sweepStoppedOrders, auditDomainOrders, MAX_CHARGE_ATTEMPTS } from "@/lib/domainOrders";
+import { runDomainOrderRenewals, sweepStoppedOrders, auditDomainOrders, MAX_CHARGE_ATTEMPTS, countFor } from "@/lib/domainOrders";
 import { sendEmail, domainRenewalEmail } from "@/lib/email";
 import { Sends } from "@/lib/notify";
 import { langFor, refKeyForEmail } from "@/lib/clientRefs";
@@ -15,6 +15,7 @@ import { readExtraDomains, writeExtraDomain } from "@/lib/extraDomains";
 import { nextChargeDate } from "@/lib/hosting";
 import {
   OWNED_DOMAIN_NOTE, OWNED_RENEWAL_ITEM_KIND, readOwnedDomainNote, writeOwnedDomainNote, renewalDateFrom, renewalCheck, type OwnedDomainNote,
+  nextHostingInvoiceDate, subscriptionPaymentMethod, chargeOwnedRenewalInvoice,
 } from "@/lib/ownedDomain";
 
 /** The tag on a plan or panel domain's renewal line (owned domains use OWNED_RENEWAL_ITEM_KIND). */
@@ -87,6 +88,13 @@ export async function GET(req: NextRequest) {
     save: (patch: { retailUsd?: number; nextChargeAt?: string; noticed?: string | undefined }) => Promise<string | null>;
     /** Pin the line to this subscription's next invoice, and tag it (an owned domain's cancellation reads the tag). */
     item?: { subscription?: string | null; metadata?: Record<string, string> };
+    /**
+     * Charge the year on AN INVOICE OF ITS OWN, now, instead of a line on the
+     * next plan invoice (an owned domain whose hosting invoices after its
+     * renewal date). Returns what was charged, or why not; `silent` = already
+     * reported (the retry cap).
+     */
+    standalone?: (priceUsd: number) => Promise<{ ok: true; chargedUsd: number; invoiceId: string } | { ok: false; detail: string; silent?: boolean }>;
   }) {
     if (today < daysBefore(o.renewsOn, NOTICE_DAYS + NOTICE_WINDOW_DAYS)) return;
     const d = renewalDecision({ paidUsd: o.paidUsd, vercelRenewalUsd: await currentRenewalUsd(o.domain), renewsOn: o.renewsOn, todayIso: today, ...readNoticed(o.noticed) });
@@ -98,7 +106,7 @@ export async function GET(req: NextRequest) {
     }
     const lang = o.row.email ? langFor(refKeyForEmail(o.row.email)) : "en";
     if (d.kind === "notice") {
-      const tpl = domainRenewalEmail({ domain: o.domain, stage: "notice", priceUsd: d.price, previousUsd: o.paidUsd, onIso: o.renewsOn, chargeOnIso: chargeDateFor(o.renewsOn), lang, billed: "invoice" });
+      const tpl = domainRenewalEmail({ domain: o.domain, stage: "notice", priceUsd: d.price, previousUsd: o.paidUsd, onIso: o.renewsOn, chargeOnIso: chargeDateFor(o.renewsOn), lang, billed: o.standalone ? "card" : "invoice" });
       // Recorded only once it went: otherwise it is retried tomorrow, and after the window the rise waits a year.
       if (await mail(o.row.email, tpl, `${o.domain} price-rise notice`)) {
         const err = await o.save({ noticed: writeNoticed(o.renewsOn, d.price) });
@@ -111,6 +119,27 @@ export async function GET(req: NextRequest) {
       return;
     }
     if (!o.row.customer_id) { failed.push(`${o.domain}: no Stripe customer on the row`); return; }
+    if (o.standalone) {
+      try {
+        const res = await o.standalone(d.price);
+        if (!res.ok) {
+          if (!res.silent) failed.push(`${o.domain} (${o.row.business}): $${d.price.toFixed(2)} renewal NOT charged — ${res.detail}.`);
+          return;
+        }
+        const next = nextChargeDate(new Date(`${o.renewsOn}T00:00:00Z`), "annual").toISOString().slice(0, 10);
+        const err = await o.save({ retailUsd: res.chargedUsd, nextChargeAt: next, noticed: undefined });
+        /* Paid, and found again by its tag tomorrow even if this write failed:
+           the next run sees the paid invoice and only catches the row up. */
+        if (err) { failed.push(`${o.domain} (${o.row.business}): renewal PAID ($${res.chargedUsd.toFixed(2)}, ${res.invoiceId}) but the row was NOT updated (${err}) — tomorrow's run finds the paid invoice and catches up.`); return; }
+        charged.push(`${o.domain} $${res.chargedUsd.toFixed(2)}${was(res.chargedUsd, o.paidUsd)} (${o.row.business}) on its own invoice ${res.invoiceId} — next ${next}`);
+        if (d.wanted > res.chargedUsd + 0.004) warnings.push(`${o.domain} (${o.row.business}): charged $${res.chargedUsd.toFixed(2)}, not the $${d.wanted.toFixed(2)} Vercel's price now needs — the rise was not announced 30 days ahead. Next year's notice will carry it.`);
+        const tpl = domainRenewalEmail({ domain: o.domain, stage: "charged", priceUsd: res.chargedUsd, previousUsd: o.paidUsd, onIso: o.renewsOn, nextIso: next, lang });
+        await mail(o.row.email, tpl, `${o.domain} renewal receipt`);
+      } catch (e) {
+        failed.push(`${o.domain}: ${e instanceof Error ? e.message : String(e)}`);
+      }
+      return;
+    }
     try {
       /* EVERY renewal line is tagged (kind + domain + year), and looked for
          first: a run that added the line but failed to write the row would
@@ -232,7 +261,24 @@ export async function GET(req: NextRequest) {
       const { error: upErr } = await db.from("hosting_clients").update({ notes: writeOwnedDomainNote(notes, { ...cur, ...patch }) }).eq("id", row.id);
       return upErr ? upErr.message : null;
     };
+    const inWindow = today >= daysBefore(note.renewsOn, NOTICE_DAYS + NOTICE_WINDOW_DAYS);
+    /* WHAT VERCEL SAYS COMES FIRST, for every year including the first
+       renewal. A domain no longer in our team is never billed (reported
+       once); an unreadable answer means nothing is billed or announced that
+       day — tomorrow asks again. */
     const reg = await domainRegistration(note.domain);
+    if (reg.state === "gone") {
+      if (!note.vercelGone) {
+        const err = await saveOwned({ vercelGone: today });
+        failed.push(`${note.domain} (${row.business}): NO LONGER in our Vercel team — its renewal is NOT billed${note.billed ? `; the year from ${note.billed} was paid: if Vercel did not renew it, renew by hand or refund` : ""}. Check Vercel > Domains.${err ? ` (note not saved: ${err})` : ""} Reported once.`);
+      }
+      continue;
+    }
+    if (reg.state === "unreadable") {
+      if (inWindow) checks.push(`${note.domain} (${row.business}): Vercel could not be read — nothing billed or announced today; retried tomorrow.`);
+      continue;
+    }
+    if (note.vercelGone) await saveOwned({ vercelGone: undefined });
     const renewed = renewalCheck(note, reg, today);
     if (!renewed.ok) {
       if (renewed.alarm) {
@@ -240,7 +286,7 @@ export async function GET(req: NextRequest) {
       }
       continue;
     }
-    const dated = renewalDateFrom(note, reg.state === "ok" ? reg.expiry : null);
+    const dated = renewalDateFrom(note, reg.expiry);
     if (dated.mismatch) {
       if (note.vercelMismatch !== dated.mismatch) {
         const err = await saveOwned({ vercelMismatch: dated.mismatch });
@@ -252,17 +298,64 @@ export async function GET(req: NextRequest) {
       if (err) continue;
     }
     const renewsOn = dated.renewsOn;
+    if (today < daysBefore(renewsOn, NOTICE_DAYS + NOTICE_WINDOW_DAYS)) continue;
+
+    /* WHERE THE YEAR IS CHARGED. A line on the hosting subscription's next
+       invoice only works when that invoice comes BEFORE the renewal date.
+       When it comes after (Ithar: domain 2027-09-25, hosting 2027-10-09),
+       Vercel would renew on our card and the client pay weeks later — so the
+       year is charged on its own invoice on the charge day, on the card the
+       subscription uses. No subscription on the row: on its own too. */
+    const subId = (row as { subscription_id?: string | null }).subscription_id ?? null;
+    let standalone = !subId;
+    let paymentMethod: string | null = null;
+    if (subId) {
+      try {
+        const sub = await stripe.subscriptions.retrieve(subId);
+        const nextInvoice = nextHostingInvoiceDate(sub);
+        paymentMethod = subscriptionPaymentMethod(sub);
+        standalone = !nextInvoice || nextInvoice > renewsOn;
+      } catch (e) {
+        checks.push(`${note.domain} (${row.business}): the hosting subscription ${subId} could not be read (${e instanceof Error ? e.message : String(e)}) — nothing billed or announced today; retried tomorrow.`);
+        continue;
+      }
+    }
+    const customerId = row.customer_id;
+
     await planDomain({
       row, domain: note.domain, paidUsd: note.usd, renewsOn, noticed: note.noticed,
       idem: `owned-domain-${row.id}-${renewsOn}`,
       item: {
-        subscription: (row as { subscription_id?: string | null }).subscription_id ?? null,
+        subscription: subId,
         metadata: { kind: OWNED_RENEWAL_ITEM_KIND, domain: note.domain, renews_on: renewsOn },
       },
+      ...(standalone && customerId ? {
+        standalone: async (priceUsd: number) => {
+          /* The retry cap, counted on the NOTE first (a failed invoice update
+             can never lose a count). After the last decline: said once, then
+             silent. */
+          const attempts = countFor(note.attempts, renewsOn);
+          if (attempts >= MAX_CHARGE_ATTEMPTS) return { ok: false as const, detail: "retry cap reached", silent: true };
+          const res = await chargeOwnedRenewalInvoice(stripe, {
+            customerId, domain: note.domain, renewsOn, amountUsd: priceUsd,
+            paymentMethod, keyPrefix: `owned-${row.id}-${renewsOn}`, todayIso: today,
+          });
+          if (res.ok) return res;
+          if (!res.declined) return { ok: false as const, detail: res.detail };
+          const n = attempts + 1;
+          const err = await saveOwned({ attempts: `${renewsOn}:${n}` });
+          return {
+            ok: false as const,
+            detail: n >= MAX_CHARGE_ATTEMPTS
+              ? `STOPPED RETRYING after ${n} declined attempts (${res.detail}; ${res.invoiceId}) — Vercel renews it on OUR card on ${renewsOn}: get a new card from the client or refund`
+              : `card declined, attempt ${n}/${MAX_CHARGE_ATTEMPTS} (${res.detail}; ${res.invoiceId}) — retried tomorrow${err ? ` (count NOT saved: ${err})` : ""}`,
+          };
+        },
+      } : {}),
       save: (patch) => saveOwned({
         ...(patch.retailUsd !== undefined ? { usd: patch.retailUsd } : {}),
-        // The year just put on the invoice starts on the old date; the next one is due a year on.
-        ...(patch.nextChargeAt !== undefined ? { renewsOn: patch.nextChargeAt, billed: renewsOn } : {}),
+        // The year just charged starts on the old date; the next one is due a year on.
+        ...(patch.nextChargeAt !== undefined ? { renewsOn: patch.nextChargeAt, billed: renewsOn, attempts: undefined } : {}),
         noticed: patch.noticed,
       }),
     });

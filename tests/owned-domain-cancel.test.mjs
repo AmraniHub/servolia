@@ -36,14 +36,29 @@ Object.assign(process.env, { VERCEL_TOKEN: "vt", VERCEL_TEAM_ID: "team_x" });
 
 /* Stripe through the seam: the customer's invoice items and their invoices. */
 const SM = await import("../src/lib/stripeMode.ts");
-const stripeState = { items: [], invoices: {}, deleted: [], voided: [] };
+/* Stripe through the seam: the customer's invoice items, the invoices that
+   hold them, and invoices of their own (a started year billed at cancel). */
+const stripeState = { items: [], invoices: {}, deleted: [], voided: [], created: [], payFails: false };
 SM.__setStripeFactoryForTests(() => ({
   invoiceItems: {
     list: async () => ({ data: stripeState.items }),
     del: async (id) => { stripeState.deleted.push(id); return { id, deleted: true }; },
+    create: async (p) => { const inv = stripeState.invoices[p.invoice]; if (inv) inv.total += p.amount; inv?.lines.data.push({ metadata: p.metadata }); return {}; },
   },
   invoices: {
-    retrieve: async (id) => stripeState.invoices[id],
+    list: async ({ customer }) => ({ data: Object.values(stripeState.invoices).filter((i) => i.customer === customer) }),
+    create: async (p) => {
+      const inv = { id: `in_own_${stripeState.created.length + 1}`, customer: p.customer, status: "draft", total: 0, metadata: { ...p.metadata }, params: p, lines: { data: [] } };
+      stripeState.invoices[inv.id] = inv;
+      stripeState.created.push(inv);
+      return { ...inv };
+    },
+    retrieve: async (id) => ({ ...stripeState.invoices[id] }),
+    finalizeInvoice: async (id) => { stripeState.invoices[id].status = "open"; return { ...stripeState.invoices[id] }; },
+    pay: async (id, p) => {
+      if (stripeState.payFails) throw new Error("card_declined");
+      const inv = stripeState.invoices[id]; inv.status = "paid"; inv.amount_paid = inv.total; inv.payParams = p; return { ...inv };
+    },
     voidInvoice: async (id) => { stripeState.voided.push(id); return { id, status: "void" }; },
   },
 }));
@@ -53,10 +68,10 @@ const day = (n) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10
 const NOTE = { domain: "ithardigital.com", usd: 27.9, project: "ithar-digital", paidOn: "2026-09-25", renewsOn: day(200) };
 const item = (id, invoice, renewsOn) => ({ id, invoice, metadata: { kind: "owned_domain_renewal", domain: "ithardigital.com", renews_on: renewsOn } });
 
-function reset({ items = [], invoices = {}, status = 204 } = {}) {
+function reset({ items = [], invoices = {}, status = 204, payFails = false } = {}) {
   H.reset();
   autoRenew.length = 0;
-  Object.assign(stripeState, { items, invoices, deleted: [], voided: [] });
+  Object.assign(stripeState, { items, invoices, deleted: [], voided: [], created: [], payFails });
   vercel.autoRenewStatus = status;
   H.reads.hosting_clients = [{ id: "h-owned", business: "Ithar Digital", notes: OD.writeOwnedDomainNote(null, NOTE) }];
 }
@@ -157,6 +172,35 @@ test("M3: a client who COMES BACK (invoice.paid on an ended row) gets Vercel aut
   H.reads.hosting_clients = [{ id: "h-owned", business: "Ithar Digital", status: "active", plan: "hosting_lite", notes: OD.writeOwnedDomainNote(null, NOTE) }];
   await POST(request(invoicePaid(), H.LIVE_WH));
   assert.deepEqual(autoRenew, []);
+});
+
+/* Ithar's shape: the year from 2027-09-25 was put as a pending line on the
+   hosting subscription, and the hosting is cancelled after that year began
+   (Vercel already renewed it on our card). */
+const cancelWithCard = () => { const ev = H.subscriptionDeleted(true); ev.data.object.default_payment_method = "pm_ithar"; return ev; };
+const startedLine = (id) => ({ ...item(id, null, day(-3)), amount: 2790 });
+
+test("cancelled AFTER an uninvoiced year began: the line is NOT deleted unbilled — it is invoiced on its own and charged on the card", async () => {
+  reset({ items: [startedLine("ii_started")] });
+  await POST(request(cancelWithCard(), H.LIVE_WH));
+  const [own] = stripeState.created;
+  assert.ok(own, "an invoice of its own");
+  assert.equal(own.params.auto_advance, false);
+  assert.equal(own.params.default_payment_method, "pm_ithar", "the cancelled subscription's card");
+  assert.deepEqual(own.metadata, { kind: "owned_domain_renewal", domain: "ithardigital.com", renews_on: day(-3) });
+  assert.equal(stripeState.invoices[own.id].status, "paid");
+  assert.equal(stripeState.invoices[own.id].amount_paid, 2790);
+  assert.deepEqual(stripeState.deleted, ["ii_started"], "the pending line goes only once its year is on an invoice");
+  assert.match(telegram().find((x) => x.includes("Subscription ended")), /invoiced on its own and PAID \(in_own_1\)/);
+});
+
+test("that own invoice DECLINED: the year is not lost — the owner is told to chase it", async () => {
+  reset({ items: [startedLine("ii_started")], payFails: true });
+  await POST(request(cancelWithCard(), H.LIVE_WH));
+  assert.equal(stripeState.created.length, 1);
+  assert.equal(stripeState.invoices.in_own_1.status, "open", "left payable, never voided");
+  assert.deepEqual(stripeState.deleted, ["ii_started"], "the invoice holds the year now");
+  assert.match(telegram().find((x) => x.includes("Subscription ended")), /invoiced on its own and NOT paid \(in_own_1: card_declined\) — chase it in Stripe/);
 });
 
 test("a founder TEST cancellation never reaches Vercel and deletes nothing", async () => {
