@@ -1,6 +1,6 @@
 import type Stripe from "stripe";
 import {
-  attachDomainToProject, canBuyDomains, currentRenewalUsd, domainQuote, normalizeDomain,
+  attachDomainToProject, canBuyDomains, currentRenewalUsd, domainOrder, domainQuote, normalizeDomain,
   purchaseDomainForClient, renewalRetailUsd,
 } from "@/lib/domainSales";
 
@@ -22,7 +22,19 @@ import {
  *
  * THE CARD IS SAVED FOR NEXT YEAR (setup_future_usage: off_session): the
  * renewal is charged on it by the domain-billing cron, at the price that
- * renewalRetailUsd gives on the day, never lower than what they paid.
+ * renewalRetailUsd gives on the day, never lower than what they paid, and
+ * never higher than the price the client was told about in advance.
+ *
+ * STATUSES, in the order a record moves through them:
+ *   claimed    -- the webhook is about to call the registrar. Written BEFORE
+ *                 the purchase, so a second delivery of the same event can
+ *                 see that a purchase may already be under way and stops.
+ *   purchasing -- Vercel accepted the order and has not finished it. Vercel
+ *                 registers asynchronously; the domain-live cron (every 15
+ *                 minutes) settles it with settlePurchasingOrders.
+ *   bought     -- registered. Renewed every year by the domain-billing cron.
+ *   failed     -- not registered (refused, or a founder test purchase).
+ *   stopped    -- the client asked not to renew; set by hand in Stripe.
  */
 
 export const DOMAIN_ORDER_KIND = "domain_order";
@@ -30,45 +42,60 @@ export const DOMAIN_ORDER_KIND = "domain_order";
 export const NOTICE_DAYS = 30;
 /** Days before the renewal date that the renewal is charged. */
 export const CHARGE_DAYS = 7;
+/** How long a Vercel order may stay "purchasing" before the owner is told. */
+export const STUCK_AFTER_HOURS = 6;
+
+export type OrderStatus = "claimed" | "purchasing" | "bought" | "failed" | "stopped";
+const STATUSES: OrderStatus[] = ["claimed", "purchasing", "bought", "failed", "stopped"];
 
 export interface DomainOrderRecord {
   domain: string;
-  status: "bought" | "failed" | "stopped";
+  status: OrderStatus;
   /** What the client paid for the current year. */
   retailUsd: number;
   lang: "en" | "fr";
   name?: string;
   project?: string;
+  /** The project the domain was attached to, once it was. */
+  attached?: string;
   orderId?: string;
+  /** The Checkout Session that paid for the first year. */
+  session?: string;
   boughtAt?: string;
   /** ISO date the next year is due: the anniversary of the purchase. */
   renewsOn?: string;
   /** The renewsOn a price-rise notice was already sent for, so it is sent once. */
   noticedFor?: string;
+  /** The price that notice announced: the most the renewal may charge. */
+  noticedUsd?: number;
   note?: string;
 }
 
 const P = "servolia_domain";
 const KEYS: Record<keyof DomainOrderRecord, string> = {
   domain: P, status: `${P}_status`, retailUsd: `${P}_retail`, lang: `${P}_lang`, name: `${P}_name`,
-  project: `${P}_project`, orderId: `${P}_order`, boughtAt: `${P}_bought`, renewsOn: `${P}_renews`,
-  noticedFor: `${P}_noticed`, note: `${P}_note`,
+  project: `${P}_project`, attached: `${P}_attached`, orderId: `${P}_order`, session: `${P}_session`,
+  boughtAt: `${P}_bought`, renewsOn: `${P}_renews`, noticedFor: `${P}_noticed`, noticedUsd: `${P}_noticed_usd`,
+  note: `${P}_note`,
 };
+const TEXT_FIELDS = ["name", "project", "attached", "orderId", "session", "boughtAt", "renewsOn", "noticedFor", "note"] as const;
 
 export function readOrderRecord(meta: Record<string, string> | null | undefined): DomainOrderRecord | null {
   const m = meta ?? {};
   const domain = normalizeDomain(m[KEYS.domain]);
   if (!domain) return null;
-  const status = m[KEYS.status] === "bought" || m[KEYS.status] === "stopped" ? m[KEYS.status] : "failed";
-  const opt = (k: keyof DomainOrderRecord) => (m[KEYS[k]] ? { [k]: m[KEYS[k]] } : {});
-  return {
+  // Anything unrecognised reads as failed: never charged, never bought again.
+  const status = STATUSES.includes(m[KEYS.status] as OrderStatus) ? (m[KEYS.status] as OrderStatus) : "failed";
+  const rec: DomainOrderRecord = {
     domain,
-    status: status as DomainOrderRecord["status"],
+    status,
     retailUsd: Number(m[KEYS.retailUsd]) || 0,
     lang: m[KEYS.lang] === "fr" ? "fr" : "en",
-    ...opt("name"), ...opt("project"), ...opt("orderId"), ...opt("boughtAt"),
-    ...opt("renewsOn"), ...opt("noticedFor"), ...opt("note"),
-  } as DomainOrderRecord;
+  };
+  for (const k of TEXT_FIELDS) if (m[KEYS[k]]) rec[k] = m[KEYS[k]];
+  const noticed = Number(m[KEYS.noticedUsd]);
+  if (m[KEYS.noticedUsd] && Number.isFinite(noticed) && noticed > 0) rec.noticedUsd = noticed;
+  return rec;
 }
 
 /**
@@ -98,6 +125,9 @@ export function daysBefore(iso: string, days: number): string {
   return new Date(Date.parse(`${iso.slice(0, 10)}T00:00:00Z`) - days * 86400000).toISOString().slice(0, 10);
 }
 
+/** The day a renewal is charged: CHARGE_DAYS before the renewal date. */
+export const chargeDateFor = (renewsOn: string) => daysBefore(renewsOn, CHARGE_DAYS);
+
 /* ── 1. The link ──────────────────────────────────────────────────────────── */
 
 export type LinkResult =
@@ -114,7 +144,11 @@ export async function createDomainOrderLink(stripe: Stripe, o: {
 }): Promise<LinkResult> {
   const domain = normalizeDomain(o.domain);
   if (!domain) return { ok: false, error: "Not a valid domain name." };
-  if (!/.+@.+\..+/.test(o.email)) return { ok: false, error: "Not a valid email." };
+  const email = o.email.trim().toLowerCase();
+  if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { ok: false, error: "Not a valid email." };
+  const project = (o.project ?? "").trim();
+  // Vercel project names: lowercase letters, digits, - _ . (up to 100).
+  if (project && !/^[a-z0-9][a-z0-9._-]{0,99}$/.test(project)) return { ok: false, error: "Not a valid Vercel project name (lowercase letters, digits, - _ .)." };
   if (!canBuyDomains()) return { ok: false, error: "Domain purchases are not configured (VERCEL_TOKEN, VERCEL_TEAM_ID, DOMAIN_CONTACT_JSON)." };
 
   const q = await domainQuote(domain);
@@ -128,7 +162,6 @@ export async function createDomainOrderLink(stripe: Stripe, o: {
 
   const fr = o.lang === "fr";
   const name = (o.name ?? "").trim().slice(0, 120);
-  const project = (o.project ?? "").trim().slice(0, 100);
   // A Checkout Session lives 24 hours at most; say so rather than let an
   // expired link be the client's first impression.
   const expires = Math.floor(Date.now() / 1000) + 23 * 3600;
@@ -139,7 +172,7 @@ export async function createDomainOrderLink(stripe: Stripe, o: {
   const session = await stripe.checkout.sessions.create({
     mode: "payment",
     locale: o.lang,
-    customer_email: o.email,
+    customer_email: email,
     customer_creation: "always",
     payment_method_types: ["card"],
     expires_at: expires,
@@ -151,8 +184,8 @@ export async function createDomainOrderLink(stripe: Stripe, o: {
         product_data: {
           name: fr ? `Domaine ${domain} — 12 mois` : `Domain ${domain} — 12 months`,
           description: fr
-            ? "Enregistré par Servolia pour vous, avec protection WHOIS. Renouvelé chaque année sur cette carte, prix annoncé 30 jours avant s'il change. Il vous appartient."
-            : "Registered by Servolia for you, with WHOIS privacy. Renewed yearly on this card, with 30 days' notice of any price change. Yours to keep.",
+            ? "Enregistré par Servolia pour vous, avec protection WHOIS. Renouvelé chaque année sur cette carte, prix annoncé 30 jours avant s'il augmente. Il vous appartient."
+            : "Registered by Servolia for you, with WHOIS privacy. Renewed yearly on this card, with 30 days' notice of any price rise. Yours to keep.",
         },
       },
     }],
@@ -163,7 +196,7 @@ export async function createDomainOrderLink(stripe: Stripe, o: {
     },
     metadata: meta,
     success_url: `${o.origin}/hosting/thanks?product=domain&lang=${o.lang}`,
-    cancel_url: `${o.origin}/`,
+    cancel_url: `${o.origin}${fr ? "/fr" : "/"}`,
   });
   if (!session.url) return { ok: false, error: "Stripe returned no link." };
   return { ok: true, url: session.url, yearlyUsd: q.yearlyUsd, expiresAt: new Date(expires * 1000).toISOString() };
@@ -171,12 +204,48 @@ export async function createDomainOrderLink(stripe: Stripe, o: {
 
 /* ── 2. Paid: buy it, put it on the project ──────────────────────────────── */
 
+/**
+ * What the client actually paid, in US cents, or null when the session does
+ * not say. With Adaptive Pricing the session's own currency is the CLIENT'S
+ * (EUR, MAD...) and the USD figure is under currency_conversion.
+ */
+export function paidUsdCents(session: Stripe.Checkout.Session): number | null {
+  if (session.currency === "usd" && typeof session.amount_total === "number") return session.amount_total;
+  const cc = (session as { currency_conversion?: { source_currency?: string; amount_total?: number } | null }).currency_conversion;
+  if (cc?.source_currency === "usd" && typeof cc.amount_total === "number") return cc.amount_total;
+  return null;
+}
+
+export type OrderState = "completed" | "failed" | "purchasing";
+
+/** One Vercel order, read down to this domain's own line. */
+export async function orderState(orderId: string, domain: string): Promise<{ state: OrderState; detail?: string }> {
+  const res = await domainOrder(orderId);
+  if (!res.ok) return { state: "purchasing", detail: `order unreadable: ${res.code ?? res.status}` };
+  const line = (res.data.domains ?? []).find((d) => d.domainName === domain);
+  const lineStatus = line?.status;
+  if (lineStatus === "completed" || (!line && res.data.status === "completed")) return { state: "completed" };
+  if (lineStatus === "failed" || lineStatus === "refunded" || lineStatus === "refund-failed" || res.data.status === "failed") {
+    const err = (line?.error ?? res.data.error) as { code?: string } | undefined;
+    return { state: "failed", detail: `Vercel order ${res.data.status}${lineStatus ? `/${lineStatus}` : ""}${err?.code ? `: ${err.code}` : ""}` };
+  }
+  return { state: "purchasing" };
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 export interface FulfilResult {
   domain: string;
   customerEmail: string | null;
   record: DomainOrderRecord;
-  /** True when this delivery found the order already done (Stripe retries). */
-  duplicate: boolean;
+  /**
+   * "done": this delivery did the work. "duplicate": an earlier delivery
+   * finished it, nothing to say. "interrupted": an earlier delivery claimed
+   * the purchase and never recorded how it ended; nothing was bought now,
+   * and the owner must look at Vercel. "conflict": the customer already
+   * carries a different domain; nothing was bought.
+   */
+  outcome: "done" | "duplicate" | "interrupted" | "conflict";
   attach: "done" | "failed" | "none";
   attachDetail?: string;
   cardSaved: boolean;
@@ -185,31 +254,67 @@ export interface FulfilResult {
 /**
  * Idempotent on the customer: Stripe delivers the same event more than once,
  * and a second delivery must find the record and stop, never try to buy the
- * name a second time. `test` never reaches the registrar.
+ * name a second time. The claim is written BEFORE the registrar is called.
+ * `test` never reaches the registrar (and registrar() refuses on its own in
+ * a test context too).
+ *
+ * `pollMs` is how long to wait between reads of an order Vercel is still
+ * registering; short, because Stripe is waiting on this response. Whatever is
+ * still purchasing afterwards is settled by settlePurchasingOrders.
  */
-export async function fulfilDomainOrder(stripe: Stripe, session: Stripe.Checkout.Session, test: boolean): Promise<FulfilResult | null> {
+export async function fulfilDomainOrder(
+  stripe: Stripe, session: Stripe.Checkout.Session, test: boolean,
+  opts: { pollMs?: number[] } = {},
+): Promise<FulfilResult | null> {
   const domain = normalizeDomain(session.metadata?.domain);
   const customerId = typeof session.customer === "string" ? session.customer : session.customer?.id;
   if (!domain || !customerId) return null;
   const retail = Number(session.metadata?.domain_retail_usd) || 0;
   const lang = session.metadata?.lang === "fr" ? "fr" : "en";
   const customerEmail = session.customer_details?.email ?? session.customer_email ?? null;
+  const project = session.metadata?.project || undefined;
+  const name = session.metadata?.name || undefined;
+  const none = { attach: "none" as const, cardSaved: false };
 
   const customer = await stripe.customers.retrieve(customerId);
   const prior = "deleted" in customer && customer.deleted ? null : readOrderRecord((customer as Stripe.Customer).metadata);
-  if (prior && prior.domain === domain) {
-    return { domain, customerEmail, record: prior, duplicate: true, attach: "none", cardSaved: false };
+  if (prior && prior.domain !== domain) {
+    return { domain, customerEmail, record: prior, outcome: "conflict", ...none };
+  }
+  if (prior) {
+    return { domain, customerEmail, record: prior, outcome: prior.status === "claimed" ? "interrupted" : "duplicate", ...none };
   }
 
   const today = new Date().toISOString().slice(0, 10);
+  const base: DomainOrderRecord = { domain, status: "claimed", retailUsd: retail, lang, name, project, session: session.id };
+  await stripe.customers.update(customerId, { metadata: orderRecordMetadata(base) });
+
+  /* The price the webhook buys against is the one in the link; the money
+     that arrived must cover it. A mismatch means the session was changed
+     after it was made (a coupon, a hand edit): nothing is bought. */
+  const paid = paidUsdCents(session);
   const outcome = test
     ? { ok: false as const, reason: "error" as const, detail: "TEST: domain not bought" }
-    : await purchaseDomainForClient(domain, retail);
+    : paid !== null && paid < Math.round(retail * 100)
+      ? { ok: false as const, reason: "error" as const, detail: `paid ${(paid / 100).toFixed(2)} USD, price ${retail.toFixed(2)} USD` }
+      : await purchaseDomainForClient(domain, retail);
 
-  const project = session.metadata?.project || undefined;
+  let state: OrderState = "failed";
+  let stateDetail: string | undefined;
+  if (outcome.ok) {
+    state = "purchasing";
+    for (const ms of opts.pollMs ?? [1000, 1500, 1500]) {
+      await sleep(ms);
+      const s = await orderState(outcome.orderId, domain);
+      state = s.state;
+      stateDetail = s.detail;
+      if (state !== "purchasing") break;
+    }
+  }
+
   let attach: FulfilResult["attach"] = "none";
   let attachDetail: string | undefined;
-  if (outcome.ok && project) {
+  if (state === "completed" && project) {
     const res = await attachDomainToProject(project, domain);
     attach = res.ok ? "done" : "failed";
     if (!res.ok) attachDetail = `${res.code ?? res.status}${res.message ? `: ${res.message}` : ""}`;
@@ -217,7 +322,7 @@ export async function fulfilDomainOrder(stripe: Stripe, session: Stripe.Checkout
 
   /* The card that just paid becomes the one next year's renewal is charged
      to. Without a default payment method an off-session invoice has nothing
-     to charge and the renewal fails silently a year from now. */
+     to charge and the renewal fails a year from now. */
   let paymentMethod: string | null = null;
   try {
     const piId = typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id;
@@ -227,30 +332,137 @@ export async function fulfilDomainOrder(stripe: Stripe, session: Stripe.Checkout
     }
   } catch { /* recorded below as cardSaved: false */ }
 
+  const placed = outcome.ok && state !== "failed";
   const record: DomainOrderRecord = {
-    domain,
-    status: outcome.ok ? "bought" : "failed",
-    retailUsd: retail,
-    lang,
-    name: session.metadata?.name || undefined,
-    project,
+    ...base,
+    status: state === "completed" ? "bought" : placed ? "purchasing" : "failed",
+    attached: attach === "done" ? project : undefined,
     orderId: outcome.ok ? outcome.orderId : undefined,
-    boughtAt: outcome.ok ? today : undefined,
-    renewsOn: outcome.ok ? nextYear(today) : undefined,
-    note: outcome.ok ? undefined : `${outcome.reason}${outcome.detail ? ` (${outcome.detail})` : ""}`,
+    boughtAt: placed ? today : undefined,
+    renewsOn: placed ? nextYear(today) : undefined,
+    note: !outcome.ok
+      ? `${outcome.reason}${outcome.detail ? ` (${outcome.detail})` : ""}`
+      : state === "failed" ? stateDetail : undefined,
   };
   await stripe.customers.update(customerId, {
     metadata: orderRecordMetadata(record),
     ...(paymentMethod ? { invoice_settings: { default_payment_method: paymentMethod } } : {}),
   });
-  return { domain, customerEmail, record, duplicate: false, attach, attachDetail, cardSaved: Boolean(paymentMethod) };
+  return { domain, customerEmail, record, outcome: "done", attach, attachDetail, cardSaved: Boolean(paymentMethod) };
+}
+
+/** What the client's email should say about this order, if anything. */
+export type OrderEmailState = "registered" | "processing" | "failed";
+
+/**
+ * The owner's Telegram line and the client's email state for one webhook
+ * delivery. Pure, so every branch is tested without Stripe or Telegram.
+ */
+export function describeDomainOrder(res: FulfilResult): { telegram: string | null; email: OrderEmailState | null } {
+  const rec = res.record;
+  const who = rec.name || res.customerEmail || "?";
+  const paid = `$${rec.retailUsd.toFixed(2)}`;
+  if (res.outcome === "duplicate") return { telegram: null, email: null };
+  if (res.outcome === "conflict") {
+    return { telegram: `⚠️ Domain order for ${res.domain} paid, but the Stripe customer already holds ${rec.domain}. Nothing bought. Check it in Stripe.`, email: null };
+  }
+  if (res.outcome === "interrupted") {
+    return {
+      telegram: `⚠️ Domain order ${rec.domain} (${who}) delivered again while its purchase was claimed and never recorded. NOTHING was bought this time. ` +
+        `Check Vercel > Domains for ${rec.domain}: if it is there, set servolia_domain_status to 'bought' in Stripe; if not, buy it (vercel domains buy ${rec.domain}) or refund. The client has NOT been emailed.`,
+      email: null,
+    };
+  }
+  const card = res.cardSaved ? "" : "\nCard NOT saved as default - next year's renewal will fail; set it in Stripe.";
+  if (rec.status === "bought") {
+    const where = res.attach === "done" ? `Attached to Vercel project ${rec.project}.`
+      : res.attach === "failed" ? `NOT attached to ${rec.project} (${res.attachDetail}) - add it in Vercel > ${rec.project} > Domains.`
+      : "No Vercel project named - attach it by hand.";
+    return { telegram: `🌐 ${who} paid ${paid} and ${rec.domain} is REGISTERED (order ${rec.orderId}). Renews ${rec.renewsOn}.\n${where}${card}`, email: "registered" };
+  }
+  if (rec.status === "purchasing") {
+    return {
+      telegram: `🌐 ${who} paid ${paid} for ${rec.domain}. Vercel accepted the order (${rec.orderId}) and is still registering it; ` +
+        `the domain check (every 15 min) confirms it${rec.project ? `, attaches it to ${rec.project}` : ""} and emails the client.${card}`,
+      email: "processing",
+    };
+  }
+  return {
+    telegram: `⚠️ ${who} PAID ${paid} for ${rec.domain} and it was NOT registered (${rec.note}). Buy it by hand (vercel domains buy ${rec.domain}) or refund them. They were told.`,
+    email: "failed",
+  };
+}
+
+/* ── 2b. Vercel finished (or not): settle what is still purchasing ───────── */
+
+export interface SettleReport {
+  domain: string;
+  customer: string;
+  email: string | null;
+  record: DomainOrderRecord;
+  step: "registered" | "failed" | "stuck";
+  attach: "done" | "failed" | "none";
+  attachDetail?: string;
+  detail?: string;
+}
+
+/**
+ * Every order Vercel was still registering when the webhook answered. Run by
+ * the domain-live cron every 15 minutes: a completed order is attached to its
+ * project and reported (the caller emails the client), a failed one is marked
+ * failed and reported, and one still purchasing after STUCK_AFTER_HOURS is
+ * reported once.
+ */
+export async function settlePurchasingOrders(stripe: Stripe, now = new Date()): Promise<SettleReport[]> {
+  const out: SettleReport[] = [];
+  let page: string | undefined;
+  do {
+    const res = await stripe.customers.search({
+      query: `metadata['${KEYS.status}']:'purchasing'`,
+      limit: 100,
+      ...(page ? { page } : {}),
+    });
+    for (const c of res.data) {
+      const rec = readOrderRecord(c.metadata);
+      if (!rec || rec.status !== "purchasing" || !rec.orderId) continue;
+      const s = await orderState(rec.orderId, rec.domain);
+      const base = { domain: rec.domain, customer: c.id, email: c.email ?? null, attach: "none" as const };
+      if (s.state === "purchasing") {
+        const since = Date.parse(`${rec.boughtAt ?? now.toISOString().slice(0, 10)}T00:00:00Z`);
+        if (rec.note !== "stuck-reported" && now.getTime() - since > STUCK_AFTER_HOURS * 3600000) {
+          const next = { ...rec, note: "stuck-reported" };
+          await stripe.customers.update(c.id, { metadata: orderRecordMetadata(next) });
+          out.push({ ...base, record: next, step: "stuck", detail: s.detail });
+        }
+        continue;
+      }
+      if (s.state === "failed") {
+        const next: DomainOrderRecord = { ...rec, status: "failed", renewsOn: undefined, note: s.detail };
+        await stripe.customers.update(c.id, { metadata: orderRecordMetadata(next) });
+        out.push({ ...base, record: next, step: "failed", detail: s.detail });
+        continue;
+      }
+      let attach: SettleReport["attach"] = "none";
+      let attachDetail: string | undefined;
+      if (rec.project) {
+        const a = await attachDomainToProject(rec.project, rec.domain);
+        attach = a.ok ? "done" : "failed";
+        if (!a.ok) attachDetail = `${a.code ?? a.status}${a.message ? `: ${a.message}` : ""}`;
+      }
+      const next: DomainOrderRecord = { ...rec, status: "bought", attached: attach === "done" ? rec.project : undefined, note: undefined };
+      await stripe.customers.update(c.id, { metadata: orderRecordMetadata(next) });
+      out.push({ ...base, record: next, step: "registered", attach, attachDetail });
+    }
+    page = res.has_more && res.next_page ? res.next_page : undefined;
+  } while (page);
+  return out;
 }
 
 /* ── 3. A year later: notice, then charge ────────────────────────────────── */
 
 export type RenewalStep =
   | { kind: "notice"; price: number }
-  | { kind: "charge"; price: number }
+  | { kind: "charge"; price: number; wanted: number }
   | { kind: "wait" };
 
 /**
@@ -258,13 +470,23 @@ export type RenewalStep =
  * without Stripe: a rise is announced once from NOTICE_DAYS out; the charge
  * happens from CHARGE_DAYS out. A record that is not bought, or was stopped
  * at the client's request, is never charged.
+ *
+ * THE CHARGE NEVER EXCEEDS WHAT THE CLIENT WAS TOLD. The terms promise a
+ * price rise is emailed at least 30 days before; so the charge is capped at
+ * the noticed price, or at last year's when no notice went out (a rise that
+ * appeared inside the window, or a cron that did not run). `wanted` is the
+ * uncapped figure, so the owner can see a margin that was held back.
  */
 export function renewalStep(rec: DomainOrderRecord, todayIso: string, vercelRenewalUsd: number | null): RenewalStep {
   if (rec.status !== "bought" || !rec.renewsOn) return { kind: "wait" };
-  const price = renewalRetailUsd(rec.retailUsd, vercelRenewalUsd);
-  if (todayIso >= daysBefore(rec.renewsOn, CHARGE_DAYS)) return { kind: "charge", price };
-  const rises = price > rec.retailUsd + 0.004;
-  if (rises && rec.noticedFor !== rec.renewsOn && todayIso >= daysBefore(rec.renewsOn, NOTICE_DAYS)) return { kind: "notice", price };
+  const wanted = renewalRetailUsd(rec.retailUsd, vercelRenewalUsd);
+  if (todayIso >= chargeDateFor(rec.renewsOn)) {
+    const noticed = rec.noticedFor === rec.renewsOn && rec.noticedUsd ? rec.noticedUsd : 0;
+    const cap = Math.max(rec.retailUsd, noticed) || wanted;
+    return { kind: "charge", price: Math.min(wanted, cap), wanted };
+  }
+  const rises = wanted > rec.retailUsd + 0.004;
+  if (rises && rec.noticedFor !== rec.renewsOn && todayIso >= daysBefore(rec.renewsOn, NOTICE_DAYS)) return { kind: "notice", price: wanted };
   return { kind: "wait" };
 }
 
@@ -277,16 +499,19 @@ export interface RenewalReport {
   priceUsd: number;
   previousUsd: number;
   renewsOn: string;
+  /** The day the renewal is charged (for the notice email). */
+  chargeOn: string;
   nextRenewsOn?: string;
+  /** Set when the charge was held under Vercel's new price for want of notice. */
+  heldBackUsd?: number;
   detail?: string;
 }
 
 /**
  * Every domain order due today. The invoice is a one-line invoice charged at
  * once on the saved card — not an invoice item left pending, because this
- * customer has no subscription to carry one. Idempotency keys are the
- * customer plus the renewal date, so a cron that runs twice cannot charge a
- * year twice; the record's date only moves after a successful payment.
+ * customer has no subscription to carry one. The record's date only moves
+ * after a successful payment.
  */
 export async function runDomainOrderRenewals(stripe: Stripe, todayIso: string): Promise<RenewalReport[]> {
   const out: RenewalReport[] = [];
@@ -303,10 +528,13 @@ export async function runDomainOrderRenewals(stripe: Stripe, todayIso: string): 
       const vercel = await currentRenewalUsd(rec.domain);
       const step = renewalStep(rec, todayIso, vercel);
       if (step.kind === "wait") continue;
-      const base = { domain: rec.domain, customer: c.id, email: c.email ?? null, lang: rec.lang, priceUsd: step.price, previousUsd: rec.retailUsd, renewsOn: rec.renewsOn };
+      const base = {
+        domain: rec.domain, customer: c.id, email: c.email ?? null, lang: rec.lang, priceUsd: step.price,
+        previousUsd: rec.retailUsd, renewsOn: rec.renewsOn, chargeOn: chargeDateFor(rec.renewsOn),
+      };
 
       if (step.kind === "notice") {
-        await stripe.customers.update(c.id, { metadata: orderRecordMetadata({ ...rec, noticedFor: rec.renewsOn }) });
+        await stripe.customers.update(c.id, { metadata: orderRecordMetadata({ ...rec, noticedFor: rec.renewsOn, noticedUsd: step.price }) });
         out.push({ ...base, step: "noticed" });
         continue;
       }
@@ -321,16 +549,19 @@ export async function runDomainOrderRenewals(stripe: Stripe, todayIso: string): 
         const existing = (await stripe.invoices.list({ customer: c.id, limit: 20 })).data.find(
           (i) => i.metadata?.kind === "domain_order_renewal" && i.metadata?.renews_on === rec.renewsOn && i.status !== "void",
         );
-        let inv = existing;
-        if (!inv) {
-          inv = await stripe.invoices.create({
-            customer: c.id,
-            collection_method: "charge_automatically",
-            auto_advance: true,
-            pending_invoice_items_behavior: "exclude",
-            description: `Domain ${rec.domain} — renewal, 12 months from ${rec.renewsOn}`,
-            metadata: { kind: "domain_order_renewal", domain: rec.domain, renews_on: rec.renewsOn },
-          }, { idempotencyKey: `${key}-invoice` });
+        let inv = existing ?? await stripe.invoices.create({
+          customer: c.id,
+          collection_method: "charge_automatically",
+          auto_advance: true,
+          pending_invoice_items_behavior: "exclude",
+          description: `Domain ${rec.domain} — renewal, 12 months from ${rec.renewsOn}`,
+          metadata: { kind: "domain_order_renewal", domain: rec.domain, renews_on: rec.renewsOn },
+        }, { idempotencyKey: `${key}-invoice` });
+        /* A draft with nothing on it is a run that died between creating the
+           invoice and adding its line. Found again by the lookup above, it
+           must get its line now: finalised empty, it would read as "paid"
+           for 0 and move the year on for free. */
+        if (inv.status === "draft" && !((inv.total ?? 0) > 0)) {
           await stripe.invoiceItems.create({
             customer: c.id,
             invoice: inv.id,
@@ -342,15 +573,18 @@ export async function runDomainOrderRenewals(stripe: Stripe, todayIso: string): 
         if (inv.status === "draft") inv = await stripe.invoices.finalizeInvoice(inv.id!);
         if (inv.status === "open") inv = await stripe.invoices.pay(inv.id!);
         if (inv.status !== "paid") throw new Error(`invoice ${inv.id} is ${inv.status}`);
+        if (!((inv.amount_paid ?? 0) > 0)) throw new Error(`invoice ${inv.id} was paid for 0 — check it in Stripe`);
         // The price actually charged, for the record and the email: an invoice
         // made on an earlier run carries that run's figure.
-        step.price = (inv.amount_paid ?? Math.round(step.price * 100)) / 100;
-        base.priceUsd = step.price;
+        const charged = (inv.amount_paid ?? 0) / 100;
         const next = nextYear(rec.renewsOn);
         await stripe.customers.update(c.id, {
-          metadata: orderRecordMetadata({ ...rec, retailUsd: step.price, renewsOn: next, noticedFor: undefined }),
+          metadata: orderRecordMetadata({ ...rec, retailUsd: charged, renewsOn: next, noticedFor: undefined, noticedUsd: undefined }),
         });
-        out.push({ ...base, step: "charged", nextRenewsOn: next });
+        out.push({
+          ...base, priceUsd: charged, step: "charged", nextRenewsOn: next,
+          ...(step.wanted > charged + 0.004 ? { heldBackUsd: step.wanted } : {}),
+        });
       } catch (e) {
         out.push({ ...base, step: "charge-failed", detail: e instanceof Error ? e.message : String(e) });
       }

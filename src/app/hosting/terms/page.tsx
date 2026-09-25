@@ -163,8 +163,10 @@ export default function HostingTerms() {
                 is never lower at renewal than what you paid the year before. When the registry
                 raises its price, the renewal goes up with it, and we email you the new price
                 before it is charged. A domain bought on its own, without a plan, renews each year
-                on the card it was paid with, and a price rise is emailed at least 30 days before.
-                To stop a renewal, reply to any email from us before its date.
+                on the card it was paid with, seven days before its renewal date, and a price rise is
+                emailed at least 30 days before; the renewal is never charged above the price that
+                email announced. To stop a renewal, reply to any email from us before the charge
+                date it names.
               </p>
               <p className="text-[14px] bg-white border border-[#E8E6E0] rounded-xl p-4">
                 <strong className="text-[#18181B]">One timing rule we do not control:</strong> ICANN forbids

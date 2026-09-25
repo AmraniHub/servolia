@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { isAdminAuthed } from "@/lib/auth";
 import { stripeFor, isLiveKey } from "@/lib/stripeMode";
 import { createDomainOrderLink } from "@/lib/domainOrders";
+import { sameOriginRequest } from "@/lib/sameOrigin";
 
 export const runtime = "nodejs";
 
@@ -12,9 +13,15 @@ export const runtime = "nodejs";
  * ALWAYS LIVE, deliberately ignoring founder test mode, like every admin
  * link: it is sent to a real client, who could never pay a test one. The
  * mode is returned so the form can say so if the live key is a test key.
+ *
+ * Admin session AND same-origin: the link it makes is a live charge.
  */
 export async function POST(req: NextRequest) {
+  if (!sameOriginRequest(req.headers)) return NextResponse.json({ error: "Cross-origin request refused" }, { status: 403 });
   if (!(await isAdminAuthed())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!(req.headers.get("content-type") ?? "").toLowerCase().includes("application/json")) {
+    return NextResponse.json({ error: "Expected JSON" }, { status: 415 });
+  }
   const stripe = stripeFor(true);
   if (!stripe) return NextResponse.json({ error: "STRIPE_SECRET_KEY is not set" }, { status: 503 });
 

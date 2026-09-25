@@ -175,7 +175,7 @@ export async function sendEmail(to: string, subject: string, html: string, text?
  * It also keeps link targets. A text alternative whose call to action is a
  * bare word with no URL gives the reader nothing to act on.
  */
-function stripHtml(html: string): string {
+export function stripHtml(html: string): string {
   return (
     html
       // Machinery, content and all.
@@ -184,7 +184,10 @@ function stripHtml(html: string): string {
       .replace(/<div[^>]*display:none[\s\S]*?<\/div>/gi, "")
       // Keep where a link goes, not just its label.
       .replace(/<a\b[^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/gi, (_m, href, label) => {
-        const text = label.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
+        // A trailing arrow is decoration on a button; in text it would read
+        // "Open my page &rarr;: https://..." -- the entity is never decoded
+        // inside a link label, and "→:" is no better. Dropped.
+        const text = label.replace(/<[^>]*>/g, "").replace(/\s*(&rarr;|→)\s*$/i, "").replace(/\s+/g, " ").trim();
         // An image-only link (the logo) carries no words, so in text it would
         // print as a bare URL that says nothing. Drop it.
         if (!text) return "";
@@ -202,6 +205,7 @@ function stripHtml(html: string): string {
       // Entities the templates actually use.
       .replace(/&nbsp;/gi, " ")
       .replace(/&middot;/gi, "\u00b7")
+      .replace(/&rarr;/gi, "\u2192")
       .replace(/&zwnj;|&#847;/gi, "")
       .replace(/&amp;/gi, "&")
       .replace(/&lt;/gi, "<")
@@ -1107,17 +1111,22 @@ export const clientServicePaidEmail = (input: {
     ? (activated ? "Votre site est en ligne" : restored ? `Votre ${productNoun} est de nouveau actif` : "Paiement reçu")
     : (activated ? "Your site is live" : restored ? `Your ${productNoun} is back on` : "Payment received");
 
+  /* "Nothing else to do" only when it is true. A "Next step" box (setup
+     form) or a "Last step" box (an assistant not installed yet) further down
+     means there IS something to do, and the opening line must not deny it. */
+  const stepFollows = Boolean(setupUrl) || Boolean(assistant && !assistant.installed);
+  const nothingElse = stepFollows ? "" : fr ? " Rien d'autre à faire." : " Nothing else to do.";
   const opening = fr
     ? (activated
-        ? `Merci — votre paiement a été validé et votre site${forSite} est maintenant en ligne. Rien d'autre à faire.`
+        ? `Merci — votre paiement a été validé et votre site${forSite} est maintenant en ligne.${nothingElse}`
         : restored
-        ? `Merci — votre paiement a été validé et votre ${productNoun} a été réactivé${forSite}. Il fonctionne de nouveau ; vous n'avez rien à faire.`
-        : `Merci — votre paiement a été validé et votre ${productNoun}${forSite} est actif. Rien d'autre à faire.`)
+        ? `Merci — votre paiement a été validé et votre ${productNoun} a été réactivé${forSite}. Il fonctionne de nouveau${stepFollows ? "." : " ; vous n'avez rien à faire."}`
+        : `Merci — votre paiement a été validé et votre ${productNoun}${forSite} est actif.${nothingElse}`)
     : (activated
-        ? `Thank you — your payment cleared and your site${forSite} is now live. Nothing else to do.`
+        ? `Thank you — your payment cleared and your site${forSite} is now live.${nothingElse}`
         : restored
-        ? `Thank you — your payment cleared and your ${productNoun} has been switched back on${forSite}. It is live again now; you do not need to do anything.`
-        : `Thank you — your payment cleared and your ${productNoun}${forSite} is active. Nothing else to do.`);
+        ? `Thank you — your payment cleared and your ${productNoun} has been switched back on${forSite}. It is live again now${stepFollows ? "." : "; you do not need to do anything."}`
+        : `Thank you — your payment cleared and your ${productNoun}${forSite} is active.${nothingElse}`);
 
   const L = fr
     ? {
@@ -2183,44 +2192,67 @@ export const receptionistPaidEmail = (o: {
 
 /* ── Domains sold on their own (src/lib/domainOrders.ts) ─────────────────── */
 
+// UTC: "2027-09-24" is midnight UTC, and a server west of Greenwich would
+// otherwise print the 23rd.
 const domDate = (iso: string, fr: boolean) =>
-  new Date(iso).toLocaleDateString(fr ? "fr-FR" : "en-GB", { day: "numeric", month: "long", year: "numeric" });
+  new Date(`${iso.slice(0, 10)}T00:00:00Z`).toLocaleDateString(fr ? "fr-FR" : "en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
 const domMoney = (n: number, fr: boolean) => (fr ? `${n.toFixed(2).replace(".", ",")}&nbsp;$` : `$${n.toFixed(2)}`);
 
 /**
  * The client paid for a domain on its own. Says what they own, that it renews
  * on the card they just used and when, and that a price rise is announced
  * before it is charged — the promise the renewal cron keeps (30 days).
+ *
+ * Three states, because Vercel registers asynchronously:
+ *  - "registered": done, attached where it was meant to be;
+ *  - "processing": the registry is finishing it; a second email
+ *    ("registered" again, from the domain-live cron) confirms it;
+ *  - "failed":     not registered; finished by hand or refunded in full.
+ * `chargeOnIso` is the day next year's renewal is charged (7 days before
+ * the renewal date), so "reply before" names a date that still stops it.
  */
 export const domainOrderEmail = (o: {
-  domain: string; amountUsd: number; registered: boolean; renewsOnIso: string; name?: string | null; lang: "en" | "fr";
+  domain: string; amountUsd: number; state: "registered" | "processing" | "failed";
+  renewsOnIso: string; chargeOnIso: string; name?: string | null; lang: "en" | "fr";
 }) => {
   const fr = o.lang === "fr";
   const d = `<strong>${escapeHtml(o.domain)}</strong>`;
   const hello = o.name?.trim() ? `${fr ? "Bonjour" : "Hello"} ${escapeHtml(o.name.trim())},` : fr ? "Bonjour," : "Hello,";
   const paid = domMoney(o.amountUsd, fr);
   const when = domDate(o.renewsOnIso, fr);
-  const body = o.registered
-    ? recP(fr
-        ? `Nous avons bien reçu ${paid} et ${d} est enregistré pour vous, pour 12 mois. Servolia l'enregistre en votre nom, avec les coordonnées du titulaire masquées (protection WHOIS). Il vous appartient ; nous vous le transférons sur simple demande.`
-        : `We received ${paid} and ${d} is registered for you, for 12 months. Servolia registers it on your behalf, with the owner's details kept private (WHOIS privacy). It is yours; we transfer it to you on request.`)
-    : recP(fr
-        ? `Nous avons bien reçu ${paid} pour ${d}. L'enregistrement ne s'est pas fait automatiquement : nous le terminons à la main aujourd'hui et vous écrivons dès que c'est fait. S'il ne peut pas être enregistré, vous êtes remboursé en totalité.`
-        : `We received ${paid} for ${d}. The registration did not go through automatically: we are completing it by hand today and will email you as soon as it is done. If it cannot be registered, you are refunded in full.`);
+  const charge = domDate(o.chargeOnIso, fr);
+  const registered = o.state === "registered";
+  const body =
+    registered
+      ? recP(fr
+          ? `Nous avons bien reçu ${paid} et ${d} est enregistré pour vous, pour 12 mois. Servolia l'enregistre en votre nom, avec les coordonnées du titulaire masquées (protection WHOIS). Il vous appartient ; nous vous le transférons sur simple demande.`
+          : `We received ${paid} and ${d} is registered for you, for 12 months. Servolia registers it on your behalf, with the owner's details kept private (WHOIS privacy). It is yours; we transfer it to you on request.`)
+      : o.state === "processing"
+        ? recP(fr
+            ? `Nous avons bien reçu ${paid} pour ${d}. La commande est passée et le registre termine l'enregistrement : nous vous écrivons dès qu'il est confirmé, en général dans l'heure. Servolia l'enregistre en votre nom, avec protection WHOIS ; il vous appartient.`
+            : `We received ${paid} for ${d}. The order is placed and the registry is completing the registration: we email you as soon as it is confirmed, usually within the hour. Servolia registers it on your behalf, with WHOIS privacy; it is yours.`)
+        : recP(fr
+            ? `Nous avons bien reçu ${paid} pour ${d}. L'enregistrement ne s'est pas fait automatiquement : nous le terminons à la main et vous écrivons dès que c'est fait. S'il ne peut pas être enregistré, vous êtes remboursé en totalité.`
+            : `We received ${paid} for ${d}. The registration did not go through automatically: we are completing it by hand and will email you as soon as it is done. If it cannot be registered, you are refunded in full.`);
+  // Nothing renews on a name that is not registered yet: the renewal terms
+  // follow in the email that confirms it.
+  const renewal = o.state === "failed"
+    ? `<p style="margin:18px 0 0;font-size:13px;line-height:1.6;color:${MUTED};">${fr ? "Une question ? Répondez simplement à cet email." : "Questions? Just reply to this email."}</p>`
+    : `${recP(fr
+    ? `<strong>Renouvellement :</strong> le ${when}, pour 12 mois, sur la carte que vous venez d'utiliser ; il est prélevé le ${charge}. Le prix suit celui du registre : ${paid} aujourd'hui, et s'il augmente, nous vous écrivons le nouveau prix au moins 30 jours avant.`
+    : `<strong>Renewal:</strong> on ${when}, for 12 more months, on the card you just used; it is charged on ${charge}. The price follows the registry's: ${paid} today, and if it rises we email you the new price at least 30 days before.`)}
+      <p style="margin:18px 0 0;font-size:13px;line-height:1.6;color:${MUTED};">${fr
+        ? `Pour arrêter le renouvellement, répondez simplement à cet email avant le ${charge}. Pour toute question, répondez aussi : une personne lit chaque message.`
+        : `To stop the renewal, just reply to this email before ${charge}. For any question, reply too: a person reads every message.`}</p>`;
   return {
-    subject: o.registered
+    subject: registered
       ? (fr ? `${o.domain} est enregistré — paiement reçu` : `${o.domain} is registered — payment received`)
       : (fr ? `Paiement reçu — ${o.domain}` : `Payment received — ${o.domain}`),
     html: wrapper(`
-      <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">${o.registered ? (fr ? "Votre domaine est à vous" : "Your domain is yours") : (fr ? "Paiement reçu" : "Payment received")}</h1>
+      <h1 style="margin:0 0 16px;font-size:22px;font-weight:900;">${registered ? (fr ? "Votre domaine est à vous" : "Your domain is yours") : (fr ? "Paiement reçu" : "Payment received")}</h1>
       ${recP(hello)}
       ${body}
-      ${recP(fr
-        ? `<strong>Renouvellement :</strong> le ${when}, pour 12 mois, sur la carte que vous venez d'utiliser. Le prix suit celui du registre : ${paid} aujourd'hui, et s'il augmente, nous vous écrivons le nouveau prix au moins 30 jours avant.`
-        : `<strong>Renewal:</strong> on ${when}, for 12 more months, on the card you just used. The price follows the registry's: ${paid} today, and if it rises we email you the new price at least 30 days before.`)}
-      <p style="margin:18px 0 0;font-size:13px;line-height:1.6;color:${MUTED};">${fr
-        ? "Pour arrêter le renouvellement, ou pour toute question, répondez simplement à cet email avant cette date."
-        : "To stop the renewal, or for any question, just reply to this email before that date."}</p>
+      ${renewal}
       `, { preheader: fr ? `${o.domain} : ce que vous avez, et quand il se renouvelle.` : `${o.domain}: what you have, and when it renews.`, lang: o.lang }),
   };
 };
@@ -2231,10 +2263,12 @@ export const domainOrderEmail = (o: {
  *  - "charged": a domain sold on its own was renewed on the client's card;
  *  - "invoice": a plan client's domain renewal goes on their next invoice.
  * `previousUsd` is last year's price; the rise is only mentioned when there is one.
+ * `chargeOnIso` (notice only) is the day the card is charged, which is a week
+ * before the renewal date, and the last day a reply can still stop it.
  */
 export const domainRenewalEmail = (o: {
   domain: string; stage: "notice" | "charged" | "invoice"; priceUsd: number; previousUsd: number;
-  onIso: string; nextIso?: string; lang: "en" | "fr";
+  onIso: string; chargeOnIso?: string; nextIso?: string; lang: "en" | "fr";
 }) => {
   const fr = o.lang === "fr";
   const d = `<strong>${escapeHtml(o.domain)}</strong>`;
@@ -2246,11 +2280,12 @@ export const domainRenewalEmail = (o: {
         : ` (up from ${domMoney(o.previousUsd, fr)} last year: the registry raised its price)`)
     : "";
   const when = domDate(o.onIso, fr);
+  const charge = domDate(o.chargeOnIso ?? o.onIso, fr);
   const text =
     o.stage === "notice"
       ? (fr
-          ? `${d} se renouvelle le ${when}, pour 12 mois, au prix de ${price} par an${was}. Rien à faire de votre côté : il sera prélevé sur votre carte à cette date.`
-          : `${d} renews on ${when}, for 12 months, at ${price} a year${was}. Nothing to do on your side: it is charged to your card on that date.`)
+          ? `${d} se renouvelle le ${when}, pour 12 mois, au prix de ${price} par an${was}. Rien à faire de votre côté : il sera prélevé sur votre carte le ${charge}.`
+          : `${d} renews on ${when}, for 12 months, at ${price} a year${was}. Nothing to do on your side: it is charged to your card on ${charge}.`)
       : o.stage === "charged"
         ? (fr
             ? `Nous avons renouvelé ${d} pour 12 mois : ${price} prélevés sur votre carte${was}.${o.nextIso ? ` Prochain renouvellement : le ${domDate(o.nextIso, fr)}.` : ""}`
@@ -2269,7 +2304,9 @@ export const domainRenewalEmail = (o: {
       ${recP(text)}
       <p style="margin:18px 0 0;font-size:13px;line-height:1.6;color:${MUTED};">${o.stage === "charged"
         ? (fr ? "Une question ? Répondez simplement à cet email." : "Questions? Just reply to this email.")
-        : (fr ? "Pour ne pas le renouveler, répondez simplement à cet email avant cette date." : "To not renew it, just reply to this email before that date.")}</p>
+        : o.stage === "notice"
+          ? (fr ? `Pour ne pas le renouveler, répondez simplement à cet email avant le ${charge}.` : `To not renew it, just reply to this email before ${charge}.`)
+          : (fr ? "Pour ne pas le renouveler, répondez simplement à cet email avant votre prochaine facture : nous retirons la ligne." : "To not renew it, just reply to this email before your next invoice and we remove the line.")}</p>
       `, { preheader: fr ? `${o.domain} : renouvellement pour 12 mois.` : `${o.domain}: renewal for 12 months.`, lang: o.lang }),
   };
 };

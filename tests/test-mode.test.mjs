@@ -207,7 +207,13 @@ test("every file that creates a Checkout session is on a list; buyer routes go t
   // The inventory: a NEW checkout route must be added here, or this fails.
   const found = execFileSync("git", ["grep", "-l", "checkout.sessions.create", "--", "src"], { cwd: ROOT, encoding: "utf8" })
     .split("\n").filter(Boolean).map((f) => f.trim()).sort();
-  assert.deepEqual(found, [...CHECKOUT_FILES, ...ADMIN_LINK_FILES, "src/lib/domainCheckout.ts"].sort());
+  assert.deepEqual(found, [...CHECKOUT_FILES, ...ADMIN_LINK_FILES, "src/lib/domainCheckout.ts", "src/lib/domainOrders.ts"].sort());
+  /* A domain sold on its own: the session is made in src/lib/domainOrders.ts,
+     only ever from the admin route, with the LIVE key and no test cookie. */
+  assert.doesNotMatch(src("src/lib/domainOrders.ts"), /checkoutStripe|testMode"|isTestRequest|stripeFor\(/, "domainOrders.ts: takes the client it is given");
+  const domainRoute = src("src/app/api/admin/domain-order/route.ts");
+  assert.doesNotMatch(domainRoute, /checkoutStripe|testMode"|isTestRequest/, "domain-order: must ignore the test cookie");
+  assert.match(domainRoute, /const stripe = stripeFor\(true\);/, "domain-order: the live key, always");
   for (const f of CHECKOUT_FILES) {
     const s = src(f);
     assert.match(s, /const co = checkoutStripe\(req\);\n\s*if \(co\.refused\) return co\.refused;/, `${f}: refuses before anything else`);
