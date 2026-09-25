@@ -21,7 +21,7 @@ import {
   productCopy,
 } from "@/lib/hosting";
 import { setShopifyGate, applyGate } from "@/lib/hostingGate";
-import { normalizeDomain, purchaseDomainForClient, readDomainRecord, writeDomainRecord, setDomainAutoRenew } from "@/lib/domainSales";
+import { normalizeDomain, purchaseDomainForClient, readDomainRecord, writeDomainRecord, setDomainAutoRenew, domainRegistration } from "@/lib/domainSales";
 import { hasExtraDomain, writeExtraDomain } from "@/lib/extraDomains";
 import { DOMAIN_ORDER_KIND, fulfilDomainOrder, describeDomainOrder, nextYear, chargeDateFor } from "@/lib/domainOrders";
 import { domainOrderEmail } from "@/lib/email";
@@ -1878,6 +1878,8 @@ async function handleEventBody(event: Stripe.Event, stripe: Stripe, db: Db, send
           const customerId = typeof sub.customer === "string" ? sub.customer : sub.customer?.id ?? null;
           const out = await ownedDomainOnCancel(stripeFor(event.livemode) ?? stripe, customerId, ownedNote, today, test, setDomainAutoRenew, {
             paymentMethod: subscriptionPaymentMethod(sub), rowId: churnedHost.id,
+            // A started year is charged only if Vercel shows it renewed.
+            vercel: test ? undefined : await domainRegistration(ownedNote.domain),
           });
           ownedLine = ownedCancelLine(ownedNote.domain, out);
           ownedKept = out.keptUntil;

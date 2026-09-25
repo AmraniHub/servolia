@@ -229,6 +229,8 @@ export interface OwnedDomainNote {
   vercelGone?: string;
   /** "<renewsOn>:<n>": declined charges of a renewal billed on its own invoice (recorded first). */
   attempts?: string;
+  /** YYYY-MM-DD: the day the cron found the hosting cancelled or ending (reported once, nothing billed). */
+  subEnding?: string;
 }
 
 export function readOwnedDomainNote(notes: string | null | undefined): OwnedDomainNote | null {
@@ -253,6 +255,7 @@ export function readOwnedDomainNote(notes: string | null | undefined): OwnedDoma
     ...(kv["vercel-expiry"] ? { vercelMismatch: kv["vercel-expiry"] } : {}),
     ...(kv["vercel-gone"] ? { vercelGone: kv["vercel-gone"] } : {}),
     ...(kv.attempts ? { attempts: kv.attempts } : {}),
+    ...(kv["sub-ending"] ? { subEnding: kv["sub-ending"] } : {}),
   };
 }
 
@@ -273,6 +276,7 @@ export function writeOwnedDomainNote(notes: string | null | undefined, rec: Owne
     ...(rec.vercelMismatch ? [`vercel-expiry: ${rec.vercelMismatch}`] : []),
     ...(rec.vercelGone ? [`vercel-gone: ${rec.vercelGone}`] : []),
     ...(rec.attempts ? [`attempts: ${rec.attempts}`] : []),
+    ...(rec.subEnding ? [`sub-ending: ${rec.subEnding}`] : []),
   ].join(" | ");
   return [...kept, line].join("\n");
 }
@@ -340,6 +344,8 @@ export interface OwnedCancelOutcome {
   mixed: string[];
   /** Uninvoiced lines for a year that HAS started, billed on an invoice of their own instead of deleted. */
   invoicedOnOwn: { invoice: string | null; paid: boolean; detail?: string }[];
+  /** Started-year lines NOT charged because Vercel does not show that year renewed. */
+  notCharged: { item: string; why: string }[];
   detail?: string;
 }
 
@@ -362,8 +368,21 @@ export function subscriptionPaymentMethod(sub: Stripe.Subscription | null | unde
 }
 
 export type OwnInvoiceResult =
-  | { ok: true; chargedUsd: number; invoiceId: string }
-  | { ok: false; declined: boolean; detail: string; invoiceId?: string };
+  | { ok: true; chargedUsd: number; invoiceId: string; receiptSent: boolean }
+  | { ok: false; declined: boolean; detail: string; invoiceId?: string; alreadyPending?: boolean };
+
+/** Every page of a Stripe list call, bounded (a customer with 1,000+ items is not a real case). */
+async function allPages<T extends { id?: string }>(page: (startingAfter?: string) => Promise<{ data: T[]; has_more?: boolean }>, maxPages = 10): Promise<T[]> {
+  const out: T[] = [];
+  let after: string | undefined;
+  for (let i = 0; i < maxPages; i++) {
+    const res = await page(after);
+    out.push(...res.data);
+    if (!res.has_more || !res.data.length) break;
+    after = res.data[res.data.length - 1].id;
+  }
+  return out;
+}
 
 /**
  * An owned domain's renewal as AN INVOICE OF ITS OWN, charged now on the
@@ -372,18 +391,41 @@ export type OwnInvoiceResult =
  * 2027-10-09), where a line pinned to that invoice would leave Vercel
  * renewing on our card, unpaid, for two weeks. Same shape as a domain
  * order's renewal: auto_advance OFF (the daily cron is the only collector),
- * tagged (kind + domain + year) and found again by the tag, so a year is
- * never invoiced twice; an empty draft is deleted, never finalised at 0.
- * The caller keeps the attempt count (recorded first) and the retry cap.
+ * tagged (kind + domain + year) so a year is never charged twice:
+ *  - a tagged ITEM for that year is looked for first, pending or on an
+ *    invoice, across all of the customer's items: on an invoice, that invoice
+ *    is the one collected; PENDING, the year is already on its way to the
+ *    hosting invoice (`alreadyPending`) and nothing new is created;
+ *  - else a tagged INVOICE, across all of the customer's invoices.
+ * An empty draft is deleted, never finalised at 0. ONE attempt a day: the
+ * day is written on the invoice before paying, and a failed write means no
+ * payment today. The caller keeps the attempt count and the retry cap, and
+ * sends the receipt once (markReceiptSent).
  */
 export async function chargeOwnedRenewalInvoice(stripe: Stripe, o: {
   customerId: string; domain: string; renewsOn: string; amountUsd: number;
   paymentMethod: string | null; keyPrefix: string; todayIso: string;
+  /** A pending line this very call replaces (cancellation): not counted as "already pending". */
+  ignoreItem?: string;
 }): Promise<OwnInvoiceResult> {
   const tag = { kind: OWNED_RENEWAL_ITEM_KIND, domain: o.domain, renews_on: o.renewsOn };
-  const existing = (await stripe.invoices.list({ customer: o.customerId, limit: 30 })).data.find(
-    (i) => i.metadata?.kind === OWNED_RENEWAL_ITEM_KIND && i.metadata?.domain === o.domain && i.metadata?.renews_on === o.renewsOn && i.status !== "void",
-  );
+  const tagged = (m: Stripe.Metadata | null | undefined) => m?.kind === OWNED_RENEWAL_ITEM_KIND && m?.domain === o.domain && m?.renews_on === o.renewsOn;
+
+  const items = (await allPages((after) => stripe.invoiceItems.list({ customer: o.customerId, limit: 100, ...(after ? { starting_after: after } : {}) })))
+    .filter((i) => tagged(i.metadata) && i.id !== o.ignoreItem);
+  let existing: Stripe.Invoice | undefined;
+  for (const item of items) {
+    const invoiceId = typeof item.invoice === "string" ? item.invoice : item.invoice?.id ?? null;
+    if (!invoiceId) {
+      return { ok: false, declined: false, alreadyPending: true, detail: `a line for the year from ${o.renewsOn} is already on the account (${item.id}), waiting for the hosting invoice — not charged twice` };
+    }
+    const inv = await stripe.invoices.retrieve(invoiceId);
+    if (inv.status !== "void") { existing = inv; break; }
+  }
+  if (!existing) {
+    existing = (await allPages((after) => stripe.invoices.list({ customer: o.customerId, limit: 100, ...(after ? { starting_after: after } : {}) })))
+      .find((i) => tagged(i.metadata) && i.status !== "void");
+  }
   let inv = existing ?? await stripe.invoices.create({
     customer: o.customerId,
     collection_method: "charge_automatically",
@@ -406,6 +448,14 @@ export async function chargeOwnedRenewalInvoice(stripe: Stripe, o: {
   }
   if (inv.status === "draft") inv = await stripe.invoices.finalizeInvoice(inv.id!, { auto_advance: false });
   if (inv.status === "open") {
+    if (inv.metadata?.last_attempt === o.todayIso) {
+      return { ok: false, declined: false, detail: `already attempted today (${inv.id}); retried tomorrow`, invoiceId: inv.id! };
+    }
+    try {
+      await stripe.invoices.update(inv.id!, { metadata: { last_attempt: o.todayIso } });
+    } catch (e) {
+      return { ok: false, declined: false, detail: `could not mark today's attempt on ${inv.id} (${e instanceof Error ? e.message : String(e)}), so it was NOT charged today`, invoiceId: inv.id! };
+    }
     try {
       inv = await stripe.invoices.pay(inv.id!, o.paymentMethod ? { payment_method: o.paymentMethod } : {});
     } catch (e) {
@@ -414,7 +464,45 @@ export async function chargeOwnedRenewalInvoice(stripe: Stripe, o: {
   }
   if (inv.status !== "paid") return { ok: false, declined: false, detail: `invoice ${inv.id} is ${inv.status}`, invoiceId: inv.id! };
   if (!((inv.amount_paid ?? 0) > 0)) return { ok: false, declined: false, detail: `invoice ${inv.id} was paid for 0 — check it in Stripe`, invoiceId: inv.id! };
-  return { ok: true, chargedUsd: (inv.amount_paid ?? 0) / 100, invoiceId: inv.id! };
+  return { ok: true, chargedUsd: (inv.amount_paid ?? 0) / 100, invoiceId: inv.id!, receiptSent: inv.metadata?.receipt === "sent" };
+}
+
+/** After the renewal receipt went: recorded on the invoice so no later run sends it again. */
+export async function markReceiptSent(stripe: Stripe, invoiceId: string): Promise<void> {
+  await stripe.invoices.update(invoiceId, { metadata: { receipt: "sent" } });
+}
+
+/**
+ * The latest year a client has PAID for that has not started yet (a paid,
+ * tagged renewal invoice), or undefined. What keeps Vercel's auto-renew on
+ * when the hosting is ending.
+ */
+export async function paidYearAhead(stripe: Stripe, customerId: string, domain: string, todayIso: string): Promise<string | undefined> {
+  const items = (await allPages((after) => stripe.invoiceItems.list({ customer: customerId, limit: 100, ...(after ? { starting_after: after } : {}) })))
+    .filter((i) => i.metadata?.kind === OWNED_RENEWAL_ITEM_KIND && i.metadata?.domain === domain && (i.metadata?.renews_on ?? "") >= todayIso);
+  let ahead: string | undefined;
+  for (const item of items) {
+    const invoiceId = typeof item.invoice === "string" ? item.invoice : item.invoice?.id ?? null;
+    if (!invoiceId) continue;
+    const inv = await stripe.invoices.retrieve(invoiceId);
+    const start = item.metadata!.renews_on as string;
+    if (inv.status === "paid" && (!ahead || start > ahead)) ahead = start;
+  }
+  return ahead;
+}
+
+/**
+ * Is the hosting subscription still going to exist when the domain renews?
+ * Billing a domain year on a hosting the client has cancelled (or that
+ * Stripe already ended, with a deletion webhook we never received) would
+ * charge for a service they left. Pure.
+ */
+export function hostingEnding(sub: Stripe.Subscription): string | null {
+  const s = sub as Stripe.Subscription & { cancel_at?: number | null; cancel_at_period_end?: boolean };
+  if (!["active", "trialing", "past_due"].includes(s.status)) return `the hosting subscription is ${s.status}`;
+  if (s.cancel_at_period_end) return "the hosting subscription is cancelled at the end of its period";
+  if (typeof s.cancel_at === "number") return `the hosting subscription is set to end on ${new Date(s.cancel_at * 1000).toISOString().slice(0, 10)}`;
+  return null;
 }
 
 /**
@@ -439,12 +527,17 @@ export async function chargeOwnedRenewalInvoice(stripe: Stripe, o: {
 export async function ownedDomainOnCancel(
   stripe: Stripe, customerId: string | null, note: OwnedDomainNote, todayIso: string, test: boolean,
   setAutoRenew: (domain: string, on: boolean) => Promise<{ ok: boolean; code?: string; status?: number; message?: string }>,
-  opts: { paymentMethod?: string | null; rowId?: string } = {},
+  opts: {
+    paymentMethod?: string | null; rowId?: string;
+    /** What Vercel says of the registration: a started year is charged only if Vercel renewed it. */
+    vercel?: { state: "ok"; expiry: string | null } | { state: "gone" } | { state: "unreadable" };
+  } = {},
 ): Promise<OwnedCancelOutcome> {
   const deletedPending: string[] = [];
   const voided: string[] = [];
   const mixed: string[] = [];
   const invoicedOnOwn: OwnedCancelOutcome["invoicedOnOwn"] = [];
+  const notCharged: OwnedCancelOutcome["notCharged"] = [];
   let paidAhead: string | undefined;
   if (customerId) {
     const items = (await stripe.invoiceItems.list({ customer: customerId, limit: 50 })).data
@@ -456,12 +549,24 @@ export async function ownedDomainOnCancel(
       if (!invoiceId) {
         if (test) continue;
         if (notStarted) { await stripe.invoiceItems.del(item.id); deletedPending.push(item.id); continue; }
-        /* The year has started: bill it on its own. The new invoice is made
-           FIRST; only then is the pending line removed, so a failure between
-           the two can never lose the charge. */
+        /* The year has started — but it is charged only if Vercel actually
+           renewed it (expiry after that year began). Not renewed: the client
+           gets no year, so the line goes and nothing is charged. Vercel
+           unreadable: the line is KEPT and the owner decides. */
+        const v = opts.vercel;
+        if (!v || v.state === "unreadable") { notCharged.push({ item: item.id, why: "Vercel could not be read — line kept, check by hand" }); continue; }
+        if (v.state === "gone" || !v.expiry || v.expiry <= yearStart) {
+          await stripe.invoiceItems.del(item.id);
+          notCharged.push({ item: item.id, why: v.state === "gone" ? "the domain is no longer in our Vercel team" : `Vercel did not renew the year from ${yearStart} (registration ends ${v.expiry ?? "unknown"})` });
+          continue;
+        }
+        /* Renewed: bill it on its own. The new invoice is made FIRST; only
+           then is the pending line removed, so a failure between the two can
+           never lose the charge. */
         const own = await chargeOwnedRenewalInvoice(stripe, {
           customerId, domain: note.domain, renewsOn: yearStart, amountUsd: (item.amount ?? 0) / 100,
           paymentMethod: opts.paymentMethod ?? null, keyPrefix: `owned-cancel-${opts.rowId ?? customerId}-${yearStart}`, todayIso,
+          ignoreItem: item.id,
         });
         if (own.ok || own.invoiceId) await stripe.invoiceItems.del(item.id);
         invoicedOnOwn.push(own.ok ? { invoice: own.invoiceId, paid: true } : { invoice: own.invoiceId ?? null, paid: false, detail: own.detail });
@@ -483,7 +588,7 @@ export async function ownedDomainOnCancel(
       }
     }
   }
-  const base = { deletedPending, voided, mixed, invoicedOnOwn };
+  const base = { deletedPending, voided, mixed, invoicedOnOwn, notCharged };
   if (test) return { result: "test", ...base, detail: "TEST: Vercel not touched" };
   if (paidAhead) return { result: "kept", keptUntil: paidAhead, ...base };
   const off = await setAutoRenew(note.domain, false);
@@ -497,6 +602,7 @@ export function ownedCancelLine(domain: string, o: OwnedCancelOutcome): string {
   const extra = [
     o.deletedPending.length ? `Unbilled renewal line${o.deletedPending.length === 1 ? "" : "s"} removed (${o.deletedPending.join(", ")}).` : "",
     o.voided.length ? `Unpaid renewal invoice${o.voided.length === 1 ? "" : "s"} voided (${o.voided.join(", ")}).` : "",
+    ...o.notCharged.map((x) => `⚠️ The started year's renewal line ${x.item} was NOT charged: ${x.why}.`),
     ...o.invoicedOnOwn.map((x) => x.paid
       ? `The started year's renewal was invoiced on its own and PAID (${x.invoice}).`
       : `⚠️ The started year's renewal was invoiced on its own and NOT paid (${x.invoice ?? "no invoice"}: ${x.detail}) — chase it in Stripe.`),

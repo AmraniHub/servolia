@@ -49,7 +49,8 @@ const SM = await import("../src/lib/stripeMode.ts");
    where an owned domain's year is charged. */
 const items = [];
 const invoices = [];
-const hosting = { next: "2027-10-09", status: "active", pm: "pm_ithar", payFails: false };
+const hosting = { next: "2027-10-09", status: "active", pm: "pm_ithar", payFails: false, cancelAtPeriodEnd: false };
+const payCalls = [];
 const clone = (x) => JSON.parse(JSON.stringify(x));
 const findInv = (id) => invoices.find((i) => i.id === id);
 SM.__setStripeFactoryForTests(() => ({
@@ -65,7 +66,8 @@ SM.__setStripeFactoryForTests(() => ({
   },
   customers: { search: async () => ({ data: [], has_more: false }) },
   invoices: {
-    list: async ({ customer }) => ({ data: invoices.filter((i) => i.customer === customer).map(clone) }),
+    // `hidden`: an invoice the list does not return (past a page), reachable only through its tagged item.
+    list: async ({ customer }) => ({ data: invoices.filter((i) => i.customer === customer && !i.hidden).map(clone) }),
     create: async (p, o) => {
       const inv = { id: `in_${invoices.length + 1}`, customer: p.customer, status: "draft", total: 0, metadata: { ...p.metadata }, params: p, key: o?.idempotencyKey };
       invoices.push(inv);
@@ -74,14 +76,16 @@ SM.__setStripeFactoryForTests(() => ({
     retrieve: async (id) => clone(findInv(id)),
     finalizeInvoice: async (id, p) => { const inv = findInv(id); inv.status = "open"; inv.finalizeParams = p; return clone(inv); },
     pay: async (id, p) => {
+      payCalls.push(id);
       if (hosting.payFails) throw new Error("card_declined");
       const inv = findInv(id); inv.status = "paid"; inv.amount_paid = inv.total; inv.payParams = p; return clone(inv);
     },
     del: async (id) => { invoices.splice(invoices.indexOf(findInv(id)), 1); return { id, deleted: true }; },
+    update: async (id, p) => { const inv = findInv(id); Object.assign(inv.metadata, p.metadata ?? {}); return clone(inv); },
   },
   subscriptions: {
     retrieve: async (id) => ({
-      id, status: hosting.status, default_payment_method: hosting.pm,
+      id, status: hosting.status, default_payment_method: hosting.pm, cancel_at_period_end: hosting.cancelAtPeriodEnd,
       items: { data: [{ current_period_end: Date.parse(`${hosting.next}T00:00:00Z`) / 1000 }] },
     }),
   },
@@ -97,10 +101,11 @@ const { NextRequest } = await import("next/server");
 
 const day = (n) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
 
-async function run({ inDays, paid = 26, renewal = 11.25, resendOk = true, patchFails = false, expiry = null, row = null, at = null, keepItems = false, gone = false, unreadable = false, hostingNext = "2027-10-09", payFails = false }) {
+async function run({ inDays, paid = 26, renewal = 11.25, resendOk = true, patchFails = false, expiry = null, row = null, at = null, keepItems = false, gone = false, unreadable = false, hostingNext = "2027-10-09", payFails = false, subStatus = "active", cancelAtPeriodEnd = false }) {
   H.reset();
   if (!keepItems) { items.length = 0; invoices.length = 0; }
-  Object.assign(hosting, { next: hostingNext, payFails });
+  Object.assign(hosting, { next: hostingNext, payFails, status: subStatus, cancelAtPeriodEnd });
+  if (!keepItems) payCalls.length = 0;
   resend.length = 0;
   Object.assign(net, { renewal, resendOk, patchFails, expiry, gone, unreadable });
   autoRenew.length = 0;
@@ -200,7 +205,9 @@ test("Ithar (hosting invoices 2027-10-09, after the 2027-09-25 renewal): charged
   assert.equal(inv.params.auto_advance, false, "the cron is the only collector");
   assert.equal(inv.params.collection_method, "charge_automatically");
   assert.equal(inv.params.default_payment_method, "pm_ithar", "the card the hosting subscription uses");
-  assert.deepEqual(inv.metadata, { kind: "owned_domain_renewal", domain: "ithardigital.com", renews_on: "2027-09-25" });
+  assert.deepEqual({ kind: inv.metadata.kind, domain: inv.metadata.domain, renews_on: inv.metadata.renews_on }, { kind: "owned_domain_renewal", domain: "ithardigital.com", renews_on: "2027-09-25" });
+  assert.equal(inv.metadata.last_attempt, "2027-09-18", "the day of the attempt, written before paying");
+  assert.equal(inv.metadata.receipt, "sent", "the receipt recorded on the invoice");
   assert.equal(inv.status, "paid");
   assert.equal(inv.amount_paid, 2790);
   assert.deepEqual(inv.payParams, { payment_method: "pm_ithar" });
@@ -323,6 +330,81 @@ test("a pinned line added but NOT saved is not added AGAIN the next day (the tag
   assert.equal(ownedNote(next).billed, "2027-09-25", "the row caught up");
   await run({ inDays: 7, paid: 26, renewal: 11.25 });
   assert.equal(items[0].metadata.kind, "plan_domain_renewal");
+});
+
+/* ── The hosting must still be there (review of d5b8701) ─────────────────── */
+
+const seedPaid = ({ hidden = false, receipt = null } = {}) => {
+  items.length = 0; invoices.length = 0; payCalls.length = 0;
+  invoices.push({ id: "in_paid", customer: "cus_ithar", status: "paid", total: 2790, amount_paid: 2790, hidden,
+    metadata: { kind: "owned_domain_renewal", domain: "ithardigital.com", renews_on: "2027-09-25", ...(receipt ? { receipt } : {}) } });
+  items.push({ invoice: "in_paid", amount: 2790, metadata: { kind: "owned_domain_renewal", domain: "ithardigital.com", renews_on: "2027-09-25" } });
+};
+
+test("Ithar CANCELLED AT PERIOD END: the renewal is NOT charged, the owner told once, Vercel auto-renew off", async () => {
+  const r = await at("2027-09-18", { cancelAtPeriodEnd: true });
+  assert.equal(ownInvoices().length + items.length, 0, "nothing billed on either path");
+  assert.ok(r.body.failed.some((f) => /Ithar Digital cancelled — domain ithardigital\.com renewal 2027-09-25 NOT charged \(the hosting subscription is cancelled at the end of its period\); decide: renew at our cost, let it lapse, or ask the client\. Vercel auto-renew switched OFF/.test(f)), JSON.stringify(r.body.failed));
+  assert.deepEqual(autoRenew, [{ autoRenew: false }]);
+  assert.equal(ownedNote(r).subEnding, "2027-09-18");
+  assert.equal(ownedNote(r).renewalOff, "2027-09-18");
+  const again = await at("2027-09-19", { cancelAtPeriodEnd: true, note: { subEnding: "2027-09-18", renewalOff: "2027-09-18" } });
+  assert.equal(again.body.failed.length, 0, "told once");
+  assert.deepEqual(autoRenew, []);
+  assert.equal(ownInvoices().length + items.length, 0);
+});
+
+test("a subscription already CANCELED (its deletion webhook missed) is treated the same", async () => {
+  const r = await at("2027-09-18", { subStatus: "canceled" });
+  assert.equal(ownInvoices().length + items.length, 0);
+  assert.ok(r.body.failed.some((f) => /renewal 2027-09-25 NOT charged \(the hosting subscription is canceled\)/.test(f)));
+  assert.deepEqual(autoRenew, [{ autoRenew: false }]);
+});
+
+test("ending, but the next year is ALREADY PAID: auto-renew kept on until it starts, then off once Vercel renewed it", async () => {
+  seedPaid();
+  const r = await at("2027-09-18", { cancelAtPeriodEnd: true, keepItems: true });
+  assert.deepEqual(autoRenew, [], "the client bought that year");
+  assert.ok(r.body.failed.some((f) => /auto-renew KEPT ON until 2027-09-25/.test(f)));
+  assert.equal(ownedNote(r).keptUntil, "2027-09-25");
+  const off = await at("2027-09-27", { cancelAtPeriodEnd: true, expiry: "2028-09-25", note: { subEnding: "2027-09-18", keptUntil: "2027-09-25" } });
+  assert.deepEqual(autoRenew, [{ autoRenew: false }]);
+  assert.equal(ownedNote(off).renewalOff, "2027-09-27");
+});
+
+test("the client takes the cancellation back: markers cleared, Vercel auto-renew back ON, and the year is billed", async () => {
+  const r = await at("2027-09-18", { note: { subEnding: "2027-09-10", renewalOff: "2027-09-10" } });
+  assert.deepEqual(autoRenew, [{ autoRenew: true }]);
+  assert.ok(r.body.checks.some((c) => /hosting is active again — renewal back on, Vercel auto-renew switched back ON/.test(c)));
+  // (the fake Supabase re-reads the seeded row, so the reinstating write is looked for, not the last one)
+  const cleared = r.notes.map((x) => OD.readOwnedDomainNote(x)).find((n) => !n.subEnding && !n.renewalOff);
+  assert.ok(cleared, "the markers were cleared");
+  assert.equal(ownInvoices().length, 1, "billed as normal");
+});
+
+test("LOW: a tagged line already PENDING for that year means no own invoice — the year is not charged twice", async () => {
+  items.length = 0; invoices.length = 0;
+  items.push({ amount: 2790, subscription: "sub_ithar", metadata: { kind: "owned_domain_renewal", domain: "ithardigital.com", renews_on: "2027-09-25" } });
+  const r = await at("2027-09-18", { keepItems: true });
+  assert.equal(ownInvoices().length, 0);
+  assert.ok(r.body.checks.some((c) => /already on the account .* not charged twice; row moved to 2028-09-25/.test(c)), JSON.stringify(r.body.checks));
+  assert.equal(ownedNote(r).billed, "2027-09-25");
+});
+
+test("LOW: a paid own invoice past the list's pages is found through its tagged item; its receipt is never sent twice", async () => {
+  seedPaid({ hidden: true, receipt: "sent" });
+  const r = await at("2027-09-18", { keepItems: true });
+  assert.equal(invoices.length, 1, "no second invoice");
+  assert.equal(payCalls.length, 0);
+  assert.equal(ownedNote(r).billed, "2027-09-25", "the row caught up");
+  assert.equal(r.clientMails.length, 0, `receipt already sent for that invoice: ${JSON.stringify(r.clientMails.map((m) => m.subject))}`);
+});
+
+test("LOW: never two payment attempts on one day, even when the run is repeated", async () => {
+  await at("2027-09-18", { payFails: true });
+  await at("2027-09-18", { payFails: true, keepItems: true });
+  assert.equal(payCalls.length, 1);
+  assert.equal(ownInvoices()[0].metadata.last_attempt, "2027-09-18");
 });
 
 test("the cron refuses without CRON_SECRET, even to a caller sending 'Bearer undefined'", async () => {

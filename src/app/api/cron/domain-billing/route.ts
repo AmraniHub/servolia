@@ -15,7 +15,7 @@ import { readExtraDomains, writeExtraDomain } from "@/lib/extraDomains";
 import { nextChargeDate } from "@/lib/hosting";
 import {
   OWNED_DOMAIN_NOTE, OWNED_RENEWAL_ITEM_KIND, readOwnedDomainNote, writeOwnedDomainNote, renewalDateFrom, renewalCheck, type OwnedDomainNote,
-  nextHostingInvoiceDate, subscriptionPaymentMethod, chargeOwnedRenewalInvoice,
+  nextHostingInvoiceDate, subscriptionPaymentMethod, chargeOwnedRenewalInvoice, markReceiptSent, paidYearAhead, hostingEnding,
 } from "@/lib/ownedDomain";
 
 /** The tag on a plan or panel domain's renewal line (owned domains use OWNED_RENEWAL_ITEM_KIND). */
@@ -94,7 +94,9 @@ export async function GET(req: NextRequest) {
      * renewal date). Returns what was charged, or why not; `silent` = already
      * reported (the retry cap).
      */
-    standalone?: (priceUsd: number) => Promise<{ ok: true; chargedUsd: number; invoiceId: string } | { ok: false; detail: string; silent?: boolean }>;
+    standalone?: (priceUsd: number) => Promise<{ ok: true; chargedUsd: number; invoiceId: string; receiptSent?: boolean } | { ok: false; detail: string; silent?: boolean; alreadyBilled?: boolean }>;
+    /** Records that the renewal receipt for this invoice went, so no later run sends it again. */
+    markReceipt?: (invoiceId: string) => Promise<void>;
   }) {
     if (today < daysBefore(o.renewsOn, NOTICE_DAYS + NOTICE_WINDOW_DAYS)) return;
     const d = renewalDecision({ paidUsd: o.paidUsd, vercelRenewalUsd: await currentRenewalUsd(o.domain), renewsOn: o.renewsOn, todayIso: today, ...readNoticed(o.noticed) });
@@ -122,6 +124,14 @@ export async function GET(req: NextRequest) {
     if (o.standalone) {
       try {
         const res = await o.standalone(d.price);
+        if (!res.ok && res.alreadyBilled) {
+          /* The year is already on its way (a line waiting for the hosting
+             invoice): not charged twice; the row just moves on. */
+          const next = nextChargeDate(new Date(`${o.renewsOn}T00:00:00Z`), "annual").toISOString().slice(0, 10);
+          const err = await o.save({ retailUsd: d.price, nextChargeAt: next, noticed: undefined });
+          (err ? failed : checks).push(`${o.domain} (${o.row.business}): ${res.detail}${err ? ` — row NOT updated (${err})` : `; row moved to ${next}`}.`);
+          return;
+        }
         if (!res.ok) {
           if (!res.silent) failed.push(`${o.domain} (${o.row.business}): $${d.price.toFixed(2)} renewal NOT charged — ${res.detail}.`);
           return;
@@ -133,8 +143,11 @@ export async function GET(req: NextRequest) {
         if (err) { failed.push(`${o.domain} (${o.row.business}): renewal PAID ($${res.chargedUsd.toFixed(2)}, ${res.invoiceId}) but the row was NOT updated (${err}) — tomorrow's run finds the paid invoice and catches up.`); return; }
         charged.push(`${o.domain} $${res.chargedUsd.toFixed(2)}${was(res.chargedUsd, o.paidUsd)} (${o.row.business}) on its own invoice ${res.invoiceId} — next ${next}`);
         if (d.wanted > res.chargedUsd + 0.004) warnings.push(`${o.domain} (${o.row.business}): charged $${res.chargedUsd.toFixed(2)}, not the $${d.wanted.toFixed(2)} Vercel's price now needs — the rise was not announced 30 days ahead. Next year's notice will carry it.`);
-        const tpl = domainRenewalEmail({ domain: o.domain, stage: "charged", priceUsd: res.chargedUsd, previousUsd: o.paidUsd, onIso: o.renewsOn, nextIso: next, lang });
-        await mail(o.row.email, tpl, `${o.domain} renewal receipt`);
+        // Once per invoice: a run that finds it already paid (and the receipt sent) says nothing again.
+        if (!res.receiptSent) {
+          const tpl = domainRenewalEmail({ domain: o.domain, stage: "charged", priceUsd: res.chargedUsd, previousUsd: o.paidUsd, onIso: o.renewsOn, nextIso: next, lang });
+          if (await mail(o.row.email, tpl, `${o.domain} renewal receipt`)) await o.markReceipt?.(res.invoiceId).catch(() => {});
+        }
       } catch (e) {
         failed.push(`${o.domain}: ${e instanceof Error ? e.message : String(e)}`);
       }
@@ -253,7 +266,8 @@ export async function GET(req: NextRequest) {
     const note = readOwnedDomainNote(row.notes);
     // Belt and braces with the query: a hosting that ended is never billed a domain year.
     if (row.status !== "active" && row.status !== "past_due") continue;
-    if (!note || !note.renewsOn || note.renewalOff) continue;
+    // renewal-off on its own = the hosting ended; with sub-ending = paused while the client may still come back.
+    if (!note || !note.renewsOn || (note.renewalOff && !note.subEnding)) continue;
     const saveOwned = async (patch: Partial<OwnedDomainNote>): Promise<string | null> => {
       const { data: fresh } = await db.from("hosting_clients").select("notes").eq("id", row.id).maybeSingle();
       const notes = (fresh as { notes?: string | null } | null)?.notes ?? row.notes;
@@ -310,15 +324,53 @@ export async function GET(req: NextRequest) {
     let standalone = !subId;
     let paymentMethod: string | null = null;
     if (subId) {
+      let sub: Awaited<ReturnType<typeof stripe.subscriptions.retrieve>>;
       try {
-        const sub = await stripe.subscriptions.retrieve(subId);
-        const nextInvoice = nextHostingInvoiceDate(sub);
-        paymentMethod = subscriptionPaymentMethod(sub);
-        standalone = !nextInvoice || nextInvoice > renewsOn;
+        sub = await stripe.subscriptions.retrieve(subId);
       } catch (e) {
         checks.push(`${note.domain} (${row.business}): the hosting subscription ${subId} could not be read (${e instanceof Error ? e.message : String(e)}) — nothing billed or announced today; retried tomorrow.`);
         continue;
       }
+      /* THE HOSTING MUST STILL BE THERE. Before either path (a line on the
+         hosting invoice, or an invoice of its own): a subscription cancelled
+         at period end, set to end, or already ended (a deletion webhook we
+         never received) is never billed a domain year. Told once, with the
+         decision that is the owner's; Vercel auto-renew goes off unless the
+         client has already paid for a year still to start. */
+      const ending = hostingEnding(sub);
+      if (ending) {
+        if (!note.subEnding) {
+          const ahead = row.customer_id ? await paidYearAhead(stripe, row.customer_id, note.domain, today) : undefined;
+          let renewal: string;
+          const patch: Partial<OwnedDomainNote> = { subEnding: today };
+          if (ahead) {
+            patch.keptUntil = ahead;
+            renewal = `Vercel auto-renew KEPT ON until ${ahead} (that year is already paid); switched off after it.`;
+          } else {
+            const off = await setDomainAutoRenew(note.domain, false);
+            if (off.ok) patch.renewalOff = today;
+            renewal = off.ok ? "Vercel auto-renew switched OFF." : `Vercel auto-renew NOT switched off (${off.code ?? off.status}) — do it in Vercel > Domains.`;
+          }
+          const err = await saveOwned(patch);
+          failed.push(`${row.business} cancelled — domain ${note.domain} renewal ${renewsOn} NOT charged (${ending}); decide: renew at our cost, let it lapse, or ask the client. ${renewal}${err ? ` (note NOT saved: ${err} — this may be reported again tomorrow)` : ""}`);
+        }
+        continue;
+      }
+      /* Reinstated (the client took the cancellation back): the markers go
+         and Vercel auto-renew comes back on, so the renewal runs as normal. */
+      if (note.subEnding) {
+        const on = note.renewalOff ? await setDomainAutoRenew(note.domain, true) : { ok: true as const };
+        if (!on.ok) {
+          failed.push(`${note.domain} (${row.business}): the hosting is active again but Vercel auto-renew could NOT be switched back on — do it in Vercel > Domains; nothing billed today.`);
+          continue;
+        }
+        const err = await saveOwned({ subEnding: undefined, renewalOff: undefined, keptUntil: undefined });
+        checks.push(`${note.domain} (${row.business}): the hosting is active again — renewal back on${note.renewalOff ? ", Vercel auto-renew switched back ON" : ""}${err ? ` (note NOT saved: ${err})` : ""}.`);
+        if (err) continue;
+      }
+      const nextInvoice = nextHostingInvoiceDate(sub);
+      paymentMethod = subscriptionPaymentMethod(sub);
+      standalone = !nextInvoice || nextInvoice > renewsOn;
     }
     const customerId = row.customer_id;
 
@@ -341,6 +393,7 @@ export async function GET(req: NextRequest) {
             paymentMethod, keyPrefix: `owned-${row.id}-${renewsOn}`, todayIso: today,
           });
           if (res.ok) return res;
+          if (res.alreadyPending) return { ok: false as const, detail: res.detail, alreadyBilled: true };
           if (!res.declined) return { ok: false as const, detail: res.detail };
           const n = attempts + 1;
           const err = await saveOwned({ attempts: `${renewsOn}:${n}` });
@@ -352,6 +405,7 @@ export async function GET(req: NextRequest) {
           };
         },
       } : {}),
+      markReceipt: (invoiceId) => markReceiptSent(stripe, invoiceId),
       save: (patch) => saveOwned({
         ...(patch.retailUsd !== undefined ? { usd: patch.retailUsd } : {}),
         // The year just charged starts on the old date; the next one is due a year on.
@@ -368,10 +422,12 @@ export async function GET(req: NextRequest) {
   const { data: churnedOwned } = await excludeTest(db, (live) => live(db
     .from("hosting_clients")
     .select("id, business, notes, status")
-    .eq("status", "churned")
+    .in("status", ["churned", "active", "past_due"])
     .like("notes", `%${OWNED_DOMAIN_NOTE}%`)));
   for (const row of churnedOwned ?? []) {
     const note = readOwnedDomainNote(row.notes);
+    // An ended hosting, or one cancelled at period end (sub-ending) that kept a paid year on.
+    if (row.status !== "churned" && !note?.subEnding) continue;
     if (!note?.keptUntil || note.renewalOff || today <= note.keptUntil) continue;
     const reg = await domainRegistration(note.domain);
     if (!(reg.state === "ok" && reg.expiry && reg.expiry > note.keptUntil)) {

@@ -18,7 +18,7 @@ const OD = await import("../src/lib/ownedDomain.ts");
 
 /* Vercel: records auto-renew changes. Everything else: the harness. */
 const autoRenew = [];
-const vercel = { autoRenewStatus: 204 };
+const vercel = { autoRenewStatus: 204, expiry: null }; // set by reset()
 globalThis.fetch = async (input, init = {}) => {
   const url = String(typeof input === "string" ? input : input.url);
   if (url.startsWith("https://api.vercel.com")) {
@@ -27,6 +27,9 @@ globalThis.fetch = async (input, init = {}) => {
       return vercel.autoRenewStatus === 204
         ? new Response(null, { status: 204 })
         : new Response(JSON.stringify({ error: { code: "internal_server_error" } }), { status: vercel.autoRenewStatus, headers: { "content-type": "application/json" } });
+    }
+    if (url.includes("/v5/domains/")) {
+      return new Response(JSON.stringify({ domain: { name: "ithardigital.com", boughtAt: Date.parse("2026-09-25T00:00:00Z"), expiresAt: vercel.expiry ? Date.parse(`${vercel.expiry}T00:00:00Z`) : null } }), { status: 200, headers: { "content-type": "application/json" } });
     }
     return new Response("{}", { status: 404 });
   }
@@ -60,6 +63,7 @@ SM.__setStripeFactoryForTests(() => ({
       const inv = stripeState.invoices[id]; inv.status = "paid"; inv.amount_paid = inv.total; inv.payParams = p; return { ...inv };
     },
     voidInvoice: async (id) => { stripeState.voided.push(id); return { id, status: "void" }; },
+    update: async (id, p) => { const inv = stripeState.invoices[id]; inv.metadata = { ...inv.metadata, ...(p.metadata ?? {}) }; return { ...inv }; },
   },
 }));
 
@@ -68,7 +72,8 @@ const day = (n) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10
 const NOTE = { domain: "ithardigital.com", usd: 27.9, project: "ithar-digital", paidOn: "2026-09-25", renewsOn: day(200) };
 const item = (id, invoice, renewsOn) => ({ id, invoice, metadata: { kind: "owned_domain_renewal", domain: "ithardigital.com", renews_on: renewsOn } });
 
-function reset({ items = [], invoices = {}, status = 204, payFails = false } = {}) {
+function reset({ items = [], invoices = {}, status = 204, payFails = false, expiry = day(362) } = {}) {
+  vercel.expiry = expiry;
   H.reset();
   autoRenew.length = 0;
   Object.assign(stripeState, { items, invoices, deleted: [], voided: [], created: [], payFails });
@@ -187,7 +192,7 @@ test("cancelled AFTER an uninvoiced year began: the line is NOT deleted unbilled
   assert.ok(own, "an invoice of its own");
   assert.equal(own.params.auto_advance, false);
   assert.equal(own.params.default_payment_method, "pm_ithar", "the cancelled subscription's card");
-  assert.deepEqual(own.metadata, { kind: "owned_domain_renewal", domain: "ithardigital.com", renews_on: day(-3) });
+  assert.deepEqual({ kind: own.metadata.kind, domain: own.metadata.domain, renews_on: own.metadata.renews_on }, { kind: "owned_domain_renewal", domain: "ithardigital.com", renews_on: day(-3) });
   assert.equal(stripeState.invoices[own.id].status, "paid");
   assert.equal(stripeState.invoices[own.id].amount_paid, 2790);
   assert.deepEqual(stripeState.deleted, ["ii_started"], "the pending line goes only once its year is on an invoice");
@@ -201,6 +206,14 @@ test("that own invoice DECLINED: the year is not lost — the owner is told to c
   assert.equal(stripeState.invoices.in_own_1.status, "open", "left payable, never voided");
   assert.deepEqual(stripeState.deleted, ["ii_started"], "the invoice holds the year now");
   assert.match(telegram().find((x) => x.includes("Subscription ended")), /invoiced on its own and NOT paid \(in_own_1: card_declined\) — chase it in Stripe/);
+});
+
+test("a started year Vercel did NOT renew (expiry still before it) is never charged at cancellation — line removed, owner told", async () => {
+  reset({ items: [startedLine("ii_started")], expiry: day(-3) });
+  await POST(request(cancelWithCard(), H.LIVE_WH));
+  assert.equal(stripeState.created.length, 0, "no invoice of its own");
+  assert.deepEqual(stripeState.deleted, ["ii_started"]);
+  assert.match(telegram().find((x) => x.includes("Subscription ended")), /renewal line ii_started was NOT charged: Vercel did not renew the year from/);
 });
 
 test("a founder TEST cancellation never reaches Vercel and deletes nothing", async () => {
