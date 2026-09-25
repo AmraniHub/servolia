@@ -107,8 +107,10 @@ test("an installation paid twice is flagged for a refund; a reused waiting build
 
 test("the subscription's own intake finds a reused build through Stripe's record of the session", () => {
   const contact = src("src/app/api/contact/route.ts");
-  assert.match(contact, /checkout\.sessions\.retrieve\(String\(sessionId\)\)/);
-  assert.match(contact, /s\.status === "complete"/, "only a paid session");
+  // Read once, before the email gate (readPaidSession); behaviour is driven in tests/intake-email.test.mjs.
+  assert.match(contact, /checkout\.sessions\.retrieve\(sessionId\)/);
+  assert.match(contact, /s\.status !== "complete"\) return null/, "only a paid session");
+  assert.match(contact, /const paidEmail = paid\?\.planSession \? paid\.email : null/, "the by-email build lookup is for plan sessions only");
   assert.match(contact, /s\.metadata\?\.kind === "care_plan"/, "only a plan session, never a top-up paid with her address");
   assert.match(contact, /s\.customer_details\?\.email/, "Stripe's email, never the form's");
 });

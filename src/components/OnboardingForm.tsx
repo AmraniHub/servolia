@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { CheckCircle, ArrowRight, ChevronRight, MessageCircle } from "lucide-react";
 import { businessWaLink } from "@/lib/whatsapp";
 import { BUILD_PLANS, SETUP_PLAN } from "@/lib/pricing";
+import { submitIntake, looksLikeEmail } from "@/lib/intakeSubmit";
 
 type Lang = "en" | "fr";
 
@@ -34,7 +35,11 @@ const COPY = {
       city: "City *", cityPh: "Paris",
       country: "Country *", countryPh: "France",
       address: "Full address", addressPh: "12 Rue de la Paix, 75001 Paris",
+      email: "Your email *", emailPh: "you@yourclinic.com",
+      emailHelp: "Your draft link is sent here.",
     },
+    missing: (fields: string) => `Please fill in: ${fields}.`,
+    badEmail: "Please enter a valid email address.",
     s1: {
       heading: "Your brand",
       colors: "Brand colors", colorsHint: "(hex codes or description)",
@@ -65,7 +70,7 @@ const COPY = {
     },
     s3: {
       heading: "Your goals",
-      goal: "What is your #1 goal with this system? *", goalPlaceholder: "Select your goal",
+      goal: "What is your #1 goal with this system?", goalPlaceholder: "Select your goal",
       goals: [
         "Get more online bookings / appointments",
         "Capture and convert more leads",
@@ -130,7 +135,11 @@ const COPY = {
       city: "Ville *", cityPh: "Paris",
       country: "Pays *", countryPh: "France",
       address: "Adresse complète", addressPh: "12 rue de la Paix, 75001 Paris",
+      email: "Votre email *", emailPh: "vous@votrecabinet.fr",
+      emailHelp: "Le lien vers votre brouillon est envoyé à cette adresse.",
     },
+    missing: (fields: string) => `Merci de compléter : ${fields}.`,
+    badEmail: "Merci d'indiquer une adresse email valide.",
     s1: {
       heading: "Votre marque",
       colors: "Couleurs de votre marque", colorsHint: "(codes hex ou description)",
@@ -161,7 +170,7 @@ const COPY = {
     },
     s3: {
       heading: "Vos objectifs",
-      goal: "Quel est votre objectif n°1 avec ce système ? *", goalPlaceholder: "Choisissez votre objectif",
+      goal: "Quel est votre objectif n°1 avec ce système ?", goalPlaceholder: "Choisissez votre objectif",
       goals: [
         "Obtenir plus de réservations / rendez-vous en ligne",
         "Capter et convertir plus de prospects",
@@ -227,7 +236,14 @@ function Form({ lang }: { lang: Lang }) {
   const [step, setStep] = useState(0);
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [failed, setFailed] = useState(false);
+  // What the buyer is told when a step or the submit is refused -- the
+  // server's own words when it sent some (src/lib/intakeSubmit.ts).
+  const [error, setError] = useState<string | null>(null);
+  /* A buyer who arrives from a payment is known by it: the server reads
+     their email from the Stripe session (src/app/api/contact). Only the
+     plain /onboarding, with no session, has to ask. Never prefilled from
+     the URL. */
+  const needsEmail = !sessionId;
 
   const [form, setForm] = useState({
     // Step 0 – Business
@@ -237,6 +253,7 @@ function Form({ lang }: { lang: Lang }) {
     address: "",
     city: "",
     country: "",
+    email: "",
     // Step 1 – Branding
     primaryColor: "",
     stylePreference: "",
@@ -262,29 +279,48 @@ function Form({ lang }: { lang: Lang }) {
 
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }));
 
+  /* Every field marked * is checked before its step can be left. There is no
+     <form> element here, so the inputs' `required` attributes were never
+     enforced and a draft could be generated for "Your Business". */
+  const REQUIRED: Partial<Record<number, [keyof typeof form, string][]>> = {
+    0: [["businessName", t.s0.businessName], ["ownerName", t.s0.ownerName], ["phone", t.s0.phone],
+        ["city", t.s0.city], ["country", t.s0.country],
+        ...(needsEmail ? [["email", t.s0.email] as [keyof typeof form, string]] : [])],
+    2: [["services", t.s2.services], ["targetClient", t.s2.target]],
+  };
+  const stepProblem = (i: number): string | null => {
+    const empty = (REQUIRED[i] ?? []).filter(([k]) => !form[k].trim()).map(([, label]) => label.replace(/\s*\*$/, ""));
+    if (empty.length) return t.missing(empty.join(", "));
+    if (i === 0 && needsEmail && !looksLikeEmail(form.email)) return t.badEmail;
+    return null;
+  };
+  const next = () => {
+    const problem = stepProblem(step);
+    setError(problem);
+    if (!problem) setStep(s => s + 1);
+  };
+
   const handleSubmit = async () => {
-    setLoading(true);
-    setFailed(false);
-    let ok = false;
-    try {
-      const res = await fetch("/api/contact", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        // `lang` tells the team (and the generator) which language this client
-        // filled the intake in — French answers in, French site out.
-        body: JSON.stringify({ ...form, plan, planName, type: "intake", sessionId, lang }),
-      });
-      ok = res.ok;
-    } catch {
-      ok = false;
+    for (let i = 0; i < t.steps.length; i++) {
+      const problem = stepProblem(i);
+      if (problem) { setStep(i); setError(problem); return; }
     }
+    setLoading(true);
+    setError(null);
+    const { email: typedEmail, ...answers } = form;
+    // `lang` tells the team (and the generator) which language this client
+    // filled the intake in — French answers in, French site out.
+    const outcome = await submitIntake(
+      { ...answers, ...(needsEmail ? { email: typedEmail.trim() } : {}), plan, planName, type: "intake", sessionId, lang },
+      lang,
+    );
     setLoading(false);
     // The thank-you screen promises a draft link within minutes. It is shown
     // only when the server actually took the answers. It used to be shown
     // after a dropped connection too — and then nothing came, and the client
     // had no way to know their answers had never arrived.
-    if (ok) setSubmitted(true);
-    else setFailed(true);
+    if (outcome.ok) setSubmitted(true);
+    else setError(outcome.message);
   };
 
   const inputClass = "w-full px-4 py-3 rounded-xl border border-[#E8E6E0] text-sm text-[#18181B] placeholder:text-[#52525B] focus:outline-none focus:ring-2 focus:ring-[#36671E] focus:border-transparent transition-all bg-white";
@@ -378,6 +414,13 @@ function Form({ lang }: { lang: Lang }) {
                 <div><label className={labelClass}>{t.s0.country}</label><input required value={form.country} onChange={e => set("country", e.target.value)} placeholder={t.s0.countryPh} className={inputClass} /></div>
                 <div><label className={labelClass}>{t.s0.address}</label><input value={form.address} onChange={e => set("address", e.target.value)} placeholder={t.s0.addressPh} className={inputClass} /></div>
               </div>
+              {needsEmail && (
+                <div>
+                  <label htmlFor="intake-email" className={labelClass}>{t.s0.email}</label>
+                  <input id="intake-email" type="email" autoComplete="email" required value={form.email} onChange={e => set("email", e.target.value)} placeholder={t.s0.emailPh} className={inputClass} />
+                  <p className="text-xs text-[#52525B] mt-1">{t.s0.emailHelp}</p>
+                </div>
+              )}
             </div>
           )}
 
@@ -491,24 +534,20 @@ function Form({ lang }: { lang: Lang }) {
             </div>
           )}
 
-          {failed && (
-            <p role="alert" className="mt-6 text-sm font-semibold text-[#B91C1C]">
-              {lang === "fr"
-                ? "Vos réponses n'ont pas pu être envoyées — vérifiez votre connexion et réessayez. Rien n'est perdu : elles sont toujours dans le formulaire."
-                : "Your answers could not be sent — check your connection and try again. Nothing is lost: they are still in the form."}
-            </p>
+          {error && (
+            <p role="alert" className="mt-6 text-sm font-semibold text-[#B91C1C]">{error}</p>
           )}
 
           {/* Navigation */}
           <div className="flex gap-3 mt-8 pt-6 border-t border-[#F1F5F9]">
             {step > 0 && (
-              <button onClick={() => setStep(s => s - 1)}
+              <button onClick={() => { setError(null); setStep(s => s - 1); }}
                 className="flex-1 py-3 rounded-xl border border-[#E8E6E0] text-[#18181B] font-bold text-sm hover:bg-[#FAFAF7] transition-colors">
                 {t.back}
               </button>
             )}
             {step < t.steps.length - 1 ? (
-              <button onClick={() => setStep(s => s + 1)}
+              <button onClick={next}
                 className="flex-1 py-3 rounded-xl bg-gradient-to-r from-[#36671E] to-[#295115] text-[#FAFAF7] font-black text-sm hover:opacity-90 transition-opacity flex items-center justify-center gap-2">
                 {t.continue} <ArrowRight className="w-4 h-4" />
               </button>

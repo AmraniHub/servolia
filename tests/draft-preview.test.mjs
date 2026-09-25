@@ -239,9 +239,10 @@ test("a draft never fires the client's own analytics", () => {
 
 test("the intake's thank-you screen appears only when the server took the answers", () => {
   const form = src("src/components/OnboardingForm.tsx");
-  assert.ok(/ok = res\.ok/.test(form), "the response status is read");
-  assert.ok(/if \(ok\) setSubmitted\(true\);/.test(form), "success only on ok");
-  assert.ok(/setFailed\(true\)/.test(form), "…and a visible failure otherwise");
+  // The request moved to src/lib/intakeSubmit.ts (driven in tests/intake-email.test.mjs).
+  assert.ok(/if \(res\.ok\) return \{ ok: true \};/.test(src("src/lib/intakeSubmit.ts")), "the response status is read");
+  assert.ok(/if \(outcome\.ok\) setSubmitted\(true\);/.test(form), "success only on ok");
+  assert.ok(/else setError\(outcome\.message\)/.test(form), "…and a visible failure otherwise");
   assert.ok(/role="alert"/.test(form), "the failure is announced, not just coloured");
 });
 

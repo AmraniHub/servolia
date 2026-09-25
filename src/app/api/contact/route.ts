@@ -10,6 +10,41 @@ import { sendTelegramMessage, telegramConfigured } from "@/lib/telegram";
 import { rateLimited, clientIp } from "@/lib/security";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const SESSION_RE = /^cs_(live|test)_/;
+
+/** What a paid checkout session says about its buyer, or null when it cannot
+ *  be read (no key for its mode, Stripe unreachable, unknown id) or was never
+ *  paid. Read with the session's OWN key: a cs_test_ session exists only in
+ *  test mode, and a cs_live_ one only under the live key. */
+type PaidSession = { email: string | null; planSession: boolean };
+async function readPaidSession(sessionId: string): Promise<PaidSession | null> {
+  const stripe = stripeForSessionId(sessionId);
+  if (!stripe) return null;
+  try {
+    const s = await stripe.checkout.sessions.retrieve(sessionId);
+    if (s.status !== "complete") return null;
+    return {
+      email: s.customer_details?.email ?? s.customer_email ?? null,
+      // A completed PLAN session only (checkout-subscription): a top-up or
+      // add-on paid with her address typed in must not aim at her build.
+      planSession: s.mode === "subscription" && s.metadata?.kind === "care_plan",
+    };
+  } catch {
+    return null;
+  }
+}
+
+/** The intake form shows these as they are, so they are written for the buyer. */
+const INTAKE_ERRORS = {
+  unmatched: {
+    en: "We couldn't match your payment to this form. Email hello@servolia.com and we'll link it by hand — your answers are still in the form.",
+    fr: "Nous n'avons pas pu relier votre paiement à ce formulaire. Écrivez à hello@servolia.com et nous le relierons nous-mêmes — vos réponses sont toujours dans le formulaire.",
+  },
+  email: {
+    en: "Please enter a valid email address in step 1.",
+    fr: "Merci d'indiquer une adresse email valide à l'étape 1.",
+  },
+} as const;
 
 export const runtime = "nodejs";
 // The intake auto-wire runs AFTER the response (src/lib/intakeBuild.ts) but shares
@@ -59,8 +94,35 @@ async function handleContact(req: NextRequest) {
     if (typeof body.url === "string" && body.url.trim()) {
       return NextResponse.json({ ok: true });
     }
-    if (!EMAIL_RE.test(String(email ?? "").trim())) {
-      return NextResponse.json({ error: "Invalid email" }, { status: 400 });
+
+    /* A PAID BUYER'S EMAIL IS STRIPE'S, NOT THE FORM'S. The intake form a
+       /pricing (or /api/checkout) buyer lands on never asks for an email --
+       the payment already has one -- so the gate below used to answer every
+       paying buyer "Invalid email" and no build ever started (found
+       2026-09-25). With a session id, its completed session supplies the
+       email, and it wins over anything the body says. The session id is the
+       secret here: it is only in the buyer's own success URL. Rate-limited
+       FIRST on this path, because it costs a Stripe call. */
+    const intakeSessionId = type === "intake" && SESSION_RE.test(String(sessionId ?? "")) ? String(sessionId) : null;
+    const intakeLang = body.lang === "fr" ? "fr" : "en";
+    let rateChecked = false;
+    let paid: PaidSession | null = null;
+    if (intakeSessionId) {
+      if (await rateLimited(`contact:${clientIp(req.headers)}`, 8, 900)) {
+        return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+      }
+      rateChecked = true;
+      paid = await readPaidSession(intakeSessionId);
+    }
+    const resolvedEmail = (paid?.email ?? String(email ?? "")).trim();
+
+    if (!EMAIL_RE.test(resolvedEmail)) {
+      return NextResponse.json(
+        type === "intake"
+          ? { error: "Invalid email", message: INTAKE_ERRORS[intakeSessionId ? "unmatched" : "email"][intakeLang] }
+          : { error: "Invalid email" },
+        { status: 400 },
+      );
     }
     // The rendered contact form always sends a non-empty name + problem
     // (both are HTML-required) — a bot posting straight to this API tends to
@@ -68,7 +130,7 @@ async function handleContact(req: NextRequest) {
     if (type === "contact" && (!String(name ?? "").trim() || !String(problem ?? "").trim())) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
-    if (await rateLimited(`contact:${clientIp(req.headers)}`, 8, 900)) {
+    if (!rateChecked && await rateLimited(`contact:${clientIp(req.headers)}`, 8, 900)) {
       return NextResponse.json({ error: "Too many requests" }, { status: 429 });
     }
 
@@ -86,7 +148,7 @@ async function handleContact(req: NextRequest) {
 
       const { data: lead, error } = await db.from("leads").insert({
         name:           name || body.ownerName || null,
-        email:          email || null,
+        email:          resolvedEmail || null,
         phone:          phone || null,
         business:       resolvedBiz,
         website:        website || websiteUrl || null,
@@ -133,28 +195,21 @@ async function handleContact(req: NextRequest) {
            Stripe says whose session it is: a paid session's own email finds
            the build that is still waiting for its intake. The email is
            Stripe's, never the form's, so a stranger cannot aim this. */
-        const sessionStripe = /^cs_(live|test)_/.test(String(sessionId)) ? stripeForSessionId(String(sessionId)) : null;
-        if (!build && sessionStripe) {
+        // The session was read once, above, with its own key (readPaidSession).
+        const paidEmail = paid?.planSession ? paid.email : null;
+        if (!build && intakeSessionId && paidEmail) {
           try {
-            // The session's own key: a cs_test_ session exists only in test mode.
-            const s = await sessionStripe.checkout.sessions.retrieve(String(sessionId));
-            // A completed PLAN session only (checkout-subscription): a top-up or
-            // add-on paid with her address typed in must not aim at her build.
-            const planSession = s.status === "complete" && s.mode === "subscription" && s.metadata?.kind === "care_plan";
-            const paidEmail = planSession ? (s.customer_details?.email ?? s.customer_email ?? null) : null;
-            if (paidEmail) {
-              // A TEST session aims only at a test build; a live one never does.
-              const testSession = String(sessionId).startsWith("cs_test_");
-              ({ data: build } = await excludeTest(db, (live) => {
-                const q = db.from("builds")
-                  .select("id, lead_id, status")
-                  .in("email", Array.from(new Set([paidEmail, paidEmail.toLowerCase()])))
-                  .eq("status", "intake");
-                return (testSession ? q.eq("is_test", true) : live(q)).order("created_at", { ascending: false }).limit(1).maybeSingle();
-              }));
-            }
+            // A TEST session aims only at a test build; a live one never does.
+            const testSession = intakeSessionId.startsWith("cs_test_");
+            ({ data: build } = await excludeTest(db, (live) => {
+              const q = db.from("builds")
+                .select("id, lead_id, status")
+                .in("email", Array.from(new Set([paidEmail, paidEmail.toLowerCase()])))
+                .eq("status", "intake");
+              return (testSession ? q.eq("is_test", true) : live(q)).order("created_at", { ascending: false }).limit(1).maybeSingle();
+            }));
           } catch {
-            /* Stripe unreachable: the answers are on the lead row, as before. */
+            /* Database hiccup: the answers are on the lead row, as before. */
           }
         }
         // No build yet is not an error: Stripe's event may still be on its
@@ -184,7 +239,7 @@ async function handleContact(req: NextRequest) {
       const msg = testPrefixed("") +
         `🔔 *New ${type === "free-audit" ? "Free Audit Request" : type === "intake" ? "Client Intake (PAID)" : "Contact"}*\n` +
         `*${business || businessName || name || "—"}*\n\n` +
-        `📧 ${email || "no email"}\n` +
+        `📧 ${resolvedEmail || "no email"}\n` +
         `📱 ${phone || "—"}\n` +
         `🌍 ${city ? city + ", " : ""}${country || "—"}\n` +
         `🎯 ${niche || industry || "—"}\n` +
