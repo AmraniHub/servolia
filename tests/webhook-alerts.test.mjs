@@ -33,6 +33,16 @@ const src = (p) => readFileSync(path.join(ROOT, p), "utf8").replace(/\r\n/g, "\n
 
 const { POST, request } = await H.bootHarness();
 const TEST_KEY = "sk_test_harness_key";
+
+/* A fake Stripe through the one test seam (src/lib/stripeMode.ts): the
+   hosting failure notice reads the subscription and opens a portal session,
+   and no test may reach the real Stripe. */
+const SM = await import("../src/lib/stripeMode.ts");
+SM.__setStripeFactoryForTests(() => ({
+  subscriptions: { retrieve: async (id) => ({ id, customer: "cus_x", status: "active", metadata: { lang: "en" }, cancel_at_period_end: false, items: { data: [] } }) },
+  checkout: { sessions: { list: async () => ({ data: [] }), retrieve: async (id) => ({ id, metadata: {} }) } },
+  billingPortal: { sessions: { create: async () => ({ url: "https://billing.stripe.test/p" }) } },
+}));
 process.env.FOUNDER_EMAIL = "founder@example.com";
 
 /* ── A network that takes time, and a Telegram that parses like Telegram ── */
@@ -42,7 +52,10 @@ const harnessFetch = globalThis.fetch; // the harness's fake Supabase + recorder
 const delivered = [];
 /** Telegram requests refused with a 400, as Telegram refuses them. */
 const refused = [];
-const net = { delayMs: 25, hangTelegram: false };
+/* clientMailDelayMs: an email to anyone but the owner takes this long. Set
+   above everything else, an un-awaited client email cannot finish inside the
+   time the awaited sends take and pass by luck. */
+const net = { delayMs: 25, clientMailDelayMs: 25, hangTelegram: false };
 
 /** Legacy Markdown, as Telegram's parser sees it: an odd number of _ or *
  *  outside a link leaves an entity unclosed. */
@@ -51,9 +64,15 @@ function unparsable(text) {
   return (bare.split("_").length - 1) % 2 === 1 || (bare.split("*").length - 1) % 2 === 1;
 }
 
+/** Every Supabase call, reads included (the harness records only writes). */
+const supaCalls = [];
+
 globalThis.fetch = async (input, init = {}) => {
   const url = String(typeof input === "string" ? input : input.url);
-  if (url.startsWith("https://harness.supabase.co")) return harnessFetch(input, init);
+  if (url.startsWith("https://harness.supabase.co")) {
+    supaCalls.push({ method: (init.method ?? "GET").toUpperCase(), url: decodeURIComponent(url) });
+    return harnessFetch(input, init);
+  }
   const host = new URL(url).host;
   if (host === "api.telegram.org" && net.hangTelegram) {
     // Never answers — only an abort ends it.
@@ -61,7 +80,8 @@ globalThis.fetch = async (input, init = {}) => {
       init.signal?.addEventListener("abort", () => reject(Object.assign(new Error("aborted"), { name: "AbortError" })));
     });
   }
-  await new Promise((r) => setTimeout(r, net.delayMs));
+  const toOwner = host === "api.resend.com" && [JSON.parse(String(init.body ?? "{}")).to].flat().includes(OWNER);
+  await new Promise((r) => setTimeout(r, host === "api.resend.com" && !toOwner ? net.clientMailDelayMs : net.delayMs));
   if (host === "api.telegram.org" && url.includes("/sendMessage")) {
     const body = JSON.parse(String(init.body));
     if (body.parse_mode === "Markdown" && unparsable(body.text)) {
@@ -78,7 +98,9 @@ function clear() {
   H.reset();
   delivered.length = 0;
   refused.length = 0;
+  supaCalls.length = 0;
   net.delayMs = 25;
+  net.clientMailDelayMs = 25;
   net.hangTelegram = false;
 }
 
@@ -451,41 +473,53 @@ function session(id, fields) {
 }
 const invoice = (type, fields) => evt(type, { id: "in_o", object: "invoice", customer: "cus_o", subscription: "sub_o", ...fields }, true);
 
-/** Each money event: the event, reads to seed, and the reads that make it a replay (null = no guard exists). */
+const { writeOneOff } = await import("../src/lib/oneOffOrders.ts");
+const SEO_ORDER = { service: "seo_multilingual", session: "cs_live_seo", paidAt: "2026-09-21", dueAt: "2026-09-28", amountUsd: 145 };
+
+/** Each money event: the event, reads to seed, the reads that make it a replay
+ *  (null = no guard exists), and how many emails the CLIENT gets — all of which
+ *  must have ARRIVED when the webhook resolves (the fake network is slow). */
 const MONEY = [
-  ["plan subscription", () => plan(true), {}, { clients: [{ id: "c-seen" }] }],
+  ["plan subscription", () => plan(true), {}, { clients: [{ id: "c-seen" }] }, 1],
   ["receptionist trial kept", () => session("cs_live_rec", {
     mode: "subscription", subscription: "sub_rec", amount_total: 14900,
     metadata: { kind: "receptionist", slug: "cabinet-x", plan: "essentiel", billing: "monthly", lang: "fr" },
-  }), {}, { clients: [{ id: "c-rec", build_id: "b-rec" }] }],
-  ["hosting purchase", () => H.hostingPurchase(true, ""), {}, "hosting-replay"],
-  ["assistant add-on", () => { const e = H.hostingPurchase(true, ""); e.data.object.metadata.plan = "chatbot"; e.data.object.metadata.domain = ""; return e; }, {}, "hosting-replay"],
-  ["managed add-on", () => session("cs_live_addon", { mode: "subscription", subscription: "sub_addon", amount_total: 3900, metadata: { kind: "addon", addon: "reviews" } }), {}, null],
-  ["multilingual one-off", () => session("cs_live_seo", { mode: "payment", amount_total: 19900, metadata: { kind: "hosting", plan: "seo_multilingual", business: "Harness Co", lang: "en" } }), {}, null],
+  }), {}, { clients: [{ id: "c-rec", build_id: "b-rec" }] }, 1],
+  ["hosting purchase", () => H.hostingPurchase(true, ""), {}, "hosting-replay", 1],
+  ["assistant add-on", () => { const e = H.hostingPurchase(true, ""); e.data.object.metadata.plan = "chatbot"; e.data.object.metadata.domain = ""; return e; }, {}, "hosting-replay", 1],
+  ["managed add-on", () => session("cs_live_addon", { mode: "subscription", subscription: "sub_addon", amount_total: 3900, metadata: { kind: "addon", addon: "reviews" } }), {}, null, 0],
+  ["multilingual one-off (no hosting row: a lead)", () => session("cs_live_seo", { mode: "payment", amount_total: 14500, metadata: { kind: "hosting", plan: "seo_multilingual", business: "Harness Co", lang: "en" } }),
+    {}, { leads: [{ id: "l-seen" }] }, 1],
+  ["multilingual one-off (on the hosting row)", () => session("cs_live_seo", { mode: "payment", amount_total: 14500, metadata: { kind: "hosting", plan: "seo_multilingual", business: "Harness Co", lang: "en" } }),
+    { hosting_clients: [{ id: "h-seo", business: "Harness Co", notes: null }] },
+    { hosting_clients: [{ id: "h-seo", business: "Harness Co", notes: writeOneOff(null, SEO_ORDER) }] }, 1],
   ["top-up", () => session("cs_live_top", { mode: "payment", amount_total: 4900, metadata: { kind: "topup", conversations: "50", pack: "pack50", lang: "fr" } }),
     { clients: [{ id: "c-top", business: "Cabinet Top", notes: null }] },
-    { clients: [{ id: "c-top", business: "Cabinet Top", notes: writeTopup(null, { conversations: 50, month: monthKey(new Date(1790000000 * 1000)), session: "cs_live_top" }) }] }],
-  ["arrears settled", () => session("cs_live_arr", { mode: "payment", amount_total: 1500, metadata: { kind: "hosting", plan: "arrears", ref: "harness", label: "Old balance", lang: "en" } }), {}, null],
+    { clients: [{ id: "c-top", business: "Cabinet Top", notes: writeTopup(null, { conversations: 50, month: monthKey(new Date(1790000000 * 1000)), session: "cs_live_top" }) }] }, 1],
+  ["arrears settled", () => session("cs_live_arr", { mode: "payment", amount_total: 1500, metadata: { kind: "hosting", plan: "arrears", ref: "harness", label: "Old balance", lang: "en" } }), {}, null, 1],
   ["extra domain order", () => session("cs_live_dom", { mode: "payment", amount_total: 2000, metadata: { kind: "domain_addon", domain: "extra-harness.com", domain_retail_usd: "20", subscription_id: "sub_host1", ref: "harness" } }),
     { hosting_clients: [{ id: "h-dom", notes: null, business: "Harness Co" }] },
-    { hosting_clients: [{ id: "h-dom", notes: writeExtraDomain(null, { domain: "extra-harness.com", retailUsd: 20, failed: "not-configured" }), business: "Harness Co" }] }],
-  ["custom work", () => session("cs_live_custom", { mode: "payment", amount_total: 25000, metadata: { kind: "custom_request", requestId: "req-1", buildId: "b-1" } }), {}, null],
-  ["one-off build payment", () => buildPayment(true), {}, { builds: [{ id: "b-seen", checkout_session_id: "cs_live_build_a" }] }],
+    { hosting_clients: [{ id: "h-dom", notes: writeExtraDomain(null, { domain: "extra-harness.com", retailUsd: 20, failed: "not-configured" }), business: "Harness Co" }] }, 0],
+  ["custom work", () => session("cs_live_custom", { mode: "payment", amount_total: 25000, metadata: { kind: "custom_request", requestId: "req-1", buildId: "b-1" } }), {}, null, 0],
+  ["one-off build payment", () => buildPayment(true), {}, { builds: [{ id: "b-seen", checkout_session_id: "cs_live_build_a" }] }, 1],
   ["renewal (invoice.paid)", () => invoice("invoice.paid", { amount_paid: 14900, currency: "eur", billing_reason: "subscription_cycle", customer_email: "owner.case@example.com" }),
-    { clients: [{ id: "c-ren", business: "Cabinet Renew", email: "owner.case@example.com", plan: "essentiel" }] }, null],
-  ["payment failed", () => invoice("invoice.payment_failed", { amount_due: 14900, currency: "eur", attempt_count: 2 }),
-    { clients: [{ id: "c-fail", past_due_since: "2026-09-20T00:00:00.000Z", business: "Cabinet Fail", email: "owner.case@example.com", plan: "essentiel", build_id: null }] }, null],
-  ["subscription ended", () => H.subscriptionDeleted(true), { clients: [{ id: "c-end", business: "Cabinet End", email: "owner.case@example.com" }] }, null],
+    { clients: [{ id: "c-ren", business: "Cabinet Renew", email: "owner.case@example.com", plan: "essentiel" }] }, null, 0],
+  ["payment failed (a later attempt)", () => invoice("invoice.payment_failed", { amount_due: 14900, currency: "eur", attempt_count: 2 }),
+    { clients: [{ id: "c-fail", past_due_since: "2026-09-20T00:00:00.000Z", business: "Cabinet Fail", email: "owner.case@example.com", plan: "essentiel", build_id: null }] }, null, 0],
+  ["hosting payment failed (first failure)", () => invoice("invoice.payment_failed", { amount_due: 4200, currency: "usd", attempt_count: 1, subscription: "sub_hf", customer: "cus_hf" }),
+    { hosting_clients: [{ id: "h-fail", past_due_since: null, business: "Harness Host", email: "owner.case@example.com", plan: "hosting", subscription_id: "sub_hf", payment_status: "ok" }] }, null, 1],
+  ["subscription ended", () => H.subscriptionDeleted(true), { clients: [{ id: "c-end", business: "Cabinet End", email: "owner.case@example.com" }] }, null, 0],
 ];
 
 function seed(reads) {
   for (const [t, rows] of Object.entries(reads)) H.reads[t] = rows;
 }
 
-for (const [name, make, reads, replay] of MONEY) {
+for (const [name, make, reads, replay, clientCount] of MONEY) {
   test(`owner notice — ${name}: exactly one Telegram alert and one email to the owner, subject in the house format`, () =>
     withEnv(LIVE, async () => {
       clear();
+      net.clientMailDelayMs = 150; // the slowest call: only an awaited client email is counted
       seed(reads);
       const res = await POST(request(make(), H.LIVE_WH));
       assert.ok(res.status < 500, `status ${res.status}`);
@@ -493,6 +527,7 @@ for (const [name, make, reads, replay] of MONEY) {
       const em = ownerMails();
       assert.equal(tg.length, 1, `Telegram owner alerts: ${JSON.stringify(telegramTexts())}`);
       assert.equal(em.length, 1, `owner emails: ${JSON.stringify(mails().map((m) => m.subject))}`);
+      assert.equal(clientMails().length, clientCount, `client emails delivered before the response: ${JSON.stringify(clientMails().map((m) => m.subject))}`);
       assert.deepEqual([em[0].to].flat(), [OWNER], "the owner email went somewhere else");
       assert.equal(tg[0].split("\n")[0], em[0].subject, "Telegram and email disagree on the headline");
       assert.match(em[0].subject, /^(💶 Paid: .+ — (€|\$)[\d,.]+ — .+|⚠️ (Payment failed|Subscription ended): .+ — .+)$/);
@@ -550,6 +585,132 @@ test("owner notice in a TEST purchase: [TEST] subject to the founder, TEST — o
     assert.equal(testBuyer.subject, `[TEST] ${liveBuyer.subject}`, "the client's email changed shape between test and live");
     assert.equal(testBuyer.html, liveBuyer.html.replace(/cs_live_plan1/g, "cs_test_plan1"));
   }));
+
+/* ══ 6. The multilingual order is RECORDED, with its due date ════════════ */
+
+const seo = (livemode, email = "owner.case@example.com") => {
+  const e = session(livemode ? "cs_live_seo" : "cs_test_seo", {
+    mode: "payment", amount_total: 14500, customer_details: { email },
+    metadata: { kind: "hosting", plan: "seo_multilingual", business: "Harness Co", lang: "en", ...(livemode ? {} : { test: "1" }) },
+  });
+  e.livemode = livemode;
+  return e;
+};
+const writesTo = (table, method) => H.writes.filter((w) => w.table === table && w.method === method);
+
+test("multilingual: paid Monday 2026-09-21 → recorded on the client's hosting row, due 2026-09-28, and the owner is told the date", () =>
+  withEnv(LIVE, async () => {
+    clear();
+    seed({ hosting_clients: [{ id: "h-seo", business: "Harness Co", notes: "servolia-fulfilled: session: cs_old | at: x | plan: hosting" }] });
+    await POST(request(seo(true), H.LIVE_WH));
+    const [patch] = writesTo("hosting_clients", "PATCH");
+    assert.ok(patch, "nothing written to the hosting row");
+    assert.match(patch.query, /id=eq\.h-seo/);
+    assert.ok(patch.body.notes.includes("servolia-fulfilled: session: cs_old"), "the row's other markers were lost");
+    assert.ok(patch.body.notes.includes("servolia-oneoff: service: seo_multilingual | session: cs_live_seo | paid: 2026-09-21 | due: 2026-09-28 | amount: 145"), patch.body.notes);
+    assert.equal(writesTo("leads", "POST").length, 0, "a lead was created although the client has a row");
+    const [o] = ownerMails();
+    assert.ok(o.text.includes("DUE 2026-09-28"), o.text);
+    assert.ok(o.text.includes("https://servolia.com/admin/hosting/h-seo"));
+    assert.ok(ownerAlerts()[0].includes("DUE 2026-09-28"));
+    assert.equal(clientMails().length, 1, "the client's confirmation");
+    // The lookup went by the buyer's address, live rows only.
+    const lookup = supaCalls.find((c) => c.method === "GET" && c.url.includes("/hosting_clients?") && c.url.includes("email=ilike."));
+    assert.ok(lookup, JSON.stringify(supaCalls.map((c) => c.url)));
+    assert.ok(!lookup.url.includes("is_test=eq.true"));
+  }));
+
+test("multilingual: no hosting row → a one-off lead the admin sees, with its due date; the lead is not a lead-to-answer", () =>
+  withEnv(LIVE, async () => {
+    clear();
+    await POST(request(seo(true), H.LIVE_WH));
+    const [lead] = writesTo("leads", "POST");
+    assert.ok(lead, "no record at all");
+    assert.equal(lead.body.source, "one-off");
+    assert.equal(lead.body.email, "owner.case@example.com");
+    assert.deepEqual(lead.body.raw_data, { type: "oneoff", service: "seo_multilingual", session: "cs_live_seo", paidAt: "2026-09-21", dueAt: "2026-09-28", amountUsd: 145, siteLabel: "Harness Co" });
+    assert.equal(lead.body.is_test, undefined, "a live order tagged test");
+    assert.ok(ownerMails()[0].text.includes("recorded as a lead"));
+  }));
+
+test("multilingual: a redelivered event (row marker or lead already there) writes nothing and sends nothing", () =>
+  withEnv(LIVE, async () => {
+    for (const reads of [
+      { hosting_clients: [{ id: "h-seo", business: "Harness Co", notes: writeOneOff(null, SEO_ORDER) }] },
+      { leads: [{ id: "l-seen" }] },
+    ]) {
+      clear();
+      seed(reads);
+      const res = await POST(request(seo(true), H.LIVE_WH));
+      assert.deepEqual(await res.json(), { received: true, line: "one-off", replay: true });
+      assert.equal(H.writes.length, 0, JSON.stringify(H.writes));
+      assert.equal(delivered.length, 0, "a replay sent something");
+    }
+  }));
+
+test("multilingual in TEST mode: only test rows are matched, the lead is tagged is_test, mail goes to the founder [TEST]", () =>
+  withEnv(TEST, async () => {
+    clear();
+    await POST(request(seo(false, "founder@example.com"), H.TEST_WH));
+    const lookup = supaCalls.find((c) => c.method === "GET" && c.url.includes("/hosting_clients?") && c.url.includes("email=ilike."));
+    assert.ok(lookup && lookup.url.includes("is_test=eq.true"), "a test purchase could complete a REAL client's row");
+    const [lead] = writesTo("leads", "POST");
+    assert.equal(lead.body.is_test, true);
+    assert.equal(lead.body.raw_data.session, "cs_test_seo");
+    for (const m of mails()) {
+      assert.ok(m.subject.startsWith("[TEST] "), m.subject);
+      assert.deepEqual([m.to].flat(), ["founder@example.com"]);
+    }
+    assert.equal(clientMails().length, 1);
+    assert.equal(ownerMails().length, 1);
+    assert.ok(ownerAlerts()[0].startsWith("TEST — 💶 Paid: multilingual"));
+  }));
+
+test("Today lists every open one-off order as '<service> for <site> — due <date>', from a hosting row and from a lead; done ones are gone", async () => {
+  const { buildToday } = await import("../src/lib/today.ts");
+  const { markOneOffDone } = await import("../src/lib/oneOffOrders.ts");
+  clear();
+  const other = { ...SEO_ORDER, session: "cs_live_done" };
+  seed({
+    hosting_clients: [{ id: "h-seo", business: "Harness Co", status: "active", plan: "seo_multilingual", notes: markOneOffDone(writeOneOff(writeOneOff(null, SEO_ORDER), other), "cs_live_done") }],
+    // Niche and phone filled in by hand (score 65): without the one-off skip
+    // it would also show as a hot lead to answer.
+    leads: [{ id: "l-1", business: "Cabinet Lead", email: "x@y.z", niche: "dental", phone: "+33600000000", source: "one-off", stage: "deposit_paid", created_at: "2026-09-21T00:00:00Z",
+      raw_data: { type: "oneoff", service: "seo_multilingual", session: "cs_live_l1", paidAt: "2026-09-24", dueAt: "2026-10-01", amountUsd: 145, siteLabel: "Cabinet Lead" } }],
+  });
+  const t = await buildToday(Date.parse("2026-09-29T09:00:00Z"));
+  const s = t.sections.find((x) => x.key === "oneoffs");
+  assert.ok(s, JSON.stringify(t.sections.map((x) => x.key)));
+  assert.equal(s.items.length, 2, JSON.stringify(s.items));
+  const [late, soon] = [s.items.find((i) => i.oneOff.where === "hosting"), s.items.find((i) => i.oneOff.where === "lead")];
+  assert.match(late.title, /^Multilingual.* for Harness Co — due 2026-09-28$/);
+  assert.match(late.detail, /OVERDUE by 1d/);
+  assert.equal(late.urgency, 2);
+  assert.deepEqual(late.oneOff, { where: "hosting", id: "h-seo", session: "cs_live_seo" });
+  assert.match(soon.title, /for Cabinet Lead — due 2026-10-01$/);
+  assert.equal(soon.href, "https://servolia.com/admin/leads/l-1");
+  // The one-off lead is not also shown as a lead to answer.
+  const leads = t.sections.find((x) => x.key === "leads");
+  assert.ok(!leads || !leads.items.some((i) => i.title === "Cabinet Lead"));
+  clear();
+});
+
+test("oneOffOrders: working days skip weekends; the marker is idempotent per session; done is stamped once", async () => {
+  const O = await import("../src/lib/oneOffOrders.ts");
+  assert.equal(O.addWorkingDays(new Date("2026-09-21T14:00:00Z"), 5), "2026-09-28"); // Mon → Mon
+  assert.equal(O.addWorkingDays(new Date("2026-09-25T09:00:00Z"), 5), "2026-10-02"); // Fri → Fri
+  assert.equal(O.addWorkingDays(new Date("2026-09-26T09:00:00Z"), 5), "2026-10-02"); // Sat → Fri
+  assert.equal(O.addWorkingDays(new Date("2026-09-23T23:30:00Z"), 5), "2026-09-30"); // Wed → Wed
+  const once = O.writeOneOff("keep me", SEO_ORDER);
+  assert.equal(O.writeOneOff(once, SEO_ORDER), once, "writing the same session twice changed the notes");
+  assert.equal(O.readOneOffs(once).length, 1);
+  assert.ok(once.startsWith("keep me\n"));
+  const done = O.markOneOffDone(once, "cs_live_seo", new Date("2026-09-27T00:00:00Z"));
+  assert.equal(O.readOneOffs(done)[0].doneAt, "2026-09-27");
+  assert.equal(O.markOneOffDone(done, "cs_live_seo", new Date("2026-12-01T00:00:00Z")), done, "done re-stamped");
+  assert.equal(O.markOneOffDone(once, "cs_other"), null);
+  assert.ok(O.hasOneOff(once, "cs_live_seo") && !O.hasOneOff(once, "cs_other"));
+});
 
 test("OWNER_ALERT_EMAIL redirects the owner email; hello@servolia.com is only the default", () =>
   withEnv({ ...LIVE, OWNER_ALERT_EMAIL: "boss@example.org" }, async () => {

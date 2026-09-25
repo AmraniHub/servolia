@@ -1,5 +1,6 @@
 import Link from "next/link";
 import ReceptionistTrialAction from "@/components/admin/ReceptionistTrialAction";
+import OneOffDoneAction from "@/components/admin/OneOffDoneAction";
 import { redirect } from "next/navigation";
 import { isAdminAuthed } from "@/lib/auth";
 import { buildToday, type TodayItem } from "@/lib/today";
@@ -72,6 +73,7 @@ function Row({ item }: { item: TodayItem }) {
         </span>
       </Link>
       {item.trialSlug ? <ReceptionistTrialAction slug={item.trialSlug} ended={Boolean(item.trialEnded)} /> : null}
+      {item.oneOff ? <OneOffDoneAction where={item.oneOff.where} id={item.oneOff.id} session={item.oneOff.session} /> : null}
     </li>
   );
 }

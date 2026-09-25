@@ -4,6 +4,8 @@ import { computeLeadScore } from "@/lib/scoring";
 import { readDraftEmailed } from "@/lib/draftPreview";
 import type { ReceptionistState } from "@/lib/clientSites";
 import { mailDomainFor, mailState, whatIsOwed, hostingMailDomain, hostingMailboxOwed, hostingSetupOwed, type OwedSite, type MailState } from "@/lib/owedToPractice";
+import { readOneOffs, type OneOffOrder, type OneOffLeadData } from "@/lib/oneOffOrders";
+import { resolveHostingPlan } from "@/lib/hosting";
 
 /**
  * TODAY — one list of what needs a human, assembled from everything that
@@ -25,7 +27,7 @@ import { mailDomainFor, mailState, whatIsOwed, hostingMailDomain, hostingMailbox
 export type Owner = "me" | "client";
 
 export interface TodayItem {
-  /** stable kind for scripts: lead-sla, lead-hot, build-intake, build-building, draft-send, draft-go, trial-ending, payment-failed, needs-setup, prospect, request-unpaid, reception-not-installed, reception-ending, reception-ended, reception-running, domain-waiting, domain-owed, mailbox-owed, mailbox-unchecked, hosting-mailbox-owed, hosting-mailbox-unchecked */
+  /** stable kind for scripts: lead-sla, lead-hot, build-intake, build-building, draft-send, draft-go, trial-ending, payment-failed, needs-setup, prospect, request-unpaid, reception-not-installed, reception-ending, reception-ended, reception-running, domain-waiting, domain-owed, mailbox-owed, mailbox-unchecked, hosting-mailbox-owed, hosting-mailbox-unchecked, oneoff-due */
   kind: string;
   title: string;
   detail?: string;
@@ -36,6 +38,8 @@ export interface TodayItem {
   /** A public receptionist trial's slug — the page offers End / Remove on it. */
   trialSlug?: string;
   trialEnded?: boolean;
+  /** A paid one-off order (src/lib/oneOffOrders.ts) — the page offers Done on it. */
+  oneOff?: { where: "hosting" | "lead"; id: string; session: string };
 }
 
 export interface TodaySection {
@@ -71,7 +75,7 @@ export async function buildToday(now = Date.now()): Promise<Today> {
      Every tagged table is read `is_test is not true` (all pre-existing rows
      included, as before), and rows elsewhere that point at a test build (its
      draft site, a custom request on it) are dropped below. */
-  const [leadsRes, buildsRes, sitesRes, hostRes, clientsRes, prospectsRes, requestsRes, receptionRes, domainRes, testBuilds] = await Promise.all([
+  const [leadsRes, buildsRes, sitesRes, hostRes, clientsRes, prospectsRes, requestsRes, receptionRes, domainRes, testBuilds, oneOffLeadsRes] = await Promise.all([
     excludeTest(db, (live) => live(db.from("leads").select("id, business, email, niche, stage, created_at, last_contacted_at, value_estimate, source, problems, client_value, plan_interest")
       .not("stage", "in", '("live","lost")').eq("status", "active"))),
     excludeTest(db, (live) => live(db.from("builds").select("id, business, email, status, deadline, created_at, started_at").not("status", "in", '("live","delivered")'))),
@@ -84,7 +88,40 @@ export async function buildToday(now = Date.now()): Promise<Today> {
     db.from("client_sites").select("slug, config").like("notes", "%servolia-receptionist:%"),
     db.from("client_sites").select("slug, config").eq("status", "published").not("config->>customDomain", "is", null),
     testIds(db, "builds"),
+    // Paid one-off orders with no hosting row to live on (src/lib/oneOffOrders.ts).
+    excludeTest(db, (live) => live(db.from("leads").select("id, business, email, raw_data").eq("raw_data->>type", "oneoff"))),
   ]);
+
+  /* ── Paid one-off work, and the day it was promised by ────────────────
+     The multilingual search setup promises five working days. Its order is a
+     line on the client's hosting row, or a lead when there is no row; both
+     stay here until Done is pressed. Overdue or due within a day is today. */
+  const oneOffs: TodayItem[] = [];
+  const oneOffItem = (o: OneOffOrder, site: string, where: "hosting" | "lead", id: string, href: string): TodayItem => {
+    // Whole calendar days (UTC), not hours: due yesterday is overdue by 1,
+    // however early in the morning this runs.
+    const todayUtc = new Date(now).toISOString().slice(0, 10);
+    const d = Math.round((Date.parse(`${o.dueAt}T00:00:00Z`) - Date.parse(`${todayUtc}T00:00:00Z`)) / 86_400_000);
+    const service = resolveHostingPlan(o.service)?.name ?? o.service;
+    return {
+      kind: "oneoff-due",
+      title: `${service} for ${site} — due ${o.dueAt}`,
+      detail: `${d < 0 ? `OVERDUE by ${-d}d` : d === 0 ? "due today" : `due in ${d}d`} · paid $${o.amountUsd} on ${o.paidAt} — deliver, confirm to the client by email, then press Done`,
+      href, owner: "me", urgency: d <= 1 ? 2 : 1,
+      oneOff: { where, id, session: o.session },
+    };
+  };
+  for (const h of (hostRes.data ?? []) as Array<{ id: string; business: string; notes: string | null }>) {
+    for (const o of readOneOffs(h.notes)) {
+      if (!o.doneAt) oneOffs.push(oneOffItem(o, h.business, "hosting", h.id, `${ADMIN}/hosting/${h.id}`));
+    }
+  }
+  for (const l of (oneOffLeadsRes.data ?? []) as Array<{ id: string; business: string | null; email: string | null; raw_data: OneOffLeadData | null }>) {
+    const o = l.raw_data;
+    if (!o || o.doneAt || !o.dueAt) continue;
+    oneOffs.push(oneOffItem(o, o.siteLabel || l.business || l.email || "?", "lead", l.id, `${ADMIN}/leads/${l.id}`));
+  }
+  if (oneOffs.length) sections.push({ key: "oneoffs", label: "Promised one-off work", items: oneOffs });
 
   /* ── C2: a practice's own domain that is not answering yet ────────────
      Attached a day ago and still not serving her site: her DNS lines were
@@ -198,6 +235,8 @@ export async function buildToday(now = Date.now()): Promise<Today> {
     const silent = hrsAgo(ref, now) ?? 0;
     const score = computeLeadScore(l as never);
     const name = String(l.business || l.email || "Unknown");
+    // A paid one-off order is not a lead to answer: it is listed above, with its due date.
+    if (l.source === "one-off") continue;
     if (silent > 48 && l.stage !== "deposit_paid") {
       leads.push({ kind: "lead-sla", title: name, detail: `${silent}h without contact — SLA is 48h`, href: `${ADMIN}/leads/${l.id}`, owner: "me", urgency: 2 });
     } else if (score >= 60) {

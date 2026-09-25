@@ -525,6 +525,7 @@ export const FEATURES: SystemFeature[] = [
       "COVERED EVENTS: plan subscription (installation + first month) · receptionist trial kept · hosting purchase (tiers and the assistant add-on) · managed add-on · multilingual search one-off · top-up · arrears settled · extra domain order · custom work · one-off build payment · renewal (invoice.paid) · payment failed (plan and hosting) · subscription ended.",
       "ONCE PER EVENT: each notice sits after its branch's existing replay guard (subscription id already recorded, fulfilment marker on the hosting row, top-up marker on the notes, extra domain already recorded, build already carrying the session id, receptionist purchase already complete). Branches with no guard (one-off, arrears, custom work, renewals, failures, cancellation) notify again if Stripe redelivers the same event — as their Telegram alert always did.",
       "RENEWALS: only invoice.paid (the endpoint also receives invoice.payment_succeeded for the same invoice), never billing_reason subscription_create (its checkout already told you), never a zero-amount invoice.",
+      "ONE-OFF WORK IS RECORDED WITH ITS DUE DATE (src/lib/oneOffOrders.ts): a paid multilingual search setup writes a `servolia-oneoff:` line (service, session, paid, due = five working days, amount) on the client's hosting_clients row — matched by the buyer's address, else by the ref's repository — or, with no row, a lead with source 'one-off' and the order in raw_data. Keyed on the checkout session: a redelivered event stops before any email or alert. /admin/today shows 'Multilingual search setup for <site> — due <date>' (today when overdue or due within a day) until Done is pressed (POST /api/admin/oneoff-done). The owner email and Telegram name the due date. A test purchase matches only test rows and tags its lead is_test.",
       "TEST PURCHASES: the Telegram alert starts 'TEST —', the email goes to FOUNDER_EMAIL with '[TEST] ' on the subject (the same routing every test email has), and Meta is never called. What the CLIENT receives is unchanged.",
       "GREETINGS: client emails greet by the first name on the payment (Stripe customer_details.name) or neutrally ('Bonjour,' / 'Hello,') — never the address's local part, which once produced 'Hi hello,'.",
     ],
@@ -535,7 +536,7 @@ export const FEATURES: SystemFeature[] = [
     ],
     cost: "One extra Resend email per money event (well inside the free 3,000/month).",
     value: "A payment you do not hear about is a client waiting on you with no one knowing. Every euro and dollar now announces itself twice, in the channel you watch and the inbox you keep.",
-    code: "src/lib/notify.ts (bounded, alert, notifyOwner, Sends) · src/lib/telegram.ts · src/lib/metaCapi.ts · src/app/api/webhooks/stripe/route.ts · src/lib/provisioning.ts · tests/webhook-alerts.test.mjs",
+    code: "src/lib/notify.ts (bounded, alert, notifyOwner, Sends) · src/lib/telegram.ts · src/lib/metaCapi.ts · src/app/api/webhooks/stripe/route.ts · src/lib/provisioning.ts · src/lib/oneOffOrders.ts · src/lib/today.ts (oneoffs) · /api/admin/oneoff-done · src/components/admin/OneOffDoneAction.tsx · tests/webhook-alerts.test.mjs",
   },
   {
     name: "Scheduled jobs map (Vercel crons vs GitHub Actions)",

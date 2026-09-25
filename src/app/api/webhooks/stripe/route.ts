@@ -39,6 +39,7 @@ import { startBuildFromIntake } from "@/lib/intakeBuild";
 import { stripeFor } from "@/lib/stripeMode";
 import { runAsTest, inTestContext, testTag, testPrefixed, excludeTest, isTestRow } from "@/lib/testContext";
 import { Sends, paidSubject, troubleSubject, money } from "@/lib/notify";
+import { addWorkingDays, hasOneOff, writeOneOff, type OneOffOrder, type OneOffLeadData } from "@/lib/oneOffOrders";
 
 export const runtime = "nodejs";
 // A subscriber whose intake beat this event has their draft generated after
@@ -709,6 +710,65 @@ async function handleEventBody(event: Stripe.Event, stripe: Stripe, db: Db, send
         const siteLabel = session.metadata?.business || session.metadata?.ref || "";
         const lang = session.metadata?.lang === "fr" ? "fr" : "en";
         const product = resolveHostingPlan("seo_multilingual");
+
+        /* RECORD THE ORDER FIRST (2026-09-25). Its "within five working days"
+           promise used to live only in an email and a Telegram — and the first
+           live purchase lost both. src/lib/oneOffOrders.ts: a line on the
+           client's hosting row when one exists (by address, else by the ref's
+           repository), otherwise a lead; keyed on this session, so a
+           redelivered event stops here without a second email or alert.
+           /admin/today lists it until it is marked done. A test purchase
+           touches only test rows and writes a test-tagged lead. */
+        const paidOn = new Date(event.created * 1000);
+        const order: OneOffOrder = {
+          service: "seo_multilingual",
+          session: session.id,
+          paidAt: paidOn.toISOString().slice(0, 10),
+          dueAt: addWorkingDays(paidOn, 5),
+          amountUsd: amount,
+        };
+        const onlyThisMode = <Q,>(q: Q, live: <T>(x: T) => T) =>
+          test ? (q as unknown as { eq(c: string, v: boolean): Q }).eq("is_test", true) : live(q);
+        let host: { id: string; business: string | null; notes: string | null } | null = null;
+        if (customerEmail) {
+          ({ data: host } = await excludeTest(db, (live) => onlyThisMode(
+            db.from("hosting_clients").select("id, business, notes").ilike("email", customerEmail), live,
+          ).order("created_at", { ascending: false }).limit(1).maybeSingle()));
+        }
+        const refRepo = clientRefFor(session.metadata?.ref ?? "")?.repo;
+        if (!host && refRepo) {
+          ({ data: host } = await excludeTest(db, (live) => onlyThisMode(
+            db.from("hosting_clients").select("id, business, notes").eq("repo", refRepo), live,
+          ).order("created_at", { ascending: false }).limit(1).maybeSingle()));
+        }
+        let recordedAt: string | null = null;
+        if (host) {
+          if (hasOneOff(host.notes, session.id)) {
+            return NextResponse.json({ received: true, line: "one-off", replay: true });
+          }
+          const { error } = await db.from("hosting_clients")
+            .update({ notes: writeOneOff(host.notes, order) }).eq("id", host.id);
+          if (error) console.error("[stripe] one-off record failed:", error.message);
+          else recordedAt = `https://servolia.com/admin/hosting/${host.id}`;
+        } else {
+          const { data: seen } = await db.from("leads").select("id")
+            .eq("raw_data->>type", "oneoff").eq("raw_data->>session", session.id).limit(1).maybeSingle();
+          if (seen) return NextResponse.json({ received: true, line: "one-off", replay: true });
+          const raw: OneOffLeadData = { type: "oneoff", ...order, siteLabel };
+          const { data: lead, error } = await db.from("leads").insert({
+            business: siteLabel || customerEmail || "One-off order",
+            email: customerEmail,
+            source: "one-off",
+            stage: "deposit_paid", // they have paid — this is not a guess
+            plan_interest: "seo_multilingual",
+            value_estimate: 0, // a one-off already paid is not pipeline
+            raw_data: raw,
+            ...testTag(),
+          }).select("id").single();
+          if (error || !lead) console.error("[stripe] one-off lead failed:", error?.message);
+          else recordedAt = `https://servolia.com/admin/leads/${(lead as { id: string }).id}`;
+        }
+
         if (customerEmail) {
           const tpl = oneOffServicePaidEmail({
             productName: product ? productCopy(product, lang).heading : "Multilingual search setup",
@@ -727,9 +787,13 @@ async function handleEventBody(event: Stripe.Event, stripe: Stripe, db: Db, send
             `ONE-OFF PAID - multilingual search setup, ${money(amount, session.currency ?? "usd")}`,
             siteLabel || "unnamed site",
             customerEmail ?? "no email",
-            `Next: within five working days — hreflang, a sitemap per language, structured data. Confirm to the client by email when done.`,
+            `DUE ${order.dueAt} (five working days from ${order.paidAt})`,
+            recordedAt
+              ? host ? `Recorded on ${host.business ?? "their"} hosting row; on /admin/today until marked done.` : `No hosting row for this client — recorded as a lead; on /admin/today until marked done.`
+              : `⚠️ NOT RECORDED (database error) — note the due date by hand.`,
+            `Next: by ${order.dueAt} — hreflang, a sitemap per language, structured data. Confirm to the client by email, then press Done on /admin/today.`,
           ],
-          link: "https://servolia.com/admin/hosting",
+          link: recordedAt ?? "https://servolia.com/admin/today",
         });
         return NextResponse.json({ received: true, line: "one-off" });
       }
