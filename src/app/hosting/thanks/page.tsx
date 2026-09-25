@@ -64,6 +64,12 @@ const COPY_FR: Record<string, Copy> = {
     body:
       "Un paiement unique — rien ne se renouvelle. Nous déclarons vos langues (hreflang), écrivons un plan de site par langue et les données structurées, et vous confirmons par email quand c'est en place — sous cinq jours ouvrés. Rien à faire de votre côté d'ici là.",
   },
+  /* A DOMAIN ON ITS OWN (src/lib/domainOrders.ts). */
+  domain: {
+    title: "Paiement reçu",
+    body:
+      "Votre domaine est en cours d'enregistrement. L'email de confirmation vous dit quand c'est fait, et quand il se renouvelle. Rien à faire de votre côté.",
+  },
 };
 
 const FALLBACK_FR: Copy = {
@@ -102,6 +108,14 @@ const COPY: Record<string, Copy> = {
     title: "Payment received",
     body:
       "A single payment — nothing renews. We declare your languages (hreflang), write a sitemap per language and the structured data, and email you when it is in place — within five working days. Nothing for you to do until then.",
+  },
+  /* A DOMAIN ON ITS OWN (src/lib/domainOrders.ts). The footer line below
+     promises "what you paid and when it renews", which the confirmation
+     email keeps. */
+  domain: {
+    title: "Payment received",
+    body:
+      "Your domain is being registered now. The confirmation email tells you when it is done, and when it renews. Nothing for you to do.",
   },
 };
 

@@ -158,6 +158,14 @@ export default function HostingTerms() {
                 your plan for as long as the plan runs. The same rule applies: it is yours,
                 and on request we transfer it to a registrar account you name.
               </p>
+              <p>
+                <strong className="text-[#18181B]">A domain&apos;s yearly price follows the registry&apos;s.</strong> It
+                is never lower at renewal than what you paid the year before. When the registry
+                raises its price, the renewal goes up with it, and we email you the new price
+                before it is charged. A domain bought on its own, without a plan, renews each year
+                on the card it was paid with, and a price rise is emailed at least 30 days before.
+                To stop a renewal, reply to any email from us before its date.
+              </p>
               <p className="text-[14px] bg-white border border-[#E8E6E0] rounded-xl p-4">
                 <strong className="text-[#18181B]">One timing rule we do not control:</strong> ICANN forbids
                 transferring any <code className="text-[13px]">.com</code> to a different registrar for

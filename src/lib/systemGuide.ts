@@ -335,6 +335,27 @@ export const FEATURES: SystemFeature[] = [
     code: "src/proxy.ts · src/lib/siteHost.ts · src/lib/siteDomain.ts · /api/admin/site-domain · /api/cron/domain-live · src/components/portal/DomainPanel.tsx · legal/cgv §7 bis",
   },
   {
+    name: "Domains we sell — price rule, domain-only links, renewals",
+    summary: "Any .com/.org/.net/.co we sell is priced from Vercel's renewal price, never under $27.90 a year and always ending .90, and repriced upward at each renewal when Vercel raises its price. A client with no Servolia plan can buy one on its own from a link made on /admin/hosting and gets a Servolia email.",
+    how: [
+      "THE PRICE (his rule, 2026-09-24): retail = (Vercel renewal + $13 profit + Stripe's worst case), rounded UP to the next .90, floor $27.90, ceiling $80 (above that it is not offered). A .com (Vercel ~$11.25) sells at $27.90. src/lib/domainSales.ts retailYearlyUsd.",
+      "RENEWALS FOLLOW VERCEL UP, NEVER DOWN: renewalRetailUsd = max(what they paid last year, today's retail from Vercel's current renewal price). Applied by /api/cron/domain-billing (daily 11:00) to a monthly plan's domain, to panel add-ons, and to domain-only orders. The client is emailed the price, and the rise when there is one. An ANNUAL plan's domain is a fixed line on its Stripe subscription and cannot be repriced from code: the margin watch sends a Telegram once when its profit drops $3 under target, and you reprice it by hand.",
+      "DOMAIN ONLY (src/lib/domainOrders.ts): /admin/hosting → New domain link → domain, client email, name, Vercel project, language. The server quotes the name live and makes a live Stripe Checkout link (expires in 23h). The client pays with his own card; the card is saved for next year. The webhook (kind domain_order) buys the name on Vercel with WHOIS privacy and auto-renew, attaches apex + www to the named project, emails the client (domainOrderEmail) and Telegrams you.",
+      "The record of a domain-only order lives on the STRIPE CUSTOMER's metadata (servolia_domain, _status, _retail, _renews, _project...), one customer per order. No table, no migration, and it never counts as a hosting client.",
+      "Its renewal: 30 days before, a price-rise notice email if the price is going up; 7 days before, a one-line invoice charged on the saved card, found again by its metadata on a retry so a year is never charged twice. A declined card goes to Telegram daily until it is resolved: Vercel auto-renews on OUR card either way.",
+      "The registrant is Servolia (DOMAIN_CONTACT_JSON), not the client: ICANN's verification email comes to you and must be clicked within 15 days. The emails tell the client it is his and is transferred on request.",
+    ],
+    use: [
+      "Selling a domain to someone with no plan (first: Ithar Digital, ithardigital.com → ithar-digital): make the link, send it to him, he pays. Watch Telegram for 'REGISTERED' and 'Attached to Vercel project'.",
+      "A client asks to stop renewing: in Stripe, set the customer's servolia_domain_status to 'stopped', and switch auto-renew off in Vercel > Domains.",
+      "Telegram says 'NOT registered': buy it by hand (vercel domains buy <name>) or refund the payment in Stripe. The client was already told one or the other happens.",
+      "Telegram says 'NOT attached': Vercel > the project > Domains > add it. A domain still 'purchasing' at Vercel can refuse the attach for a minute.",
+    ],
+    cost: "Vercel's price for the name (~$11.25 for a .com), Stripe's fee. About $13 kept per domain per year, by construction.",
+    value: "Clients who are not on a plan can still buy their address through Servolia, in two minutes and with their own card. Each one is recurring profit every year, and the profit holds when the registry raises its prices.",
+    code: "src/lib/domainSales.ts · src/lib/domainOrders.ts · /api/admin/domain-order · src/components/admin/DomainOrderLink.tsx · webhook kind domain_order · /api/cron/domain-billing · tests/domain-orders.test.mjs",
+  },
+  {
     name: "Ideas board — how work gets handed to Claude",
     summary: "A kanban at /admin/ideas of everything discussed but not built. Move a card to In progress, copy the brief, paste it into a message — that is the whole handover.",
     how: [

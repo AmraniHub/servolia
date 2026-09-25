@@ -40,7 +40,8 @@ export const DOMAIN_TARGET_PROFIT_USD = 13;
 /** Stripe, assumed at its worst realistic case: non-US card + currency conversion. */
 export const STRIPE_RATE = 0.05;
 export const STRIPE_FIXED_USD = 0.3;
-export const DOMAIN_MIN_RETAIL_USD = 26;
+/** The floor, his rule (2026-09-24): no domain sells under 27.90 a year. */
+export const DOMAIN_MIN_RETAIL_USD = 27.9;
 export const DOMAIN_MAX_RETAIL_USD = 80;
 
 export function isDomainSalesConfigured(): boolean {
@@ -67,9 +68,29 @@ export function normalizeDomain(input: string | null | undefined): string | null
   return s;
 }
 
+/**
+ * Every price ends in .90 and is rounded UP to get there: 25.84 needed sells
+ * at 27.90 (the floor), 31.20 at 31.90, 31.90 at 31.90. Rounding down to the
+ * nearest .90 would put the price under what the profit rule needs.
+ */
 export function retailYearlyUsd(renewalUsd: number): number {
   const needed = (renewalUsd + DOMAIN_TARGET_PROFIT_USD + STRIPE_FIXED_USD) / (1 - STRIPE_RATE);
-  return Math.max(DOMAIN_MIN_RETAIL_USD, Math.ceil(needed));
+  const ninety = Math.ceil(Math.round((needed - 0.9) * 100) / 100) + 0.9;
+  return Math.round(Math.max(DOMAIN_MIN_RETAIL_USD, ninety) * 100) / 100;
+}
+
+/**
+ * WHAT A RENEWAL COSTS THE CLIENT: never less than they paid last year, and
+ * more when Vercel's renewal price has risen enough that last year's figure
+ * no longer leaves the target profit. The registry raises .com most years
+ * and Vercel passes it on; a price frozen at purchase would lose the margin
+ * a little every year. Unknown Vercel price (API down) = last year's price,
+ * because a renewal is not the moment to guess upward.
+ */
+export function renewalRetailUsd(paidUsd: number, vercelRenewalUsd: number | null): number {
+  const floor = Number.isFinite(paidUsd) && paidUsd > 0 ? paidUsd : DOMAIN_MIN_RETAIL_USD;
+  if (vercelRenewalUsd === null || !Number.isFinite(vercelRenewalUsd)) return floor;
+  return Math.max(floor, retailYearlyUsd(vercelRenewalUsd));
 }
 
 /** What is left after Vercel's renewal and Stripe's worst case -- for the admin's eyes. */

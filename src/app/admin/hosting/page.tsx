@@ -2,6 +2,7 @@ import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabase";
 import { Server, ExternalLink, AlertTriangle } from "lucide-react";
 import HostingCheckout from "@/components/admin/HostingCheckout";
+import DomainOrderLink from "@/components/admin/DomainOrderLink";
 import { referenceFor } from "@/lib/upgrade";
 import { knownSiteUrl, refKeyForEmail } from "@/lib/clientRefs";
 
@@ -68,7 +69,10 @@ export default async function HostingPage() {
             ) : null}
           </p>
         </div>
-        <HostingCheckout />
+        <div className="flex flex-wrap items-start justify-end gap-2">
+          <DomainOrderLink />
+          <HostingCheckout />
+        </div>
       </div>
 
       {tableMissing ? (

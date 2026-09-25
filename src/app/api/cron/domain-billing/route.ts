@@ -4,8 +4,11 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { excludeTest } from "@/lib/testContext";
 import { sendTelegramMessage } from "@/lib/telegram";
 import {
-  readDomainRecord, writeDomainRecord, currentRenewalUsd, netProfitUsd, DOMAIN_TARGET_PROFIT_USD,
+  readDomainRecord, writeDomainRecord, currentRenewalUsd, netProfitUsd, renewalRetailUsd, DOMAIN_TARGET_PROFIT_USD,
 } from "@/lib/domainSales";
+import { runDomainOrderRenewals } from "@/lib/domainOrders";
+import { sendEmail, domainRenewalEmail } from "@/lib/email";
+import { langFor, refKeyForEmail } from "@/lib/clientRefs";
 import { readExtraDomains, writeExtraDomain } from "@/lib/extraDomains";
 import { nextChargeDate } from "@/lib/hosting";
 
@@ -44,7 +47,7 @@ export async function GET(req: NextRequest) {
   // charged, renewed or margin-watched (src/lib/testContext.ts).
   const { data: rows, error } = await excludeTest(db, (live) => live(db
     .from("hosting_clients")
-    .select("id, business, customer_id, billing_period, status, notes")
+    .select("id, business, email, customer_id, billing_period, status, notes")
     .in("status", ["active", "past_due"])
     .eq("billing_period", "monthly")
     .like("notes", "%servolia-domain:%")));
@@ -53,26 +56,43 @@ export async function GET(req: NextRequest) {
   const horizon = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
   const charged: string[] = [];
   const failed: string[] = [];
+  /* The client hears about the renewal the day it goes on their account. It
+     is an invoice item, so the money moves on the NEXT monthly invoice, days
+     or weeks later: this email is the notice before the charge, and it names
+     the rise when there is one. Awaited at the end, not fire-and-forget: a
+     serverless function can be frozen the moment it returns. */
+  const mails: Promise<unknown>[] = [];
+  function tellClient(email: string | null, domain: string, price: number, previous: number, fromIso: string) {
+    if (!email) return;
+    const tpl = domainRenewalEmail({
+      domain, stage: "invoice", priceUsd: price, previousUsd: previous, onIso: fromIso,
+      lang: langFor(refKeyForEmail(email)),
+    });
+    mails.push(sendEmail(email, tpl.subject, tpl.html).catch(() => false));
+  }
 
   for (const row of rows ?? []) {
     const rec = readDomainRecord(row.notes);
     if (!rec || rec.status !== "bought" || !rec.nextChargeAt || rec.nextChargeAt > horizon) continue;
     if (!row.customer_id) { failed.push(`${rec.domain}: no Stripe customer on the row`); continue; }
+    // Repriced from Vercel's renewal price today, never below last year's.
+    const price = renewalRetailUsd(rec.retailUsd, await currentRenewalUsd(rec.domain));
     try {
       await stripe.invoiceItems.create(
         {
           customer: row.customer_id,
           currency: "usd",
-          amount: Math.round(rec.retailUsd * 100),
+          amount: Math.round(price * 100),
           description: `Domain ${rec.domain} — renewal, 12 months from ${rec.nextChargeAt}`,
         },
         { idempotencyKey: `domain-renewal-${row.id}-${rec.nextChargeAt}` },
       );
       const next = nextChargeDate(new Date(`${rec.nextChargeAt}T00:00:00Z`), "annual").toISOString().slice(0, 10);
       await db.from("hosting_clients")
-        .update({ notes: writeDomainRecord(row.notes, { ...rec, nextChargeAt: next }) })
+        .update({ notes: writeDomainRecord(row.notes, { ...rec, retailUsd: price, nextChargeAt: next }) })
         .eq("id", row.id);
-      charged.push(`${rec.domain} $${rec.retailUsd} (${row.business}) — next ${next}`);
+      charged.push(`${rec.domain} $${price.toFixed(2)}${price > rec.retailUsd ? ` (was $${rec.retailUsd})` : ""} (${row.business}) — next ${next}`);
+      tellClient(row.email, rec.domain, price, rec.retailUsd, rec.nextChargeAt);
     } catch (e) {
       failed.push(`${rec.domain}: ${e instanceof Error ? e.message : String(e)}`);
     }
@@ -90,7 +110,7 @@ export async function GET(req: NextRequest) {
    * our own cost every year afterwards. */
   const { data: addonRows } = await excludeTest(db, (live) => live(db
     .from("hosting_clients")
-    .select("id, business, customer_id, status, notes")
+    .select("id, business, email, customer_id, status, notes")
     .in("status", ["active", "past_due"])
     .like("notes", "%servolia-extra-domain:%")));
 
@@ -98,12 +118,13 @@ export async function GET(req: NextRequest) {
     for (const rec of readExtraDomains(row.notes)) {
       if (!rec.nextChargeAt || rec.failed || rec.nextChargeAt > horizon) continue;
       if (!row.customer_id) { failed.push(`${rec.domain}: no Stripe customer on the row`); continue; }
+      const price = renewalRetailUsd(rec.retailUsd, await currentRenewalUsd(rec.domain));
       try {
         await stripe.invoiceItems.create(
           {
             customer: row.customer_id,
             currency: "usd",
-            amount: Math.round(rec.retailUsd * 100),
+            amount: Math.round(price * 100),
             description: `Domain ${rec.domain} — renewal, 12 months from ${rec.nextChargeAt}`,
           },
           /* Keyed on the client, the domain AND the date, so a cron that runs
@@ -113,29 +134,57 @@ export async function GET(req: NextRequest) {
         const next = nextChargeDate(new Date(`${rec.nextChargeAt}T00:00:00Z`), "annual").toISOString().slice(0, 10);
         const { data: fresh } = await db.from("hosting_clients").select("notes").eq("id", row.id).maybeSingle();
         await db.from("hosting_clients")
-          .update({ notes: writeExtraDomain((fresh as { notes?: string | null } | null)?.notes ?? row.notes, { ...rec, nextChargeAt: next }) })
+          .update({ notes: writeExtraDomain((fresh as { notes?: string | null } | null)?.notes ?? row.notes, { ...rec, retailUsd: price, nextChargeAt: next }) })
           .eq("id", row.id);
-        charged.push(`${rec.domain} $${rec.retailUsd} (${row.business}) — next ${next}`);
+        charged.push(`${rec.domain} $${price.toFixed(2)}${price > rec.retailUsd ? ` (was $${rec.retailUsd})` : ""} (${row.business}) — next ${next}`);
+        tellClient(row.email, rec.domain, price, rec.retailUsd, rec.nextChargeAt);
       } catch (e) {
         failed.push(`${rec.domain}: ${e instanceof Error ? e.message : String(e)}`);
       }
     }
   }
 
-  /* THE MARGIN WATCH, for every domain we hold on any plan.
+  /* DOMAINS SOLD ON THEIR OWN (src/lib/domainOrders.ts): no plan, no row
+   * here — the record is on the Stripe customer. A price rise is emailed 30
+   * days out; the renewal is charged on the saved card 7 days out. */
+  const today = new Date().toISOString().slice(0, 10);
+  let orders: Awaited<ReturnType<typeof runDomainOrderRenewals>> = [];
+  try {
+    orders = await runDomainOrderRenewals(stripe, today);
+  } catch (e) {
+    failed.push(`domain orders: ${e instanceof Error ? e.message : String(e)}`);
+  }
+  for (const o of orders) {
+    if (o.step === "charge-failed") {
+      failed.push(`${o.domain} (order, ${o.email ?? o.customer}): $${o.priceUsd.toFixed(2)} NOT charged — ${o.detail}. Vercel auto-renews it on our card: chase them or switch auto-renew off.`);
+      continue;
+    }
+    if (o.step === "charged") charged.push(`${o.domain} $${o.priceUsd.toFixed(2)}${o.priceUsd > o.previousUsd ? ` (was $${o.previousUsd})` : ""} (order, ${o.email ?? o.customer}) — next ${o.nextRenewsOn}`);
+    else charged.push(`${o.domain}: price-rise notice sent, $${o.previousUsd} -> $${o.priceUsd.toFixed(2)} on ${o.renewsOn}`);
+    if (!o.email) continue;
+    const tpl = domainRenewalEmail({
+      domain: o.domain, stage: o.step === "charged" ? "charged" : "notice", priceUsd: o.priceUsd, previousUsd: o.previousUsd,
+      onIso: o.renewsOn, nextIso: o.nextRenewsOn, lang: o.lang,
+    });
+    mails.push(sendEmail(o.email, tpl.subject, tpl.html).catch(() => false));
+  }
+
+  /* THE MARGIN WATCH, for domains that renew WITH AN ANNUAL PLAN.
    *
-   * The client's price was set from Vercel's renewal price on the day of
-   * purchase and it stays fixed on their subscription. Vercel's renewal
-   * price does not stay fixed. When the gap closes to within a few dollars
+   * Every other domain is repriced at its renewal by renewalRetailUsd (above
+   * and in domainOrders.ts). An annual plan's domain is a fixed yearly line
+   * on the Stripe subscription and renews by itself at that price, so it
+   * cannot be repriced from here: when the gap closes to within a few dollars
    * of the profit target, the operator is told once -- with the numbers --
-   * so the next renewal can be repriced with notice, never mid-term. */
+   * so it can be repriced by hand, with notice, never mid-term. */
   const { data: held } = await excludeTest(db, (live) => live(db
     .from("hosting_clients")
-    .select("id, business, notes")
+    .select("id, business, billing_period, notes")
     .in("status", ["active", "past_due"])
     .like("notes", "%servolia-domain:%")));
   const warnings: string[] = [];
   for (const row of held ?? []) {
+    if (row.billing_period === "monthly") continue;
     const rec = readDomainRecord(row.notes);
     if (!rec || rec.status !== "bought") continue;
     const renewal = await currentRenewalUsd(rec.domain);
@@ -150,8 +199,9 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  await Promise.all(mails);
   if (charged.length || failed.length || warnings.length) {
-    sendTelegramMessage(
+    await sendTelegramMessage(
       [
         "Domain billing",
         ...charged.map((c) => `charged: ${c}`),
@@ -162,5 +212,5 @@ export async function GET(req: NextRequest) {
       { plain: true },
     ).catch(() => {});
   }
-  return NextResponse.json({ charged, failed, warnings, checked: rows?.length ?? 0, held: held?.length ?? 0 });
+  return NextResponse.json({ charged, failed, warnings, checked: rows?.length ?? 0, held: held?.length ?? 0, orders: orders.length });
 }

@@ -163,7 +163,9 @@ export async function POST(req: NextRequest) {
                 ? "Registered by Servolia, renewed with your plan. Yours to keep."
                 : "Registered by Servolia, renewed each year on your invoice. Yours to keep."),
         },
-        unit_amount: q.yearlyUsd * 100,
+        // Rounded: 27.9 * 100 is 2789.9999... in floating point, and Stripe
+        // refuses a unit_amount that is not a whole number of cents.
+        unit_amount: Math.round(q.yearlyUsd * 100),
         ...(withPlan ? { recurring: { interval: "year" as const } } : {}),
       },
       quantity: 1,

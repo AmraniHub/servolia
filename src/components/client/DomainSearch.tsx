@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { usd } from "@/lib/hosting";
 
 /**
  * A client adding another domain to their hosting.
@@ -76,7 +77,7 @@ export default function DomainSearch({
   sample?: boolean;
 }) {
   const t = T[lang];
-  const money = (n: number) => (lang === "fr" ? `${n} $` : `$${n}`);
+  const money = (n: number) => (lang === "fr" ? `${usd(n)} $` : `$${usd(n)}`);
   const [name, setName] = useState("");
   const [quote, setQuote] = useState<Quote | null>(null);
   const [busy, setBusy] = useState(false);

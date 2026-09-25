@@ -285,7 +285,7 @@ export async function POST(req: NextRequest) {
        ordered and cannot be given back, so the one irreversible thing on this
        page is the one thing that goes past a person first. */
     await sendTelegramMessage(
-      `*${ref}* wants to add *${q.domain}* — $${q.yearlyUsd}/year.\n` +
+      `*${ref}* wants to add *${q.domain}* — $${q.yearlyUsd.toFixed(2)}/year.\n` +
         `${email ?? "(no email on the row)"}\n\n` +
         `Nothing is bought yet. Register it from the admin and it goes on their invoice.`,
       [[{ text: "Not now", callback_data: `dom_no:${ref}` }]],

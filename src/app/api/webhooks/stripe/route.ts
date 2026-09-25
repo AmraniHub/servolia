@@ -23,6 +23,8 @@ import {
 import { setShopifyGate, applyGate } from "@/lib/hostingGate";
 import { normalizeDomain, purchaseDomainForClient, readDomainRecord, writeDomainRecord, setDomainAutoRenew } from "@/lib/domainSales";
 import { hasExtraDomain, writeExtraDomain } from "@/lib/extraDomains";
+import { DOMAIN_ORDER_KIND, fulfilDomainOrder, nextYear } from "@/lib/domainOrders";
+import { domainOrderEmail } from "@/lib/email";
 import { upgradeLinkFor, accountLinkFor, setupLinkFor, assistantLinkFor, referenceFor, subscriptionContext } from "@/lib/upgrade";
 import { alreadyFulfilled, writeFulfilment } from "@/lib/fulfilment";
 import { assistantSlugFor, installSnippet, ASSISTANT_ORIGIN } from "@/lib/assistant";
@@ -734,6 +736,41 @@ async function handleEventBody(event: Stripe.Event, stripe: Stripe, db: Db, send
        * Dormant today: no client in CLIENT_REFS carries arrearsUsd, so
        * /api/hosting-checkout refuses every arrears request with "Nothing
        * outstanding". It stops being dormant the moment one is added. */
+      /* A DOMAIN SOLD ON ITS OWN, from a link made on /admin/hosting
+       * (src/lib/domainOrders.ts). No plan, no hosting row: the record is
+       * kept on the Stripe customer. Bought, put on the Vercel project if one
+       * was named, and the client is told in a Servolia email either way —
+       * a name the registrar refused is a refund to make, said out loud. */
+      if (session.mode === "payment" && session.metadata?.kind === DOMAIN_ORDER_KIND) {
+        const res = await fulfilDomainOrder(stripe, session, test);
+        if (!res) {
+          await sendTelegramMessage(testPrefixed(`⚠️ Domain order ${session.id} paid but unreadable (no domain or no customer). Check it in Stripe.`), undefined, { plain: true });
+          return NextResponse.json({ received: true });
+        }
+        if (res.duplicate) return NextResponse.json({ received: true, duplicate: true });
+        const rec = res.record;
+        const bought = rec.status === "bought";
+        if (res.customerEmail) {
+          const tpl = domainOrderEmail({
+            domain: rec.domain, amountUsd: rec.retailUsd, registered: bought,
+            renewsOnIso: rec.renewsOn ?? nextYear(new Date().toISOString().slice(0, 10)),
+            name: rec.name, lang: rec.lang,
+          });
+          await sendEmail(res.customerEmail, tpl.subject, tpl.html).catch(() => false);
+        }
+        const who = rec.name || res.customerEmail || "?";
+        await sendTelegramMessage(testPrefixed(
+          bought
+            ? `🌐 ${who} paid $${rec.retailUsd.toFixed(2)} and ${rec.domain} is REGISTERED (order ${rec.orderId}). Renews ${rec.renewsOn}.\n` +
+              (res.attach === "done" ? `Attached to Vercel project ${rec.project}.` :
+               res.attach === "failed" ? `NOT attached to ${rec.project} (${res.attachDetail}) - add it in Vercel > ${rec.project} > Domains.` :
+               "No Vercel project named - attach it by hand.") +
+              (res.cardSaved ? "" : "\nCard NOT saved as default - next year's renewal will fail; set it in Stripe.")
+            : `⚠️ ${who} PAID $${rec.retailUsd.toFixed(2)} for ${rec.domain} and it was NOT registered (${rec.note}). Buy it by hand (vercel domains buy ${rec.domain}) or refund them. They were told.`,
+        ), undefined, { plain: true });
+        return NextResponse.json({ received: true });
+      }
+
       /* AN EXTRA DOMAIN, BOUGHT FROM THE CLIENT'S OWN PANEL.
        *
        * The money is already taken by the time this runs, so the registrar
