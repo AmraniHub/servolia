@@ -3,12 +3,16 @@
 --
 -- WHAT THIS DOES TO EXISTING DATA: NOTHING.
 -- 1. Adds one nullable column. No default, no backfill, no update: every
---    existing row reads setup = null. Clients whose row was created before
---    2026-09-25 are ESTABLISHED (SETUP_TRACKER_SINCE in src/lib/hostingSetup.ts):
---    the code never writes this column for them, never emails them about
---    setup, and shows them no checklist.
+--    existing row reads setup = null. Existing clients are ESTABLISHED — a
+--    row created before 2026-09-25 (SETUP_TRACKER_SINCE in
+--    src/lib/hostingSetup.ts), a known client reference, or a returning
+--    client whose email already has an older row — and for them the code
+--    never writes this column, never emails them about setup, and shows them
+--    no checklist.
 -- 2. Adds one function. It writes only to rate_limits (the table the admin
 --    login limiter already uses), and only when called.
+-- 3. Turns on row level security for rate_limits, with no policies. Only the
+--    server's service-role client touches that table, and it bypasses RLS.
 --
 -- Until this has run: the checklist still shows for new clients (measured on
 -- each visit) but nothing is stored and no setup email is sent; the founder's
