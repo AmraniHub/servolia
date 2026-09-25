@@ -8,6 +8,7 @@ import { excludeTest, runAsTest } from "@/lib/testContext";
 import { founderTestBrowser } from "@/lib/testMode";
 import { clientIp } from "@/lib/security";
 import { atomicLimit } from "@/lib/atomicLimit";
+import { bounded, alert } from "@/lib/notify";
 import { normalizeEmail, emailKey, sendLinkForEmail, type LinkRow } from "@/lib/accountLinkByEmail";
 
 export const runtime = "nodejs";
@@ -138,11 +139,8 @@ async function byEmail(req: NextRequest, raw: string, same: NextResponse): Promi
           const lang = ref?.lang ?? (await subscriptionContext(row.subscription_id!).catch(() => null))?.lang ?? "en";
           const url = await accountLinkFor(row.subscription_id!, origin);
           const tpl = accountLinkEmail({ url, siteLabel: plainLabel(ref?.label || row.business), lang });
-          const sent = await sendEmail(row.email!, tpl.subject, tpl.html).catch(() => false);
-          await sendTelegramMessage(
-            `Service-page link ${sent ? "sent" : "FAILED"} (asked for by email) - ${plainLabel(row.business) || row.email}`,
-            undefined, { plain: true, silent: sent },
-          ).catch(() => null);
+          const sent = (await bounded("account link email", () => sendEmail(row.email!, tpl.subject, tpl.html))) === true;
+          await alert(`Service-page link ${sent ? "sent" : "FAILED"} (asked for by email) - ${plainLabel(row.business) || row.email}`, { silent: sent });
           return sent;
         });
       },

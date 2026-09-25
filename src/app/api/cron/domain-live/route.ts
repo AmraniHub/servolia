@@ -5,6 +5,7 @@ import { sendEmail, liveEmail } from "@/lib/email";
 import { sendTelegramMessage } from "@/lib/telegram";
 import { recheckHostingSetups } from "@/lib/hostingSetupRun";
 import { rateLimited } from "@/lib/security";
+import { alert } from "@/lib/notify";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -72,10 +73,10 @@ export async function GET(req: NextRequest) {
     ? await recheckHostingSetups({ budgetMs: left })
     : { checked: 0, sent: [] as string[], errors: [] as string[], skipped: "no time left this run" };
   if (setup.skipped?.startsWith("setup column missing") && !(await rateLimited("setup-column-missing", 1, 86_400))) {
-    await sendTelegramMessage(`Hosting setup tracker is not storing anything: ${setup.skipped}. No milestone email can go out until it is run.`, undefined, { plain: true }).catch(() => {});
+    await alert(`Hosting setup tracker is not storing anything: ${setup.skipped}. No milestone email can go out until it is run.`);
   }
   if (setup.errors.length) {
-    await sendTelegramMessage(`Hosting setup check hit errors\n${setup.errors.map((x) => `- ${x}`).join("\n")}`, undefined, { plain: true }).catch(() => {});
+    await alert(`Hosting setup check hit errors\n${setup.errors.map((x) => `- ${x}`).join("\n")}`);
   }
   return NextResponse.json({
     ok: true, live: out.live.length, waiting: out.waiting.length, errors: out.errors.length,

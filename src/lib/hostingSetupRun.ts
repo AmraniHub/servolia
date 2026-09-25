@@ -11,8 +11,7 @@ import {
 } from "@/lib/hostingSetup";
 import { probeHost, hostFrom } from "@/lib/hostingSetupProbe";
 import { setupMilestoneEmail } from "@/lib/hostingSetupEmails";
-// TODO(alerts-fix): import { notifyOwner, type OwnerNotice } from "@/lib/notify" and delete the shim.
-import { notifyOwner, type OwnerNotice } from "@/lib/notifyOwnerShim";
+import { notifyOwner, bounded, type OwnerNotice } from "@/lib/notify";
 
 /**
  * THE SETUP TRACKER'S MOVING PARTS: storage, the check, the milestone emails.
@@ -35,6 +34,12 @@ import { notifyOwner, type OwnerNotice } from "@/lib/notifyOwnerShim";
  * A milestone email is CLAIMED in the same write, sent, and only then stamped
  * with the send time (or "failed", to retry) — so a stamp never says "sent"
  * for an email that did not go.
+ *
+ * EVERY SEND IS AWAITED AND BOUNDED (src/lib/notify.ts bounded, 5 s): on
+ * Vercel a request still in flight when the function returns can die with
+ * it, and a hung Resend or Telegram must not hold the cron's minute. A send
+ * that hangs past the cap counts as not sent: its claim is settled "failed"
+ * and retried at the next check.
  */
 
 /* ── Is the column there yet? ───────────────────────────────────────────── */
@@ -292,7 +297,8 @@ export async function runSetupCheck(rowId: string, deps: RunDeps, viewLang: Lang
             const mail = setupMilestoneEmail({
               milestone: m, lang, host, business: row.business ?? "", reference, portalUrl, checkedAt: nowIso, checklist: clientList,
             });
-            sent = await deps.sendEmail(row.email, mail.subject, mail.html).catch(() => false);
+            const to = row.email;
+            sent = (await bounded("setup milestone email", () => deps.sendEmail(to, mail.subject, mail.html))) === true;
           }
           outcome[m] = sent;
           /* Settled only now that the send has resolved, and only if our
@@ -307,7 +313,7 @@ export async function runSetupCheck(rowId: string, deps: RunDeps, viewLang: Lang
       for (const m of tr.notify) {
         const who = row.business || row.email || "a hosting client";
         const left = list.steps.filter((s) => s.state !== "done").map((s) => s.title);
-        await deps.notifyOwner({
+        await bounded("setup owner notice", () => deps.notifyOwner({
           subject: m === "live" ? `Hosting LIVE - ${who}` : `Hosting: domain now points to us - ${who}`,
           lines: [
             m === "live" ? `https://${host} answered 200 from our Vercel project (checked ${nowIso}).` : `${host} answers from Vercel (checked ${nowIso}).`,
@@ -318,7 +324,7 @@ export async function runSetupCheck(rowId: string, deps: RunDeps, viewLang: Lang
             left.length ? `Still open: ${left.join(", ")}` : "Every setup step is done.",
           ],
           link: `https://servolia.com/admin/hosting/${row.id}`,
-        }).catch(() => null);
+        }));
       }
       return {
         ok: true,

@@ -614,9 +614,28 @@ test("milestone emails: measured fact, what is left, portal link, reference — 
   assert.match(fr.subject, /^Votre site est en ligne sur l'hébergement Servolia — acme\.com$/);
 });
 
-test("the owner notice goes through a shim with alerts-fix's notifyOwner signature", async () => {
-  const shim = await import("../src/lib/notifyOwnerShim.ts");
-  assert.equal(typeof shim.notifyOwner, "function");
-  assert.match(src("src/lib/hostingSetupRun.ts"), /import \{ notifyOwner, type OwnerNotice \} from "@\/lib\/notifyOwnerShim"/);
-  assert.doesNotMatch(src("src/lib/hostingSetupRun.ts"), /notifyOwnerLocal/);
+test("the owner notice is alerts-fix's notifyOwner; every send is awaited through bounded()", () => {
+  const run = src("src/lib/hostingSetupRun.ts");
+  assert.match(run, /import \{ notifyOwner, bounded, type OwnerNotice \} from "@\/lib\/notify"/);
+  assert.doesNotMatch(run, /notifyOwnerShim|notifyOwnerLocal/);
+  assert.match(run, /await bounded\("setup milestone email"/);
+  assert.match(run, /await bounded\("setup owner notice"/);
+  assert.throws(() => readFileSync(path.join(ROOT, "src/lib/notifyOwnerShim.ts")), "the shim is deleted");
+  const cron = src("src/app/api/cron/domain-live/route.ts");
+  assert.match(cron, /await alert\(`Hosting setup tracker is not storing anything/);
+  assert.match(cron, /await alert\(`Hosting setup check hit errors/);
+  assert.match(src("src/app/api/hosting-account/link/route.ts"), /await bounded\("account link email"/);
+});
+
+test("a HANGING client send is capped: settled 'failed' and retried, never left in flight", async () => {
+  const store = memStore(onboarded({ setup: { rev: 1, baselineAt: NOW, checkedAt: NOW } }));
+  const log = newLog();
+  const d = deps(store, { current: probe({ pointed: true, http: HTTP_OLD_HOST }) }, log, { send: () => new Promise(() => {}) });
+  const t = Date.now();
+  const out = await R.runSetupCheck("row-1", d);
+  const took = Date.now() - t;
+  assert.ok(took < 9000, `returned in ${took} ms`);
+  assert.deepEqual(out.sent, []);
+  assert.match(store.row.setup.mail.dns, /^failed:1:/);
+  assert.ok(log.owner[0].lines.some((l) => /FAILED/.test(l)));
 });
