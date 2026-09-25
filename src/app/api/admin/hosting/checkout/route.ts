@@ -7,6 +7,7 @@ import {
   isAddOn,
   HOSTING_METADATA_KIND,
 } from "@/lib/hosting";
+import { parseOwnedDomainLink, verifyOwnedDomain, applyOwnedDomainLink } from "@/lib/ownedDomain";
 
 /**
  * Create a hosting checkout link for one client.
@@ -69,12 +70,22 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  /* Optional: free days first, and a domain we ALREADY own billed for its
+     first year today (src/lib/ownedDomain.ts). Checked before Stripe is
+     touched, so a refused link leaves nothing behind. */
+  const extra = parseOwnedDomainLink(body as Record<string, unknown>);
+  if (!extra.ok) return NextResponse.json({ error: extra.error }, { status: 400 });
+  if (extra.value.owned) {
+    const check = await verifyOwnedDomain(extra.value.owned.domain, vercelProject.trim());
+    if (!check.ok) return NextResponse.json({ error: check.error }, { status: check.status });
+  }
+
   const billing: "monthly" | "annual" = period === "annual" ? "annual" : "monthly";
   const origin = req.nextUrl.origin;
 
   try {
     const stripe = new Stripe(key);
-    const session = await stripe.checkout.sessions.create({
+    const session = await stripe.checkout.sessions.create(applyOwnedDomainLink({
       mode: "subscription",
       /* Card only, like every other checkout here: a delayed method (SEPA,
          bank transfer) completes the session unpaid, and the webhook only
@@ -112,7 +123,7 @@ export async function POST(req: NextRequest) {
       },
       success_url: `${origin}/portal?hosting=active`,
       cancel_url: `${origin}/`,
-    });
+    }, extra.value));
 
     return NextResponse.json({
       url: session.url,
@@ -124,6 +135,11 @@ export async function POST(req: NextRequest) {
       // will actually charge.
       amountUsd: hostingAmountCents(hostingPlan, billing) / 100,
       period: billing,
+      plan: hostingPlan.tier,
+      trialDays: extra.value.trialDays,
+      domain: extra.value.owned?.domain ?? null,
+      // What the client pays at checkout: the domain's year, or nothing.
+      todayUsd: (extra.value.owned?.usd ?? 0) + (extra.value.trialDays > 0 ? 0 : hostingAmountCents(hostingPlan, billing) / 100),
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Stripe error";

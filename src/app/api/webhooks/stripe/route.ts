@@ -40,6 +40,7 @@ import { stripeFor } from "@/lib/stripeMode";
 import { runAsTest, inTestContext, testTag, testPrefixed, excludeTest, isTestRow } from "@/lib/testContext";
 import { Sends, paidSubject, troubleSubject, money, emailOutcome, type EmailOutcome } from "@/lib/notify";
 import { addWorkingDays, hasOneOff, writeOneOff, type OneOffOrder, type OneOffLeadData } from "@/lib/oneOffOrders";
+import { readOwnedDomainMeta, trialEndFor, writeOwnedDomainNote, ownedDomainPaidEmail, ownedDomainOwnerLines } from "@/lib/ownedDomain";
 
 export const runtime = "nodejs";
 // A subscriber whose intake beat this event has their draft generated after
@@ -245,6 +246,9 @@ async function handleEventBody(event: Stripe.Event, stripe: Stripe, db: Db, send
         const monthlyUsd = period === "annual" ? planUsd / 12 : planUsd;
         const subId = typeof session.subscription === "string" ? session.subscription : null;
         const hostRef = clientRefFor(session.metadata?.ref ?? "");
+        /* An admin link with free days and/or a domain we ALREADY own
+           (src/lib/ownedDomain.ts). Null for every other hosting session. */
+        const ownedLink = readOwnedDomainMeta(session.metadata);
         /* Two kinds of thing are sold on this line and they are fulfilled
            differently. A TIER hosts a site: paying for it lifts the site's
            gate. An ADD-ON sits on a site that is already paid for: the AI
@@ -447,7 +451,9 @@ async function handleEventBody(event: Stripe.Event, stripe: Stripe, db: Db, send
          * receipt below says whether the domain is registered, and that must
          * not be a guess. Never bought twice: a row whose record already says
          * "bought" for this name is a first delivery that got this far. */
-        const domainWanted = normalizeDomain(session.metadata?.domain ?? "");
+        // Never on an owned-domain link, whatever else the session carries:
+        // that domain is already ours, and buying it again would fail or double-bill.
+        const domainWanted = ownedLink ? null : normalizeDomain(session.metadata?.domain ?? "");
         let domainBought = false;
         const priorDomain = readDomainRecord(hostRow?.notes);
         if (domainWanted && priorDomain?.status === "bought" && priorDomain.domain === domainWanted) {
@@ -496,6 +502,36 @@ async function handleEventBody(event: Stripe.Event, stripe: Stripe, db: Db, send
           }
         }
 
+        /* A DOMAIN WE ALREADY OWN, AND/OR FREE DAYS FIRST.
+         *
+         * Nothing is bought or attached: the admin link was refused unless
+         * the domain was already in our team and on the client's project.
+         * What is recorded is the marker the domain's renewal will need (its
+         * price and the day its second year is due), and the day the hosting
+         * really starts, read from Stripe's own trial_end so the email below
+         * names the date the card is actually charged. */
+        let ownedStartsIso: string | null = null;
+        let ownedRenewsOn: string | null = null;
+        if (ownedLink) {
+          const paidAt = new Date(event.created * 1000);
+          ownedStartsIso = (await trialEndFor(subId, event.livemode, paidAt, ownedLink.trialDays)).iso;
+          if (ownedLink.domain) {
+            ownedRenewsOn = nextChargeDate(paidAt, "annual").toISOString().slice(0, 10);
+            if (hostRow?.id) {
+              const { data: fresh } = await db.from("hosting_clients").select("notes").eq("id", hostRow.id).maybeSingle();
+              const notes = writeOwnedDomainNote(fresh?.notes ?? hostRow.notes, {
+                domain: ownedLink.domain,
+                usd: ownedLink.usd,
+                project: session.metadata?.vercel_project || null,
+                renewsOn: ownedRenewsOn,
+                paidOn: paidAt.toISOString().slice(0, 10),
+              });
+              await db.from("hosting_clients").update({ notes }).eq("id", hostRow.id);
+              hostRow = { ...hostRow, notes };
+            }
+          }
+        }
+
         /* CONFIRM IT TO THE CLIENT, IN OUR OWN NAME.
          *
          * /hosting/thanks tells the buyer a receipt is on its way. Until this
@@ -515,7 +551,23 @@ async function handleEventBody(event: Stripe.Event, stripe: Stripe, db: Db, send
         if (isAssistant && subId) {
           briefUrl = await assistantLinkFor(subId, "https://servolia.com").catch(() => null);
         }
-        if (customerEmail) {
+        if (customerEmail && ownedLink && ownedStartsIso) {
+          /* Its own receipt: "payment cleared, your hosting is active, renews
+             in a year" would be false twice over for a link whose hosting has
+             not been charged yet. */
+          const tpl = ownedDomainPaidEmail({
+            domain: ownedLink.domain,
+            domainUsd: ownedLink.usd,
+            tier: (product && productCopy(product, emailLang).tier) || "Hosting",
+            planUsd,
+            period,
+            hostingStartsIso: ownedStartsIso,
+            siteLabel: session.metadata?.business || "",
+            portalUrl: subId ? await accountLinkFor(subId, "https://servolia.com").catch(() => null) : null,
+            lang: emailLang,
+          });
+          sends.add("hosting receipt", sendEmail(customerEmail, tpl.subject, tpl.html));
+        } else if (customerEmail) {
           const copy = product ? productCopy(product, emailLang) : null;
           /* The switch-to-yearly offer, minted only when the year is actually
              cheaper than twelve months. Never for an annual buyer, who has
@@ -597,7 +649,37 @@ async function handleEventBody(event: Stripe.Event, stripe: Stripe, db: Db, send
          * so here, at the moment the money lands, rather than leaving it to
          * be discovered on the list page. Sent once per checkout session:
          * a replay stopped at the fulfilment marker above. */
-        {
+        if (ownedLink && ownedStartsIso) {
+          // The same facts as the client's email; the amount is what was charged TODAY.
+          const who = session.metadata?.business || customerEmail;
+          const tier = product?.name ?? "Hosting";
+          sends.owner({
+            subject: paidSubject(
+              ownedLink.domain ? `Domain ${ownedLink.domain} (first year) + ${tier} after ${ownedLink.trialDays} free days` : `${tier} — ${ownedLink.trialDays} free days`,
+              amount, session.currency ?? "usd", who,
+            ),
+            lines: [
+              ...ownedDomainOwnerLines({
+                domain: ownedLink.domain,
+                domainUsd: ownedLink.usd,
+                chargedTodayUsd: amount,
+                currency: session.currency ?? "usd",
+                tier,
+                planUsd,
+                period,
+                trialDays: ownedLink.trialDays,
+                hostingStartsIso: ownedStartsIso,
+                renewsOn: ownedRenewsOn,
+                project: session.metadata?.vercel_project || null,
+              }),
+              `${session.metadata?.business || "unnamed site"}`,
+              `${customerEmail ?? "no email"}`,
+              subId && `Ref ${referenceFor(subId)}`,
+              `Next: nothing today${ownedLink.domain ? `; the domain's second year (${ownedRenewsOn}) must be billed by hand until domain renewals are automated` : ""}.`,
+            ],
+            link: hostRow?.id ? `https://servolia.com/admin/hosting/${hostRow.id}` : "https://servolia.com/admin/hosting",
+          });
+        } else {
           const selfServe = !hostRef && isTier;
           const who = session.metadata?.business || session.metadata?.ref || customerEmail;
           sends.owner({
