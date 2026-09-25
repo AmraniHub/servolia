@@ -207,9 +207,9 @@ export async function planCleanup(rest: Rest): Promise<CleanupPlan> {
   const buildIds = ids("builds");
 
   // A REAL row pointing at a test row: the database would clear its link.
+  // (clients has no lead_id: it links to a lead only through its build.)
   const links: [TestTable, string, string[], TestTable][] = [
     ["builds", "lead_id", leadIds, "leads"],
-    ["clients", "lead_id", leadIds, "leads"],
     ["clients", "build_id", buildIds, "builds"],
   ];
   for (const [table, col, target, targetTable] of links) {

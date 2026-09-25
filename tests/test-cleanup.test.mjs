@@ -93,9 +93,9 @@ function seed() {
   DB.ignoreTagOnDelete = false;
   DB.tables = {
     clients: [
-      { id: "c-real", business: "Cabinet Réel", status: "active", lead_id: "l-real", build_id: "b-real", is_test: false, notes: "servolia-topup: +200 | month: 2026-09 | session: cs_live_1" },
+      { id: "c-real", business: "Cabinet Réel", status: "active", build_id: "b-real", is_test: false, notes: "servolia-topup: +200 | month: 2026-09 | session: cs_live_1" },
       { id: "c-null", business: "Cabinet Ancien", status: "active", is_test: null },
-      { id: "c-test", business: "Me TEST", status: "active", build_id: "b-test", lead_id: "l-test", is_test: true, created_at: "2026-09-24T10:00:00Z" },
+      { id: "c-test", business: "Me TEST", status: "active", build_id: "b-test", is_test: true, created_at: "2026-09-24T10:00:00Z" },
     ],
     builds: [
       { id: "b-real", business: "Cabinet Réel", status: "live", lead_id: "l-real", is_test: false },
@@ -165,7 +165,6 @@ test("dry run: selects ONLY by is_test=eq.true, lists every test row readably, c
   // The only other reads of those tables: the real-row link guard (reads, never a selection to delete).
   assert.deepEqual(onTagged.filter((q) => !selects.includes(q)).map((q) => `${q.table}${q.query}`), [
     "builds?lead_id=in.(l-test,l-oneoff)&select=id,is_test,lead_id",
-    "clients?lead_id=in.(l-test,l-oneoff)&select=id,is_test,lead_id",
     "clients?build_id=in.(b-test)&select=id,is_test,build_id",
   ]);
   assert.equal(writes().length, 0, "a dry run wrote something");
