@@ -5,6 +5,7 @@ import { excludeTest } from "@/lib/testContext";
 import {
   readDomainRecord, writeDomainRecord, currentRenewalUsd, netProfitUsd, DOMAIN_TARGET_PROFIT_USD,
   renewalDecision, readNoticed, writeNoticed, daysBefore, chargeDateFor, NOTICE_DAYS, NOTICE_WINDOW_DAYS,
+  domainExpiry, setDomainAutoRenew,
 } from "@/lib/domainSales";
 import { runDomainOrderRenewals, sweepStoppedOrders, auditDomainOrders, MAX_CHARGE_ATTEMPTS } from "@/lib/domainOrders";
 import { sendEmail, domainRenewalEmail } from "@/lib/email";
@@ -12,6 +13,9 @@ import { Sends } from "@/lib/notify";
 import { langFor, refKeyForEmail } from "@/lib/clientRefs";
 import { readExtraDomains, writeExtraDomain } from "@/lib/extraDomains";
 import { nextChargeDate } from "@/lib/hosting";
+import {
+  OWNED_DOMAIN_NOTE, OWNED_RENEWAL_ITEM_KIND, readOwnedDomainNote, writeOwnedDomainNote, effectiveRenewsOn, type OwnedDomainNote,
+} from "@/lib/ownedDomain";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -78,6 +82,8 @@ export async function GET(req: NextRequest) {
     row: { id: string; business: string | null; email: string | null; customer_id: string | null };
     domain: string; paidUsd: number; renewsOn: string; noticed?: string; idem: string;
     save: (patch: { retailUsd?: number; nextChargeAt?: string; noticed?: string | undefined }) => Promise<string | null>;
+    /** Pin the line to this subscription's next invoice, and tag it (an owned domain's cancellation reads the tag). */
+    item?: { subscription?: string | null; metadata?: Record<string, string> };
   }) {
     if (today < daysBefore(o.renewsOn, NOTICE_DAYS + NOTICE_WINDOW_DAYS)) return;
     const d = renewalDecision({ paidUsd: o.paidUsd, vercelRenewalUsd: await currentRenewalUsd(o.domain), renewsOn: o.renewsOn, todayIso: today, ...readNoticed(o.noticed) });
@@ -104,7 +110,11 @@ export async function GET(req: NextRequest) {
     if (!o.row.customer_id) { failed.push(`${o.domain}: no Stripe customer on the row`); return; }
     try {
       await stripe.invoiceItems.create(
-        { customer: o.row.customer_id, currency: "usd", amount: Math.round(d.price * 100), description: `Domain ${o.domain} — renewal, 12 months from ${o.renewsOn}` },
+        {
+          customer: o.row.customer_id, currency: "usd", amount: Math.round(d.price * 100), description: `Domain ${o.domain} — renewal, 12 months from ${o.renewsOn}`,
+          ...(o.item?.subscription ? { subscription: o.item.subscription } : {}),
+          ...(o.item?.metadata ? { metadata: o.item.metadata } : {}),
+        },
         { idempotencyKey: o.idem },
       );
       const next = nextChargeDate(new Date(`${o.renewsOn}T00:00:00Z`), "annual").toISOString().slice(0, 10);
@@ -176,6 +186,71 @@ export async function GET(req: NextRequest) {
         },
       });
     }
+  }
+
+  /* A DOMAIN WE ALREADY OWNED, SOLD WITH THE HOSTING (src/lib/ownedDomain.ts:
+   * the `servolia-owned-domain:` note). Same rules as every plan domain —
+   * last year's price unless the registry moved, a rise emailed 30 days
+   * before the charge, no floor raise — and the line goes on THE HOSTING
+   * SUBSCRIPTION's next invoice, tagged so a cancellation can find it. The
+   * renewal date follows Vercel's actual expiry when readable
+   * (effectiveRenewsOn), and is written back when it moved. */
+  const { data: ownedRows } = await excludeTest(db, (live) => live(db
+    .from("hosting_clients")
+    .select("id, business, email, customer_id, subscription_id, status, notes")
+    .in("status", ["active", "past_due"])
+    .like("notes", `%${OWNED_DOMAIN_NOTE}%`)));
+
+  for (const row of ownedRows ?? []) {
+    const note = readOwnedDomainNote(row.notes);
+    // Belt and braces with the query: a hosting that ended is never billed a domain year.
+    if (row.status !== "active" && row.status !== "past_due") continue;
+    if (!note || !note.renewsOn || note.renewalOff) continue;
+    const saveOwned = async (patch: Partial<OwnedDomainNote>): Promise<string | null> => {
+      const { data: fresh } = await db.from("hosting_clients").select("notes").eq("id", row.id).maybeSingle();
+      const notes = (fresh as { notes?: string | null } | null)?.notes ?? row.notes;
+      const cur = readOwnedDomainNote(notes) ?? note;
+      const { error: upErr } = await db.from("hosting_clients").update({ notes: writeOwnedDomainNote(notes, { ...cur, ...patch }) }).eq("id", row.id);
+      return upErr ? upErr.message : null;
+    };
+    const renewsOn = effectiveRenewsOn(note, await domainExpiry(note.domain));
+    if (renewsOn !== note.renewsOn) {
+      const err = await saveOwned({ renewsOn });
+      (err ? failed : checks).push(`${note.domain} (${row.business}): renewal date ${err ? "NOT " : ""}moved ${note.renewsOn} -> ${renewsOn} to match Vercel's expiry${err ? ` (${err})` : ""}.`);
+      if (err) continue;
+    }
+    await planDomain({
+      row, domain: note.domain, paidUsd: note.usd, renewsOn, noticed: note.noticed,
+      idem: `owned-domain-${row.id}-${renewsOn}`,
+      item: {
+        subscription: (row as { subscription_id?: string | null }).subscription_id ?? null,
+        metadata: { kind: OWNED_RENEWAL_ITEM_KIND, domain: note.domain, renews_on: renewsOn },
+      },
+      save: (patch) => saveOwned({
+        ...(patch.retailUsd !== undefined ? { usd: patch.retailUsd } : {}),
+        // The year just put on the invoice starts on the old date; the next one is due a year on.
+        ...(patch.nextChargeAt !== undefined ? { renewsOn: patch.nextChargeAt, billed: renewsOn } : {}),
+        noticed: patch.noticed,
+      }),
+    });
+  }
+
+  /* After a cancellation that kept auto-renew on for a year the client had
+   * already paid (ownedDomainOnCancel): once that year has started, Vercel has
+   * renewed it, and auto-renew goes off. */
+  const { data: churnedOwned } = await excludeTest(db, (live) => live(db
+    .from("hosting_clients")
+    .select("id, business, notes, status")
+    .eq("status", "churned")
+    .like("notes", `%${OWNED_DOMAIN_NOTE}%`)));
+  for (const row of churnedOwned ?? []) {
+    const note = readOwnedDomainNote(row.notes);
+    if (!note?.keptUntil || note.renewalOff || today <= note.keptUntil) continue;
+    const off = await setDomainAutoRenew(note.domain, false);
+    if (!off.ok) { failed.push(`${note.domain} (${row.business}, hosting ended): Vercel auto-renew NOT switched off (${off.code ?? off.status}) — retried tomorrow; or do it in Vercel > Domains.`); continue; }
+    const { error: upErr } = await db.from("hosting_clients")
+      .update({ notes: writeOwnedDomainNote(row.notes, { ...note, keptUntil: undefined, renewalOff: today }) }).eq("id", row.id);
+    checks.push(`${note.domain} (${row.business}, hosting ended): the paid year from ${note.keptUntil} has started; Vercel auto-renew switched OFF${upErr ? ` (note NOT updated: ${upErr.message})` : ""}.`);
   }
 
   /* DOMAINS SOLD ON THEIR OWN (src/lib/domainOrders.ts). */

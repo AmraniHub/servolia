@@ -447,6 +447,16 @@ export async function domainInTeam(domain: string, notBefore?: string): Promise<
   return { inTeam: res.status === 404 ? false : null, ...(res.status === 404 ? { why: "it is not in our Vercel team" } : {}) };
 }
 
+/**
+ * When Vercel's registration of `domain` actually expires (YYYY-MM-DD), or
+ * null when it cannot be read or the name was not bought through Vercel.
+ */
+export async function domainExpiry(domain: string): Promise<string | null> {
+  const res = await registrar<{ domain?: { expiresAt?: number | null } }>(`/v5/domains/${encodeURIComponent(domain)}`);
+  const e = res.ok ? res.data.domain?.expiresAt : null;
+  return typeof e === "number" && Number.isFinite(e) ? new Date(e).toISOString().slice(0, 10) : null;
+}
+
 /** Does a project of this name exist in our team? null = could not tell. */
 export async function projectExists(name: string): Promise<boolean | null> {
   const res = await registrar<unknown>(`/v9/projects/${encodeURIComponent(name)}`);

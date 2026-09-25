@@ -18,7 +18,8 @@ await H.bootHarness();
 const harnessFetch = globalThis.fetch;
 
 /* Vercel's renewal price and Resend's answer, per test. */
-const net = { renewal: 11.25, resendOk: true, patchFails: false };
+const net = { renewal: 11.25, resendOk: true, patchFails: false, expiry: null };
+const autoRenew = [];
 const resend = [];
 globalThis.fetch = async (input, init = {}) => {
   const url = String(typeof input === "string" ? input : input.url);
@@ -29,6 +30,8 @@ globalThis.fetch = async (input, init = {}) => {
   }
   if (url.startsWith("https://api.vercel.com")) {
     if (url.includes("/price")) return json(200, { years: 1, purchasePrice: net.renewal, renewalPrice: net.renewal, transferPrice: net.renewal });
+    if (url.includes("/auto-renew")) { autoRenew.push(JSON.parse(String(init.body))); return new Response(null, { status: 204 }); }
+    if (url.includes("/v5/domains/")) return json(200, { domain: { name: "owned-harness.com", boughtAt: Date.parse("2026-09-01T00:00:00Z"), expiresAt: net.expiry ? Date.parse(net.expiry + "T00:00:00Z") : null } });
     return json(404, {});
   }
   if (url.startsWith("https://api.resend.com")) {
@@ -56,13 +59,14 @@ const { NextRequest } = await import("next/server");
 
 const day = (n) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
 
-async function run({ inDays, paid = 26, renewal = 11.25, resendOk = true, patchFails = false }) {
+async function run({ inDays, paid = 26, renewal = 11.25, resendOk = true, patchFails = false, expiry = null, row = null }) {
   H.reset();
   items.length = 0;
   resend.length = 0;
-  Object.assign(net, { renewal, resendOk, patchFails });
+  Object.assign(net, { renewal, resendOk, patchFails, expiry });
+  autoRenew.length = 0;
   const renewsOn = day(inDays);
-  H.reads.hosting_clients = [{
+  H.reads.hosting_clients = [row ? row(renewsOn) : {
     id: "h1", business: "Harness Co", email: "client@example.com", customer_id: "cus_h", billing_period: "monthly", status: "active",
     notes: S.writeDomainRecord(null, { domain: "plan-harness.com", status: "bought", retailUsd: paid, nextChargeAt: renewsOn }),
   }];
@@ -123,6 +127,71 @@ test("a plan domain with no stored price is refused and reported, never billed a
   const r = await run({ inDays: 7, paid: 0, renewal: 11.25 });
   assert.equal(items.length, 0);
   assert.ok(r.body.failed.some((f) => /no stored price on the row .* NOT renewed/.test(f)), JSON.stringify(r.body.failed));
+});
+
+/* ── A domain we already owned, sold with the hosting (src/lib/ownedDomain.ts) ── */
+
+const OD = await import("../src/lib/ownedDomain.ts");
+const owned = (note, status = "active") => (renewsOn) => ({
+  id: "h2", business: "Ithar Digital", email: "client@example.com", customer_id: "cus_o", subscription_id: "sub_o", billing_period: "annual", status,
+  notes: OD.writeOwnedDomainNote(null, { domain: "owned-harness.com", usd: 27.9, project: "ithar-digital", paidOn: "2026-09-25", renewsOn, ...note }),
+});
+const ownedNote = (r) => OD.readOwnedDomainNote(r.notes.at(-1));
+
+test("owned domain: renewed on the HOSTING subscription's invoice at its price, tagged, the date moved a year on", async () => {
+  const r = await run({ inDays: 7, renewal: 11.25, expiry: null, row: owned({}) });
+  assert.equal(items.length, 1);
+  assert.equal(items[0].amount, 2790, "last year's price: no floor raise, no re-rounding");
+  assert.equal(items[0].subscription, "sub_o", "on the hosting subscription's next invoice");
+  assert.equal(items[0].customer, "cus_o");
+  assert.deepEqual(items[0].metadata, { kind: "owned_domain_renewal", domain: "owned-harness.com", renews_on: r.renewsOn });
+  assert.equal(items[0].key, `owned-domain-h2-${r.renewsOn}`);
+  const n = ownedNote(r);
+  assert.equal(n.billed, r.renewsOn, "the year just billed");
+  assert.equal(n.renewsOn > r.renewsOn, true, "next year due a year on");
+  assert.equal(r.clientMails.length, 1, "told on the invoice email");
+});
+
+test("owned domain: a registry rise is emailed 37 days out (30 before the charge) and recorded only then", async () => {
+  const r = await run({ inDays: 37, renewal: 20, row: owned({}) });
+  assert.equal(items.length, 0);
+  assert.equal(r.clientMails.length, 1);
+  assert.match(r.clientMails[0].html, /up from \$27\.90 last year: the registry raised its price/);
+  assert.match(r.clientMails[0].html, /next invoice/);
+  assert.equal(ownedNote(r).noticed, `${r.renewsOn}=35.9`);
+  const late = await run({ inDays: 20, renewal: 20, row: owned({}) });
+  assert.equal(late.clientMails.length, 0, "day -20: too late to announce");
+});
+
+test("owned domain: the renewal date follows Vercel's ACTUAL expiry — and a year just billed is never billed again", async () => {
+  // Registered days before the client paid: the note's date is late; Vercel's expiry wins.
+  const r = await run({ inDays: 60, renewal: 11.25, expiry: day(7), row: owned({}) });
+  assert.ok(r.body.checks.some((c) => /renewal date moved .* to match Vercel's expiry/.test(c)), JSON.stringify(r.body.checks));
+  assert.equal(items.length, 1, "billed on the real date");
+  assert.equal(items[0].metadata.renews_on, day(7));
+  // Billed, Vercel not renewed yet (expiry == billed): the note's next date stands, nothing billed.
+  const again = await run({ inDays: 372, renewal: 11.25, expiry: day(7), row: owned({ billed: day(7) }) });
+  assert.equal(items.length, 0);
+  assert.equal(again.notes.length, 0, "the date was not dragged back");
+  assert.equal(OD.effectiveRenewsOn({ renewsOn: "2028-09-20", billed: "2027-09-20" }, "2028-09-20"), "2028-09-20", "after Vercel renews, both agree");
+});
+
+test("owned domain after a cancellation: auto-renew kept on through a paid year's date, then switched off once", async () => {
+  const kept = await run({ inDays: 400, row: owned({ keptUntil: day(3) }, "churned") });
+  assert.deepEqual(autoRenew, [], "the paid year has not started");
+  assert.equal(items.length, 0, "a churned row is never billed");
+  const r = await run({ inDays: 400, row: owned({ keptUntil: day(-1) }, "churned") });
+  assert.deepEqual(autoRenew, [{ autoRenew: false }]);
+  assert.equal(ownedNote(r).renewalOff, new Date().toISOString().slice(0, 10));
+  assert.equal(ownedNote(r).keptUntil, undefined);
+  assert.ok(r.body.checks.some((c) => /auto-renew switched OFF/.test(c)));
+  void kept;
+});
+
+test("owned domain on a hosting that ENDED is never billed, even on its charge day", async () => {
+  const r = await run({ inDays: 7, renewal: 11.25, row: owned({}, "churned") });
+  assert.equal(items.length, 0);
+  assert.equal(r.clientMails.length, 0);
 });
 
 test("the cron refuses without CRON_SECRET, even to a caller sending 'Bearer undefined'", async () => {

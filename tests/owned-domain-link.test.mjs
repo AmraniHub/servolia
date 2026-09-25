@@ -164,7 +164,7 @@ test("route: validates, checks Vercel, and only then creates the session through
 
 /* ══ 3. Ownership is checked with Vercel, and a no is a refusal ═══════════ */
 
-async function withVercel(answers, fn) {
+async function withVercel(answers, fn, { boughtAt } = {}) {
   const before = globalThis.fetch;
   const calls = [];
   globalThis.fetch = async (input, init = {}) => {
@@ -172,7 +172,7 @@ async function withVercel(answers, fn) {
     calls.push({ url, method: init.method ?? "GET" });
     const u = new URL(url);
     const status = answers(u.pathname) ?? 404;
-    const body = status === 200 ? { domain: { name: "ithardigital.com" }, name: "ithardigital.com" } : { error: { code: "not_found", message: "Not found" } };
+    const body = status === 200 ? { domain: { name: "ithardigital.com", boughtAt: boughtAt === undefined ? Date.parse("2026-09-20T10:00:00Z") : boughtAt }, name: "ithardigital.com" } : { error: { code: "not_found", message: "Not found" } };
     return new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
   };
   try { return { out: await fn(), calls }; } finally { globalThis.fetch = before; }
@@ -184,6 +184,14 @@ test("verify: in our team AND on the project -> ok, with read-only calls", async
   assert.deepEqual(calls.map((c) => c.method), ["GET", "GET"], "never writes to Vercel");
   assert.ok(calls[0].url.startsWith("https://api.vercel.com/v5/domains/ithardigital.com?teamId=team_harness"));
   assert.ok(calls[1].url.startsWith("https://api.vercel.com/v9/projects/ithar-digital/domains/ithardigital.com?teamId=team_harness"));
+});
+
+test("verify: in the team but NOT registered through Vercel (boughtAt null) -> refused, like domainInTeam", async () => {
+  const { out, calls } = await withVercel(() => 200, () => OD.verifyOwnedDomain("ithardigital.com", "ithar-digital"), { boughtAt: null });
+  assert.equal(out.ok, false);
+  assert.equal(out.status, 400);
+  assert.match(out.error, /NOT registered through Vercel/);
+  assert.equal(calls.length, 1, "refused before the project is even asked");
 });
 
 test("verify: not in our team -> refused, clear error", async () => {

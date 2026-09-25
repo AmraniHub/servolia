@@ -42,7 +42,7 @@ import { stripeFor } from "@/lib/stripeMode";
 import { runAsTest, inTestContext, testTag, testPrefixed, excludeTest, isTestRow } from "@/lib/testContext";
 import { Sends, paidSubject, troubleSubject, money, emailOutcome, type EmailOutcome } from "@/lib/notify";
 import { addWorkingDays, hasOneOff, writeOneOff, type OneOffOrder, type OneOffLeadData } from "@/lib/oneOffOrders";
-import { readOwnedDomainMeta, trialEndFor, writeOwnedDomainNote, ownedDomainPaidEmail, ownedDomainOwnerLines } from "@/lib/ownedDomain";
+import { readOwnedDomainMeta, trialEndFor, writeOwnedDomainNote, ownedDomainPaidEmail, ownedDomainOwnerLines, readOwnedDomainNote, ownedDomainOnCancel, ownedCancelLine } from "@/lib/ownedDomain";
 
 export const runtime = "nodejs";
 // A subscriber whose intake beat this event has their draft generated after
@@ -1839,17 +1839,47 @@ async function handleEventBody(event: Stripe.Event, stripe: Stripe, db: Db, send
         );
       }
 
+      /* A domain WE ALREADY OWNED, sold with the hosting (src/lib/ownedDomain.ts):
+       * its unbilled renewal lines go, and Vercel's auto-renew goes off —
+       * unless the client already paid for a year that has not started, in
+       * which case it stays on until then and the daily domain check switches
+       * it off after. Its own try/catch: a Stripe or Vercel hiccup here must
+       * not cost the owner the cancellation notice below. */
+      const ownedNote = readOwnedDomainNote(churnedHost?.notes);
+      let ownedLine: string | null = null;
+      let ownedKept: string | undefined;
+      if (ownedNote && churnedHost?.id) {
+        try {
+          const today = new Date().toISOString().slice(0, 10);
+          const customerId = typeof sub.customer === "string" ? sub.customer : sub.customer?.id ?? null;
+          const out = await ownedDomainOnCancel(stripeFor(event.livemode) ?? stripe, customerId, ownedNote, today, test, setDomainAutoRenew);
+          ownedLine = ownedCancelLine(ownedNote.domain, out);
+          ownedKept = out.keptUntil;
+          if (out.result === "off" || out.result === "kept") {
+            const { data: fresh } = await db.from("hosting_clients").select("notes").eq("id", churnedHost.id).maybeSingle();
+            const notes = writeOwnedDomainNote(fresh?.notes ?? churnedHost.notes, {
+              ...ownedNote,
+              ...(out.result === "kept" ? { keptUntil: out.keptUntil } : { renewalOff: today, keptUntil: undefined }),
+            });
+            await db.from("hosting_clients").update({ notes }).eq("id", churnedHost.id);
+          }
+        } catch (err) {
+          ownedLine = `⚠️ Owned domain ${ownedNote.domain}: the cancellation step stopped (${err instanceof Error ? err.message : String(err)}) — check its auto-renew in Vercel > Domains and any unbilled renewal line in Stripe.`;
+        }
+      }
+
       {
         const { data: client } = await db.from("clients").select("id, business, email").eq("subscription_id", sub.id).maybeSingle();
         const who = client?.business ?? client?.email ?? churnedHost?.business ?? "Unknown client";
         sends.owner({
-          subject: troubleSubject("Subscription ended", churnedHost ? "hosting" : "plan", who),
+          subject: troubleSubject("Subscription ended", churnedHost ? `hosting${ownedNote ? ` + domain ${ownedNote.domain}` : ""}` : "plan", who),
           lines: [
             `⚠️ Subscription cancelled — ${who}`,
             client?.email && client.email !== who ? client.email : null,
             `Stripe subscription ${sub.id}`,
+            ownedLine,
             churnedHost
-              ? "Next: decide when the site stops being served — nothing is switched off automatically."
+              ? `Next: decide when the site stops being served — nothing is switched off automatically.${ownedKept ? ` The domain's auto-renew goes off by itself after ${ownedKept}.` : ""}`
               : "Next: nothing is billed again; reach out if it was not intended.",
           ],
           link: churnedHost
