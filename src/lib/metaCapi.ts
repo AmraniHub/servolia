@@ -27,7 +27,7 @@ function normalizePhone(phone: string): string {
 }
 
 export interface CapiEventInput {
-  eventName: "Lead" | "Purchase" | "InitiateCheckout" | "CompleteRegistration";
+  eventName: "Lead" | "Purchase" | "InitiateCheckout" | "CompleteRegistration" | "StartTrial";
   email?: string | null;
   phone?: string | null;
   value?: number;
@@ -65,6 +65,13 @@ export async function sendMetaCapiEvent(input: CapiEventInput): Promise<void> {
       const ua = input.req.headers.get("user-agent");
       if (ip) userData.client_ip_address = ip;
       if (ua) userData.client_user_agent = ua;
+      // The pixel's own cookies: _fbc carries the ad click (fbclid), _fbp the
+      // browser. Without them a server event is matched on the email alone and
+      // is much harder to credit to the ad that brought the visitor.
+      const fbc = input.req.cookies.get("_fbc")?.value;
+      const fbp = input.req.cookies.get("_fbp")?.value;
+      if (fbc) userData.fbc = fbc;
+      if (fbp) userData.fbp = fbp;
     }
 
     const customData: Record<string, unknown> = {};

@@ -6,6 +6,7 @@ import {
 } from "@/lib/receptionistTrial";
 import { sendEmail, receptionistConfirmEmail, receptionistStartedEmail } from "@/lib/email";
 import { sendTelegramMessage } from "@/lib/telegram";
+import { sendMetaCapiEvent } from "@/lib/metaCapi";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -92,6 +93,8 @@ export async function POST(req: NextRequest) {
     const tpl = receptionistConfirmEmail({ business: row.config.businessName, domain: r.domain, link, lang });
     const sent = await sendEmail(email, tpl.subject, tpl.html).catch(() => false);
     if (!sent) return NextResponse.json({ ok: false, reason: "send-failed" }, { status: 502 });
+    // Ad measurement: a practice gave its email for its receptionist (the /fr/essai funnel's lead).
+    await sendMetaCapiEvent({ eventName: "Lead", email, eventSourceUrl: `${origin}/fr/essai`, req });
     await sendTelegramMessage(
       `Trial link requested - ${row.config.businessName}\n${r.domain} · ${email}\nThey have the confirm email; nothing starts until they click.`,
       undefined, { plain: true, silent: true },
@@ -111,6 +114,12 @@ export async function POST(req: NextRequest) {
         business: out.business, domain: out.domain, snippet: receptionistSnippet(out.slug), untilIso: out.until, link, lang: out.lang,
       });
       await sendEmail(claim.email, tpl.subject, tpl.html).catch(() => {});
+      // Ad measurement: the event Meta optimises the trial campaign for. Once per
+      // trial (not on a repeat click); never for a test run (sendMetaCapiEvent).
+      await sendMetaCapiEvent({
+        eventName: "StartTrial", email: claim.email, value: 149, currency: "EUR",
+        eventSourceUrl: `${origin}/fr/essai`, eventId: `trial-${out.slug}`, req,
+      });
       await sendTelegramMessage(
         `Receptionist trial STARTED - ${out.business}\n${out.domain} · ${claim.email}\n` +
         `Until ${out.until.slice(0, 10)} (moves to install + 7 days when we first see the line).\n` +
