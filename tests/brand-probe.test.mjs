@@ -72,6 +72,9 @@ test("real Lyon dental titles give the practice's name, not the profession", () 
   assert.equal(extractName("<title>Place Dentaire | Centres dentaires partout en France</title>", "x.fr"), "Place Dentaire");
   // A title that is ONLY the profession is still better than nothing.
   assert.equal(extractName("<title>Dentiste Lyon</title>", "x.fr"), "Dentiste Lyon");
+  // A long name is cut at a separator or a whole word, never mid-word.
+  assert.equal(extractName('<meta property="og:site_name" content="Docteur Thierry Maleca - Clinique Dentaire Laser">', "x.fr"), "Docteur Thierry Maleca");
+  assert.equal(extractName("<title>Cabinet de chirurgie dentaire et implantologie du Vieux Lyon</title>", "x.fr"), "Cabinet de chirurgie dentaire");
   // Brands that merely start with a profession-like letter run are kept.
   assert.equal(extractName("<title>Dentalys | Cabinet dentaire à Lyon</title>", "x.fr"), "Dentalys");
 });

@@ -159,7 +159,15 @@ function meta(html: string, key: string, attr: "name" | "property"): string | nu
  */
 export function extractName(html: string, domain: string): string {
   const clean = (s: string) => {
-    const c = decode(s).replace(/\s+/g, " ").trim().slice(0, 40).trim();
+    let c = decode(s).replace(/\s+/g, " ").trim();
+    // Too long: keep the part before a " - ", else stop at a whole word --
+    // never "Docteur Thierry Maleca - Clinique Dentai".
+    if (c.length > 40) {
+      const head = c.split(/\s+[-–—]\s+/)[0];
+      c = head.length <= 40 ? head
+        : c.slice(0, 41).replace(/\s+\S*$/, "").replace(/(?:\s+(?:et|de|du|des|la|le|les|à|au|en|and|of|the|&))+$/i, "");
+    }
+    c = c.trim();
     return c.charAt(0).toUpperCase() + c.slice(1);
   };
   const site = meta(html, "og:site_name", "property") ?? meta(html, "application-name", "name");
