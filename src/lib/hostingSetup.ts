@@ -219,7 +219,7 @@ export interface Checklist {
 const COPY = {
   en: {
     paid: "Payment received",
-    paidDone: "Your plan is paid and your reference is on every email.",
+    paidDone: "Your plan is active and your reference is on every email.",
     details: "Your site details",
     detailsDone: "We have where your site and domain live.",
     detailsKnown: "We already host your site, so there was nothing to send.",
@@ -261,7 +261,7 @@ const COPY = {
   },
   fr: {
     paid: "Paiement reçu",
-    paidDone: "Votre formule est payée et votre référence figure sur chaque email.",
+    paidDone: "Votre formule est active et votre référence figure sur chaque email.",
     details: "Les informations de votre site",
     detailsDone: "Nous savons où se trouvent votre site et votre domaine.",
     detailsKnown: "Nous hébergeons déjà votre site : il n'y avait rien à envoyer.",

@@ -18,6 +18,7 @@ import { clientRefFor, refKeyForEmail, knownSiteUrl } from "@/lib/clientRefs";
 import HostingSetupTracker from "@/components/admin/HostingSetupTracker";
 import { checklistForView, setupColumnReady, establishedRow, olderRowLookup } from "@/lib/hostingSetupRun";
 import type { SetupRow } from "@/lib/hostingSetup";
+import { nextPaymentsFor } from "@/lib/nextPayments";
 
 export const dynamic = "force-dynamic";
 
@@ -96,6 +97,8 @@ export default async function HostingClientPage({ params }: { params: Promise<{ 
   const setupMail = ((c as SetupRow).setup?.mail ?? {}) as Record<string, string>;
 
   const period = c.billing_period === "annual" ? "yearly" : "monthly";
+  // What is charged next, read from Stripe (src/lib/nextPayments.ts).
+  const next = await nextPaymentsFor(c.subscription_id, c.notes, plan?.name ?? String(c.plan ?? "Hosting"));
   const usd = (n: number) => `$${Number(n).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
 
   return (
@@ -134,6 +137,28 @@ export default async function HostingClientPage({ params }: { params: Promise<{ 
             <p className="text-sm font-semibold text-[#18181B] mt-1">{v}</p>
           </div>
         ))}
+      </div>
+
+      <div className="rounded-xl border border-[#E4E4E7] bg-white p-4 mb-6">
+        <p className="text-[10px] font-bold text-[#A1A1AA] uppercase tracking-wider mb-3">Next payments</p>
+        {next.list.length === 0 ? (
+          <p className="text-sm text-[#71717A]">{c.subscription_id && !next.stripeRead ? "Could not read Stripe right now. Reload to try again." : "Nothing scheduled."}</p>
+        ) : (
+          <ul className="divide-y divide-[#F4F4F5]">
+            {next.list.map((p, i) => (
+              <li key={i} className="flex items-start justify-between gap-4 py-2.5 first:pt-0 last:pb-0">
+                <div className="min-w-0">
+                  <p className={`text-sm font-semibold ${p.kind === "overdue" ? "text-[#B91C1C]" : "text-[#18181B]"}`}>{p.what}</p>
+                  <p className="text-xs text-[#71717A] mt-0.5">{p.note}</p>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="text-sm font-bold text-[#18181B]">{p.amount === null ? "—" : `${p.currency === "USD" ? "$" : p.currency === "EUR" ? "€" : p.currency + " "}${p.amount.toLocaleString(undefined, { minimumFractionDigits: p.amount % 1 ? 2 : 0 })}`}</p>
+                  <p className="text-xs text-[#71717A] mt-0.5">{p.date ? new Date(`${p.date}T12:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "—"}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       {setupList ? (
