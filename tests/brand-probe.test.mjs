@@ -61,6 +61,28 @@ test("name extraction prefers og:site_name, then the brand side of <title>", () 
   assert.equal(extractName("<title>Caf&eacute; &amp; Co</title>".replace("&eacute;", "&#233;"), "x.ma"), "Café & Co");
 });
 
+test("real Lyon dental titles give the practice's name, not the profession", () => {
+  // Titles read from the practices' own sites, 2026-09-30.
+  assert.equal(extractName("<title>Médident Centre Dentaire Lyon Moncey | Dentiste Lyon</title>", "x.fr"), "Médident Centre Dentaire Lyon Moncey");
+  assert.equal(extractName("<title>Dentiste Lyon - centre dentaire Lyon</title>", "x.fr"), "Centre dentaire Lyon");
+  assert.equal(
+    extractName("<title>Cabinet Dentaire Baly à Villeurbanne • 69100 &#8211; Dentiste à Villeurbanne • 69100</title>", "x.fr"),
+    "Cabinet Dentaire Baly à Villeurbanne",
+  );
+  assert.equal(extractName("<title>Place Dentaire | Centres dentaires partout en France</title>", "x.fr"), "Place Dentaire");
+  // A title that is ONLY the profession is still better than nothing.
+  assert.equal(extractName("<title>Dentiste Lyon</title>", "x.fr"), "Dentiste Lyon");
+  // Brands that merely start with a profession-like letter run are kept.
+  assert.equal(extractName("<title>Dentalys | Cabinet dentaire à Lyon</title>", "x.fr"), "Dentalys");
+});
+
+test("a domain glued from practice words is split", () => {
+  assert.equal(titleFromDomain("cabinetdentairemermoz.fr"), "Cabinet Dentaire Mermoz");
+  assert.equal(titleFromDomain("chirurgiedentairebeckerracine.fr"), "Chirurgie Dentaire Beckerracine");
+  assert.equal(titleFromDomain("centre-dentaire-lyon-saxe.fr"), "Centre Dentaire Lyon Saxe");
+  assert.equal(titleFromDomain("plomberiedupont.fr"), "Plomberie Dupont");
+});
+
 test("language detection: switchers count, scripts count, stop-words count", () => {
   assert.deepEqual(extractLanguages('<html lang="fr"><body>' + "les des vous nous votre études nos ".repeat(4) + "</body>"), ["fr"]);
   assert.deepEqual(extractLanguages('<html lang="en"><a hreflang="fr" href="/fr/"></a><body>' + "the and your with our from ".repeat(4) + "</body>"), ["fr", "en"]);

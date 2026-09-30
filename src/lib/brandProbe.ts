@@ -100,15 +100,46 @@ const decode = (s: string) =>
    .replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'")
    .replace(/&nbsp;/g, " ").replace(/&lt;/g, "<").replace(/&gt;/g, ">").trim();
 
-/** "clinique-atlas.ma" → "Clinique Atlas". The floor when the site says nothing. */
+/* Words a practice's domain is usually glued from. "cabinetdentairemermoz.fr"
+   read as "Cabinetdentairemermoz" -- the name a dentist would see on her own
+   receptionist (Lyon outreach, 2026-09-30). */
+const DOMAIN_WORDS = ["chirurgiens", "chirurgien", "chirurgie", "orthodontie", "orthodontiste", "dentistes", "dentiste",
+  "dentaires", "dentaire", "cabinet", "centre", "clinique", "clinic", "dental", "dentist", "docteur", "sourire", "smile",
+  "implants", "implant", "esthetique", "medical", "sante", "plomberie", "plombier", "electricien", "chauffage"];
+
+/** A single hyphen-less label split on the words it is glued from; unknown runs stay whole. */
+function unglue(label: string): string[] {
+  const out: string[] = [];
+  let buf = "";
+  let i = 0;
+  const lower = label.toLowerCase();
+  while (i < label.length) {
+    const w = DOMAIN_WORDS.find((d) => lower.startsWith(d, i));
+    if (w) {
+      if (buf) out.push(buf);
+      buf = "";
+      out.push(label.slice(i, i + w.length));
+      i += w.length;
+    } else buf += label[i++];
+  }
+  if (buf) out.push(buf);
+  return out;
+}
+
+/** "clinique-atlas.ma" → "Clinique Atlas", "cabinetdentairemermoz.fr" → "Cabinet Dentaire Mermoz". The floor when the site says nothing. */
 export function titleFromDomain(domain: string): string {
   const label = domain.split(".")[0] ?? domain;
   return label
     .split(/[-_]+/)
     .filter(Boolean)
+    .flatMap(unglue)
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
     .join(" ") || domain;
 }
+
+/* A title part that names only the profession (and a place): "Dentiste Lyon",
+   "Dentiste à Villeurbanne". Common on dental sites, and never the name. */
+const GENERIC_PART = /^(?:votre\s+|le\s+|la\s+)?(?:chirurgiens?[- ]dentistes?|dentistes?|dentists?|orthodontistes?|accueil|home|bienvenue|welcome)(?![\p{L}])/iu;
 
 function meta(html: string, key: string, attr: "name" | "property"): string | null {
   // content before or after the name — both orders exist in the wild.
@@ -122,16 +153,24 @@ function meta(html: string, key: string, attr: "name" | "property"): string | nu
  * The business's name, best effort:
  * og:site_name → application-name → the brand side of <title> → the domain.
  * A <title> is usually "Brand | tagline" or "Page — Brand": the side with
- * fewer words is almost always the brand, ties broken toward the first.
+ * fewer words is almost always the brand, ties broken toward the first --
+ * after dropping parts that are only a postcode or only the profession
+ * ("Dentiste Lyon"), which otherwise win on word count.
  */
 export function extractName(html: string, domain: string): string {
-  const clean = (s: string) => decode(s).replace(/\s+/g, " ").trim().slice(0, 40).trim();
+  const clean = (s: string) => {
+    const c = decode(s).replace(/\s+/g, " ").trim().slice(0, 40).trim();
+    return c.charAt(0).toUpperCase() + c.slice(1);
+  };
   const site = meta(html, "og:site_name", "property") ?? meta(html, "application-name", "name");
   if (site) return clean(site);
   const t = html.match(/<title[^>]*>([^<]{1,300})<\/title>/i);
   if (t) {
     const whole = decode(t[1]).replace(/\s+/g, " ").trim();
-    const parts = whole.split(/\s*(?:\||–|—|::|·)\s*|\s+-\s+/).map((p) => p.trim()).filter((p) => p.length > 1);
+    const all = whole.split(/\s*(?:\||–|—|::|·|•)\s*|\s+-\s+/).map((p) => p.trim())
+      .filter((p) => p.length > 1 && !/^\d{4,5}$/.test(p));
+    const named = all.filter((p) => !GENERIC_PART.test(p));
+    const parts = named.length ? named : all;
     if (parts.length === 1) return clean(parts[0]);
     if (parts.length > 1) {
       const scored = parts.map((p, i) => ({ p, words: p.split(/\s+/).length, i }));
