@@ -570,6 +570,14 @@ test("ESTABLISHED client: never emailed or announced — even after a failed pro
   assert.equal(await R.checklistForView(old, { lang: "en" }), null, "no checklist on their page");
   const adminView = await R.checklistForView(old, { lang: "en", includeEstablished: true });
   assert.equal(adminView.applies, true, "the admin still sees it, read-only");
+  // We already host them: "on our hosting" reads done, and the live check fills the rest --
+  // in the view only (store.writes stays 0 above).
+  const onboard = (list) => list.steps.find((s) => s.id === "onboard").state;
+  assert.equal(onboard(adminView), "done");
+  assert.equal(onboard(c.checklist), "done");
+  assert.equal(c.checklist.steps.find((s) => s.id === "live").state, "done", "measured live");
+  assert.notEqual(onboard(await R.checklistForView({ ...old, vercel_project: null }, { lang: "en", includeEstablished: true })), "done",
+    "no Vercel project recorded: nothing is assumed");
 });
 
 /* ── M1: a re-checkout by an existing client is still an existing client ─ */

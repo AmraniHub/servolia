@@ -236,6 +236,20 @@ const viewProbes = new Map<string, { probe: Probe; at: number }>();
  * host per instance, capped at seven seconds. Never stored and never emails:
  * a page view is not a check anyone asked for.
  */
+/**
+ * An ESTABLISHED client is one we already host: they were on our servers
+ * before the tracker existed. Their "on our hosting" step therefore reads as
+ * done as soon as their Vercel project is recorded -- in the view only, since
+ * their row is never written. Without this their checklist sat at "we're
+ * doing this" / "waiting" forever, which was simply untrue (2026-09-30).
+ */
+export function asEstablishedView(row: SetupRow): SetupRow {
+  if (!row.vercel_project || row.setup?.hand?.onboard) return row;
+  const since = row.started_at ?? row.created_at ?? null;
+  if (!since) return row;
+  return { ...row, setup: { ...(row.setup ?? {}), hand: { ...(row.setup?.hand ?? {}), onboard: since } } };
+}
+
 export async function checklistForView(
   row: SetupRow,
   opts: { lang: Lang; setupHref?: string | null; allowProbe?: () => Promise<boolean>; includeEstablished?: boolean; now?: Date; established?: boolean },
@@ -245,6 +259,7 @@ export async function checklistForView(
   // lookup); without it, the rules that need no database.
   const established = opts.established ?? isEstablished(row, { knownClient: Boolean(clientRefFor(refKeyForEmail(row.email))) });
   if (established && !opts.includeEstablished) return null;
+  if (established) row = asEstablishedView(row);
   const ctx = contextFor(row, opts.setupHref ?? null);
   const now = opts.now ?? new Date();
   const stored = row.setup?.probe ?? null;
@@ -327,7 +342,8 @@ export async function runSetupCheck(rowId: string, deps: RunDeps, viewLang: Lang
 
     const established = await establishedRow(first, deps.store.olderRow);
     if (established || !(await deps.store.canWrite())) {
-      return { ok: true, checklist: computeChecklist(first, ctx, probe, viewLang), sent: [], notified: [], stored: false, established };
+      // Measured, never written and never emailed (see asEstablishedView).
+      return { ok: true, checklist: computeChecklist(established ? asEstablishedView(first) : first, ctx, probe, viewLang), sent: [], notified: [], stored: false, established };
     }
 
     for (let attempt = 0; attempt < 2; attempt++) {
