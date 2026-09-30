@@ -10,7 +10,7 @@
 import type Stripe from "stripe";
 import { inEitherMode } from "@/lib/stripeMode";
 import { nextHostingInvoiceDate, readOwnedDomainNote } from "@/lib/ownedDomain";
-import { readDomainRecord } from "@/lib/domainSales";
+import { readDomainRecord, chargeDateFor } from "@/lib/domainSales";
 
 export interface NextPayment {
   what: string;
@@ -71,8 +71,9 @@ export function nextPaymentsFrom(
       what: `Domain ${owned.domain}: next year`,
       amount: owned.usd || null,
       currency: "USD",
-      date: owned.renewsOn,
-      note: stops ? "not charged: the hosting ends first" : "charged with the hosting card, on its own invoice",
+      // The renewal job charges a week before the domain's year ends (chargeDateFor).
+      date: chargeDateFor(owned.renewsOn),
+      note: stops ? "not charged: the hosting ends first" : `charged with the hosting card, on its own invoice; the domain renews ${owned.renewsOn}`,
       kind: "domain",
     });
   }
@@ -82,8 +83,8 @@ export function nextPaymentsFrom(
       what: `Domain ${bought.domain}: next year`,
       amount: bought.retailUsd || null,
       currency: "USD",
-      date: bought.nextChargeAt,
-      note: "added to that month's hosting invoice",
+      date: chargeDateFor(bought.nextChargeAt),
+      note: `added to the hosting invoice; the domain renews ${bought.nextChargeAt}`,
       kind: "domain",
     });
   }

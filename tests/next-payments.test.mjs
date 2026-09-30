@@ -14,16 +14,16 @@ const sub = (over = {}) => ({
   ...over,
 });
 // Ithar Digital's row, as written by the owned-domain hosting link (2026-09-25).
-const ITHAR = "servolia-owned-domain: ithardigital.com | price: 27.90 | paid: 2026-09-25 | renews: 2027-09-18 | project: ithar-digital | bought: no (already ours)";
+const ITHAR = "servolia-owned-domain: ithardigital.com | price: 27.90 | paid: 2026-09-25 | renews: 2027-09-25 | project: ithar-digital | bought: no (already ours)";
 
 test("a free period: the first year on its end date, then the domain", () => {
   const list = nextPaymentsFrom(sub(), ITHAR, "Hosting Essential");
   assert.deepEqual(list.map((p) => [p.what, p.amount, p.currency, p.date]), [
     ["Hosting Essential: first year", 66, "USD", "2026-10-09"],
-    ["Domain ithardigital.com: next year", 27.9, "USD", "2027-09-18"],
+    ["Domain ithardigital.com: next year", 27.9, "USD", "2027-09-18"], // charged a week before it renews
   ]);
   assert.match(list[0].note, /free period ends; charged automatically to the saved card/);
-  assert.match(list[1].note, /on its own invoice/);
+  assert.match(list[1].note, /on its own invoice; the domain renews 2027-09-25/);
 });
 
 test("an active plan shows its renewal", () => {
