@@ -51,7 +51,7 @@ export default function HostingSetupTracker({
       if (!res.ok) throw new Error(data.hint || data.error || `HTTP ${res.status}`);
       setList(data.checklist as Checklist);
       const sent = Array.isArray(data.sent) && data.sent.length ? ` Emailed the client: ${data.sent.join(", ")}.` : "";
-      setMsg({ ok: true, text: body.action === "check" ? `Checked.${sent}${data.stored === false ? " (Not stored: run the SQL.)" : ""}` : "Saved." });
+      setMsg({ ok: true, text: body.action === "check" ? `Checked.${sent}${data.established ? " Measured only: an established client's row is not changed and nothing is sent." : data.stored === false ? " (Not stored: run the SQL.)" : ""}` : "Saved." });
     } catch (e) {
       setMsg({ ok: false, text: e instanceof Error ? e.message : "Failed" });
     } finally {
