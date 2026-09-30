@@ -154,10 +154,16 @@ export default async function HostingPage() {
                               ? "bg-[#FEF3C7] text-[#92400E]"
                               : c.status === "suspended"
                                 ? "bg-[#7F1D1D] text-white"
-                                : "bg-[#FEE2E2] text-[#991B1B]"
+                                : c.status === "awaiting_payment"
+                                  ? "bg-[#E5E7EB] text-[#374151]"
+                                  : "bg-[#FEE2E2] text-[#991B1B]"
                         }`}
                       >
-                        {String(c.status).toUpperCase()}
+                        {/* awaiting_payment: a row created by hand before the
+                            client pays (the Stripe webhook completes it, matching
+                            email + plan + no subscription). Not counted, not
+                            checked by any cron, which all read active/past_due. */}
+                        {String(c.status).replace(/_/g, " ").toUpperCase()}
                       </span>
                       {c.payment_status?.startsWith("past_due") ? (
                         <span
