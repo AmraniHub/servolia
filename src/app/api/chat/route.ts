@@ -6,6 +6,7 @@ import { supabaseAdmin, estimateLeadValue } from "@/lib/supabase";
 import { getClientSite } from "@/lib/clientSites";
 import { notifyClientOfLead } from "@/lib/clientNotify";
 import { buildReceptionistPrompt } from "@/lib/clientPrompt";
+import { plainReply } from "@/lib/plainReply";
 import { sendMetaCapiEvent } from "@/lib/metaCapi";
 import { alert } from "@/lib/notify";
 import { pricingPromptLines } from "@/lib/pricing";
@@ -298,7 +299,8 @@ export async function POST(req: NextRequest) {
       const systemContent = config ? buildReceptionistPrompt(config) : SYSTEM_PROMPT;
       const rawReply = (await runAssistant(messages, systemContent)).trim();
       const isBooking = /\[BOOKING\]/i.test(rawReply);
-      const reply = rawReply.replace(/\[BOOKING\]/gi, "").trim();
+      // Both chat widgets show text as-is: Markdown would reach the patient raw.
+      const reply = plainReply(rawReply.replace(/\[BOOKING\]/gi, "")).trim();
 
       // Best-effort persistence tagged to the client (never blocks the reply).
       // A PREVIEW is persisted nowhere and alerts nobody: the person typing
