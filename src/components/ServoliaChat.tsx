@@ -15,6 +15,8 @@ const OWN_COPY: Record<"en" | "fr", OwnChatCopy> = {
     quickReplies: ["What does it cost?", "How fast would I be live?", "I already have a website"],
     placeholder: "Ask about pricing, timing, anything…",
     subtitle: "Replies instantly · a human reads every conversation",
+    bubble: "Ask Solia anything",
+    confirmation: "✓ Our team has been notified — audit incoming!",
   },
   fr: {
     greeting:
@@ -22,6 +24,8 @@ const OWN_COPY: Record<"en" | "fr", OwnChatCopy> = {
     quickReplies: ["Combien ça coûte ?", "En combien de temps je suis en ligne ?", "J'ai déjà un site"],
     placeholder: "Tarifs, délais, questions…",
     subtitle: "Réponse immédiate · un humain lit chaque conversation",
+    bubble: "Une question ? Demandez à Solia",
+    confirmation: "✓ L'équipe est prévenue — votre audit arrive !",
   },
 };
 

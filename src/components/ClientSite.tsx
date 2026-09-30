@@ -702,6 +702,7 @@ export default function ClientSite({
             botName={c.businessName}
             accent={accent}
             greeting={c.aiGreeting}
+            lang={c.language === "fr" ? "fr" : "en"}
             poweredBy={false}
             endpoint={customHost ? "/api/site-chat" : "/api/chat"}
           />

@@ -46,14 +46,55 @@ export interface OwnChatCopy {
   quickReplies: readonly string[];
   placeholder: string;
   subtitle: string;
+  /** The bubble above the closed launcher. */
+  bubble?: string;
+  /** Shown once the conversation qualifies. */
+  confirmation?: string;
 }
 
-const NEUTRAL_COPY: OwnChatCopy = {
-  greeting: "Hi 👋 How can I help you today?",
-  quickReplies: ["Book an appointment", "Opening hours", "Prices"],
-  placeholder: "Type a message…",
-  subtitle: "Online · replies instantly",
-};
+/** The widget's own interface words, in the page's language. Neutral on
+ *  purpose (no brand): these ship on a practice's own domain too. A French
+ *  practice's patients used to get "Type a message…" and "Your name". */
+const UI = {
+  en: {
+    greeting: "Hi 👋 How can I help you today?",
+    quickReplies: ["Book an appointment", "Opening hours", "Prices"],
+    placeholder: "Type a message…",
+    subtitle: "Online · replies instantly",
+    bubble: "Chat with us",
+    openChat: "Open chat",
+    confirmation: "✓ Got it — the team will confirm shortly!",
+    connection: "Sorry, I'm having a connection issue — leave your details below and we'll get right back to you 🙏",
+    leaveDetails: "Leave your details — we'll get back to you fast:",
+    yourName: "Your name",
+    phoneOrEmail: "Phone or email",
+    sending: "Sending…",
+    send: "Send",
+    failed: "Couldn't send — please call or email us directly.",
+    failedEmail: (e: string) => `Couldn't send — please email ${e}`,
+    sent: "✓ Got it — we'll be in touch shortly!",
+    poweredBy: "Powered by",
+  },
+  fr: {
+    greeting: "Bonjour 👋 Comment puis-je vous aider ?",
+    quickReplies: ["Prendre rendez-vous", "Horaires", "Tarifs"],
+    placeholder: "Écrivez votre message…",
+    subtitle: "En ligne · répond instantanément",
+    bubble: "Une question ? Écrivez-nous",
+    openChat: "Ouvrir la discussion",
+    confirmation: "✓ C'est noté — l'équipe vous confirme très vite !",
+    connection: "Désolée, j'ai un souci de connexion — laissez vos coordonnées ci-dessous et nous vous recontactons rapidement 🙏",
+    leaveDetails: "Laissez vos coordonnées — nous vous rappelons vite :",
+    yourName: "Votre nom",
+    phoneOrEmail: "Téléphone ou email",
+    sending: "Envoi…",
+    send: "Envoyer",
+    failed: "Envoi impossible — appelez-nous ou écrivez-nous directement.",
+    failedEmail: (e: string) => `Envoi impossible — écrivez-nous à ${e}`,
+    sent: "✓ C'est noté — nous revenons vers vous très vite !",
+    poweredBy: "Propulsé par",
+  },
+} as const;
 
 function getSessionId(scope: string): string {
   if (typeof window === "undefined") return "";
@@ -81,8 +122,8 @@ export default function ChatWidget({
   fallbackEmail,
   poweredByLabel = "",
 }: ChatWidgetProps = {}) {
-  void lang; // the copy arrives already in the caller's language
-  const own = ownCopy ?? NEUTRAL_COPY;
+  const ui = UI[lang === "fr" ? "fr" : "en"];
+  const own: OwnChatCopy = ownCopy ?? ui;
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -100,13 +141,9 @@ export default function ChatWidget({
 
   const openingLine =
     greeting ??
-    (siteSlug
-      ? "Hi 👋 How can I help you today?"
-      : own.greeting);
+    (siteSlug ? ui.greeting : own.greeting);
 
-  const defaultQuickReplies = siteSlug
-    ? ["Book an appointment", "Opening hours", "Prices"]
-    : own.quickReplies;
+  const defaultQuickReplies = siteSlug ? ui.quickReplies : own.quickReplies;
   const quickReplyOptions = quickRepliesProp ?? defaultQuickReplies;
 
   useEffect(() => {
@@ -167,7 +204,7 @@ export default function ChatWidget({
     } catch {
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: "Sorry, I'm having a connection issue — leave your details below and we'll get right back to you 🙏" },
+        { role: "assistant", content: ui.connection },
       ]);
       setFallbackMode(true);
     } finally {
@@ -205,22 +242,20 @@ export default function ChatWidget({
 
   const quickReplies = messages.length === 1 && !loading ? quickReplyOptions : [];
 
-  const confirmationText = siteSlug
-    ? "✓ Got it — the team will confirm shortly!"
-    : "✓ Our team has been notified — audit incoming!";
+  const confirmationText = siteSlug ? ui.confirmation : own.confirmation ?? ui.confirmation;
 
   return (
     <>
-      <div className="fixed bottom-5 right-5 z-50 flex flex-col items-end gap-2">
+      <div className="fixed bottom-5 right-5 z-[110] flex flex-col items-end gap-2">
         {!open && pulse && (
           <div className="bg-white border border-[#E8E6E0] rounded-xl px-3 py-2 shadow-card text-xs font-semibold text-[#18181B] whitespace-nowrap animate-bounce">
-            💬 {siteSlug ? "Chat with us" : "Ask Solia anything"}
+            💬 {siteSlug ? ui.bubble : own.bubble ?? ui.bubble}
           </div>
         )}
 
         <button
           onClick={() => setOpen((o) => !o)}
-          aria-label="Open chat"
+          aria-label={ui.openChat}
           style={open ? { background: "#18181B" } : { background: accent }}
           className={`w-14 h-14 rounded-full shadow-elevated flex items-center justify-center transition-all duration-300 ${
             open ? "" : "hover:scale-110"
@@ -236,7 +271,7 @@ export default function ChatWidget({
 
       {open && (
         <div
-          className="fixed bottom-24 right-5 z-50 w-[340px] sm:w-[380px] rounded-2xl overflow-hidden shadow-elevated border border-[#E8E6E0] flex flex-col bg-white"
+          className="fixed bottom-24 right-5 z-[110] w-[340px] sm:w-[380px] rounded-2xl overflow-hidden shadow-elevated border border-[#E8E6E0] flex flex-col bg-white"
           style={{ maxHeight: "540px" }}
         >
           {/* Header */}
@@ -249,7 +284,7 @@ export default function ChatWidget({
                 <p className="text-[#FAFAF7] text-sm font-bold">{brandName}</p>
                 <div className="flex items-center gap-1.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#BEF264] animate-pulse" />
-                  <span className="text-[#FAFAF7]/80 text-xs">{siteSlug ? "Online · replies instantly" : own.subtitle}</span>
+                  <span className="text-[#FAFAF7]/80 text-xs">{siteSlug ? ui.subtitle : own.subtitle}</span>
                 </div>
               </div>
             </div>
@@ -316,17 +351,17 @@ export default function ChatWidget({
 
             {fallbackMode && fbState !== "done" && (
               <div className="bg-white border border-[#E8E6E0] rounded-xl p-3 flex flex-col gap-2">
-                <p className="text-xs font-bold text-[#18181B]">Leave your details — we&apos;ll get back to you fast:</p>
+                <p className="text-xs font-bold text-[#18181B]">{ui.leaveDetails}</p>
                 <input
                   value={fbName}
                   onChange={(e) => setFbName(e.target.value)}
-                  placeholder="Your name"
+                  placeholder={ui.yourName}
                   className="bg-[#FAFAF7] text-[#18181B] placeholder-[#A1A1AA] text-sm rounded-lg px-3 py-2 border border-[#E8E6E0] focus:outline-none"
                 />
                 <input
                   value={fbContact}
                   onChange={(e) => setFbContact(e.target.value)}
-                  placeholder="Phone or email"
+                  placeholder={ui.phoneOrEmail}
                   className="bg-[#FAFAF7] text-[#18181B] placeholder-[#A1A1AA] text-sm rounded-lg px-3 py-2 border border-[#E8E6E0] focus:outline-none"
                 />
                 <button
@@ -335,11 +370,11 @@ export default function ChatWidget({
                   className="text-sm font-bold text-[#FAFAF7] rounded-lg py-2 disabled:opacity-40 transition-opacity"
                   style={{ background: accent }}
                 >
-                  {fbState === "sending" ? "Sending…" : "Send"}
+                  {fbState === "sending" ? ui.sending : ui.send}
                 </button>
                 {fbState === "error" && (
                   <p className="text-[11px] text-[#B91C1C]">
-                    {siteSlug || !fallbackEmail ? "Couldn't send — please call or email us directly." : `Couldn't send — please email ${fallbackEmail}`}
+                    {siteSlug || !fallbackEmail ? ui.failed : ui.failedEmail(fallbackEmail)}
                   </p>
                 )}
               </div>
@@ -347,7 +382,7 @@ export default function ChatWidget({
 
             {fallbackMode && fbState === "done" && (
               <div className="mx-auto px-3 py-1.5 rounded-full bg-[#EEF5EA] border border-[#36671E]/30 text-[#36671E] text-xs font-semibold text-center">
-                ✓ Got it — we&apos;ll be in touch shortly!
+                {ui.sent}
               </div>
             )}
 
@@ -361,7 +396,7 @@ export default function ChatWidget({
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={siteSlug ? "Type a message…" : own.placeholder}
+              placeholder={siteSlug ? ui.placeholder : own.placeholder}
               className="flex-1 bg-[#FAFAF7] text-[#18181B] placeholder-[#A1A1AA] text-sm rounded-xl px-3 py-2 border border-[#E8E6E0] focus:outline-none transition-colors"
             />
             <button
@@ -378,7 +413,7 @@ export default function ChatWidget({
           {poweredBy && poweredByLabel && (
             <div className="bg-white text-center pb-2">
               <span className="text-[#A1A1AA] text-[10px]">
-                Powered by <span className="text-[#36671E] font-semibold">{poweredByLabel}</span>
+                {ui.poweredBy} <span className="text-[#36671E] font-semibold">{poweredByLabel}</span>
               </span>
             </div>
           )}
