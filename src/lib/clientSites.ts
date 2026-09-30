@@ -305,7 +305,9 @@ export function slugify(input: string): string {
     .normalize("NFD").replace(/[̀-ͯ]/g, "")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
-    .slice(0, 48) || "client";
+    // Cut, THEN trim: a hyphen left at the cut made slugify(slugify(x)) !== slugify(x),
+    // so a long domain's saved draft could never be found again (Lyon, 2026-09-30).
+    .slice(0, 48).replace(/-+$/, "") || "client";
 }
 
 function isHex(v: unknown): v is string {

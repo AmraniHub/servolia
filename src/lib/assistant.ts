@@ -79,7 +79,7 @@ export function slugifyHost(input: string): string {
     .replace(/^www\./, "")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
-    .slice(0, 48) || "client";
+    .slice(0, 48).replace(/-+$/, "") || "client"; // cut, then trim: stays idempotent
 }
 
 /** The hostname inside a URL or a bare domain, lowercased; "" if none. */
