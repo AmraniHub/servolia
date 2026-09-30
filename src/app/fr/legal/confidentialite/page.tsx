@@ -51,7 +51,7 @@ export default function ConfidentialitePage() {
             </div>
             <div>
               <h2 className="text-lg font-black text-[#18181B] mb-3">6. Cookies</h2>
-              <p id="cookies">Nous utilisons : (a) des <strong>cookies essentiels</strong> — nécessaires au fonctionnement du site ; (b) des <strong>cookies analytiques</strong> (Google Analytics 4) — pour comprendre l&apos;usage du site, activés uniquement avec votre consentement via le bandeau cookies.</p>
+              <p id="cookies">Nous utilisons : (a) des <strong>cookies essentiels</strong> — nécessaires au fonctionnement du site ; (b) des <strong>cookies de mesure d&apos;audience et de publicité</strong> (Google Analytics 4, Google Ads, pixel Meta) — pour savoir quelles pages sont lues et quelles publicités amènent des visiteurs. Ils sont déposés dès votre visite, comme l&apos;indique le bandeau en bas de page. Pour les refuser : bloquez les cookies tiers (ou tous les cookies) de ce site dans les réglages de votre navigateur, installez le module de désactivation de Google (tools.google.com/dlpage/gaoptout), ou désactivez la personnalisation des annonces dans vos comptes Google et Meta.</p>
             </div>
             <div>
               <h2 className="text-lg font-black text-[#18181B] mb-3">7. Services tiers</h2>

@@ -7,10 +7,11 @@
  *
  * WHY, IN TWO PARTS
  *
- * Honesty first. The banner writes a consent flag that nothing in the codebase
- * reads: GA4, the Meta Pixel and the Google Ads tag load either way, so
- * "Decline" only hides the banner. Suppressing that banner while the trackers
- * still ran would have made a cosmetic problem into a dishonest one.
+ * Honesty first. GA4, the Meta Pixel and the Google Ads tag load for every
+ * visitor on Servolia's own pages (founder decision 2026-09-30), and the
+ * banner is a notice saying so, not a consent choice. Hiding that notice
+ * while the trackers still ran would have made the site less honest, so here
+ * both go together.
  *
  * And there is no reason to track here. These pages are reached by a signed
  * link sent to one named client -- they are not an acquisition surface, and

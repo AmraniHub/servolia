@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Globe, ExternalLink, Sparkles, Loader2, Eye, EyeOff } from "lucide-react";
+import { Globe, ExternalLink, Sparkles, Loader2, Eye, EyeOff, Trash2 } from "lucide-react";
 import SiteDomainControl from "@/components/admin/SiteDomainControl";
 
 export interface SiteRow {
@@ -40,6 +40,8 @@ export default function ClientSitesManager({
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  // Two clicks to delete: the first arms this slug, the second deletes.
+  const [armed, setArmed] = useState<string | null>(null);
 
   // Faster local refresh on top of the global 25s poll — this page is watched
   // right after a client completes intake, so a quick "is it here yet" cadence
@@ -85,6 +87,26 @@ export default function ClientSitesManager({
       setErr(e instanceof Error ? e.message : "Failed to update");
     } finally {
       setBusy(null);
+    }
+  }
+
+  async function deleteSite(slug: string) {
+    setBusy(slug);
+    setErr(null);
+    try {
+      const res = await fetch("/api/admin/delete-site", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error ?? "Failed to delete");
+      router.refresh();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Failed to delete");
+    } finally {
+      setBusy(null);
+      setArmed(null);
     }
   }
 
@@ -135,6 +157,24 @@ export default function ClientSitesManager({
                   </div>
                   {s.canHaveDomain ? (
                     <SiteDomainControl slug={s.slug} customDomain={s.customDomain} domainLiveAt={s.domainLiveAt} wanted={s.wantedDomain} savedDns={s.domainDns} />
+                  ) : null}
+                  {/* Drafts only; the server refuses anything a client pays for (src/lib/siteDelete.ts). */}
+                  {!published && s.canHaveDomain && !s.customDomain ? (
+                    <div className="mt-3 flex items-center justify-end gap-2 text-xs">
+                      {armed === s.slug ? (
+                        <>
+                          <span className="text-[#71717A]">Archived first, then deleted.</span>
+                          <button onClick={() => setArmed(null)} disabled={busy === s.slug} className="px-2.5 py-1.5 rounded-lg border border-[#E8E6E0] text-[#52525B] font-semibold hover:bg-[#F5F4EF]">Keep</button>
+                          <button onClick={() => deleteSite(s.slug)} disabled={busy === s.slug} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-[#DC2626] text-white font-semibold hover:bg-[#B91C1C] disabled:opacity-50">
+                            {busy === s.slug ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />} Yes, delete draft
+                          </button>
+                        </>
+                      ) : (
+                        <button onClick={() => setArmed(s.slug)} disabled={busy === s.slug} className="flex items-center gap-1 text-[#A1A1AA] hover:text-[#DC2626] font-semibold">
+                          <Trash2 className="w-3.5 h-3.5" /> Delete draft
+                        </button>
+                      )}
+                    </div>
                   ) : null}
                 </div>
               );

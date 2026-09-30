@@ -114,7 +114,7 @@ export default function PrivacyPage() {
                 <li><strong>To deliver, host and support a service you bought</strong> — performance of our contract with you.</li>
                 <li><strong>To take payment, invoice, and keep accounting records</strong> — contract, and legal obligation.</li>
                 <li><strong>Marketing emails</strong> — your consent, withdrawable at any time from the link in every email.</li>
-                <li><strong>Analytics and advertising cookies</strong> — your consent, given through the cookie banner and withdrawable at any time.</li>
+                <li><strong>Analytics and advertising cookies</strong> — our legitimate interest in measuring how the site is used and what our advertising brings in. You can refuse them at any time (section 7).</li>
                 <li><strong>Security, fraud prevention and service reliability</strong> — legitimate interest in keeping the service safe and available.</li>
               </ul>
             </div>
@@ -164,9 +164,11 @@ export default function PrivacyPage() {
               </p>
               <p className="mb-3">
                 <strong>Analytics and advertising cookies</strong> (Google Analytics 4, Meta Pixel,
-                Google Ads) load <em>only</em> if you accept them in the cookie banner. Decline and they
-                are not set. You can change your mind at any time by clearing this site&apos;s data in
-                your browser, which makes the banner ask again.
+                Google Ads) load when you visit this site, and the cookie notice at the bottom of the page
+                says so. They tell us which pages are read and which advertising brings visitors. To
+                refuse them, block third-party or all cookies for this site in your browser settings,
+                install Google&apos;s opt-out add-on (tools.google.com/dlpage/gaoptout), or turn off ad
+                personalisation in your Google and Meta account settings.
               </p>
               <p>
                 Sites we build for clients carry their own cookie notice and their own consent banner.
