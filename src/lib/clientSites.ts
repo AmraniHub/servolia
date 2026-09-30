@@ -28,6 +28,7 @@ import {
   HOME_SERVICES_HERO_IMAGES, HOME_SERVICES_PAGE_BANNERS, HOME_SERVICES_PROCESS, HOME_SERVICES_VALUES, HOME_SERVICES_ADVICE, homeServicesTagline,
   HOME_SERVICES_EMERGENCY_NOTE, HOME_SERVICES_PRACTICAL_INFO,
 } from "@/lib/niches/homeServices";
+import { inferNiche } from "@/lib/niches/infer";
 
 export interface ClientService {
   name: string;
@@ -372,7 +373,10 @@ export function configFromIntake(src: IntakeSource): ClientSiteConfig {
   const d = src.intake ?? {};
   const businessName =
     str(d.businessName) ?? str(src.business) ?? "Your Business";
-  const niche = str(src.niche) ?? str(d.niche) ?? "service";
+  // A plan buyer's intake names no niche: read it off the business itself
+  // before settling for the generic template (src/lib/niches/infer.ts).
+  const niche = str(src.niche) ?? str(d.niche)
+    ?? inferNiche(businessName, typeof d.services === "string" ? d.services : null) ?? "service";
   const city = str(d.city);
   const country = str(d.country);
   const services = parseServices(d.services);

@@ -186,13 +186,14 @@ export const FEATURES: SystemFeature[] = [
     how: [
       "configFromIntake() builds the mechanical draft (slug, contacts, colours, structure).",
       "For dental clients the niche template adds the full layout: multi-page nav, photo banners, patient journey, clinic values, aftercare advice.",
+      "A plan buyer's intake names no niche, so it is read off the business name, then the services (\"Cabinet Dentaire\" → dental, \"Plomberie\" → home services); anything unrecognised keeps the generic template. A highlight with no photo shows as a numbered card, never an empty photo box.",
       "aiEnrichConfig() has Claude write the copy — hero, about, services, FAQs, highlights, solutions, expertise — grounded ONLY in their intake. It never invents prices, years or team members.",
       "The result is saved to client_sites as a DRAFT.",
     ],
     use: ["Admin → Client Sites → Generate on a paid build.", "Review the draft, then Publish.", "For bespoke tweaks use the 'Edit locally with Claude Code' button on the build page."],
     cost: "One Claude call per generation — cents. Editing locally with Claude Code costs no API credits.",
     value: "A site that used to take days of manual work is delivered in minutes, consistently, at the same quality.",
-    code: "src/lib/clientSites.ts · src/lib/generateSiteCopy.ts · src/lib/niches/dental.ts",
+    code: "src/lib/clientSites.ts · src/lib/generateSiteCopy.ts · src/lib/niches/dental.ts · src/lib/niches/infer.ts",
   },
   {
     name: "Draft → publish approval gate",

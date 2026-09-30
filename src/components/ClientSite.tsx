@@ -82,21 +82,28 @@ function SectionHead({ eyebrow, title, subtitle, accent }: { eyebrow?: string; t
 }
 
 /** Alternating image/text feature row — used for homepage highlights and Expertise blocks. */
-function FeatureRow({ block, reverse, accent, accentDark, t }: { block: ClientExpertiseBlock | ClientHighlight; reverse: boolean; accent: string; accentDark: string; t: Dict }) {
+function FeatureRow({ block, n, reverse, accent, accentDark, t }: { block: ClientExpertiseBlock | ClientHighlight; n: number; reverse: boolean; accent: string; accentDark: string; t: Dict }) {
   const eyebrow = "eyebrow" in block ? block.eyebrow : undefined;
   const bullets = "bullets" in block ? block.bullets : undefined;
   const ctaLabel = "ctaLabel" in block ? block.ctaLabel : undefined;
+  /* No photo: a numbered card, not a photo-sized colour block. An empty
+     4:3 box beside the text read as an image that failed to load. */
+  const photo = Boolean(block.imageUrl);
   return (
-    <div className="grid lg:grid-cols-2 gap-8 lg:gap-14 items-center">
-      <div className={`relative rounded-[32px] overflow-hidden aspect-[4/3] shadow-sm ${reverse ? "lg:order-2" : ""}`}>
-        {block.imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
+    <div className={photo ? "grid lg:grid-cols-2 gap-8 lg:gap-14 items-center"
+      : "relative rounded-[32px] border border-[#ECECEC] bg-[#FAFAF9] p-8 sm:p-10 lg:p-12 grid lg:grid-cols-[auto_1fr] gap-6 lg:gap-10 items-start"}>
+      {photo ? (
+        <div className={`relative rounded-[32px] overflow-hidden aspect-[4/3] shadow-sm ${reverse ? "lg:order-2" : ""}`}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={block.imageUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
-        ) : (
-          <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${accentDark}, ${accent})` }} />
-        )}
-      </div>
-      <div className={reverse ? "lg:order-1" : ""}>
+        </div>
+      ) : (
+        <div aria-hidden className="w-14 h-14 rounded-2xl flex items-center justify-center text-xl font-black text-white shadow-sm"
+          style={{ background: `linear-gradient(135deg, ${accentDark}, ${accent})` }}>
+          {String(n).padStart(2, "0")}
+        </div>
+      )}
+      <div className={photo && reverse ? "lg:order-1" : ""}>
         {eyebrow && <p className="text-xs font-black uppercase tracking-[0.22em] mb-3" style={{ color: accent }}>{eyebrow}</p>}
         <h3 className="text-2xl sm:text-3xl font-black tracking-tight leading-tight">{block.title}</h3>
         <p className="text-[#52525B] mt-4 leading-relaxed">{block.body}</p>
@@ -352,7 +359,7 @@ export default function ClientSite({
         <section id="expertise" className="py-16 lg:py-24 bg-white">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-16 lg:space-y-24">
             {c.highlights!.map((h, i) => (
-              <FeatureRow key={i} block={h} reverse={i % 2 === 1} accent={accent} accentDark={accentDark} t={t} />
+              <FeatureRow key={i} block={h} n={i + 1} reverse={i % 2 === 1} accent={accent} accentDark={accentDark} t={t} />
             ))}
           </div>
         </section>
@@ -363,7 +370,7 @@ export default function ClientSite({
         <section className="py-16 lg:py-24 bg-white">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-16 lg:space-y-24">
             {c.expertise!.map((b, i) => (
-              <FeatureRow key={i} block={b} reverse={i % 2 === 1} accent={accent} accentDark={accentDark} t={t} />
+              <FeatureRow key={i} block={b} n={i + 1} reverse={i % 2 === 1} accent={accent} accentDark={accentDark} t={t} />
             ))}
           </div>
         </section>

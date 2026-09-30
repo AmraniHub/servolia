@@ -241,8 +241,9 @@ test("the intake's thank-you screen appears only when the server took the answer
   const form = src("src/components/OnboardingForm.tsx");
   // The request moved to src/lib/intakeSubmit.ts (driven in tests/intake-email.test.mjs).
   assert.ok(/if \(res\.ok\) return \{ ok: true \};/.test(src("src/lib/intakeSubmit.ts")), "the response status is read");
-  assert.ok(/if \(outcome\.ok\) setSubmitted\(true\);/.test(form), "success only on ok");
-  assert.ok(/else setError\(outcome\.message\)/.test(form), "…and a visible failure otherwise");
+  // The ok branch also clears the saved answers (src/lib/intakeDraft.ts); a failure keeps them.
+  assert.ok(/if \(outcome\.ok\) \{\s*clearDraft\(draftArea\(sessionId\), key\);\s*setSubmitted\(true\);\s*\}/.test(form), "success only on ok");
+  assert.ok(/\}\s*else setError\(outcome\.message\)/.test(form), "…and a visible failure otherwise");
   assert.ok(/role="alert"/.test(form), "the failure is announced, not just coloured");
 });
 

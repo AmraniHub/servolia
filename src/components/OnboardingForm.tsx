@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { CheckCircle, ArrowRight, ChevronRight, MessageCircle } from "lucide-react";
 import { businessWaLink } from "@/lib/whatsapp";
 import { BUILD_PLANS, SETUP_PLAN } from "@/lib/pricing";
 import { submitIntake, looksLikeEmail } from "@/lib/intakeSubmit";
+import { draftKey, draftArea, readDraft, writeDraft, clearDraft } from "@/lib/intakeDraft";
 
 type Lang = "en" | "fr";
 
@@ -245,7 +246,7 @@ function Form({ lang }: { lang: Lang }) {
      the URL. */
   const needsEmail = !sessionId;
 
-  const [form, setForm] = useState({
+  const [form, setForm] = useState(() => ({
     // Step 0 – Business
     businessName: "",
     ownerName: "",
@@ -275,7 +276,28 @@ function Form({ lang }: { lang: Lang }) {
     socialHandles: "",
     googleAnalyticsId: "",
     preferredLanguage: lang === "fr" ? "French" : "English",
-  });
+  }));
+
+  /* "Your answers are saved as you go" (the progress line) -- in this
+     browser only, see src/lib/intakeDraft.ts. Restored after mount, not in
+     the first render, so the server's HTML and the browser's agree; nothing
+     is written until that restore has run, or the blank form would
+     overwrite the saved one. */
+  const key = draftKey(sessionId, plan);
+  const blankForm = useRef(form);
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    const saved = readDraft(draftArea(sessionId), key, blankForm.current, t.steps.length);
+    if (saved) {
+      setForm(saved.form);
+      setStep(saved.step);
+    }
+    setReady(true);
+  }, [key, sessionId, t.steps.length]);
+  useEffect(() => {
+    if (!ready || submitted) return;
+    writeDraft(draftArea(sessionId), key, { form, step });
+  }, [ready, form, step, submitted, key, sessionId]);
 
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }));
 
@@ -319,8 +341,10 @@ function Form({ lang }: { lang: Lang }) {
     // only when the server actually took the answers. It used to be shown
     // after a dropped connection too — and then nothing came, and the client
     // had no way to know their answers had never arrived.
-    if (outcome.ok) setSubmitted(true);
-    else setError(outcome.message);
+    if (outcome.ok) {
+      clearDraft(draftArea(sessionId), key);
+      setSubmitted(true);
+    } else setError(outcome.message);
   };
 
   const inputClass = "w-full px-4 py-3 rounded-xl border border-[#E8E6E0] text-sm text-[#18181B] placeholder:text-[#52525B] focus:outline-none focus:ring-2 focus:ring-[#36671E] focus:border-transparent transition-all bg-white";
