@@ -185,7 +185,7 @@ export default async function HostingPage() {
                       ) : null}
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-[#52525B]">{nextRenewal(c.started_at, c.billing_period)}</td>
+                  <td className="px-4 py-3 text-[#52525B]">{c.status === "awaiting_payment" ? "—" : nextRenewal(c.started_at, c.billing_period)}</td>
                   <td className="px-4 py-3">
                     {c.open_invoice_url ? (
                       <a

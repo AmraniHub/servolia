@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isAdminAuthed } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
+import { excludeTest } from "@/lib/testContext";
 import { resolveHostingPlan, isAddOn, hostingAmountCents } from "@/lib/hosting";
 
 /**
@@ -44,13 +45,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: `Not a hosting tier: ${plan}` }, { status: 400 });
   }
 
-  const { data: existing, error: readErr } = await db
+  // A founder test row never blocks (or stands in for) a real listing.
+  const { data: existing, error: readErr } = await excludeTest(db, (live) => live(db
     .from("hosting_clients")
     .select("id")
     .ilike("email", email)
     .eq("plan", product.key)
-    .is("subscription_id", null)
-    .limit(1);
+    .is("subscription_id", null))
+    .limit(1));
   if (readErr) return NextResponse.json({ error: readErr.message }, { status: 500 });
   if (existing?.length) {
     return NextResponse.json({ error: "Already listed as awaiting payment", id: existing[0].id }, { status: 409 });

@@ -284,6 +284,7 @@ async function handleEventBody(event: Stripe.Event, stripe: Stripe, db: Db, send
            plan, no subscription yet — is COMPLETED, not duplicated. That is
            the normal shape for a client the operator set up in advance. */
         let hostRow: { id: string; notes: string | null } | null = known ?? null;
+        let completingPre = false;
         if (!hostRow && customerEmail) {
           // A test purchase may only ever complete a TEST row, never a real
           // client's pre-created one — and a live one never a test row.
@@ -294,7 +295,7 @@ async function handleEventBody(event: Stripe.Event, stripe: Stripe, db: Db, send
             return (test ? preQ.eq("is_test", true) : live(preQ))
               .order("created_at", { ascending: false }).limit(1).maybeSingle();
           });
-          if (pre) hostRow = pre;
+          if (pre) { hostRow = pre; completingPre = true; }
         }
 
         const rowValues: Record<string, unknown> = {
@@ -323,6 +324,11 @@ async function handleEventBody(event: Stripe.Event, stripe: Stripe, db: Db, send
             if (patch[k] === null) delete patch[k];
           }
           if (!session.metadata?.branch) delete patch.branch;
+          /* A row listed before payment (status awaiting_payment, or any
+             hand-made row) got started_at from the insert's default. The
+             plan starts NOW, or every renewal date is counted from the day
+             the row was typed in. */
+          if (completingPre) patch.started_at = new Date().toISOString();
           const { error } = await db.from("hosting_clients").update(patch).eq("id", hostRow.id);
           if (error) console.error("[stripe] hosting_clients update failed:", error.message);
         } else {
