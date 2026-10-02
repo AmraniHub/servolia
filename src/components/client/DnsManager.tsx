@@ -97,7 +97,7 @@ export default function DnsManager({
   token, lang, domains, sample = false,
 }: { token: string; lang: "en" | "fr"; domains: string[]; sample?: boolean }) {
   const t = T[lang];
-  const [domain, setDomain] = useState(domains[0] ?? "");
+  const [domain, setDomain] = useState(domains[0] ?? (sample ? "example.com" : ""));
   const [records, setRecords] = useState<Rec[] | null>(sample ? SAMPLE : null);
   const [error, setError] = useState("");
   const [note, setNote] = useState("");
@@ -263,7 +263,7 @@ export default function DnsManager({
           </select>
         </label>
       ) : (
-        <p className="text-[15px] font-bold text-[#18181B] mb-3 break-all">{domain || "example.com"}</p>
+        <p className="text-[15px] font-bold text-[#18181B] mb-3 break-all">{domain}</p>
       )}
 
       {records === null && !error ? <p className="text-[13.5px] text-[#8A8A80]">{t.loading}</p> : null}
