@@ -7,6 +7,8 @@ import { mailSettingsFor } from "@/lib/mailSettings";
 import EditorPassword from "@/components/client/EditorPassword";
 import RequestCopy, { type CopyView } from "@/components/client/RequestCopy";
 import DomainSearch from "@/components/client/DomainSearch";
+import DnsManager from "@/components/client/DnsManager";
+import { clientDomains } from "@/lib/clientDns";
 import DashNav, { dashPageFrom, dashLabel } from "@/components/client/DashNav";
 import StatTiles from "@/components/client/StatTiles";
 import ServiceCards, { type ServiceCard } from "@/components/client/ServiceCards";
@@ -356,6 +358,10 @@ export default async function AccountPage({
   /* Domains bought from this panel after the plan. Their own records, so the
      one that came with the plan is untouched. */
   let extraDomains: { domain: string; nextChargeAt?: string; failed?: string }[] = [];
+  /* Every domain this client may manage DNS for (src/lib/clientDns.ts), each
+     confirmed in our Vercel team. Read only on the Domains page: it costs one
+     Vercel call per domain. */
+  let dnsDomains: string[] = [];
   /* The whole row, not just its notes: the setup checklist reads the plan,
      the site address, the recorded repo/project and the stored checks. */
   let setupRow: SetupRow | null = null;
@@ -375,6 +381,9 @@ export default async function AccountPage({
        client than a button they can press again. */
     copyView = state === "ready" ? "ready" : state === "waiting" ? "waiting" : "none";
     extraDomains = readExtraDomains((row as { notes?: string | null } | null)?.notes);
+    if (row && dashPage === "domains") {
+      dnsDomains = await clientDomains({ notes: (row as { notes?: string | null }).notes ?? null });
+    }
   }
 
   /* No credential, or one that no longer works: offer the way in rather than
@@ -881,6 +890,10 @@ export default async function AccountPage({
             </ul>
           </div>
         ) : null}
+
+        {/* Their DNS, like a registrar's panel: everything they own is theirs to
+            manage, and what keeps the site online is shown locked. */}
+        <DnsManager token={linkToken} lang={ctxLang} domains={dnsDomains} sample={isDemo} />
 
         {/* Adding one. The price comes from the registrar before the client
             sees it, so nobody is quoted one figure and invoiced another. */}
