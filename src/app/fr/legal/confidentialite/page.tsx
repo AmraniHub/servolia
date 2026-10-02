@@ -3,7 +3,7 @@ import FrenchFooter from "@/components/FrenchFooter";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Politique de confidentialité — Servolia",
+  title: "Politique de confidentialité",
   description: "Politique de confidentialité de Servolia et conformité RGPD.",
   alternates: {
     canonical: "https://servolia.com/fr/legal/confidentialite",

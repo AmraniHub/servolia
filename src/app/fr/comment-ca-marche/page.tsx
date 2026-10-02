@@ -11,7 +11,7 @@ import { SETUP_PLAN, PLANS } from "@/lib/pricing";
 const DEMO_VIDEO_ID = process.env.NEXT_PUBLIC_DEMO_VIDEO_ID;
 
 export const metadata: Metadata = {
-  title: "Comment ça marche — Servolia",
+  title: "Comment ça marche",
   description:
     "De l'audit gratuit au système IA en ligne en 7 jours. Découvrez le processus de livraison Servolia — ce qui se passe, quand, et ce que vous devez faire.",
   alternates: {

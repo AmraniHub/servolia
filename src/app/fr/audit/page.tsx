@@ -5,7 +5,7 @@ import ValueStack from "@/components/ValueStack";
 import AuditScorecard from "@/components/AuditScorecard";
 
 export const metadata: Metadata = {
-  title: "Audit gratuit — Servolia",
+  title: "Audit gratuit",
   description:
     "Un audit gratuit de votre site, de votre parcours de réservation et de votre acquisition de clients — noté à l'écran en 20 secondes, puis une réponse personnelle sous un jour ouvré. Sans engagement, sans appel commercial.",
   alternates: {

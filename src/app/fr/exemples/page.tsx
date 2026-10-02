@@ -7,7 +7,7 @@ import { SITE_TEMPLATES } from "@/lib/templates";
 import { SETUP_PLAN } from "@/lib/pricing";
 
 export const metadata: Metadata = {
-  title: "Exemples de sites en ligne par métier — Servolia",
+  title: "Exemples de sites en ligne par métier",
   description:
     "Choisissez votre métier et parcourez une démo en ligne — réceptionniste IA comprise. Chaque modèle Servolia est un vrai site fonctionnel que vous pouvez tester avant de choisir une formule.",
   alternates: {

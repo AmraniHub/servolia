@@ -8,7 +8,7 @@ import Guarantee from "@/components/Guarantee";
 import { SETUP_PLAN, PLANS } from "@/lib/pricing";
 
 export const metadata: Metadata = {
-  title: "AI Client System for Aesthetic Clinics — Servolia",
+  title: "AI Client System for Aesthetic Clinics",
   description: "Turn your aesthetic clinic website into a 24/7 booking and client acquisition system. AI receptionist, Botox & filler booking flows, CRM tracking — delivered in 7 days.",
 };
 

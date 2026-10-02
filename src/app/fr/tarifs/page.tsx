@@ -11,7 +11,7 @@ import { getCapacity } from "@/lib/capacity";
 import { CheckCircle, ArrowRight, Shield, Clock, Globe, Bot, Lock } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Tarifs — Servolia",
+  title: "Tarifs",
   description:
     "Une mise en place à 690 €, puis 149 à 449 €/mois tout compris : site, assistante IA 24 h/24, hébergement, votre domaine et 1 adresse email pro. Deux mois offerts en annuel.",
   alternates: {

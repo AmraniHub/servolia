@@ -9,7 +9,7 @@ import ValueStack from "@/components/ValueStack";
 import { SETUP_PLAN, PLANS } from "@/lib/pricing";
 
 export const metadata: Metadata = {
-  title: "AI Booking System for Dental Clinics — Servolia",
+  title: "AI Booking System for Dental Clinics",
   description: "Stop losing patients to the clinic that answers first. AI receptionist, online booking, and lead tracking for dental clinics — delivered in 7 days, fixed price.",
   alternates: {
     canonical: "https://servolia.com/dentists",

@@ -5,7 +5,7 @@ import { SETUP_PLAN, PLANS } from "@/lib/pricing";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Politique de remboursement — Servolia",
+  title: "Politique de remboursement",
   description: "La politique de remboursement de Servolia — dont la garantie de 10 % par jour de retard de livraison.",
   alternates: {
     canonical: "https://servolia.com/fr/legal/remboursement",

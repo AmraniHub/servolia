@@ -5,7 +5,7 @@ import OnboardingForm from "@/components/OnboardingForm";
 
 // Page post-paiement — accessible depuis Stripe / l'espace client uniquement.
 export const metadata: Metadata = {
-  title: "Brief client — Servolia",
+  title: "Brief client",
   robots: { index: false, follow: false },
 };
 

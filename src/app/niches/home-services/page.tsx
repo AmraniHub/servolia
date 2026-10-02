@@ -8,7 +8,7 @@ import Guarantee from "@/components/Guarantee";
 import { SETUP_PLAN, PLANS } from "@/lib/pricing";
 
 export const metadata: Metadata = {
-  title: "AI Booking System for HVAC, Plumbing & Home Services — Servolia",
+  title: "AI Booking System for HVAC, Plumbing & Home Services",
   description: "Stop losing $3k–$30k home services jobs to slow follow-up. Servolia builds AI lead systems for HVAC, plumbing, roofing, electrical, and home service businesses in the US and Europe.",
 };
 

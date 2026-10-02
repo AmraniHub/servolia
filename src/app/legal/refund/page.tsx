@@ -5,7 +5,7 @@ import { SETUP_PLAN, PLANS } from "@/lib/pricing";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Return & Refund Policy — Servolia",
+  title: "Return & Refund Policy",
   description: "Servolia's refund policy — including our 10% per day late-delivery guarantee.",
 };
 

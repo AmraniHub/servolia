@@ -5,7 +5,7 @@ import OnboardingForm from "@/components/OnboardingForm";
 
 // Post-payment page — reached only from Stripe success / the portal, never from search.
 export const metadata: Metadata = {
-  title: "Client intake — Servolia",
+  title: "Client intake",
   robots: { index: false, follow: false },
 };
 

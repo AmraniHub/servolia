@@ -4,7 +4,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Terms of Use — Servolia",
+  title: "Terms of Use",
   description: "Terms of use governing access to and use of the Servolia website and services.",
 };
 

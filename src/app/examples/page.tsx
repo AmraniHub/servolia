@@ -7,7 +7,7 @@ import { SITE_TEMPLATES } from "@/lib/templates";
 import { SETUP_PLAN } from "@/lib/pricing";
 
 export const metadata: Metadata = {
-  title: "Live Website Examples by Specialty — Servolia",
+  title: "Live Website Examples by Specialty",
   description:
     "Pick your specialty and click through a live demo site — AI receptionist included. Every Servolia template is a real, working site you can test before choosing a plan.",
   alternates: {

@@ -9,7 +9,7 @@ import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = { title: "Your Scope Document — Servolia", robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "Your Scope Document", robots: { index: false, follow: false } };
 
 export default async function ScopeAcceptancePage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;

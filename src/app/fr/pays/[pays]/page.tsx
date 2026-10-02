@@ -17,7 +17,7 @@ export async function generateMetadata({ params }: { params: Promise<{ pays: str
   const country = COUNTRIES[pays];
   if (!country) return {};
   return {
-    title: `Réceptionniste IA & réservation en ligne pour cabinets ${country.adjective} — Servolia`,
+    title: `Réceptionniste IA & réservation en ligne pour cabinets ${country.adjective}`,
     description: `Servolia équipe les cabinets dentaires et cliniques esthétiques ${country.adjective} d'une réceptionniste IA et d'un système de réservation en ligne. Livré en 7 jours, prix fixe.`,
     alternates: { canonical: `https://servolia.com/fr/pays/${country.slug}` },
   };

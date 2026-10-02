@@ -46,7 +46,7 @@ const solutions: MarketingContent[] = [
     highlight: "booked clients.",
     sub: "A conversion-first website built around an AI that answers, qualifies, and books — not a brochure that just sits there. Mobile-first, GDPR-ready, live in days.",
     heroBullets: ["Conversion-focused, not decorative", "Built-in AI receptionist", "GDPR & analytics from day one"],
-    metaTitle: "AI Websites for Service Businesses — Servolia",
+    metaTitle: "AI Websites for Service Businesses",
     metaDescription: "Servolia builds conversion-first AI websites for service businesses: mobile-first, GDPR-ready, with a built-in AI receptionist that books clients 24/7. Fixed price, 7-day delivery.",
     withoutTitle: "A normal website",
     without: [
@@ -91,7 +91,7 @@ const solutions: MarketingContent[] = [
     highlight: "a client again.",
     sub: "Your visitors get instant answers and booked appointments at 2pm or 2am — in French or English. Every conversation becomes a scored lead in your CRM automatically.",
     heroBullets: ["Replies instantly, 24/7", "Takes every booking request", "Trained on your services"],
-    metaTitle: "AI Receptionist for Service Businesses — Servolia",
+    metaTitle: "AI Receptionist for Service Businesses",
     metaDescription: "An AI receptionist that answers visitors 24/7, qualifies them, books appointments, and saves every lead to your CRM. Trained on your services. Built by Servolia in days.",
     withoutTitle: "Without an AI receptionist",
     without: [
@@ -141,7 +141,7 @@ const solutions: MarketingContent[] = [
     highlight: "without the phone tag.",
     sub: "Your AI receptionist takes every appointment request on your site — name, phone, what they need — or sends the visitor straight to your Doctolib or Planity. You get it instantly, and call back when it suits you.",
     heroBullets: ["Requests taken 24/7", "Instant email + WhatsApp alert", "Every request in your portal"],
-    metaTitle: "AI Appointment Requests for Service Businesses — Servolia",
+    metaTitle: "AI Appointment Requests for Service Businesses",
     metaDescription: "Servolia's AI receptionist takes appointment requests on your website 24/7 — name, phone, need — or hands visitors to your Doctolib or Planity, and alerts you instantly.",
     withoutTitle: "Phone-only booking",
     without: [
@@ -186,7 +186,7 @@ const solutions: MarketingContent[] = [
     highlight: "what's working.",
     sub: "Every lead, every source, every stage — in one dashboard with automatic scoring, a drag-and-drop pipeline, SLA alerts, and monthly reporting.",
     heroBullets: ["Auto lead scoring 0–100", "Drag-and-drop pipeline", "Monthly performance reports"],
-    metaTitle: "CRM Dashboards & Lead Tracking for Service Businesses — Servolia",
+    metaTitle: "CRM Dashboards & Lead Tracking for Service Businesses",
     metaDescription: "Servolia builds CRM dashboards with automatic lead scoring, a drag-and-drop pipeline, SLA alerts, and monthly reporting — so service businesses know exactly what drives revenue.",
     withoutTitle: "Leads in a spreadsheet",
     without: [
@@ -236,7 +236,7 @@ const industries: MarketingContent[] = [
     highlight: "accountants.",
     sub: "Turn website visitors and referrals into booked discovery calls — with an AI that answers service and pricing questions, qualifies the fit, and fills your calendar.",
     heroBullets: ["Answers service & pricing questions", "Qualifies by service & company size", "Discovery calls booked 24/7"],
-    metaTitle: "AI Client Systems for Accountants & Bookkeepers — Servolia",
+    metaTitle: "AI Client Systems for Accountants & Bookkeepers",
     metaDescription: "Servolia builds AI client acquisition systems for accounting and bookkeeping firms: instant enquiry handling, qualification, discovery-call booking, and CRM tracking.",
     withoutTitle: "How firms leak clients",
     without: [
@@ -281,7 +281,7 @@ const industries: MarketingContent[] = [
     highlight: "consultants.",
     sub: "Position yourself as the expert and convert interest into booked strategy calls — with an AI that qualifies prospects against your ideal-client profile around the clock.",
     heroBullets: ["Qualifies against your ICP", "Strategy calls booked 24/7", "Every lead nurtured automatically"],
-    metaTitle: "AI Client Systems for Consultants & Coaches — Servolia",
+    metaTitle: "AI Client Systems for Consultants & Coaches",
     metaDescription: "Servolia builds AI client acquisition systems for consultants and coaches: ICP qualification, strategy-call booking, automated follow-up, and a CRM pipeline. Fixed price.",
     withoutTitle: "How consultants lose deals",
     without: [

@@ -3,7 +3,7 @@ import Footer from "@/components/Footer";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy — Servolia",
+  title: "Privacy Policy",
   description:
     "How Servolia LLC handles personal data: who we are, what we collect on servolia.com and on client sites, the processors we use, international transfers, and your GDPR rights.",
   alternates: {

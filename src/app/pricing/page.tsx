@@ -13,7 +13,7 @@ import {
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Pricing — Servolia",
+  title: "Pricing",
   description: "One €690 installation, then €149–€449/month all-in: site, 24/7 AI receptionist, hosting, your domain and 1 pro email address. Pay yearly and get two months free.",
   alternates: {
     canonical: "https://servolia.com/pricing",

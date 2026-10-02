@@ -4,10 +4,11 @@ import StickyMobileCTA from "@/components/StickyMobileCTA";
 import Guarantee from "@/components/Guarantee";
 import { CheckCircle, ArrowRight, Bot, Calendar, BarChart3, Globe, Clock, Lock, TrendingUp } from "lucide-react";
 import ValueStack from "@/components/ValueStack";
+import { FR_CITIES } from "@/lib/content/frGeo";
 import { SETUP_PLAN, PLANS } from "@/lib/pricing";
 
 export const metadata: Metadata = {
-  title: "Système de réservation IA pour cabinets dentaires — Servolia",
+  title: "Système de réservation IA pour cabinets dentaires",
   description:
     "Arrêtez de perdre des patients au profit du cabinet qui répond en premier. Réceptionniste IA, réservation en ligne et suivi des demandes — livré en 7 jours, prix fixe.",
   alternates: {
@@ -279,6 +280,24 @@ export default function FrenchDentistsPage() {
 
       <ValueStack lang="fr" niche="dental" />
       <Guarantee lang="fr" />
+
+      {/* The city pages, linked from the page that ranks for the trade. Without
+          this they were reachable only from the sitemap, and Google had never
+          seen most of them (Search Console, 2026-10-02: 45 of 104 known). */}
+      <section className="py-10 bg-white border-t border-[#E8E6E0]">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <h2 className="text-lg font-black text-[#18181B] mb-4">Cabinets dentaires par ville</h2>
+          <ul className="flex flex-wrap gap-2">
+            {FR_CITIES.map((c) => (
+              <li key={c.slug}>
+                <Link href={`/fr/dentiste/${c.slug}`} className="inline-block px-3 py-1.5 rounded-lg border border-[#E8E6E0] text-sm text-[#52525B] hover:text-[#36671E] hover:border-[#36671E]/40">
+                  {c.name}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
 
       <footer className="bg-[#FAFAF7] border-t border-[#E8E6E0] py-8 text-center text-xs text-[#71717A]">
         <p className="mb-3">

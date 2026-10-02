@@ -6,7 +6,7 @@ import { CheckCircle2, AlertCircle } from "lucide-react";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Unsubscribe — Servolia",
+  title: "Unsubscribe",
   robots: { index: false, follow: false },
 };
 

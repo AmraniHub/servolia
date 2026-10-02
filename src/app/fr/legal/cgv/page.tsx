@@ -4,7 +4,7 @@ import { SETUP_PLAN, PLANS } from "@/lib/pricing";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Conditions Générales de Vente (CGV) — Servolia",
+  title: "Conditions Générales de Vente (CGV)",
   description: "Conditions générales de vente de Servolia, en français.",
   alternates: {
     canonical: "https://servolia.com/fr/legal/cgv",

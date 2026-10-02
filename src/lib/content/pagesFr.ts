@@ -26,7 +26,7 @@ const solutionsFr: MarketingContentFr[] = [
     highlight: "clients réservés.",
     sub: "Un site pensé pour la conversion, construit autour d'une IA qui répond, qualifie et réserve — pas une brochure qui reste là. Mobile-first, conforme RGPD, en ligne en quelques jours.",
     heroBullets: ["Pensé conversion, pas décoration", "Réceptionniste IA intégrée", "RGPD & analytics dès le premier jour"],
-    metaTitle: "Sites web IA pour entreprises de services — Servolia",
+    metaTitle: "Sites web IA pour entreprises de services",
     metaDescription: "Servolia crée des sites web IA orientés conversion pour les entreprises de services : mobile-first, conformes RGPD, avec une réceptionniste IA qui réserve vos clients 24 h/24. Prix fixe, livraison en 7 jours.",
     withoutTitle: "Un site web classique",
     without: [
@@ -72,7 +72,7 @@ const solutionsFr: MarketingContentFr[] = [
     highlight: "jamais un client.",
     sub: "Vos visiteurs obtiennent des réponses immédiates et des rendez-vous confirmés à 14 h comme à 2 h du matin — en français ou en anglais. Chaque conversation devient un lead scoré dans votre CRM.",
     heroBullets: ["Répond en quelques secondes, 24 h/24", "Prend chaque demande de rendez-vous", "Formée sur vos services"],
-    metaTitle: "Réceptionniste IA pour entreprises de services — Servolia",
+    metaTitle: "Réceptionniste IA pour entreprises de services",
     metaDescription: "Une réceptionniste IA qui répond aux visiteurs 24 h/24, les qualifie, prend les rendez-vous et enregistre chaque lead dans votre CRM. Formée sur vos services. Installée par Servolia en quelques jours.",
     withoutTitle: "Sans réceptionniste IA",
     without: [
@@ -118,7 +118,7 @@ const solutionsFr: MarketingContentFr[] = [
     highlight: "pendant que vous travaillez.",
     sub: "Vos clients se réservent eux-mêmes 24 h/24, avec confirmations automatiques, rappels et relance des absents — votre agenda reste plein sans le ping-pong téléphonique.",
     heroBullets: ["Auto-réservation 24 h/24", "Rappels et relances automatiques", "Synchronisé avec votre CRM et agenda"],
-    metaTitle: "Systèmes de réservation IA pour entreprises de services — Servolia",
+    metaTitle: "Systèmes de réservation IA pour entreprises de services",
     metaDescription: "Servolia construit des systèmes de réservation en ligne avec qualification IA, confirmations automatiques, rappels et relance des absents — synchronisés à votre CRM. Prix fixe, livraison rapide.",
     withoutTitle: "Réservation uniquement par téléphone",
     without: [
@@ -164,7 +164,7 @@ const solutionsFr: MarketingContentFr[] = [
     highlight: "ce qui fonctionne.",
     sub: "Chaque lead, chaque source, chaque étape — dans un seul tableau de bord avec scoring automatique, pipeline en glisser-déposer, alertes de suivi et rapport mensuel.",
     heroBullets: ["Scoring automatique 0–100", "Pipeline en glisser-déposer", "Rapports de performance mensuels"],
-    metaTitle: "CRM et suivi des leads pour entreprises de services — Servolia",
+    metaTitle: "CRM et suivi des leads pour entreprises de services",
     metaDescription: "Servolia construit des tableaux de bord CRM avec scoring automatique des leads, pipeline visuel, alertes de suivi et rapport mensuel — pour savoir exactement ce qui génère du chiffre.",
     withoutTitle: "Des leads dans un tableur",
     without: [
@@ -215,7 +215,7 @@ const industriesFr: MarketingContentFr[] = [
     highlight: "experts-comptables.",
     sub: "Transformez visiteurs et recommandations en rendez-vous découverte réservés — avec une IA qui répond aux questions de services et d'honoraires, qualifie le profil et remplit votre agenda.",
     heroBullets: ["Répond aux questions services & honoraires", "Qualifie par prestation et taille d'entreprise", "RDV découverte réservés 24 h/24"],
-    metaTitle: "Systèmes clients IA pour experts-comptables — Servolia",
+    metaTitle: "Systèmes clients IA pour experts-comptables",
     metaDescription: "Servolia construit des systèmes d'acquisition clients IA pour les cabinets comptables : traitement immédiat des demandes, qualification, prise de RDV découverte et suivi CRM.",
     withoutTitle: "Comment les cabinets perdent des clients",
     without: [
@@ -261,7 +261,7 @@ const industriesFr: MarketingContentFr[] = [
     highlight: "consultants.",
     sub: "Positionnez-vous en expert et convertissez l'intérêt en appels stratégiques réservés — avec une IA qui qualifie les prospects selon votre profil client idéal, à toute heure.",
     heroBullets: ["Qualifie selon votre client idéal", "Appels stratégiques réservés 24 h/24", "Chaque lead relancé automatiquement"],
-    metaTitle: "Systèmes clients IA pour consultants & coachs — Servolia",
+    metaTitle: "Systèmes clients IA pour consultants & coachs",
     metaDescription: "Servolia construit des systèmes d'acquisition clients IA pour consultants et coachs : qualification sur profil idéal, prise d'appels stratégiques, relance automatique et pipeline CRM. Prix fixe.",
     withoutTitle: "Comment les consultants perdent des missions",
     without: [
