@@ -178,7 +178,22 @@ export type QuoteProblem =
   | "not-found"
   | "not-active"
   | "already-annual"
-  | "unknown-plan";
+  | "unknown-plan"
+  /** The card was declined: nothing changed. */
+  | "payment-failed"
+  /** The bank wants the client to confirm (3-D Secure): see `authUrl`. Nothing changed yet. */
+  | "needs-authentication"
+  /** Anything else went wrong (Stripe, network, our code): nothing changed, the owner is told. */
+  | "error";
+
+/** A card refusal, as opposed to any other failure (network, API, our own
+ *  parameters). Only this may be told to the client as "your card was declined". */
+export function isCardError(err: unknown): boolean {
+  const e = err as { type?: string; code?: string; raw?: { type?: string } } | null;
+  if (!e) return false;
+  if (e.type === "StripeCardError" || e.type === "card_error" || e.raw?.type === "card_error") return true;
+  return ["card_declined", "expired_card", "incorrect_cvc", "incorrect_number", "insufficient_funds", "processing_error", "authentication_required"].includes(String(e.code ?? ""));
+}
 
 export interface UpgradeQuote {
   subscriptionId: string;
@@ -359,10 +374,33 @@ export async function buildUpgradeQuote(
  * the unused days credited. Together they mean the client is charged once, now,
  * for a year that starts today — rather than paying for a year while the old
  * monthly cycle carries on underneath it.
+ *
+ * PAID FIRST, SWITCHED SECOND (2026-10-02). With the default payment
+ * behaviour Stripe applied the switch even when the charge for it failed:
+ * the client was moved to yearly with an unpaid invoice, and our row said
+ * yearly too. `payment_behavior: "pending_if_incomplete"` makes Stripe hold
+ * the change as a PENDING update until the invoice is paid; it is confirmed
+ * here only when the subscription comes back with no pending update and its
+ * latest invoice paid. Otherwise the open invoice is voided (so the client
+ * is not charged later for a switch they were told did not happen), the
+ * answer is "payment-failed", and the caller leaves our row alone. Pending
+ * updates accept only items / proration / anchor, so the `period` metadata
+ * is written in a second call, after the money has moved.
+ *
+ * THREE WAYS IT CAN NOT HAPPEN, told apart (review, 2026-10-02):
+ *  - the bank wants 3-D Secure (the invoice's PaymentIntent is
+ *    requires_action): NOT voided and NOT "declined" — the client gets the
+ *    invoice's hosted page to confirm on. The pending update waits (about 23
+ *    hours); unconfirmed, it expires and nothing changes. The webhook ignores
+ *    that invoice's failure (billing_reason subscription_update).
+ *  - a card refusal: voided, "payment-failed".
+ *  - anything else (a Stripe error, the network, our parameters): "error" with
+ *    the detail, for the caller to alert the owner; the client is told
+ *    something went wrong and nothing changed — never that their card failed.
  */
 export async function applyUpgrade(
   subscriptionId: string,
-): Promise<{ ok: true; plan: ClientProduct; lang: "en" | "fr"; siteLabel: string } | { problem: QuoteProblem }> {
+): Promise<{ ok: true; plan: ClientProduct; lang: "en" | "fr"; siteLabel: string } | { problem: QuoteProblem; authUrl?: string; detail?: string }> {
   let stripe: Stripe;
   let sub: Stripe.Subscription;
   try {
@@ -387,14 +425,55 @@ export async function applyUpgrade(
 
   const lang = (sub.metadata?.lang === "fr" ? "fr" : "en") as "en" | "fr";
 
-  await stripe.subscriptions.update(subscriptionId, {
-    items: [{ id: item.id, price_data: annualPriceData(productId, plan) }],
-    proration_behavior: "always_invoice",
-    billing_cycle_anchor: "now",
-    // Kept in step, so a later read of the subscription does not still say
-    // "monthly" and re-offer an upgrade the client has already taken.
-    metadata: { ...sub.metadata, period: "annual" },
-  });
+  let updated: Stripe.Subscription;
+  try {
+    updated = await stripe.subscriptions.update(subscriptionId, {
+      items: [{ id: item.id, price_data: annualPriceData(productId, plan) }],
+      proration_behavior: "always_invoice",
+      billing_cycle_anchor: "now",
+      payment_behavior: "pending_if_incomplete",
+      expand: ["latest_invoice.payments"],
+    });
+  } catch (err) {
+    // Nothing was applied either way. Only a card refusal is the client's to hear.
+    const detail = err instanceof Error ? err.message : String(err);
+    console.warn("[upgrade] switch refused:", detail);
+    return isCardError(err) ? { problem: "payment-failed" } : { problem: "error", detail };
+  }
+
+  const latest = updated.latest_invoice && typeof updated.latest_invoice === "object" ? updated.latest_invoice : null;
+  const paid = !updated.pending_update && latest?.status === "paid";
+  if (!paid) {
+    /* 3-D SECURE: the payment is waiting for the client's bank, not refused.
+       The invoice's PaymentIntent (its default InvoicePayment since API
+       basil — there is no invoice.payment_intent any more) says which. */
+    if (latest?.id && latest.status === "open") {
+      const pays = latest.payments?.data ?? [];
+      const pay = pays.find((p) => p.is_default) ?? pays[0];
+      const pi = pay?.payment?.payment_intent;
+      let piStatus: string | null = pi && typeof pi === "object" ? pi.status : null;
+      if (!piStatus && typeof pi === "string") {
+        piStatus = await stripe.paymentIntents.retrieve(pi).then((x) => x.status, () => null);
+      }
+      if (piStatus === "requires_action" && latest.hosted_invoice_url) {
+        return { problem: "needs-authentication", authUrl: latest.hosted_invoice_url };
+      }
+    }
+    /* Nothing switched. The invoice the pending update opened is voided, so
+       a later automatic retry cannot charge for a change the client was told
+       did not happen. Best effort: if it cannot be voided, the pending update
+       still expires on its own (about a day) and the switch never applies. */
+    if (latest?.id && latest.status === "open") {
+      await stripe.invoices.voidInvoice(latest.id).catch((e) => console.warn("[upgrade] could not void", latest.id, e instanceof Error ? e.message : e));
+    }
+    return { problem: "payment-failed" };
+  }
+
+  // Kept in step, so a later read of the subscription does not still say
+  // "monthly" and re-offer an upgrade the client has already taken. After
+  // the payment: pending updates refuse metadata.
+  await stripe.subscriptions.update(subscriptionId, { metadata: { ...sub.metadata, period: "annual" } })
+    .catch((e) => console.warn("[upgrade] period metadata not written:", e instanceof Error ? e.message : e));
 
   return {
     ok: true,

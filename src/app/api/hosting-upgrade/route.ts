@@ -29,7 +29,23 @@ export async function POST(req: NextRequest) {
     // "already-annual" is the common one and is not an error the client caused
     // — a double click, or a link used twice. 409 so the page can say so
     // calmly rather than showing a failure for something that is already done.
-    const status = result.problem === "already-annual" ? 409 : 400;
+    // "payment-failed": the card was declined and NOTHING changed (applyUpgrade
+    // switches only once the invoice is paid) — our row is not touched either.
+    // "needs-authentication": the bank wants the client to confirm; `url` is
+    // the invoice page where they do. Still nothing changed until they do.
+    // "error": anything but a card refusal — the client hears "something went
+    // wrong, nothing changed", and the owner hears the actual error.
+    if (result.problem === "error") {
+      await sendTelegramMessage(
+        `Switch to yearly FAILED (not a card refusal) - subscription ${subscriptionId}\n${(result.detail ?? "unknown error").slice(0, 400)}\nNothing changed and nothing was charged. The client was told something went wrong; reach out once fixed.`,
+        undefined, { plain: true },
+      ).catch(() => {});
+      return NextResponse.json({ error: "error" }, { status: 502 });
+    }
+    if (result.problem === "needs-authentication") {
+      return NextResponse.json({ error: "needs-authentication", url: result.authUrl }, { status: 402 });
+    }
+    const status = result.problem === "already-annual" ? 409 : result.problem === "payment-failed" ? 402 : 400;
     return NextResponse.json({ error: result.problem }, { status });
   }
 

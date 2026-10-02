@@ -88,6 +88,14 @@
       {
         "method": "PATCH",
         "table": "hosting_clients",
+        "query": "?id=eq.row-hosting_clients&notes=is.null&select=id",
+        "body": {
+          "notes": "servolia-domain: harness-example.com | status: pending | retail: 20 | order: - | bought: - | renew: - | attached: - | warned: - | note: purchasing since <ts>"
+        }
+      },
+      {
+        "method": "PATCH",
+        "table": "hosting_clients",
         "query": "?id=eq.row-hosting_clients",
         "body": {
           "site_url": "https://harness-example.com",
@@ -127,7 +135,7 @@
       {
         "method": "PATCH",
         "table": "clients",
-        "query": "?or=(subscription_id.eq.sub_plan1,customer_id.eq.cus_plan1)",
+        "query": "?subscription_id=eq.sub_plan1",
         "body": {
           "payment_status": "ok",
           "past_due_since": null,
@@ -140,7 +148,7 @@
       {
         "method": "PATCH",
         "table": "hosting_clients",
-        "query": "?or=(subscription_id.eq.sub_plan1,customer_id.eq.cus_plan1)",
+        "query": "?subscription_id=eq.sub_plan1",
         "body": {
           "status": "active",
           "payment_status": "ok",

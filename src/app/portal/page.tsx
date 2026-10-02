@@ -9,12 +9,18 @@ import type { PortalDomain } from "@/components/portal/DomainPanel";
 import { capStateForBuild } from "@/lib/conversationCap";
 import { excludeTest } from "@/lib/testContext";
 import { founderTestBrowser } from "@/lib/testMode";
+import { HAS_PLAN_NOTICE } from "@/lib/planNotice";
 
 export const dynamic = "force-dynamic";
 
-export default async function PortalPage() {
+export default async function PortalPage({ searchParams }: { searchParams: Promise<{ notice?: string; lang?: string }> }) {
   const email = await getClientEmail();
-  if (!email) redirect("/portal/login");
+  if (!email) {
+    /* The plan checkout's "you already have a plan" notice (src/lib/planNotice.ts)
+       survives the trip to the login page. */
+    const { notice, lang } = await searchParams;
+    redirect(notice === HAS_PLAN_NOTICE ? `/portal/login?notice=${HAS_PLAN_NOTICE}${lang === "fr" ? "&lang=fr" : ""}` : "/portal/login");
+  }
 
   const db = supabaseAdmin();
   let builds: Build[] = [];

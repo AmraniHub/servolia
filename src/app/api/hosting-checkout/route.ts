@@ -10,6 +10,18 @@ import {
 } from "@/lib/hosting";
 import { domainQuote, isDomainSalesConfigured, normalizeDomain } from "@/lib/domainSales";
 import { checkoutStripe } from "@/lib/testMode";
+import { supabaseAdmin } from "@/lib/supabase";
+import { rowsForEmail, knownStripeCustomer, buyerFields, businessTaxFields, withStaleCustomerRetry, LIVE_ROW_STATUSES } from "@/lib/stripeCustomer";
+import { clientEmailFromCookies } from "@/lib/clientAuth";
+
+/** A row's site, as compared below: its repository, else its domain. */
+function siteKeysOf(repo: unknown, siteUrl: unknown): string[] {
+  const keys: string[] = [];
+  if (typeof repo === "string" && repo.trim()) keys.push(repo.trim().toLowerCase());
+  const host = typeof siteUrl === "string" ? normalizeDomain(siteUrl) : null;
+  if (host) keys.push(host);
+  return keys;
+}
 
 /**
  * PUBLIC hosting checkout — the client picks a plan and pays, no admin step.
@@ -83,13 +95,18 @@ export async function POST(req: NextRequest) {
     if (owed <= 0) {
       return NextResponse.json({ error: "Nothing outstanding" }, { status: 400 });
     }
-    const stripeOnce = stripeClient;
+    // Only a server-known identity picks an existing customer (see knownBuyer below).
+    const arrearsKnown = co.buyer || client?.email || (await clientEmailFromCookies(req.cookies).catch(() => null)) || null;
+    const arrearsCustomer = await knownStripeCustomer(supabaseAdmin(), "hosting_clients", arrearsKnown, co.test);
+    const stripeOnce = withStaleCustomerRetry(stripeClient, co.buyer || email);
     const once = await stripeOnce.checkout.sessions.create({
       mode: "payment",
       // Card only: see the main session below.
       payment_method_types: ["card"],
       locale: lang,
-      ...((co.buyer || email) ? { customer_email: co.buyer || email } : {}),
+      ...buyerFields(arrearsCustomer, co.buyer || email),
+      // B2B: VAT number (reverse charge), billing address, and a Stripe invoice.
+      ...businessTaxFields("payment", Boolean(arrearsCustomer)),
       line_items: [
         {
           price_data: {
@@ -213,7 +230,6 @@ export async function POST(req: NextRequest) {
     : null;
 
   try {
-    const stripe = stripeClient;
     /* The copy Stripe's own page will show. It used to be the literal string
      * "Website hosting" for every product, so an AI assistant purchase was
      * headed "Website hosting — temghid.ma" on the one screen where the buyer
@@ -227,6 +243,48 @@ export async function POST(req: NextRequest) {
      * it wrong bills a finished job every month, which a client notices on the
      * second invoice and does not forget. */
     const oneOff = Boolean(hostingPlan.oneOffUsd);
+
+    /* ONE LIVE SUBSCRIPTION PER SITE (P3, 2026-10-02). Several hosting rows
+       per address are legitimate — an agency, a second site, the assistant
+       beside the hosting — so the guard is per SITE: a live row for this
+       address on the same repository (a known ref) or the same domain (one
+       being bought), for a hosting tier when this is a tier, or the same
+       add-on. That purchase would bill the client twice for one thing; they
+       are told to manage what they have instead. Not for a one-off.
+
+       ONLY FOR A SERVER-KNOWN BUYER (review, 2026-10-02): the founder's test
+       buyer, the address the server-side client map holds for this ref (the
+       ref's own page already shows that client's status), or the logged-in
+       portal client. An address typed into the request body only prefills
+       Stripe's email field: it never selects an existing Stripe customer and
+       never earns an answer about whether that address already pays us. */
+    const knownBuyer = co.buyer || client?.email || (await clientEmailFromCookies(req.cookies).catch(() => null)) || null;
+    const prefill = knownBuyer || email || null;
+    const buyer = knownBuyer;
+    const db = supabaseAdmin();
+    if (buyer && db && !oneOff) {
+      const mySites = new Set([...siteKeysOf(client?.repo, null), ...siteKeysOf(null, domainMeta.domain)]);
+      if (mySites.size) {
+        const isTier = HOSTING_TIERS.includes(hostingPlan.key);
+        const clash = (await rowsForEmail<{ plan: string | null; subscription_id: string | null; repo: string | null; site_url: string | null }>(
+          db, "hosting_clients", "id, plan, status, subscription_id, repo, site_url, created_at", buyer, { test: co.test, statuses: LIVE_ROW_STATUSES },
+        )).find((r) => r.subscription_id
+          && (isTier ? HOSTING_TIERS.includes(String(r.plan ?? "")) : r.plan === hostingPlan.key)
+          && siteKeysOf(r.repo, r.site_url).some((k) => mySites.has(k)));
+        if (clash) {
+          return NextResponse.json({
+            error: lang === "fr"
+              ? "Ce site a déjà un abonnement actif chez nous — gérez-le depuis votre compte (servolia.com/hosting/account), ou écrivez à hello@servolia.com. Rien n'a été débité."
+              : "This site already has an active subscription with us — manage it from your account (servolia.com/hosting/account), or write to hello@servolia.com. Nothing was charged.",
+            alreadySubscribed: true,
+          }, { status: 409 });
+        }
+      }
+    }
+    // The client's existing (USD) Stripe customer, so their card and portal stay one (src/lib/stripeCustomer.ts).
+    const customerId = await knownStripeCustomer(db, "hosting_clients", buyer, co.test);
+    const stripe = withStaleCustomerRetry(stripeClient, prefill);
+
     const session = await stripe.checkout.sessions.create({
       mode: oneOff ? "payment" : "subscription",
       /* Card only, like every other checkout here: a delayed method (SEPA,
@@ -244,7 +302,9 @@ export async function POST(req: NextRequest) {
        * can be raised before they are locked into it. Where no address has
        * been agreed, Stripe asks as before. */
       // Test mode: always the founder's address (src/lib/testMode.ts).
-      ...((co.buyer || client?.email || email) ? { customer_email: co.buyer || client?.email || email } : {}),
+      ...buyerFields(customerId, prefill),
+      // B2B: VAT number (reverse charge), billing address; an invoice for a one-off.
+      ...businessTaxFields(oneOff ? "payment" : "subscription", Boolean(customerId)),
       line_items: [
         {
           price_data: {

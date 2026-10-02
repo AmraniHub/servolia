@@ -141,6 +141,8 @@ export function hostingPurchase(livemode, ref = "") {
     mode: "subscription",
     payment_status: "paid",
     amount_total: 4200,
+    // Stripe always sends it; the domain is bought only when a USD total covers it (2026-10-02).
+    currency: "usd",
     customer: "cus_host1",
     subscription: "sub_host1",
     customer_details: { email: "host@example.com" },

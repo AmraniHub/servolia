@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { supabaseAdmin } from "@/lib/supabase";
 import { isAdminAuthed } from "@/lib/auth";
+import { knownStripeCustomer, buyerFields, businessTaxFields, withStaleCustomerRetry } from "@/lib/stripeCustomer";
 
 export const runtime = "nodejs";
 
@@ -70,12 +71,16 @@ export async function POST(req: NextRequest) {
   const key = process.env.STRIPE_SECRET_KEY;
   if (key && amount > 0) {
     try {
-      const stripe = new Stripe(key);
+      const stripe = withStaleCustomerRetry(new Stripe(key), build.email);
       const origin = req.headers.get("origin") ?? "https://servolia.com";
+      // The client's own Stripe customer, live rows only (src/lib/stripeCustomer.ts).
+      const customerId = await knownStripeCustomer(db, "clients", build.email, false);
       const session = await stripe.checkout.sessions.create({
         mode: "payment",
         payment_method_types: ["card"],
-        customer_email: build.email ?? undefined,
+        ...buyerFields(customerId, build.email),
+        // B2B: VAT number (reverse charge), billing address, and a Stripe invoice.
+        ...businessTaxFields("payment", Boolean(customerId)),
         line_items: [{
           price_data: {
             currency: "eur",

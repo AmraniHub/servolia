@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Mail, ArrowRight, RefreshCw, CheckCircle2, MessageSquare, FileText, Clock, Lock, Languages } from "lucide-react";
+import { HAS_PLAN_NOTICE, HAS_PLAN_TEXT } from "@/lib/planNotice";
 
 type Lang = "en" | "fr";
 
@@ -40,6 +41,8 @@ const T = {
 function LoginForm() {
   const params = useSearchParams();
   const urlError = params.get("error"); // "expired" | "missing" | null
+  // The plan checkout refused a second plan and sent them here (src/lib/planNotice.ts).
+  const hasPlan = params.get("notice") === HAS_PLAN_NOTICE;
 
   const [lang, setLang] = useState<Lang>("en");
   const t = T[lang];
@@ -47,8 +50,8 @@ function LoginForm() {
   useEffect(() => {
     const saved = localStorage.getItem("servolia_portal_lang");
     if (saved === "fr" || saved === "en") setLang(saved);
-    else if (navigator.language?.toLowerCase().startsWith("fr")) setLang("fr");
-  }, []);
+    else if (params.get("lang") === "fr" || navigator.language?.toLowerCase().startsWith("fr")) setLang("fr");
+  }, [params]);
   const toggleLang = () => setLang((v) => {
     const nx: Lang = v === "en" ? "fr" : "en";
     localStorage.setItem("servolia_portal_lang", nx);
@@ -126,6 +129,12 @@ function LoginForm() {
             <h1 className="text-3xl font-black text-[#18181B] mb-3">{t.heroTitle}</h1>
             <p className="text-[#52525B] text-sm leading-relaxed">{t.heroSub}</p>
           </div>
+
+          {hasPlan && (
+            <div className="mb-6 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-[#18181B]">
+              {HAS_PLAN_TEXT[lang]}
+            </div>
+          )}
 
           <div className="bg-[#F5F4EF] border border-[#D4D2CC] rounded-2xl p-8">
             {/* Language toggle */}

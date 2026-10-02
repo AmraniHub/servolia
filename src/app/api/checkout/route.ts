@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { sendMetaCapiEvent } from "@/lib/metaCapi";
 import { checkoutStripe } from "@/lib/testMode";
 import { SELLABLE_BUILD_PLANS } from "@/lib/pricing";
+import { supabaseAdmin } from "@/lib/supabase";
+import { knownStripeCustomer, buyerFields, businessTaxFields, withStaleCustomerRetry } from "@/lib/stripeCustomer";
 
 // One-time amounts in cents (EUR) — prices come from src/lib/pricing.ts.
 // Charged IN FULL: under the current model the installation is the only
@@ -23,7 +25,7 @@ export async function POST(req: NextRequest) {
   if (!co.stripe) {
     return NextResponse.json({ error: "Stripe not configured — add STRIPE_SECRET_KEY to Vercel env vars" }, { status: 503 });
   }
-  const stripe = co.stripe;
+  const stripeClient = co.stripe;
 
   try {
     const { plan, leadId, lang } = await req.json() as { plan: string; leadId?: string; lang?: "en" | "fr" };
@@ -35,9 +37,15 @@ export async function POST(req: NextRequest) {
     }
 
     const origin = req.headers.get("origin") ?? "https://servolia.com";
+    /* The buyer is anonymous here (live); only a founder test purchase names
+       one, and then reuses its Stripe customer (src/lib/stripeCustomer.ts). */
+    const customerId = co.buyer ? await knownStripeCustomer(supabaseAdmin(), "clients", co.buyer, co.test) : null;
+    const stripe = withStaleCustomerRetry(stripeClient, co.buyer);
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
+      // B2B: VAT number (reverse charge), billing address, and a Stripe invoice.
+      ...businessTaxFields("payment", Boolean(customerId)),
       line_items: [
         {
           price_data: {
@@ -62,7 +70,7 @@ export async function POST(req: NextRequest) {
       cancel_url: `${origin}${fr ? "/fr/tarifs" : "/pricing"}`,
       // Test mode: bought in the founder's name, and never linked to a real
       // lead (a real prospect's /scope link carries their lead id).
-      ...(co.buyer ? { customer_email: co.buyer } : {}),
+      ...buyerFields(customerId, co.buyer),
       metadata: { plan, source: "servolia-website", lead_id: co.test ? "" : (leadId ?? ""), lang: fr ? "fr" : "en", ...co.tag },
       custom_text: {
         submit: {

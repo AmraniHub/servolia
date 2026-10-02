@@ -504,7 +504,15 @@ function session(id, fields) {
     customer_details: { email: "owner.case@example.com" }, ...fields,
   }, true);
 }
+/* The invoice in the OLD payload shape (top-level `subscription`, before API
+   version basil) — what this file always used — and the shape the pinned
+   dahlia version really sends: no top-level field, the id under
+   parent.subscription_details. The webhook must read both (P2, 2026-10-02). */
 const invoice = (type, fields) => evt(type, { id: "in_o", object: "invoice", customer: "cus_o", subscription: "sub_o", ...fields }, true);
+const invoiceBasil = (type, fields = {}) => {
+  const { subscription = "sub_o", ...rest } = fields;
+  return evt(type, { id: "in_o", object: "invoice", customer: "cus_o", parent: { type: "subscription_details", subscription_details: { subscription } }, ...rest }, true);
+};
 
 const { writeOneOff } = await import("../src/lib/oneOffOrders.ts");
 const SEO_ORDER = { service: "seo_multilingual", session: "cs_live_seo", paidAt: "2026-09-21", dueAt: "2026-09-28", amountUsd: 145 };
@@ -526,13 +534,15 @@ const MONEY = [
   ["multilingual one-off (on the hosting row)", () => session("cs_live_seo", { mode: "payment", amount_total: 14500, metadata: { kind: "hosting", plan: "seo_multilingual", business: "Harness Co", lang: "en" } }),
     { hosting_clients: [{ id: "h-seo", business: "Harness Co", email: "owner.case@example.com", status: "active", notes: null }] },
     { hosting_clients: [{ id: "h-seo", business: "Harness Co", email: "owner.case@example.com", status: "active", notes: writeOneOff(null, SEO_ORDER) }] }, 1],
+  // The row carries the buyer's address: the top-up is credited by EXACT address since 2026-10-02.
   ["top-up", () => session("cs_live_top", { mode: "payment", amount_total: 4900, metadata: { kind: "topup", conversations: "50", pack: "pack50", lang: "fr" } }),
-    { clients: [{ id: "c-top", business: "Cabinet Top", notes: null }] },
-    { clients: [{ id: "c-top", business: "Cabinet Top", notes: writeTopup(null, { conversations: 50, month: monthKey(new Date(1790000000 * 1000)), session: "cs_live_top" }) }] }, 1],
+    { clients: [{ id: "c-top", business: "Cabinet Top", email: "owner.case@example.com", notes: null }] },
+    { clients: [{ id: "c-top", business: "Cabinet Top", email: "owner.case@example.com", notes: writeTopup(null, { conversations: 50, month: monthKey(new Date(1790000000 * 1000)), session: "cs_live_top" }) }] }, 1],
   ["arrears settled", () => session("cs_live_arr", { mode: "payment", amount_total: 1500, metadata: { kind: "hosting", plan: "arrears", ref: "harness", label: "Old balance", lang: "en" } }), {}, null, 1],
   ["extra domain order", () => session("cs_live_dom", { mode: "payment", amount_total: 2000, metadata: { kind: "domain_addon", domain: "extra-harness.com", domain_retail_usd: "20", subscription_id: "sub_host1", ref: "harness" } }),
     { hosting_clients: [{ id: "h-dom", notes: null, business: "Harness Co" }] },
-    { hosting_clients: [{ id: "h-dom", notes: writeExtraDomain(null, { domain: "extra-harness.com", retailUsd: 20, failed: "not-configured" }), business: "Harness Co" }] }, 0],
+    // The first delivery's record names its session: only THAT session's redelivery is quiet (P6).
+    { hosting_clients: [{ id: "h-dom", notes: writeExtraDomain(null, { domain: "extra-harness.com", retailUsd: 20, failed: "not-configured", session: "cs_live_dom" }), business: "Harness Co" }] }, 0],
   ["domain sold on its own (domain_order)", () => {
     domainCustomer.metadata = {};
     return session("cs_live_order", { mode: "payment", currency: "usd", amount_total: 2790, customer: "cus_o", payment_intent: "pi_o",
@@ -777,6 +787,41 @@ test("M1 hosting payment failed: the owner alert states what the client email RE
     assert.ok(t.includes("CLIENT EMAIL FAILED — tell them by hand."), t);
     assert.ok(t.includes("Next: tell the client by hand."), t);
     assert.ok(ownerAlerts()[0].includes("CLIENT EMAIL FAILED"));
+  }));
+
+/* P2: an EUR plan client's FIRST failure — the card-failed email goes and the
+   owner is told it went, in BOTH invoice payload shapes. Before the fix the
+   dahlia shape carried no top-level subscription: no email, and the owner
+   read "Client already told on the first failure". */
+const eurFirstFailRow = { clients: [{ id: "c-ff", past_due_since: null, business: "Cabinet First", email: "owner.case@example.com", plan: "essentiel", build_id: null }] };
+for (const [shape, make] of [["legacy top-level subscription", invoice], ["dahlia parent.subscription_details", invoiceBasil]]) {
+  test(`P2 EUR plan first failure (${shape}): the client gets the card-failed email and the owner alert says so`, () =>
+    withEnv(LIVE, async () => {
+      clear();
+      seed(eurFirstFailRow);
+      const res = await POST(request(make("invoice.payment_failed", { amount_due: 14900, currency: "eur", attempt_count: 1 }), H.LIVE_WH));
+      assert.equal(res.status, 200);
+      assert.equal(clientMails().length, 1, `card-failed email: ${JSON.stringify(mails().map((m) => m.subject))}`);
+      assert.deepEqual([clientMails()[0].to].flat(), ["owner.case@example.com"]);
+      const t = ownerMails()[0].text;
+      assert.ok(t.includes("Client emailed (first failure)."), t);
+      assert.ok(!t.includes("already told"), t);
+      // Looked up by its subscription, never by the customer.
+      const reads = supaCalls.filter((c) => c.method === "GET" && /\/(clients|hosting_clients)\?/.test(c.url) && !c.url.includes("notes=like."));
+      assert.ok(reads.length >= 2 && reads.every((c) => c.url.includes("subscription_id=eq.sub_o")), JSON.stringify(reads.map((c) => c.url)));
+      assert.ok(!supaCalls.some((c) => c.url.includes("customer_id")), "matched by customer");
+    }));
+}
+
+test("P2 owner alert is honest when the client was NOT told: no address → 'NOT told' + 'tell the client by hand'", () =>
+  withEnv(LIVE, async () => {
+    clear();
+    seed({ clients: [{ ...eurFirstFailRow.clients[0], email: null }] });
+    await POST(request(invoiceBasil("invoice.payment_failed", { amount_due: 14900, currency: "eur", attempt_count: 1 }), H.LIVE_WH));
+    const t = ownerMails()[0].text;
+    assert.ok(t.includes("No address on file — the client was NOT told."), t);
+    assert.ok(t.includes("Next: tell the client by hand."), t);
+    assert.equal(clientMails().length, 0);
   }));
 
 test("M1/LOW hosting payment failed, Resend never answers: 'NOT CONFIRMED — check', not 'FAILED'", () =>

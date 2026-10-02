@@ -21,6 +21,12 @@ export interface ProvisionContext {
   email?: string | null;
   siteSlug?: string | null;
   amountEur?: number;
+  /** The client's name, when the webhook found their row. */
+  business?: string | null;
+  /** What the webhook did about recording it (src/lib/addonSubscriptions.ts). */
+  recorded?: string | null;
+  /** Their clients row, for the admin link. */
+  clientId?: string | null;
 }
 
 export interface ProvisionResult {
@@ -78,12 +84,13 @@ export async function provisionAddon(ctx: ProvisionContext): Promise<ProvisionRe
 async function notifyFounder(ctx: ProvisionContext, r: ProvisionResult): Promise<void> {
   const label = ADDONS[ctx.addonKey]?.name ?? ctx.addonKey;
   await notifyOwner({
-    subject: paidSubject(`add-on ${label}`, ctx.amountEur ?? 0, "EUR", ctx.email),
+    subject: paidSubject(`add-on ${label}`, ctx.amountEur ?? 0, "EUR", ctx.business || ctx.email),
     lines: [
       `${r.automated ? "✅ Provisioned automatically" : "🧩 To fulfil by hand"}: ${label}`,
-      `Client: ${ctx.email ?? "no email"}${ctx.siteSlug ? ` · site ${ctx.siteSlug}` : ""}`,
+      `Client: ${ctx.business ? `${ctx.business} · ` : ""}${ctx.email ?? "no email"}${ctx.siteSlug ? ` · site ${ctx.siteSlug}` : ""}`,
+      ctx.recorded ?? null,
       `Next: ${r.message}`,
     ],
-    link: "https://servolia.com/admin/clients",
+    link: ctx.clientId ? `https://servolia.com/admin/clients/${ctx.clientId}` : "https://servolia.com/admin/clients",
   });
 }

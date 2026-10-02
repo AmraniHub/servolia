@@ -51,6 +51,12 @@ const EVENTS = [
   "invoice.payment_succeeded",
   "invoice.payment_failed",
   "customer.subscription.deleted",
+  // Added 2026-10-02: a plan changed by hand in Stripe is synced to clients.plan,
+  // a chargeback reaches the owner, and a voided invoice stops being what a row
+  // is past due on. --apply adds them to an existing endpoint.
+  "customer.subscription.updated",
+  "charge.dispute.created",
+  "invoice.voided",
 ];
 
 // ── env ─────────────────────────────────────────────────────────────────────

@@ -11,7 +11,7 @@ import {
 } from "@/lib/email";
 import { sendMetaCapiEvent } from "@/lib/metaCapi";
 import { generateScopeDocument } from "@/lib/scopeDocument";
-import { BUILD_PLANS, SETUP_PLAN, resolvePlan } from "@/lib/pricing";
+import { BUILD_PLANS, SETUP_PLAN, resolvePlan, ADDONS, PLANS, planAmountCents } from "@/lib/pricing";
 import {
   HOSTING_METADATA_KIND,
   HOSTING_TIERS,
@@ -22,7 +22,7 @@ import {
 } from "@/lib/hosting";
 import { setShopifyGate, applyGate } from "@/lib/hostingGate";
 import { normalizeDomain, purchaseDomainForClient, readDomainRecord, writeDomainRecord, setDomainAutoRenew, domainRegistration } from "@/lib/domainSales";
-import { hasExtraDomain, writeExtraDomain } from "@/lib/extraDomains";
+import { hasExtraDomain, writeExtraDomain, readExtraDomains } from "@/lib/extraDomains";
 import { DOMAIN_ORDER_KIND, fulfilDomainOrder, describeDomainOrder, nextYear, chargeDateFor } from "@/lib/domainOrders";
 import { domainOrderEmail } from "@/lib/email";
 import { upgradeLinkFor, accountLinkFor, setupLinkFor, assistantLinkFor, referenceFor, subscriptionContext } from "@/lib/upgrade";
@@ -43,6 +43,10 @@ import { runAsTest, inTestContext, testTag, testPrefixed, excludeTest, isTestRow
 import { Sends, paidSubject, troubleSubject, money, emailOutcome, type EmailOutcome } from "@/lib/notify";
 import { addWorkingDays, hasOneOff, writeOneOff, type OneOffOrder, type OneOffLeadData } from "@/lib/oneOffOrders";
 import { readOwnedDomainMeta, trialEndFor, writeOwnedDomainNote, ownedDomainPaidEmail, ownedDomainOwnerLines, readOwnedDomainNote, ownedDomainOnCancel, ownedCancelLine, ownedDomainOnReturn, subscriptionPaymentMethod } from "@/lib/ownedDomain";
+import { invoiceSubscriptionId, customerIdOf, rowsForEmail, LIVE_ROW_STATUSES } from "@/lib/stripeCustomer";
+import { addonFor, writeAddon, markAddonCancelled } from "@/lib/addonSubscriptions";
+import { withReverseCharge, writeVatNote } from "@/lib/vat";
+import { atomicLimit } from "@/lib/atomicLimit";
 
 export const runtime = "nodejs";
 // A subscriber whose intake beat this event has their draft generated after
@@ -56,7 +60,11 @@ export const maxDuration = 120;
  *   1. dashboard.stripe.com → Developers → Webhooks → Add endpoint
  *   2. URL: https://servolia.com/api/webhooks/stripe
  *   3. Events: checkout.session.completed, customer.subscription.deleted,
- *              invoice.payment_failed, invoice.paid, invoice.payment_succeeded
+ *              invoice.payment_failed, invoice.paid, invoice.payment_succeeded,
+ *              customer.subscription.updated, charge.dispute.created,
+ *              invoice.voided
+ *              (the last three added 2026-10-02: scripts/stripe-setup.mjs adds
+ *              them to a new endpoint; an existing one needs them ticked by hand)
  *   4. Copy "Signing secret" → STRIPE_WEBHOOK_SECRET env var
  *
  * FOUNDER TEST MODE (src/lib/testMode.ts): a SECOND endpoint, created in
@@ -70,9 +78,117 @@ export const maxDuration = 120;
 
 const GRACE_DAYS = 14; // Vercel-style: banner immediately, hard suspend after this many days.
 
+/** The note a claimed-but-unfinished plan-domain purchase carries. */
+const DOMAIN_CLAIM_NOTE = "purchasing";
+
+/**
+ * CLAIM A PLAN DOMAIN'S PURCHASE, ATOMICALLY, BEFORE THE REGISTRAR IS CALLED.
+ *
+ * Same idea as the standalone domain order's claim (src/lib/domainOrders.ts
+ * fulfilDomainOrder), on the hosting row instead of the Stripe customer: the
+ * domain record is written as "pending — purchasing" with a compare-and-set
+ * UPDATE (`where notes = <what was read>`). Postgres lets exactly one of two
+ * concurrent deliveries match; the other updates nothing and stops.
+ *
+ *   won         — this delivery buys.
+ *   lost        — another delivery claimed (or already bought) it: stop, it does the rest.
+ *   interrupted — an earlier delivery claimed it and never recorded how it
+ *                 ended: nothing is bought; the owner checks Vercel.
+ *   error       — the claim could not be written: nothing is bought.
+ */
+async function claimHostingDomain(db: Db, rowId: string, domain: string, retailUsd: number): Promise<"won" | "lost" | "interrupted" | "error"> {
+  const { data: fresh, error: readErr } = await db.from("hosting_clients").select("notes").eq("id", rowId).maybeSingle();
+  if (readErr) return "error";
+  const notes = ((fresh as { notes?: string | null } | null)?.notes) ?? null;
+  const prior = readDomainRecord(notes);
+  if (prior?.domain === domain && prior.status === "bought") return "lost";
+  if (prior?.domain === domain && (prior.note ?? "").startsWith(DOMAIN_CLAIM_NOTE)) return "interrupted";
+  const claimed = writeDomainRecord(notes, {
+    domain, retailUsd, status: "pending",
+    note: `${DOMAIN_CLAIM_NOTE} since ${new Date().toISOString()}`,
+  });
+  const base = db.from("hosting_clients").update({ notes: claimed }).eq("id", rowId);
+  const { data, error } = await (notes === null ? base.is("notes", null) : base.eq("notes", notes)).select("id");
+  if (error) return "error";
+  return Array.isArray(data) && data.length > 0 ? "won" : "lost";
+}
+
+/** The line a claimed-but-unfinished EXTRA domain purchase carries on the
+ *  hosting row. Its own prefix (not "servolia-extra-domain:"), so the
+ *  billing cron and the account page, which read extra-domain lines, never
+ *  mistake a claim for a domain that exists. */
+const EXTRA_CLAIM = "servolia-extra-domain-claim:";
+
+/**
+ * CLAIM AN EXTRA DOMAIN'S PURCHASE, ATOMICALLY (review, 2026-10-02). Same
+ * compare-and-set as claimHostingDomain: a claim line is added with an
+ * UPDATE that only matches the notes this delivery read. Two simultaneous
+ * deliveries of the same payment: one wins and buys, the other updates
+ * nothing and stops. A claim already on the row for this domain, with no
+ * record of how it ended, is "interrupted": nothing is bought again.
+ */
+async function claimExtraDomain(db: Db, rowId: string, domain: string, sessionId: string, notes: string | null): Promise<"won" | "lost" | "interrupted" | "error"> {
+  const lines = (notes ?? "").split("\n");
+  if (lines.some((l) => l.startsWith(EXTRA_CLAIM) && l.slice(EXTRA_CLAIM.length).trim().split(" | ")[0] === domain)) return "interrupted";
+  const claimed = [...lines.filter((l) => l.trim() !== ""), `${EXTRA_CLAIM} ${domain} | session: ${sessionId} | since: ${new Date().toISOString()}`].join("\n");
+  const base = db.from("hosting_clients").update({ notes: claimed }).eq("id", rowId);
+  const { data, error } = await (notes === null ? base.is("notes", null) : base.eq("notes", notes)).select("id");
+  if (error) return "error";
+  return Array.isArray(data) && data.length > 0 ? "won" : "lost";
+}
+
+/** The notes without this domain's claim line (written with the outcome). */
+function dropExtraClaim(notes: string | null, domain: string): string | null {
+  if (notes === null) return null;
+  return notes.split("\n").filter((l) => !(l.startsWith(EXTRA_CLAIM) && l.slice(EXTRA_CLAIM.length).trim().split(" | ")[0] === domain)).join("\n");
+}
+
+/** The client row an add-on subscription is recorded on (src/lib/addonSubscriptions.ts).
+ *  `like` is only a superset (`_` in a subscription id is a wildcard there);
+ *  addonFor is the exact check. */
+async function addonOwnerFor(db: Db, subscriptionId: string): Promise<{ id: string; business: string | null; email: string | null; notes: string | null; addon: NonNullable<ReturnType<typeof addonFor>> } | null> {
+  const { data } = await db.from("clients").select("id, business, email, notes").like("notes", `%${subscriptionId}%`).limit(10);
+  for (const r of ((data ?? []) as { id: string; business: string | null; email: string | null; notes: string | null }[])) {
+    const addon = addonFor(r.notes, subscriptionId);
+    if (addon) return { ...r, addon };
+  }
+  return null;
+}
+
+/**
+ * The client rows for the FIRST of these addresses that has any, in order.
+ * Portal purchases (top-ups, add-ons) put the logged-in client's address in
+ * metadata.email, set by OUR server; the address typed on Stripe's page may
+ * differ (an assistant's mailbox, a typo). So metadata.email is asked first,
+ * then Stripe's customer address. Exact, case-insensitive (rowsForEmail).
+ */
+async function rowsForFirstEmail<T extends Record<string, unknown>>(
+  db: Db, cols: string, candidates: (string | null | undefined)[], opts: { test: boolean; statuses?: string[] },
+): Promise<{ rows: T[]; email: string | null }> {
+  const seen = new Set<string>();
+  for (const c of candidates) {
+    const e = (c ?? "").trim();
+    if (!e || seen.has(e.toLowerCase())) continue;
+    seen.add(e.toLowerCase());
+    const rows = await rowsForEmail<T>(db, "clients", cols, e, opts);
+    if (rows.length) return { rows, email: e };
+  }
+  return { rows: [], email: null };
+}
+
+/** Alert once per key (Postgres counter, src/lib/atomicLimit.ts). When the
+ *  counter cannot be read (its SQL not run yet) the alert goes anyway: a
+ *  repeated alert is noise, a missing one is a client nobody helps. */
+async function firstTime(db: Db, key: string): Promise<boolean> {
+  return (await atomicLimit(key, 1, 7 * 86400, db as unknown as Parameters<typeof atomicLimit>[3])) !== "limited";
+}
+
 /** The line a payment-failed owner alert carries about the CLIENT's email,
- *  from what the awaited send really did (src/lib/notify.ts emailOutcome). */
-function clientFailureLine(o: EmailOutcome | "not-this-time", otherwise = "Client already told on the first failure."): string {
+ *  from what the awaited send really did (src/lib/notify.ts emailOutcome).
+ *  `otherwise` is REQUIRED: it used to default to "Client already told on the
+ *  first failure", which the EUR branch printed for every client it never
+ *  emailed (the subscription id was unreadable, see invoiceSubscriptionId). */
+function clientFailureLine(o: EmailOutcome | "not-this-time", otherwise: string): string {
   return o === "sent" ? "Client emailed (first failure)."
     : o === "failed" ? "CLIENT EMAIL FAILED — tell them by hand."
     : o === "unconfirmed" ? "Client email NOT CONFIRMED (no answer from Resend within 5 s) — check it went."
@@ -217,15 +333,45 @@ async function handleEventBody(event: Stripe.Event, stripe: Stripe, db: Db, send
 
       // ── ADD-ON branch: a managed add-on subscription → provision it ──────
       if (session.mode === "subscription" && session.metadata?.kind === "addon") {
-        const customerEmail = session.customer_details?.email ?? session.customer_email ?? null;
+        const customerEmail = session.customer_details?.email ?? session.customer_email ?? session.metadata?.email ?? null;
         const amount = (session.amount_total ?? 0) / 100;
+        const addonKey = session.metadata?.addon ?? "unknown";
+        const subId = typeof session.subscription === "string" ? session.subscription : (session.subscription as { id?: string } | null)?.id ?? null;
+        /* RECORDED, KEYED BY ITS SUBSCRIPTION (src/lib/addonSubscriptions.ts),
+           on the clients row that carries the buyer's address — exact match,
+           a test purchase only ever on a test row. A redelivery finds the
+           line and stops: the owner is not asked to create the mailboxes twice. */
+        type ClientRow = { id: string; business: string | null; notes: string | null; status: string | null };
+        // metadata.email (set by our portal checkout) first, then Stripe's address.
+        const { rows: owners } = await rowsForFirstEmail<ClientRow>(db, "id, business, notes, status, created_at",
+          [session.metadata?.email, session.customer_details?.email, session.customer_email], { test });
+        if (subId && owners.some((r) => addonFor(r.notes, subId))) {
+          return NextResponse.json({ received: true, line: "addon", replay: true });
+        }
+        const owner = owners.find((r) => LIVE_ROW_STATUSES.includes(String(r.status))) ?? owners[0] ?? null;
+        let recorded: string;
+        if (!subId) {
+          recorded = "⚠️ NOT RECORDED: the session carries no subscription id.";
+        } else if (!owner) {
+          recorded = `⚠️ NOT RECORDED: no client row carries ${customerEmail ?? "the buyer's address"}. A redelivery would ask again, and a failed renewal or a cancellation will not name them. Add to their notes by hand: servolia-addon: sub: ${subId} | addon: ${addonKey} | since: ${new Date(event.created * 1000).toISOString().slice(0, 10)}`;
+        } else {
+          const notes = writeAddon(owner.notes, {
+            subscription: subId, addon: addonKey, since: new Date(event.created * 1000).toISOString().slice(0, 10),
+            session: session.id, amountEur: amount, siteSlug: session.metadata?.siteSlug || undefined,
+          });
+          const { error } = await db.from("clients").update({ notes }).eq("id", owner.id);
+          recorded = error ? `⚠️ NOT RECORDED (database: ${error.message}) — a redelivery would ask again.` : `Recorded on ${owner.business ?? "their"} client row (subscription ${subId}).`;
+        }
         await provisionAddon({
-          addonKey: session.metadata?.addon ?? "unknown",
+          addonKey,
           email: customerEmail,
           siteSlug: session.metadata?.siteSlug || null,
           amountEur: amount,
+          business: owner?.business ?? null,
+          recorded,
+          clientId: owner?.id ?? null,
         });
-        return NextResponse.json({ received: true });
+        return NextResponse.json({ received: true, line: "addon" });
       }
 
       // ── HOSTING branch: a hosting subscription → its own table ──────────
@@ -463,19 +609,53 @@ async function handleEventBody(event: Stripe.Event, stripe: Stripe, db: Db, send
         // that domain is already ours, and buying it again would fail or double-bill.
         const domainWanted = ownedLink ? null : normalizeDomain(session.metadata?.domain ?? "");
         let domainBought = false;
+        let domainUnfunded = false;
         const priorDomain = readDomainRecord(hostRow?.notes);
         if (domainWanted && priorDomain?.status === "bought" && priorDomain.domain === domainWanted) {
           domainBought = true;
         } else if (domainWanted) {
           const retail = Number(session.metadata?.domain_retail_usd ?? 0);
+          /* FUNDED, OR NOT BOUGHT (2026-10-02). This checkout accepts
+             promotion codes, and a session a code took to zero completes as
+             `no_payment_required` — which this branch treats as paid, rightly,
+             for the plan. But the domain is bought on OUR card at Vercel's
+             price: it is bought only when what the client actually paid, in
+             USD, covers what Vercel charges (domain_cost_usd, else the retail
+             price). Otherwise it is recorded pending and the owner decides. */
+          const cost = Number(session.metadata?.domain_cost_usd) || retail;
+          const paidCents = (session.currency ?? "").toLowerCase() === "usd" && typeof session.amount_total === "number" ? session.amount_total : null;
+          const unfundedWhy = paidCents === null
+            ? `payment amount unreadable (${session.currency ?? "no currency"})`
+            : paidCents < Math.round(cost * 100)
+              ? `checkout total ${money(paidCents / 100, "usd")} does not cover the domain (${money(cost, "usd")}) — a promotion code?`
+              : null;
+          /* THE PURCHASE IS CLAIMED ATOMICALLY first (claimHostingDomain): two
+             deliveries of this event at once — Stripe does that during a long
+             fulfilment — would otherwise both reach the registrar. */
+          let claim: "won" | "lost" | "interrupted" | "error" | "no-row" = "no-row";
+          if (!test && !unfundedWhy && hostRow?.id) claim = await claimHostingDomain(db, hostRow.id, domainWanted, retail);
+          if (claim === "lost") {
+            // Another delivery holds the claim and does the rest, receipt and alert included.
+            return NextResponse.json({ received: true, line: "hosting", concurrent: true });
+          }
           /* A test purchase never buys a domain: the name is recorded as
              pending with the note "TEST: domain not bought", and nobody is
              alerted to buy it by hand. */
           const outcome = test
             ? { ok: false as const, reason: "error" as const, detail: "TEST: domain not bought" }
-            : await purchaseDomainForClient(domainWanted, retail);
+            : unfundedWhy
+              ? { ok: false as const, reason: "error" as const, detail: `not bought: ${unfundedWhy}` }
+              : claim === "no-row"
+                ? { ok: false as const, reason: "error" as const, detail: "not bought: no hosting row to record the purchase on" }
+                : claim === "interrupted"
+                  ? { ok: false as const, reason: "error" as const, detail: "an earlier delivery started buying it and never recorded the result — check Vercel > Domains before pressing Buy" }
+                  : claim === "error"
+                    ? { ok: false as const, reason: "error" as const, detail: "not bought: the purchase claim could not be written (database)" }
+                    : await purchaseDomainForClient(domainWanted, retail);
+          domainUnfunded = Boolean(unfundedWhy) && !test;
           domainBought = outcome.ok;
-          if (hostRow?.id) {
+          // An interrupted claim is left as it is: overwriting it would let the next delivery buy.
+          if (hostRow?.id && claim !== "interrupted") {
             const { data: fresh } = await db.from("hosting_clients").select("notes").eq("id", hostRow.id).maybeSingle();
             const notes = writeDomainRecord(fresh?.notes ?? hostRow.notes, {
               domain: domainWanted,
@@ -501,9 +681,11 @@ async function handleEventBody(event: Stripe.Event, stripe: Stripe, db: Db, send
                 `DOMAIN NOT BOUGHT - ${domainWanted}`,
                 `Client paid for it: ${session.metadata?.business || customerEmail || "unknown"}`,
                 `Reason: ${outcome.reason}${outcome.detail ? ` (${outcome.detail})` : ""}`,
-                outcome.reason === "no-contact" || outcome.reason === "not-configured"
-                  ? `Set VERCEL_TOKEN, VERCEL_TEAM_ID and DOMAIN_CONTACT_JSON, then press Buy on the client's page.`
-                  : `Press Buy on the client's page, or buy it by hand.`,
+                domainUnfunded
+                  ? `Nothing was spent. Decide: buy it anyway (Buy on the client's page), or tell the client their payment did not cover the domain.`
+                  : outcome.reason === "no-contact" || outcome.reason === "not-configured"
+                    ? `Set VERCEL_TOKEN, VERCEL_TEAM_ID and DOMAIN_CONTACT_JSON, then press Buy on the client's page.`
+                    : `Press Buy on the client's page, or buy it by hand.`,
                 hostRow?.id ? `https://servolia.com/admin/hosting/${hostRow.id}` : `https://servolia.com/admin/hosting`,
               ].join("\n"),
             );
@@ -574,7 +756,8 @@ async function handleEventBody(event: Stripe.Event, stripe: Stripe, db: Db, send
             portalUrl: subId ? await accountLinkFor(subId, "https://servolia.com").catch(() => null) : null,
             lang: emailLang,
           });
-          sends.add("hosting receipt", sendEmail(customerEmail, tpl.subject, tpl.html));
+          const sent = withReverseCharge(tpl, session.customer_details, emailLang);
+          sends.add("hosting receipt", sendEmail(customerEmail, sent.subject, sent.html));
         } else if (customerEmail) {
           const copy = product ? productCopy(product, emailLang) : null;
           /* The switch-to-yearly offer, minted only when the year is actually
@@ -646,7 +829,40 @@ async function handleEventBody(event: Stripe.Event, stripe: Stripe, db: Db, send
                 }
               : null,
           });
-          sends.add("hosting receipt", sendEmail(customerEmail, tpl.subject, tpl.html));
+          const sent = withReverseCharge(tpl, session.customer_details, emailLang);
+          sends.add("hosting receipt", sendEmail(customerEmail, sent.subject, sent.html));
+        }
+
+        /* A SECOND LIVE SUBSCRIPTION FOR THE SAME SITE (P3, 2026-10-02).
+           Several hosting rows per address are legitimate (an agency, a
+           second site, the assistant beside the hosting), so this compares
+           SITES: another live row for this address, on the same repository
+           or domain, for a hosting tier when this is a tier (or the same
+           add-on). That is a client billed twice for one thing. Told, never
+           cancelled: which one goes is a person's decision. */
+        if (customerEmail && subId) {
+          const hostOf = (u: unknown) => {
+            const s = typeof u === "string" ? u.trim() : "";
+            if (!s) return "";
+            try { return new URL(/^https?:\/\//i.test(s) ? s : `https://${s}`).hostname.replace(/^www\./, "").toLowerCase(); } catch { return ""; }
+          };
+          const mySites = new Set([hostRef?.repo, session.metadata?.repo, domainWanted, hostOf(session.metadata?.site_url), ownedLink?.domain ?? ""]
+            .map((s) => String(s ?? "").trim().toLowerCase()).filter(Boolean));
+          if (mySites.size) {
+            type Other = { id: string; business: string | null; plan: string | null; status: string | null; subscription_id: string | null; repo: string | null; site_url: string | null };
+            const others = (await rowsForEmail<Other>(db, "hosting_clients", "id, business, plan, status, subscription_id, repo, site_url, created_at", customerEmail, { test, statuses: LIVE_ROW_STATUSES }))
+              .filter((r) => r.id !== hostRow?.id && r.subscription_id && r.subscription_id !== subId)
+              .filter((r) => (isTier ? HOSTING_TIERS.includes(String(r.plan ?? "")) : r.plan === planKey))
+              .filter((r) => [r.repo, hostOf(r.site_url)].some((s) => s && mySites.has(String(s).trim().toLowerCase())));
+            if (others.length) {
+              sends.alert(
+                `SECOND SUBSCRIPTION for the same site — ${session.metadata?.business || customerEmail}\n` +
+                `${customerEmail} just paid ${product?.name ?? planKey} (${subId}) while ${others.map((o) => `${o.plan} ${o.subscription_id} (row ${o.id}, ${o.status})`).join(", ")} is still live for ${[...mySites].join(" / ")}.\n` +
+                `Nothing was cancelled. Cancel and refund one of them in Stripe, then mark its row churned.\n` +
+                `https://servolia.com/admin/hosting/${others[0].id}`,
+              );
+            }
+          }
         }
 
         /* And tell the owner (Telegram + email). A hosting client once paid
@@ -718,7 +934,8 @@ async function handleEventBody(event: Stripe.Event, stripe: Stripe, db: Db, send
         if (hostRow?.id) {
           const { data: fresh } = await db.from("hosting_clients").select("notes").eq("id", hostRow.id).maybeSingle();
           await db.from("hosting_clients").update({
-            notes: writeFulfilment(fresh?.notes ?? hostRow.notes, {
+            // The buyer's EU VAT number too, when reverse charge applies (src/lib/vat.ts).
+            notes: writeFulfilment(writeVatNote(fresh?.notes ?? hostRow.notes, session.customer_details), {
               session: session.id,
               at: new Date().toISOString(),
               plan: planKey,
@@ -735,8 +952,10 @@ async function handleEventBody(event: Stripe.Event, stripe: Stripe, db: Db, send
        * was named, and the client is told in a Servolia email either way —
        * a name the registrar refused is a refund to make, said out loud.
        *
-       * Its own try/catch: this handler's outer catch answers 200, so Stripe
-       * never retries a throw — a client who paid must not vanish into a log.
+       * Its own try/catch, answering 200 with its own owner notice: a throw
+       * after the claim would meet "interrupted" on any redelivery, so a
+       * retry could not finish the job anyway (the outer catch answers 500
+       * for every other branch since 2026-10-02).
        * A replay (Stripe's, or a "Resend" from the dashboard) finds the record
        * on the customer, and two deliveries at once meet an atomic claim:
        * either way nothing is bought twice and nothing is said twice.
@@ -799,26 +1018,96 @@ async function handleEventBody(event: Stripe.Event, stripe: Stripe, db: Db, send
         const subId = session.metadata?.subscription_id ?? "";
         const ref = session.metadata?.ref ?? "";
 
-        if (db && domain && subId) {
-          const { data: row } = await db
-            .from("hosting_clients")
-            .select("id, notes, business")
-            .eq("subscription_id", subId)
-            .maybeSingle();
+        /* NEVER SILENT (P6, 2026-10-02). This branch used to answer 200 and
+           say nothing when the hosting row was not found, or when the domain
+           was already recorded — even if recorded by a DIFFERENT payment, i.e.
+           the client paid twice. Only a redelivery of the SAME session is
+           quiet now (the record carries the session that bought it). Each
+           alert goes once per session. */
+        const who0 = ref || session.customer_details?.email || domain || session.id;
+        const { data: row } = db && domain && subId
+          ? await db.from("hosting_clients").select("id, notes, business").eq("subscription_id", subId).maybeSingle()
+          : { data: null };
+        if (!row || !domain) {
+          if (await firstTime(db, `extra-domain-unmatched:${session.id}`)) {
+            sends.owner({
+              subject: troubleSubject("Extra domain paid, NOT bought", domain || "unreadable domain", who0),
+              lines: [
+                `${who0} PAID ${money(retail, "usd")} for ${domain || "a domain the session does not name"} and nothing was bought:`,
+                !domain || !subId ? `the session carries ${!domain ? "no domain" : "no subscription id"} (${session.id}).` : `no hosting row has subscription ${subId}.`,
+                "Stripe will redeliver this event for a few days; if the row appears it is bought then.",
+                "Next: find the client's row (or the payment in Stripe) and buy it by hand, or refund.",
+              ],
+              link: "https://servolia.com/admin/hosting",
+            });
+          }
+          // Not 200: a row that appears later (or a fixed one) is bought on the redelivery.
+          return NextResponse.json({ received: false, line: "extra-domain", unmatched: true }, { status: 500 });
+        }
+        {
           const notes = (row as { notes?: string | null } | null)?.notes ?? null;
+          const already = readExtraDomains(notes).find((d) => d.domain === domain);
+          if (already && already.session === session.id) {
+            return NextResponse.json({ received: true, line: "extra-domain", replay: true });
+          }
+          if (already) {
+            // Recorded by another payment (or before sessions were recorded): maybe paid twice.
+            if (await firstTime(db, `extra-domain-again:${session.id}`)) {
+              const who = ref || (row as { business?: string | null }).business || session.customer_details?.email || domain;
+              sends.owner({
+                subject: troubleSubject("Extra domain paid AGAIN", domain, who),
+                lines: [
+                  `${who} paid ${money(retail, "usd")} for ${domain}, which their row already records${already.session ? ` from another payment (${already.session})` : ""} (${already.failed ? `failed: ${already.failed}` : `bought ${already.boughtAt ?? "?"}`}).`,
+                  `This payment: ${session.id}. Nothing was bought.`,
+                  "Next: check Stripe; refund this payment if it is a second charge for the same domain.",
+                ],
+                link: `https://servolia.com/admin/hosting/${(row as { id: string }).id}`,
+              });
+            }
+            /* 200: a redelivery cannot change this answer, and retrying it for
+               days would only repeat a delivery failure Stripe reports. */
+            return NextResponse.json({ received: true, line: "extra-domain", conflict: true });
+          }
 
-          if (row && !hasExtraDomain(notes, domain)) {
+          /* CLAIMED BEFORE THE REGISTRAR IS CALLED (claimExtraDomain). */
+          const rowId = (row as { id: string }).id;
+          const claim = await claimExtraDomain(db, rowId, domain, session.id, notes);
+          if (claim === "lost") {
+            // The other delivery holds it and does the rest, owner notice included.
+            return NextResponse.json({ received: true, line: "extra-domain", concurrent: true });
+          }
+          if (claim !== "won") {
+            if (await firstTime(db, `extra-domain-claim:${session.id}`)) {
+              sends.owner({
+                subject: troubleSubject("Extra domain paid, NOT bought", domain, ref || (row as { business?: string | null }).business || session.customer_details?.email),
+                lines: [
+                  claim === "interrupted"
+                    ? `An earlier delivery started buying ${domain} and never recorded how it ended. Nothing was bought this time.`
+                    : `The purchase of ${domain} could not be claimed (database). Nothing was bought.`,
+                  `Payment ${session.id}, ${money(retail, "usd")}.`,
+                  "Next: check Vercel > Domains for the name; record it on the row (or buy it) by hand, or refund.",
+                ],
+                link: `https://servolia.com/admin/hosting/${rowId}`,
+              });
+            }
+            return NextResponse.json({ received: true, line: "extra-domain", claim });
+          }
+
+          if (!hasExtraDomain(notes, domain)) {
             // Never bought on a test purchase (recorded as failed: TEST).
             const outcome = test
               ? { ok: false as const, reason: "TEST: domain not bought" }
               : await purchaseDomainForClient(domain, retail);
             const next = new Date(Date.now() + 365 * 86400000).toISOString().slice(0, 10);
+            // The session is recorded so a redelivery is told apart from a second payment.
             const rec = outcome.ok
-              ? { domain, retailUsd: retail, orderId: outcome.orderId, boughtAt: new Date().toISOString().slice(0, 10), nextChargeAt: next }
-              : { domain, retailUsd: retail, failed: outcome.reason };
+              ? { domain, retailUsd: retail, orderId: outcome.orderId, boughtAt: new Date().toISOString().slice(0, 10), nextChargeAt: next, session: session.id }
+              : { domain, retailUsd: retail, failed: outcome.reason, session: session.id };
+            // The outcome replaces the claim line (re-read: the claim is in the row now).
+            const { data: fresh } = await db.from("hosting_clients").select("notes").eq("id", rowId).maybeSingle();
             await db.from("hosting_clients")
-              .update({ notes: writeExtraDomain(notes, rec) })
-              .eq("id", (row as { id: string }).id);
+              .update({ notes: writeExtraDomain(dropExtraClaim(((fresh as { notes?: string | null } | null)?.notes) ?? notes, domain), rec) })
+              .eq("id", rowId);
 
             // Once per domain: a replay finds it recorded (hasExtraDomain) and stops above.
             const who = ref || (row as { business?: string | null }).business || session.customer_details?.email || domain;
@@ -950,7 +1239,8 @@ async function handleEventBody(event: Stripe.Event, stripe: Stripe, db: Db, send
               : "we declare your languages (hreflang), write a sitemap per language and the structured data, and email you when it is in place — within five working days.",
             lang,
           });
-          receipt = emailOutcome(await sends.add("one-off receipt", sendEmail(customerEmail, tpl.subject, tpl.html)));
+          const sent = withReverseCharge(tpl, session.customer_details, lang);
+          receipt = emailOutcome(await sends.add("one-off receipt", sendEmail(customerEmail, sent.subject, sent.html)));
         }
         sends.owner({
           subject: paidSubject("multilingual search setup (one-off)", amount, session.currency ?? "usd", siteLabel || customerEmail),
@@ -994,12 +1284,13 @@ async function handleEventBody(event: Stripe.Event, stripe: Stripe, db: Db, send
         const siteLabel = session.metadata?.ref || "";
 
         if (customerEmail) {
-          const tpl = balanceSettledEmail({
+          const arrearsLang = session.metadata?.lang === "fr" ? "fr" : "en";
+          const tpl = withReverseCharge(balanceSettledEmail({
             siteLabel,
             amountUsd: amount,
             label,
-            lang: session.metadata?.lang === "fr" ? "fr" : "en",
-          });
+            lang: arrearsLang,
+          }), session.customer_details, arrearsLang);
           sends.add("arrears receipt", sendEmail(customerEmail, tpl.subject, tpl.html));
         }
 
@@ -1059,13 +1350,13 @@ async function handleEventBody(event: Stripe.Event, stripe: Stripe, db: Db, send
         if (!out.already) {
           const plan = resolvePlan(session.metadata?.plan);
           if (customerEmail && plan) {
-            const tpl = receptionistPaidEmail({
+            const tpl = withReverseCharge(receptionistPaidEmail({
               business: out.business,
               domain: (await loadReceptionist(session.metadata?.slug ?? ""))?.config.receptionist?.domain ?? out.business,
               planName: lang === "fr" ? plan.nameFr : plan.name,
               conversations: plan.conversations,
               lang,
-            });
+            }), session.customer_details, lang);
             sends.add("receptionist receipt", sendEmail(customerEmail, tpl.subject, tpl.html));
           }
           // Once: a replay comes back out.already and skips this block.
@@ -1210,6 +1501,8 @@ async function handleEventBody(event: Stripe.Event, stripe: Stripe, db: Db, send
           status: "active",
           customer_id: (session.customer as string) ?? null,
           subscription_id: subscriptionId,
+          // The buyer's EU VAT number, when reverse charge applies (src/lib/vat.ts).
+          ...(writeVatNote(null, session.customer_details) ? { notes: writeVatNote(null, session.customer_details) } : {}),
           ...testTag(),
         }).select("id").single();
         if (clientErr || !client) {
@@ -1249,9 +1542,9 @@ async function handleEventBody(event: Stripe.Event, stripe: Stripe, db: Db, send
           // address's local part ("Hi hello," for hello@...).
           const firstName = firstNameFrom(session.customer_details?.name);
           const emailLang = session.metadata?.lang === "fr" ? "fr" : "en";
-          const tpl = installationPaidEmail(firstName, planLabel, amount, emailLang, {
+          const tpl = withReverseCharge(installationPaidEmail(firstName, planLabel, amount, emailLang, {
             sessionId: session.id, plan: planKey, billing,
-          });
+          }), session.customer_details, emailLang);
           sends.add("welcome email", sendEmail(customerEmail, tpl.subject, tpl.html));
         }
 
@@ -1276,6 +1569,27 @@ async function handleEventBody(event: Stripe.Event, stripe: Stripe, db: Db, send
             `INSTALLATION CHARGED TWICE - refund EUR ${installationPaid.toLocaleString()} to ${customerEmail}: their build had EUR ${reusedDeposit.toLocaleString()} already paid.\nhttps://servolia.com/admin/builds/${buildId}`,
             undefined, { plain: true },
           ).catch(() => {});
+        }
+
+        /* A SECOND LIVE PLAN FOR THE SAME EMAIL (P3, 2026-10-02). The
+           checkout refuses one for a logged-in buyer (checkout-subscription),
+           but an anonymous /pricing visitor is only known once Stripe has
+           their address. Two plans on one address may be a duplicate — or a
+           second practice: the owner is asked to check, never told to refund,
+           and nothing is cancelled automatically. */
+        if (customerEmail && subscriptionId) {
+          type Other = { id: string; plan: string | null; status: string | null; subscription_id: string | null };
+          const others = (await rowsForEmail<Other>(db, "clients", "id, plan, status, subscription_id, created_at", customerEmail, { test, statuses: LIVE_ROW_STATUSES }))
+            .filter((r) => r.id !== client.id && r.subscription_id && r.subscription_id !== subscriptionId);
+          if (others.length) {
+            await sendTelegramMessage(
+              `Second plan for the same email - ${customerEmail}\n` +
+              `Just paid ${planLabel} (${subscriptionId}) while ${others.map((o) => `${o.plan ?? "a plan"} ${o.subscription_id} (client ${o.id}, ${o.status})`).join(", ")} is still live.\n` +
+              `Second practice or duplicate? Check with the client before refunding anything. Nothing was cancelled.\n` +
+              `https://servolia.com/admin/clients/${others[0].id}`,
+              undefined, { plain: true },
+            ).catch(() => {});
+          }
         }
 
         // Once per subscription: a replay stopped at the subscription_id check above.
@@ -1327,14 +1641,17 @@ async function handleEventBody(event: Stripe.Event, stripe: Stripe, db: Db, send
         let credited = false;
         let business = customerEmail;
         if (customerEmail && conversations > 0) {
-          // A test pack is credited only to a test client; a paid one never.
-          const { data: row } = await excludeTest(db, (live) => {
-            const rowQ = db.from("clients").select("id, business, notes")
-              .ilike("email", customerEmail).in("status", ["active", "past_due", "paused"]);
-            return (test ? rowQ.eq("is_test", true) : live(rowQ))
-              .order("created_at", { ascending: false }).limit(1).maybeSingle();
-          });
-          const c = row as { id: string; business: string; notes: string | null } | null;
+          /* A test pack is credited only to a test client; a paid one never.
+             EXACT address, case aside (rowsForEmail): `ilike` alone read `_`
+             and `%` in an address as wildcards, so marie_dubois@ could credit
+             the pack to marieXdubois@'s account. metadata.email (the portal
+             login our server put on the session) is asked first, then the
+             address typed on Stripe's page. */
+          const { rows: [row] } = await rowsForFirstEmail<{ id: string; business: string; notes: string | null }>(
+            db, "id, business, notes, created_at",
+            [session.metadata?.email, session.customer_details?.email, session.customer_email],
+            { test, statuses: ["active", "past_due", "paused"] });
+          const c = row ?? null;
           if (c) {
             business = c.business;
             const notes = writeTopup(c.notes, { conversations, month, session: session.id });
@@ -1347,7 +1664,7 @@ async function handleEventBody(event: Stripe.Event, stripe: Stripe, db: Db, send
           }
         }
         if (customerEmail && credited) {
-          const tpl = topupReceiptEmail({ businessName: business, conversations, priceEur: pack?.priceEur ?? (session.amount_total ?? 0) / 100, month, lang });
+          const tpl = withReverseCharge(topupReceiptEmail({ businessName: business, conversations, priceEur: pack?.priceEur ?? (session.amount_total ?? 0) / 100, month, lang }), session.customer_details, lang);
           sends.add("top-up receipt", sendEmail(customerEmail, tpl.subject, tpl.html));
         }
         // Once per session: a replay found its marker on the notes and returned above.
@@ -1492,7 +1809,7 @@ async function handleEventBody(event: Stripe.Event, stripe: Stripe, db: Db, send
         // The name on the payment, or a neutral greeting — never the local part.
         const firstName = firstNameFrom(session.customer_details?.name);
         const emailLang = session.metadata?.lang === "fr" ? "fr" : "en";
-        const tpl = installationPaidEmail(firstName, build.plan_name ?? "system", amountPaid, emailLang, { sessionId });
+        const tpl = withReverseCharge(installationPaidEmail(firstName, build.plan_name ?? "system", amountPaid, emailLang, { sessionId }), session.customer_details, emailLang);
         sends.add("payment email", sendEmail(customerEmail, tpl.subject, tpl.html));
       }
 
@@ -1522,16 +1839,48 @@ async function handleEventBody(event: Stripe.Event, stripe: Stripe, db: Db, send
       }
     }
 
+    /* ── A FAILED PLAN-CHANGE INVOICE IS NOT A FAILED RENEWAL (2026-10-02) ──
+       The monthly→yearly switch (src/lib/upgrade.ts applyUpgrade) charges an
+       invoice with billing_reason "subscription_update" and, with
+       payment_behavior "pending_if_incomplete", applies NOTHING unless it is
+       paid. When the card declines (or the bank wants 3-D Secure and the
+       client never confirms), Stripe still sends invoice.payment_failed for
+       that invoice. The branches below would then mark the client past due,
+       set a suspension date, store a link to an invoice we void, and email
+       "your payment failed, service stops on <date>" to a client whose plan
+       never changed. So: no row change, no client email — the owner gets one
+       quiet line per invoice. A plan changed BY HAND in the dashboard with an
+       invoice that then fails lands here too; that case is for the owner. */
+    if (event.type === "invoice.payment_failed" && (event.data.object as Stripe.Invoice).billing_reason === "subscription_update") {
+      const inv = event.data.object as Stripe.Invoice;
+      if (await firstTime(db, `plan-change-invoice-failed:${inv.id}`)) {
+        sends.alert(
+          `Plan-change invoice not paid - ${inv.customer_name || inv.customer_email || customerIdOf(inv) || "a client"}\n` +
+          `${inv.id} (${money((inv.amount_due ?? 0) / 100, inv.currency ?? "usd")}), subscription ${invoiceSubscriptionId(inv) ?? "?"}.\n` +
+          `Not treated as a failed renewal: nobody was marked past due or emailed. A switch to yearly made from our link changed nothing (the client was told on screen). If you changed this plan by hand in Stripe, check it.`,
+          { silent: true },
+        );
+      }
+      return NextResponse.json({ received: true, ignored: "subscription_update" });
+    }
+
     // ── Recurring invoice failed: flag past_due, start grace, notify ──────
     if (event.type === "invoice.payment_failed") {
-      const invoice = event.data.object as Stripe.Invoice & { subscription?: string | null };
-      const subscriptionId = typeof invoice.subscription === "string" ? invoice.subscription : null;
-      const customerId = typeof invoice.customer === "string" ? invoice.customer : null;
+      const invoice = event.data.object as Stripe.Invoice;
+      /* BY SUBSCRIPTION ONLY (P1/P2, 2026-10-02). The id is read where the
+         pinned API version puts it (invoiceSubscriptionId), and a standalone
+         invoice — a domain renewal billed on its own, an owned-domain year
+         charged on cancellation — has none: it must not mark a plan client
+         past due. It used to match `customer_id` too, which on a returning
+         client picked whichever row shared the customer. */
+      const subscriptionId = invoiceSubscriptionId(invoice);
       const reason = invoice.last_finalization_error?.message ?? "Card declined or expired";
 
-      const { data: existing } = await db.from("clients").select("id, past_due_since, business, email, plan, build_id")
-        .or([subscriptionId ? `subscription_id.eq.${subscriptionId}` : null, customerId ? `customer_id.eq.${customerId}` : null].filter(Boolean).join(","))
-        .order("created_at", { ascending: false }).limit(1).maybeSingle();
+      const { data: existing } = subscriptionId
+        ? await db.from("clients").select("id, past_due_since, business, email, plan, build_id")
+            .eq("subscription_id", subscriptionId)
+            .order("created_at", { ascending: false }).limit(1).maybeSingle()
+        : { data: null };
 
       if (existing) {
         const now = new Date();
@@ -1557,7 +1906,8 @@ async function handleEventBody(event: Stripe.Event, stripe: Stripe, db: Db, send
           const plan = resolvePlan(existing.plan as string | null);
           let lang: "en" | "fr" = "fr";
           try {
-            const s = await stripe.checkout.sessions.list({ subscription: subscriptionId, limit: 1 });
+            // Same key as `stripe`, through the seam the tests fake (src/lib/stripeMode.ts).
+            const s = await (stripeFor(event.livemode) ?? stripe).checkout.sessions.list({ subscription: subscriptionId, limit: 1 });
             const l = s.data[0]?.metadata?.lang;
             if (l === "en" || l === "fr") lang = l;
           } catch { /* French: the market these plans are sold to */ }
@@ -1585,7 +1935,10 @@ async function handleEventBody(event: Stripe.Event, stripe: Stripe, db: Db, send
         }
 
         {
-          const told = clientFailureLine(emailed);
+          const told = clientFailureLine(emailed,
+            existing.past_due_since ? "Client already told on the first failure."
+              : !existing.email ? "No address on file — the client was NOT told."
+              : "Client NOT told (no subscription id on the invoice for their billing link).");
           const planName = resolvePlan(existing.plan as string | null)?.name ?? (existing.plan as string | null) ?? "plan";
           const who = (existing.business as string | null) ?? (existing.email as string | null) ?? "Unknown client";
           sends.owner({
@@ -1597,7 +1950,7 @@ async function handleEventBody(event: Stripe.Event, stripe: Stripe, db: Db, send
               invoice.attempt_count ? `Attempt ${invoice.attempt_count} — Stripe retries on its own schedule.` : null,
               `Grace ends: ${new Date(suspendAt).toLocaleDateString()}`,
               told,
-              emailed === "failed" ? "Next: tell the client by hand."
+              emailed === "failed" || (emailed === "not-this-time" && !existing.past_due_since) ? "Next: tell the client by hand."
                 : emailed === "unconfirmed" ? "Next: check the email went (Resend logs), or tell the client by hand."
                 : "Next: watch for the retry; nothing suspends an EUR plan automatically.",
             ],
@@ -1612,18 +1965,14 @@ async function handleEventBody(event: Stripe.Event, stripe: Stripe, db: Db, send
     // subscription belongs to exactly one of the two tables, so whichever
     // lookup misses simply updates nothing.
     if (event.type === "invoice.payment_failed") {
-      const invoice = event.data.object as Stripe.Invoice & { subscription?: string | null };
-      const subscriptionId = typeof invoice.subscription === "string" ? invoice.subscription : null;
-      const customerId = typeof invoice.customer === "string" ? invoice.customer : null;
-      const filter = [
-        subscriptionId ? `subscription_id.eq.${subscriptionId}` : null,
-        customerId ? `customer_id.eq.${customerId}` : null,
-      ].filter(Boolean).join(",");
+      const invoice = event.data.object as Stripe.Invoice;
+      // By subscription only: see the clients branch above.
+      const subscriptionId = invoiceSubscriptionId(invoice);
 
-      if (filter) {
+      if (subscriptionId) {
         const { data: host } = await db.from("hosting_clients")
           .select("id, past_due_since, business, repo, branch, site_root, email, plan, subscription_id, payment_status")
-          .or(filter).maybeSingle();
+          .eq("subscription_id", subscriptionId).maybeSingle();
 
         if (host) {
           const now = new Date();
@@ -1699,13 +2048,42 @@ async function handleEventBody(event: Stripe.Event, stripe: Stripe, db: Db, send
       }
     }
 
+    /* ── An ADD-ON's renewal failed (P5): named from its record. Neither
+       table's subscription_id holds an add-on's, so both branches above
+       matched nothing and this used to be silent. Nothing is suspended: an
+       add-on is a line of work, and the owner decides. */
+    if (event.type === "invoice.payment_failed") {
+      const invoice = event.data.object as Stripe.Invoice;
+      const subscriptionId = invoiceSubscriptionId(invoice);
+      const hit = subscriptionId ? await addonOwnerFor(db, subscriptionId) : null;
+      if (hit) {
+        const label = ADDONS[hit.addon.addon]?.name ?? hit.addon.addon;
+        sends.owner({
+          subject: troubleSubject("Payment failed", `add-on ${label}${invoice.amount_due ? ` — ${money(invoice.amount_due / 100, invoice.currency ?? "eur")}` : ""}`, hit.business || hit.email),
+          lines: [
+            `🔴 Add-on payment failed — ${hit.business ?? hit.email ?? "a client"}: ${label} (${subscriptionId})`,
+            hit.email || null,
+            invoice.attempt_count ? `Attempt ${invoice.attempt_count} — Stripe retries on its own schedule.` : null,
+            "Stripe emails the client its own failed-payment notice if that setting is on; Servolia sends none for add-ons.",
+            "Next: watch for the retry; if it keeps failing, decide whether to switch the add-on off.",
+          ],
+          link: `https://servolia.com/admin/clients/${hit.id}`,
+        });
+      }
+    }
+
     // ── Invoice paid: clear past_due back to ok, unsuspend if needed ──────
     if (event.type === "invoice.paid" || event.type === "invoice.payment_succeeded") {
-      const invoice = event.data.object as Stripe.Invoice & { subscription?: string | null };
-      const subscriptionId = typeof invoice.subscription === "string" ? invoice.subscription : null;
-      const customerId = typeof invoice.customer === "string" ? invoice.customer : null;
-      const filter = [subscriptionId ? `subscription_id.eq.${subscriptionId}` : null, customerId ? `customer_id.eq.${customerId}` : null].filter(Boolean).join(",");
-      if (filter) {
+      const invoice = event.data.object as Stripe.Invoice;
+      /* BY SUBSCRIPTION ONLY (P1, 2026-10-02). This matched `customer_id`
+         too, so ANY paid invoice on a returning client's customer — a
+         standalone domain renewal, an owned-domain year charged on their
+         cancellation — set a churned or suspended hosting row back to
+         active, switched a cancelled domain's Vercel auto-renew back on and
+         lifted a suspended site's gate. A standalone invoice (no
+         subscription) now touches no status, no gate, no auto-renew. */
+      const subscriptionId = invoiceSubscriptionId(invoice);
+      if (subscriptionId) {
         await db.from("clients").update({
           payment_status: "ok",
           past_due_since: null,
@@ -1713,7 +2091,7 @@ async function handleEventBody(event: Stripe.Event, stripe: Stripe, db: Db, send
           suspended_at: null,
           last_payment_failure_reason: null,
           open_invoice_url: null,
-        }).or(filter);
+        }).eq("subscription_id", subscriptionId);
 
         /* Hosting equivalent — and the half that makes automatic suspension
          * safe to have at all.
@@ -1729,7 +2107,7 @@ async function handleEventBody(event: Stripe.Event, stripe: Stripe, db: Db, send
          */
         const { data: wasHost } = await db.from("hosting_clients")
           .select("id, business, status, plan, repo, branch, site_root, subscription_id, notes")
-          .or(filter).maybeSingle();
+          .eq("subscription_id", subscriptionId).maybeSingle();
 
         /* A CLIENT WHO CAME BACK with a domain we already owned
          * (src/lib/ownedDomain.ts): their cancellation switched its Vercel
@@ -1761,7 +2139,27 @@ async function handleEventBody(event: Stripe.Event, stripe: Stripe, db: Db, send
           past_due_since: null,
           suspend_at: null,
           open_invoice_url: null,
-        }).or(filter);
+        }).eq("subscription_id", subscriptionId);
+
+        /* A PLAN CHANGE THAT WAS PAID LATER (2026-10-02): the switch to yearly
+           waits on 3-D Secure (src/lib/upgrade.ts applyUpgrade answers
+           "needs-authentication"), the client confirms on Stripe's invoice
+           page, Stripe applies the pending update — and our row must follow.
+           Read from the subscription itself, only when it is now yearly. */
+        if (event.type === "invoice.paid" && invoice.billing_reason === "subscription_update" && wasHost?.id) {
+          try {
+            const live = await (stripeFor(event.livemode) ?? stripe).subscriptions.retrieve(subscriptionId);
+            const it = live.items?.data?.[0];
+            if (it?.price?.recurring?.interval === "year" && typeof it.price.unit_amount === "number") {
+              await db.from("hosting_clients").update({ billing_period: "annual", monthly_usd: it.price.unit_amount / 100 / 12 }).eq("id", wasHost.id);
+              if (live.metadata?.period !== "annual") {
+                await (stripeFor(event.livemode) ?? stripe).subscriptions.update(subscriptionId, { metadata: { ...live.metadata, period: "annual" } });
+              }
+            }
+          } catch (err) {
+            sends.alert(`${wasHost.business ?? "A client"}: a paid plan change could not be copied to their row (${err instanceof Error ? err.message : String(err)}) — set billing period by hand.`);
+          }
+        }
 
         /* Only a hosting TIER has a site gate to lift. A suspended add-on (the
            AI assistant) comes back by itself: its widget reads this row's
@@ -1805,10 +2203,12 @@ async function handleEventBody(event: Stripe.Event, stripe: Stripe, db: Db, send
         if (event.type === "invoice.paid" && (invoice.amount_paid ?? 0) > 0 && invoice.billing_reason !== "subscription_create") {
           const { data: planClient } = wasHost
             ? { data: null }
-            : await db.from("clients").select("id, business, email, plan").or(filter)
+            : await db.from("clients").select("id, business, email, plan").eq("subscription_id", subscriptionId)
                 .order("created_at", { ascending: false }).limit(1).maybeSingle();
           const pc = planClient as { id: string; business: string | null; email: string | null; plan: string | null } | null;
-          const who = wasHost?.business || pc?.business || invoice.customer_name || invoice.customer_email;
+          // Neither table: an add-on's renewal, named from its record (P5).
+          const addonHit = wasHost || pc ? null : await addonOwnerFor(db, subscriptionId);
+          const who = wasHost?.business || pc?.business || addonHit?.business || invoice.customer_name || invoice.customer_email;
           /* subscription_update is a plan CHANGE (the switch to yearly, a
              tier change, their proration) — not a renewal, and saying
              "renewal" hides that the client's plan just moved. */
@@ -1816,7 +2216,9 @@ async function handleEventBody(event: Stripe.Event, stripe: Stripe, db: Db, send
           const kind = planChange ? "plan changed" : "renewal";
           const what = wasHost
             ? `${resolveHostingPlan(wasHost.plan as string | null)?.name ?? "hosting"} ${kind}`
-            : `${resolvePlan(pc?.plan)?.name ?? "plan"} ${kind}`;
+            : addonHit
+              ? `add-on ${ADDONS[addonHit.addon.addon]?.name ?? addonHit.addon.addon} ${kind}`
+              : `${resolvePlan(pc?.plan)?.name ?? (pc ? "plan" : "untracked subscription")} ${kind}`;
           const line = invoice.lines?.data?.[0]?.description;
           sends.owner({
             subject: paidSubject(what, invoice.amount_paid / 100, invoice.currency ?? "eur", who),
@@ -1832,8 +2234,50 @@ async function handleEventBody(event: Stripe.Event, stripe: Stripe, db: Db, send
             ],
             link: wasHost?.id
               ? `https://servolia.com/admin/hosting/${wasHost.id}`
-              : pc?.id ? `https://servolia.com/admin/clients/${pc.id}` : "https://servolia.com/admin/clients",
+              : pc?.id ? `https://servolia.com/admin/clients/${pc.id}`
+              : addonHit ? `https://servolia.com/admin/clients/${addonHit.id}` : "https://servolia.com/admin/clients",
           });
+        }
+      }
+    }
+
+    /* ── An invoice was VOIDED (2026-10-02, defensive) ──────────────────────
+       A voided invoice will never be paid, so it can no longer be what a row
+       is past due on. The monthly→yearly switch voids its own unpaid invoice
+       (the failure itself is ignored above), and an owner may void one by
+       hand. Only rows whose stored open_invoice_url IS this invoice's link —
+       on this subscription — are cleared: past due goes back to ok. A row
+       already SUSPENDED is not lifted here (that gate is a decision): the
+       owner is told instead. */
+    if (event.type === "invoice.voided") {
+      const inv = event.data.object as Stripe.Invoice;
+      const subId = invoiceSubscriptionId(inv);
+      const url = inv.hosted_invoice_url ?? null;
+      if (subId && url) {
+        const cleared: string[] = [];
+        const { data: pcs } = await db.from("clients").select("id, business, email").eq("subscription_id", subId).eq("open_invoice_url", url);
+        for (const c of ((pcs ?? []) as { id: string; business: string | null; email: string | null }[])) {
+          await db.from("clients").update({
+            payment_status: "ok", past_due_since: null, suspend_at: null, last_payment_failure_reason: null, open_invoice_url: null,
+          }).eq("id", c.id);
+          cleared.push(c.business || c.email || c.id);
+        }
+        const { data: hcs } = await db.from("hosting_clients").select("id, business, email, status").eq("subscription_id", subId).eq("open_invoice_url", url);
+        let suspendedLeft: string | null = null;
+        for (const h of ((hcs ?? []) as { id: string; business: string | null; email: string | null; status: string | null }[])) {
+          if (h.status === "suspended") { suspendedLeft = h.business || h.email || h.id; continue; }
+          await db.from("hosting_clients").update({
+            ...(h.status === "past_due" ? { status: "active" } : {}),
+            payment_status: "ok", past_due_since: null, suspend_at: null, open_invoice_url: null,
+          }).eq("id", h.id);
+          cleared.push(h.business || h.email || h.id);
+        }
+        if (cleared.length || suspendedLeft) {
+          sends.alert(
+            `Invoice ${inv.id} voided${cleared.length ? ` - past due cleared for ${cleared.join(", ")}` : ""}.` +
+            `${suspendedLeft ? ` ${suspendedLeft} is SUSPENDED on that invoice: it was left suspended - lift it by hand if nothing else is owed.` : ""}`,
+            { silent: !suspendedLeft },
+          );
         }
       }
     }
@@ -1904,26 +2348,132 @@ async function handleEventBody(event: Stripe.Event, stripe: Stripe, db: Db, send
 
       {
         const { data: client } = await db.from("clients").select("id, business, email").eq("subscription_id", sub.id).maybeSingle();
-        const who = client?.business ?? client?.email ?? churnedHost?.business ?? "Unknown client";
+        /* AN ADD-ON ENDED (P5): its client is named from the add-on record,
+           which is stamped cancelled (the plan row is NOT churned — the
+           client keeps their plan). This used to say "Unknown client". */
+        const addonHit = client || churnedHost ? null : await addonOwnerFor(db, sub.id);
+        if (addonHit) {
+          const notes = markAddonCancelled(addonHit.notes, sub.id, new Date().toISOString().slice(0, 10));
+          if (notes !== null && notes !== addonHit.notes) await db.from("clients").update({ notes }).eq("id", addonHit.id);
+        }
+        const addonLabel = addonHit ? ADDONS[addonHit.addon.addon]?.name ?? addonHit.addon.addon : null;
+        const who = client?.business ?? client?.email ?? churnedHost?.business ?? addonHit?.business ?? addonHit?.email ?? "Unknown client";
         sends.owner({
-          subject: troubleSubject("Subscription ended", churnedHost ? `hosting${ownedNote ? ` + domain ${ownedNote.domain}` : ""}` : "plan", who),
+          subject: troubleSubject("Subscription ended", churnedHost ? `hosting${ownedNote ? ` + domain ${ownedNote.domain}` : ""}` : addonLabel ? `add-on ${addonLabel}` : "plan", who),
           lines: [
-            `⚠️ Subscription cancelled — ${who}`,
-            client?.email && client.email !== who ? client.email : null,
+            `⚠️ Subscription cancelled — ${who}${addonLabel ? ` (add-on ${addonLabel}; their plan is unchanged)` : ""}`,
+            client?.email && client.email !== who ? client.email : addonHit?.email && addonHit.email !== who ? addonHit.email : null,
             `Stripe subscription ${sub.id}`,
             ownedLine,
             churnedHost
               ? `Next: decide when the site stops being served — nothing is switched off automatically.${ownedKept ? ` The domain's auto-renew goes off by itself after ${ownedKept}.` : ""}`
-              : "Next: nothing is billed again; reach out if it was not intended.",
+              : addonLabel
+                ? `Next: switch the ${addonLabel} off for them (e.g. remove the extra mailboxes); nothing is billed again.`
+                : "Next: nothing is billed again; reach out if it was not intended.",
           ],
           link: churnedHost
             ? `https://servolia.com/admin/hosting/${churnedHost.id}`
-            : client?.id ? `https://servolia.com/admin/clients/${client.id}` : "https://servolia.com/admin/clients",
+            : client?.id ? `https://servolia.com/admin/clients/${client.id}`
+            : addonHit ? `https://servolia.com/admin/clients/${addonHit.id}` : "https://servolia.com/admin/clients",
         });
       }
     }
+
+    /* ── A plan changed BY HAND in Stripe (2026-10-02) ──────────────────────
+       The dashboard (or the portal, if plan switching is ever enabled there)
+       can move a client to another price; clients.plan and monthly_amount
+       then lied to every page and to MRR. Matched on the subscription id
+       only, EUR plans only, and written only when something differs — this
+       event also fires on every renewal and status change. */
+    if (event.type === "customer.subscription.updated") {
+      const sub = event.data.object as Stripe.Subscription;
+      const { data: row } = await db.from("clients").select("id, business, email, plan, monthly_amount, status").eq("subscription_id", sub.id).maybeSingle();
+      const c = row as { id: string; business: string | null; email: string | null; plan: string | null; monthly_amount: number | null; status: string | null } | null;
+      const item = sub.items?.data?.[0];
+      const unit = item?.price?.unit_amount;
+      const interval = item?.price?.recurring?.interval;
+      const qty = item?.quantity ?? 1;
+      if (c && typeof unit === "number" && (interval === "month" || interval === "year") && (item?.price?.currency ?? "eur").toLowerCase() === "eur" && sub.status !== "canceled") {
+        const cents = unit * qty;
+        const billing = interval === "year" ? "annual" : "monthly";
+        const match = Object.values(PLANS).find((p) => planAmountCents(p, billing) === cents);
+        const monthly = Math.round((interval === "year" ? cents / 12 : cents)) / 100;
+        const patch: Record<string, unknown> = {};
+        if (match && match.key !== resolvePlan(c.plan)?.key) patch.plan = match.key;
+        if (Math.abs(Number(c.monthly_amount ?? 0) - monthly) >= 0.01) patch.monthly_amount = monthly;
+        if (Object.keys(patch).length) {
+          const { error } = await db.from("clients").update(patch).eq("id", c.id);
+          const was = `${resolvePlan(c.plan)?.name ?? c.plan ?? "?"} (EUR ${Number(c.monthly_amount ?? 0)}/mo)`;
+          const now = `${match?.name ?? "a price matching no plan"} (EUR ${monthly}/mo, ${billing})`;
+          sends.alert(
+            `Plan changed in Stripe - ${c.business ?? c.email ?? c.id}\n` +
+            `${was} -> ${now}. ${error ? `NOT saved (${error.message}) - update the client row by hand.` : "Client row updated."}` +
+            `${match ? "" : " The plan name was left as it was: set it by hand if this is a custom price."}\n` +
+            `https://servolia.com/admin/clients/${c.id}`,
+          );
+        }
+      }
+    }
+
+    /* ── A DISPUTE (chargeback) was opened (2026-10-02) ─────────────────────
+       Money is held from the moment it opens and the evidence deadline is
+       short; nothing in Servolia heard about it. Read-only: the client is
+       named from the charge's customer, nothing is changed. */
+    // Once per dispute: a redelivery (or Stripe's resend) of the event says nothing again.
+    if (event.type === "charge.dispute.created" && await firstTime(db, `dispute-created:${(event.data.object as Stripe.Dispute).id}`)) {
+      const dispute = event.data.object as Stripe.Dispute;
+      const chargeId = typeof dispute.charge === "string" ? dispute.charge : dispute.charge?.id ?? null;
+      let customerId: string | null = null;
+      let payer: string | null = null;
+      try {
+        const charge = chargeId ? await (stripeFor(event.livemode) ?? stripe).charges.retrieve(chargeId) : null;
+        customerId = charge ? customerIdOf(charge) : null;
+        payer = charge?.billing_details?.email ?? charge?.receipt_email ?? null;
+      } catch { /* named as best we can below */ }
+      let who: string | null = null;
+      let link = "https://servolia.com/admin/clients";
+      if (customerId) {
+        const [{ data: pc }, { data: hc }] = await Promise.all([
+          db.from("clients").select("id, business, email").eq("customer_id", customerId).limit(1).maybeSingle(),
+          db.from("hosting_clients").select("id, business, email").eq("customer_id", customerId).limit(1).maybeSingle(),
+        ]);
+        const p = pc as { id: string; business: string | null; email: string | null } | null;
+        const h = hc as { id: string; business: string | null; email: string | null } | null;
+        who = p?.business || h?.business || p?.email || h?.email || null;
+        if (p) link = `https://servolia.com/admin/clients/${p.id}`;
+        else if (h) link = `https://servolia.com/admin/hosting/${h.id}`;
+      }
+      const due = dispute.evidence_details?.due_by ? new Date(dispute.evidence_details.due_by * 1000).toISOString().slice(0, 10) : "unknown";
+      sends.owner({
+        subject: troubleSubject("Dispute opened", `${money((dispute.amount ?? 0) / 100, dispute.currency ?? "eur")} — evidence due ${due}`, who || payer),
+        lines: [
+          `🚨 Chargeback opened — ${money((dispute.amount ?? 0) / 100, dispute.currency ?? "eur")}, reason: ${dispute.reason ?? "unknown"}`,
+          who ? `Client: ${who}` : `Client: not found in Servolia (customer ${customerId ?? "unknown"})`,
+          payer && payer !== who ? payer : null,
+          `Charge ${chargeId ?? "?"} · dispute ${dispute.id}`,
+          `Evidence due by ${due} — Stripe decides on what is submitted by then.`,
+          "Next: Stripe > Payments > Disputes: submit the signed scope, the receipts and the client's messages before the deadline.",
+        ],
+        link,
+      });
+    }
   } catch (err) {
+    /* AN EXCEPTION IS NOT A SUCCESS (P4, 2026-10-02). This answered 200,
+       so Stripe never retried: a client who paid and hit a throw got nothing
+       and nobody knew. Now 500 — Stripe redelivers, and every branch above is
+       idempotent (keyed on the session / subscription / its records) — and
+       the owner hears once per event, whatever the retries. */
     console.error("Webhook handler error:", err);
+    const msg = err instanceof Error ? err.message : String(err);
+    if (await firstTime(db, `stripe-webhook-error:${event.id}`).catch(() => true)) {
+      sends.alert(
+        `WEBHOOK FAILED - ${event.type} (${event.id})\n` +
+        `${msg.slice(0, 400)}\n` +
+        `Answered 500: Stripe redelivers it over the next days. If the cause is not fixed, the payment's work (client row, receipt, domain) does not happen. ` +
+        `Check Vercel logs, then resend it from Stripe > Developers > Events once fixed.`,
+      );
+    }
+    return NextResponse.json({ received: false, error: "handler failed" }, { status: 500 });
   }
 
   return NextResponse.json({ received: true });

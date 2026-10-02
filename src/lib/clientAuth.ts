@@ -55,8 +55,15 @@ export async function createClientSession(email: string): Promise<string> {
 
 /** Reads the portal session cookie and returns the logged-in client's email, or null. */
 export async function getClientEmail(): Promise<string | null> {
-  const cookieStore = await cookies();
-  const token = cookieStore.get(COOKIE_NAME)?.value;
+  return clientEmailFromCookies(await cookies());
+}
+
+/** The same, from any cookie store — a route handler's `req.cookies`. A
+ *  SERVER-KNOWN identity: the checkouts reuse a Stripe customer or refuse a
+ *  second plan only for this (or a founder test buyer), never for an address
+ *  typed into a request body. */
+export async function clientEmailFromCookies(store: { get(name: string): { value: string } | undefined }): Promise<string | null> {
+  const token = store.get(COOKIE_NAME)?.value;
   if (!token) return null;
   try {
     const { payload } = await jwtVerify(token, getSecret());

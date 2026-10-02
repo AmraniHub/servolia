@@ -30,6 +30,9 @@ export interface ExtraDomain {
   failed?: string;
   /** "<renewal date>=<price>": a price rise announced for that renewal (domainSales.writeNoticed). */
   noticed?: string;
+  /** The Checkout session that paid for it: a redelivery of that session is
+   *  quiet, any other payment for the same name is reported (the webhook). */
+  session?: string;
 }
 
 function parse(line: string): ExtraDomain | null {
@@ -48,6 +51,7 @@ function parse(line: string): ExtraDomain | null {
     ...(kv.next ? { nextChargeAt: kv.next } : {}),
     ...(kv.failed ? { failed: kv.failed } : {}),
     ...(kv.noticed ? { noticed: kv.noticed } : {}),
+    ...(kv.session ? { session: kv.session } : {}),
   };
 }
 
@@ -66,6 +70,7 @@ function render(d: ExtraDomain): string {
   if (d.nextChargeAt) parts.push(`next: ${d.nextChargeAt}`);
   if (d.failed) parts.push(`failed: ${d.failed}`);
   if (d.noticed) parts.push(`noticed: ${d.noticed}`);
+  if (d.session) parts.push(`session: ${d.session}`);
   return `${MARKER} ${parts.join(" | ")}`;
 }
 

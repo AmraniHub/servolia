@@ -6,6 +6,7 @@ import {
   CHARGE_DAYS, tldAllowed, DOMAIN_ORDER_TLDS, projectExists, domainInTeam, setDomainAutoRenew,
 } from "@/lib/domainSales";
 import { paidSubject, troubleSubject, money, type OwnerNotice } from "@/lib/notify";
+import { businessTaxFields } from "@/lib/stripeCustomer";
 
 export { daysBefore, chargeDateFor, NOTICE_DAYS, CHARGE_DAYS };
 
@@ -226,6 +227,9 @@ export async function createDomainOrderLink(stripe: Stripe, o: {
     customer_email: email,
     customer_creation: "always",
     payment_method_types: ["card"],
+    // B2B (2026-10-02): VAT number (reverse charge), billing address, and a
+    // Stripe invoice. No VAT charged (src/lib/stripeCustomer.ts businessTaxFields).
+    ...businessTaxFields("payment", false),
     expires_at: expires,
     line_items: [{
       quantity: 1,

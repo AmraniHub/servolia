@@ -2,6 +2,10 @@ import Stripe from "stripe";
 import { NextRequest, NextResponse } from "next/server";
 import { resolvePlan, planAmountCents, SETUP_PLAN } from "@/lib/pricing";
 import { checkoutStripe } from "@/lib/testMode";
+import { supabaseAdmin } from "@/lib/supabase";
+import { clientEmailFromCookies } from "@/lib/clientAuth";
+import { rowsForEmail, knownStripeCustomer, buyerFields, businessTaxFields, withStaleCustomerRetry } from "@/lib/stripeCustomer";
+import { HAS_PLAN_TEXT, hasPlanUrl } from "@/lib/planNotice";
 
 export const runtime = "nodejs";
 
@@ -39,7 +43,7 @@ export async function POST(req: NextRequest) {
   if (!co.stripe) {
     return NextResponse.json({ error: "Stripe not configured — add STRIPE_SECRET_KEY to Vercel env vars" }, { status: 503 });
   }
-  const stripe = co.stripe;
+  const stripeClient = co.stripe;
 
   try {
     const { plan, email, billing, lang } = await req.json() as {
@@ -57,6 +61,42 @@ export async function POST(req: NextRequest) {
     const amount = planAmountCents(p, annual ? "annual" : "monthly");
     const installationCents = annual ? 0 : SETUP_PLAN.totalEur * 100;
     const origin = req.headers.get("origin") ?? "https://servolia.com";
+
+    /* WHO IS BUYING, WHEN THE SERVER KNOWS (2026-10-02, tightened after
+       review). Only a SERVER-KNOWN identity — the founder's test-mode buyer,
+       or the logged-in portal client (their signed session cookie) — may pick
+       an existing Stripe customer or be refused a second plan. An address in
+       the request body is anyone's to type: it is used only to prefill
+       Stripe's email field, never to select a customer (that would put a
+       stranger's checkout on a client's account) and never to answer "this
+       address already pays us" to an anonymous caller. An anonymous /pricing
+       visitor is caught after paying by the webhook's second-plan alert and
+       the daily billing check instead. */
+    const known = co.buyer ?? (await clientEmailFromCookies(req.cookies).catch(() => null));
+    const prefill = known ?? (email?.trim() || null);
+    const db = supabaseAdmin();
+    let customerId: string | null = null;
+    if (known && db) {
+      /* ONE PLAN PER LOGIN. Changing plan is done from the portal (Stripe's
+         billing portal), never by buying again. A practice with a SECOND
+         site is a real case: the notice tells them to write to us so it is
+         set up on its own account (src/lib/planNotice.ts). Refused BEFORE
+         Stripe is touched, in their language. */
+      const live = (await rowsForEmail<{ subscription_id: string | null }>(db, "clients", "id, subscription_id, status, created_at", known, {
+        test: co.test, statuses: ["active", "past_due", "paused"],
+      })).filter((r) => r.subscription_id);
+      if (live.length) {
+        const lang = fr ? "fr" : "en";
+        return NextResponse.json(
+          { url: hasPlanUrl(origin, lang), alreadySubscribed: true, error: HAS_PLAN_TEXT[lang] },
+          { status: 409 },
+        );
+      }
+      // A returning client (churned, or a receptionist trial client) keeps their Stripe customer.
+      customerId = await knownStripeCustomer(db, "clients", known, co.test);
+    }
+    // A stored customer Stripe no longer has is retried once as a new one (src/lib/stripeCustomer.ts).
+    const stripe = withStaleCustomerRetry(stripeClient, prefill);
 
     const line_items: Stripe.Checkout.SessionCreateParams.LineItem[] = [
       {
@@ -103,8 +143,11 @@ export async function POST(req: NextRequest) {
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
-      // Test mode: always the founder's address (src/lib/testMode.ts).
-      customer_email: co.buyer ?? email,
+      // Test mode: always the founder's address (src/lib/testMode.ts). The
+      // existing Stripe customer when there is one (src/lib/stripeCustomer.ts).
+      ...buyerFields(customerId, prefill),
+      // B2B: VAT number (reverse charge) + billing address; no VAT charged.
+      ...businessTaxFields("subscription", Boolean(customerId)),
       line_items,
       mode: "subscription",
       locale: fr ? "fr" : "en",

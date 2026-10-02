@@ -3,6 +3,8 @@ import { resolvePlan, planAmountCents, SETUP_PLAN } from "@/lib/pricing";
 import { readReceptionistToken, loadReceptionist, receptionistPhase } from "@/lib/receptionistTrial";
 import { checkoutStripe } from "@/lib/testMode";
 import { isFounderEmail } from "@/lib/testContext";
+import { supabaseAdmin } from "@/lib/supabase";
+import { knownStripeCustomer, buyerFields, businessTaxFields, withStaleCustomerRetry } from "@/lib/stripeCustomer";
 
 export const runtime = "nodejs";
 
@@ -68,11 +70,15 @@ export async function POST(req: NextRequest) {
   };
 
   try {
-    const stripe = co.stripe;
+    // A practice that was already a client keeps its Stripe customer (src/lib/stripeCustomer.ts).
+    const customerId = await knownStripeCustomer(supabaseAdmin(), "clients", claim.email, co.test);
+    const stripe = withStaleCustomerRetry(co.stripe, claim.email);
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       mode: "subscription",
-      customer_email: claim.email,
+      ...buyerFields(customerId, claim.email),
+      // B2B: VAT number (reverse charge) + billing address; no VAT charged.
+      ...businessTaxFields("subscription", Boolean(customerId)),
       locale: fr ? "fr" : "en",
       line_items: [{
         price_data: {

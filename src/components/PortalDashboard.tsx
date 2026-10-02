@@ -27,6 +27,7 @@ import DomainPanel from "@/components/portal/DomainPanel";
 import PortalFiles from "@/components/portal/PortalFiles";
 import type { PortalDomain } from "@/components/portal/DomainPanel";
 import { PStat, PPanel, PBars, PChart } from "@/components/portal/TrafficWidgets";
+import { HAS_PLAN_NOTICE, HAS_PLAN_TEXT } from "@/lib/planNotice";
 
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
 const ACCEPTED_IMAGE_TYPES = "image/jpeg,image/png,image/webp,image/gif";
@@ -94,10 +95,16 @@ export default function PortalDashboard({
   // One-time confirmation after an add-on checkout redirects back with
   // ?addon=…&enabled=1 — cleared from the URL so refresh doesn't repeat it.
   const [addonJustEnabled, setAddonJustEnabled] = useState<string | null>(null);
+  // ?notice=has-plan — the plan checkout refused a second plan (src/lib/planNotice.ts).
+  const [hasPlanNotice, setHasPlanNotice] = useState<"en" | "fr" | null>(null);
   useEffect(() => {
     const p = new URLSearchParams(window.location.search);
     if (p.get("enabled") === "1" && p.get("addon")) {
       setAddonJustEnabled(p.get("addon"));
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+    if (p.get("notice") === HAS_PLAN_NOTICE) {
+      setHasPlanNotice(p.get("lang") === "fr" ? "fr" : "en");
       window.history.replaceState({}, "", window.location.pathname);
     }
   }, []);
@@ -516,6 +523,17 @@ export default function PortalDashboard({
                 : `Your “${addonJustEnabled}” add-on is active — it's already running on your system.`}
             </p>
             <button onClick={() => setAddonJustEnabled(null)} aria-label="Dismiss"
+              className="text-[var(--p-muted)] hover:text-[var(--p-text)] text-sm font-bold shrink-0">✕</button>
+          </div>
+        )}
+
+        {/* The plan checkout sent them here instead of selling a second plan.
+            In the portal's language once they have chosen one, else the
+            language they were buying in. */}
+        {hasPlanNotice && (
+          <div className="mb-6 flex items-start justify-between gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
+            <p className="text-sm text-[var(--p-text)]">{HAS_PLAN_TEXT[lang === "fr" || hasPlanNotice === "fr" ? "fr" : "en"]}</p>
+            <button onClick={() => setHasPlanNotice(null)} aria-label="Dismiss"
               className="text-[var(--p-muted)] hover:text-[var(--p-text)] text-sm font-bold shrink-0">✕</button>
           </div>
         )}

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { TOPUP_PACKS } from "@/lib/conversationCap";
 import { getClientEmail } from "@/lib/clientAuth";
 import { checkoutStripe } from "@/lib/testMode";
+import { supabaseAdmin } from "@/lib/supabase";
+import { knownStripeCustomer, buyerFields, businessTaxFields, withStaleCustomerRetry } from "@/lib/stripeCustomer";
 
 export const runtime = "nodejs";
 
@@ -22,7 +24,7 @@ export async function POST(req: NextRequest) {
   const co = checkoutStripe(req);
   if (co.refused) return co.refused;
   if (!co.stripe) return NextResponse.json({ error: "Stripe not configured" }, { status: 503 });
-  const stripe = co.stripe;
+  const stripeClient = co.stripe;
 
   try {
     const { pack, lang } = (await req.json().catch(() => ({}))) as { pack?: string; lang?: string };
@@ -30,10 +32,16 @@ export async function POST(req: NextRequest) {
     if (!p) return NextResponse.json({ error: "Unknown pack" }, { status: 400 });
     const fr = lang === "fr";
     const origin = req.headers.get("origin") ?? "https://servolia.com";
+    // The client's own Stripe customer (src/lib/stripeCustomer.ts).
+    const buyer = co.buyer ?? email; // test mode: the founder's address
+    const customerId = await knownStripeCustomer(supabaseAdmin(), "clients", buyer, co.test);
+    const stripe = withStaleCustomerRetry(stripeClient, buyer);
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
-      customer_email: co.buyer ?? email, // test mode: the founder's address
+      ...buyerFields(customerId, buyer),
+      // B2B: VAT number (reverse charge), billing address, and a Stripe invoice.
+      ...businessTaxFields("payment", Boolean(customerId)),
       line_items: [{
         price_data: {
           currency: "eur",

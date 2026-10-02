@@ -6,8 +6,12 @@ import {
   hostingAmountCents,
   isAddOn,
   HOSTING_METADATA_KIND,
+  HOSTING_TIERS,
 } from "@/lib/hosting";
 import { parseOwnedDomainLink, verifyOwnedDomain, applyOwnedDomainLink } from "@/lib/ownedDomain";
+import { supabaseAdmin } from "@/lib/supabase";
+import { normalizeDomain } from "@/lib/domainSales";
+import { rowsForEmail, knownStripeCustomer, buyerFields, businessTaxFields, withStaleCustomerRetry, LIVE_ROW_STATUSES } from "@/lib/stripeCustomer";
 
 /**
  * Create a hosting checkout link for one client.
@@ -83,8 +87,47 @@ export async function POST(req: NextRequest) {
   const billing: "monthly" | "annual" = period === "annual" ? "annual" : "monthly";
   const origin = req.nextUrl.origin;
 
+  /* ONE LIVE SUBSCRIPTION PER SITE (P3, 2026-10-02). A second link for a
+     site that already has a live hosting subscription under this address
+     would bill the client twice. A DIFFERENT site for the same owner is fine
+     (an agency; Solyra beside Ithar), so the comparison is per site: the
+     repository, else the domain of the site address. Live rows only. */
+  const db = supabaseAdmin();
+  const mySites = new Set([repo.trim().toLowerCase(), normalizeDomain(siteUrl) ?? "", extra.value.owned?.domain ?? ""].filter(Boolean));
+  if (db && mySites.size) {
+    const clash = (await rowsForEmail<{ id: string; plan: string | null; status: string | null; subscription_id: string | null; repo: string | null; site_url: string | null }>(
+      db, "hosting_clients", "id, plan, status, subscription_id, repo, site_url, created_at", email, { test: false, statuses: LIVE_ROW_STATUSES },
+    )).find((r) => r.subscription_id && HOSTING_TIERS.includes(String(r.plan ?? ""))
+      && [String(r.repo ?? "").trim().toLowerCase(), normalizeDomain(r.site_url) ?? ""].some((k) => k && mySites.has(k)));
+    if (clash) {
+      return NextResponse.json({
+        error: `${email} already has a live hosting subscription for this site (${clash.subscription_id}, row ${clash.id}, ${clash.status}). A second link would bill them twice. Change the plan on the existing subscription, or cancel it first.`,
+      }, { status: 409 });
+    }
+  }
+  // The client's existing live Stripe customer (src/lib/stripeCustomer.ts).
+  const customerId = await knownStripeCustomer(db, "hosting_clients", email, false);
+
+  /* The same metadata on the SUBSCRIPTION, not only on the session (P9):
+     Stripe copies neither way, and everything after the payment — the
+     upgrade to yearly, the failed-payment notice's language and site name
+     (src/lib/upgrade.ts subscriptionContext) — starts from the
+     subscription. Same rule as /api/hosting-checkout. */
+  const metadata: Record<string, string> = {
+    kind: HOSTING_METADATA_KIND,
+    plan: hostingPlan.key,
+    period: billing,
+    business,
+    contact_name: contactName,
+    site_url: siteUrl,
+    repo,
+    branch,
+    site_root: siteRoot,
+    vercel_project: vercelProject,
+  };
+
   try {
-    const stripe = new Stripe(key);
+    const stripe = withStaleCustomerRetry(new Stripe(key), email);
     const session = await stripe.checkout.sessions.create(applyOwnedDomainLink({
       mode: "subscription",
       /* Card only, like every other checkout here: a delayed method (SEPA,
@@ -92,7 +135,10 @@ export async function POST(req: NextRequest) {
          fulfils a PAID session — the later async_payment_succeeded event is
          not handled, so that buyer would pay and receive nothing. */
       payment_method_types: ["card"],
-      customer_email: email,
+      ...buyerFields(customerId, email),
+      // B2B: VAT number (reverse charge) + billing address; no VAT charged.
+      ...businessTaxFields("subscription", Boolean(customerId)),
+      subscription_data: { metadata: { ...metadata } },
       line_items: [
         {
           price_data: {
@@ -109,18 +155,7 @@ export async function POST(req: NextRequest) {
       ],
       // The webhook routes on kind. Without it this payment lands in `clients`
       // and USD hosting money shows up inside Servolia's EUR MRR.
-      metadata: {
-        kind: HOSTING_METADATA_KIND,
-        plan: hostingPlan.key,
-        period: billing,
-        business,
-        contact_name: contactName,
-        site_url: siteUrl,
-        repo,
-        branch,
-        site_root: siteRoot,
-        vercel_project: vercelProject,
-      },
+      metadata,
       success_url: `${origin}/portal?hosting=active`,
       cancel_url: `${origin}/`,
     }, extra.value));

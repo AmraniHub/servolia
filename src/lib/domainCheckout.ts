@@ -1,4 +1,5 @@
 import { inEitherMode } from "@/lib/stripeMode";
+import { businessTaxFields } from "@/lib/stripeCustomer";
 
 /**
  * PAYING FOR AN EXTRA DOMAIN, FROM INSIDE THE PANEL.
@@ -27,13 +28,14 @@ export async function domainCheckoutUrl({
   domain,
   retailUsd,
   ref,
-  email,
   origin,
 }: {
   subscriptionId: string;
   domain: string;
   retailUsd: number;
   ref: string;
+  /** No longer read (2026-10-02): the subscription's own customer is billed,
+   *  and customer_update is set for every session. Kept so callers need not change. */
   email: string | null;
   origin: string;
 }): Promise<string | null> {
@@ -60,6 +62,12 @@ export async function domainCheckoutUrl({
          async_payment_succeeded) would never register the domain. */
       payment_method_types: ["card"],
       customer,
+      /* B2B (2026-10-02): VAT number (reverse charge), billing address, and a
+         Stripe invoice; no VAT charged. With an existing customer Stripe needs
+         customer_update name + address "auto" for tax ID collection, so the
+         details are saved onto that customer. */
+      ...businessTaxFields("payment", true),
+      customer_update: { name: "auto", address: "auto" },
       line_items: [
         {
           quantity: 1,
@@ -81,7 +89,6 @@ export async function domainCheckoutUrl({
         subscription_id: subscriptionId,
         ...(livemode ? {} : { test: "1" }),
       },
-      ...(email ? { customer_update: { address: "auto" as const } } : {}),
       success_url: `${origin}/hosting/account?page=domains&bought=${encodeURIComponent(domain)}`,
       cancel_url: `${origin}/hosting/account?page=domains`,
     });

@@ -4,6 +4,7 @@ import { getClientEmail } from "@/lib/clientAuth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { checkoutStripe, founderTestBrowser } from "@/lib/testMode";
 import { excludeTest } from "@/lib/testContext";
+import { knownStripeCustomer, buyerFields, businessTaxFields, withStaleCustomerRetry } from "@/lib/stripeCustomer";
 
 /** The slugs this client actually owns: builds by email -> client_sites.
  *  Same scoping the portal's leads route uses. */
@@ -41,7 +42,7 @@ export async function POST(req: NextRequest) {
   if (!co.stripe) {
     return NextResponse.json({ error: "Stripe not configured" }, { status: 503 });
   }
-  const stripe = co.stripe;
+  const stripeClient = co.stripe;
 
   try {
     const { addon, siteSlug } = await req.json() as { addon: string; siteSlug?: string };
@@ -67,10 +68,17 @@ export async function POST(req: NextRequest) {
 
     const origin = req.headers.get("origin") ?? "https://servolia.com";
     const unitLabel = a.interval === "year" ? "/year" : a.per === "mailbox" ? "/mailbox/month" : "/month";
+    /* The client's own Stripe customer (their plan's), so the add-on is on
+       the same account, card and portal (src/lib/stripeCustomer.ts). */
+    const buyer = co.buyer ?? email; // test mode: the founder's address
+    const customerId = await knownStripeCustomer(supabaseAdmin(), "clients", buyer, co.test);
+    const stripe = withStaleCustomerRetry(stripeClient, buyer);
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
-      customer_email: co.buyer ?? email, // test mode: the founder's address
+      ...buyerFields(customerId, buyer),
+      // B2B: VAT number (reverse charge) + billing address; no VAT charged.
+      ...businessTaxFields("subscription", Boolean(customerId)),
       line_items: [
         {
           price_data: {
