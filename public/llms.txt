@@ -1,0 +1,49 @@
+# Servolia
+
+> Servolia builds AI lead systems for independent service businesses, starting with dental practices and aesthetic clinics in France: a website written for the practice, an AI assistant that answers patients around the clock and takes their details, and a client area where every request lands. Fixed prices, published on the site, live in 7 days. Servolia also hosts small business websites.
+
+Servolia is operated by Servolia LLC (Wyoming, USA). The French pages are the main market; the English pages describe the same service. Contact: hello@servolia.com.
+
+## Prices (as published on the pricing pages)
+
+- Setup: EUR 690 excl. VAT, paid once; the site and the AI assistant are live in 7 days.
+- Monthly plans, by the number of AI conversations included: Essentiel EUR 149/month (100), Croissance EUR 249/month (300), Performance EUR 449/month (800). Every plan includes the 24/7 AI assistant; nothing is reserved for the higher plans.
+- Free 7-day trial of the AI receptionist for dental practices, no card required: https://servolia.com/fr/essai
+- Website hosting: Essential USD 6/month, Complete USD 8/month, Business USD 11/month (yearly prices give one month free).
+
+## Main pages (French)
+
+- [Accueil](https://servolia.com/fr): what Servolia does for a practice
+- [Tarifs](https://servolia.com/fr/tarifs): the setup fee and the three monthly plans
+- [Essai gratuit 7 jours](https://servolia.com/fr/essai): the AI receptionist trial for dentists
+- [Dentistes](https://servolia.com/fr/dentistes): the offer for dental practices
+- [Cliniques esthétiques](https://servolia.com/fr/esthetique): the offer for aesthetic clinics
+- [Comment ça marche](https://servolia.com/fr/comment-ca-marche): the 7-day process
+- [Exemples](https://servolia.com/fr/exemples): sites built with Servolia
+- [Audit gratuit](https://servolia.com/fr/audit): a free review of a practice's website
+- [Réceptionniste IA](https://servolia.com/fr/solutions/receptionniste-ia), [Sites IA](https://servolia.com/fr/solutions/sites-ia), [Réservation en ligne](https://servolia.com/fr/solutions/reservation-en-ligne), [CRM et tableaux de bord](https://servolia.com/fr/solutions/crm-tableaux-de-bord)
+- City pages for dentists, aesthetic clinics and home services in 15 French cities, for example [Dentiste Paris](https://servolia.com/fr/dentiste/paris) and [Clinique esthétique Lyon](https://servolia.com/fr/clinique-esthetique/lyon)
+- [Contact](https://servolia.com/fr/contact) and [À propos](https://servolia.com/fr/a-propos)
+
+## Main pages (English)
+
+- [Home](https://servolia.com/): overview
+- [Pricing](https://servolia.com/pricing)
+- [AI receptionist](https://servolia.com/solutions/ai-receptionist) and [AI websites](https://servolia.com/solutions/ai-websites)
+- [Dentists](https://servolia.com/dentists) and [Aesthetic clinics](https://servolia.com/niches/aesthetic-clinics)
+- [Website hosting](https://servolia.com/hosting) and [hosting terms](https://servolia.com/hosting/terms)
+- [How it works](https://servolia.com/how-it-works), [Case studies](https://servolia.com/case-studies), [Free audit](https://servolia.com/free-audit)
+
+## Articles
+
+- [What an AI receptionist does for a clinic](https://servolia.com/blog/ai-receptionist-clinics-what-it-does)
+- [Dental practices losing patients after hours](https://servolia.com/blog/dental-clinic-losing-patients-after-hours)
+- [Missed calls at a dental clinic: calculate the lost revenue](https://servolia.com/blog/dental-clinic-missed-calls-cost-calculate-your-lost-revenue-tsqc)
+- [The real cost of a missed enquiry](https://servolia.com/blog/real-cost-of-a-missed-enquiry)
+- [Booking systems vs contact forms](https://servolia.com/blog/booking-systems-vs-contact-forms)
+- [Aesthetic clinic lead qualification](https://servolia.com/blog/aesthetic-clinic-lead-qualification-filter-real-patients-today-dgp9)
+
+## Legal
+
+- [CGV](https://servolia.com/fr/legal/cgv), [Confidentialité](https://servolia.com/fr/legal/confidentialite), [Remboursement](https://servolia.com/fr/legal/remboursement)
+- [Terms](https://servolia.com/legal/terms), [Privacy](https://servolia.com/legal/privacy), [Refunds](https://servolia.com/legal/refund)
