@@ -6,6 +6,7 @@ import StickyMobileCTA from "@/components/StickyMobileCTA";
 import Guarantee from "@/components/Guarantee";
 import ValueStack from "@/components/ValueStack";
 import { FR_GEO_NICHE_MAP, FR_CITY_MAP, allFrGeoCombos } from "@/lib/content/frGeo";
+import { localBlockFor } from "@/lib/content/frLocal";
 import { SETUP_PLAN, PLANS, PLAN_ORDER, POPULAR_PLAN_KEY } from "@/lib/pricing";
 
 /**
@@ -64,7 +65,10 @@ export default async function FrGeoPage({ params }: { params: Promise<{ niche: s
   const c = FR_CITY_MAP[ville];
   if (!n || !c) notFound();
 
-  const faqs = n.faqs(c.nameWithArticle);
+  // The sourced local block (src/lib/content/frLocal.ts) is what makes this
+  // page about THIS city; its question leads the FAQ and the FAQPage JSON-LD.
+  const local = localBlockFor(n.slug, c.slug);
+  const faqs = local?.faq ? [local.faq, ...n.faqs(c.nameWithArticle)] : n.faqs(c.nameWithArticle);
 
   // JSON-LD: LocalBusiness (Servolia serving the city) + Service + FAQPage.
   // FAQPage in particular is the one that gets lifted into Google AI Overviews
@@ -165,7 +169,45 @@ export default async function FrGeoPage({ params }: { params: Promise<{ niche: s
         </div>
       </section>
 
-      {/* LOCAL CONTEXT — the one paragraph that makes this page unique */}
+      {/* LOCAL CONTEXT — sourced figures and paragraphs when we have them
+          (frLocal.ts), the one-line hook otherwise. */}
+      {local ? (
+      <section className="py-12 bg-white">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+          <p className="text-xs font-black text-[#36671E] uppercase tracking-widest mb-2">
+            Contexte local · {c.name}
+          </p>
+          <h2 className="text-2xl sm:text-3xl font-black text-[#18181B] mb-6">{local.heading}</h2>
+          {local.stats.length ? (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+              {local.stats.map((s) => (
+                <div key={s.label} className="rounded-xl border border-[#E8E6E0] bg-[#FAFAF7] p-4">
+                  <p className="text-2xl font-black text-[#18181B]">{s.value}</p>
+                  <p className="text-sm font-semibold text-[#52525B] mt-1">{s.label}</p>
+                  <p className="text-xs text-[#8A8A80] mt-0.5">{s.note}</p>
+                </div>
+              ))}
+            </div>
+          ) : null}
+          <div className="space-y-4">
+            {local.paragraphs.map((p, i) => (
+              <p key={i} className="text-[#18181B] text-base leading-relaxed">{p}</p>
+            ))}
+          </div>
+          {local.sources.length ? (
+            <p className="mt-6 text-xs text-[#8A8A80] leading-relaxed">
+              Sources :{" "}
+              {local.sources.map((s, i) => (
+                <span key={s.url}>
+                  {i ? " · " : ""}
+                  <a href={s.url} target="_blank" rel="noopener noreferrer" className="underline hover:text-[#36671E]">{s.label}</a>
+                </span>
+              ))}
+            </p>
+          ) : null}
+        </div>
+      </section>
+      ) : (
       <section className="py-12 bg-white">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="border border-[#E8E6E0] rounded-2xl p-6 bg-[#FAFAF7]">
@@ -179,6 +221,7 @@ export default async function FrGeoPage({ params }: { params: Promise<{ niche: s
           </div>
         </div>
       </section>
+      )}
 
       {/* PACKAGES */}
       <section className="py-14 bg-[#FAFAF7]">
