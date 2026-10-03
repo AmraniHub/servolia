@@ -7,6 +7,14 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Return & Refund Policy",
   description: "Servolia's refund policy — including our 10% per day late-delivery guarantee.",
+  alternates: {
+    canonical: "https://servolia.com/legal/refund",
+    languages: {
+      "en-US": "https://servolia.com/legal/refund",
+      "fr-FR": "https://servolia.com/fr/legal/remboursement",
+      "x-default": "https://servolia.com/legal/refund",
+    },
+  },
 };
 
 export default function RefundPolicyPage() {

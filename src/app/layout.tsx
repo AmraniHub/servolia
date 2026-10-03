@@ -43,14 +43,13 @@ export const metadata: Metadata = {
      set in production; verify Search Console by DNS TXT if it is ever needed. */
   // facebook-domain-verification lives in ServoliaHead: metadata here is
   // merged into every page, a practice's own site included (C2).
-  alternates: {
-    canonical: "https://servolia.com",
-    languages: {
-      "en-US": "https://servolia.com",
-      "fr-FR": "https://servolia.com/fr",
-      "x-default": "https://servolia.com",
-    },
-  },
+  /* No `alternates` here (removed 2026-10-03). Root metadata is inherited by
+     every page that does not set its own, so a canonical of
+     https://servolia.com here told Google that 11 indexed pages (/hosting,
+     /assistant, /contact, the legal pages...) were copies of the home page.
+     The home page's own canonical + hreflang now live in (home)/layout.tsx;
+     a page with no alternates of its own simply has none, and Google treats
+     its URL as canonical. */
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

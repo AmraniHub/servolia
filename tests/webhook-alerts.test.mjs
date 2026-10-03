@@ -968,7 +968,10 @@ test("LOW the dunning cron caps every email at 5 s; the final notice is marked o
 });
 
 test("LOW every Checkout session is card-only (no delayed method the webhook would never fulfil)", () => {
-  const files = execFileSync("git", ["grep", "-l", "checkout.sessions.create", "--", "src"], { cwd: ROOT, encoding: "utf8" }).split("\n").filter(Boolean);
+  /* stripeCustomer.ts only re-sends the caller's own params (stale-customer
+     retry), so the card-only rule is checked at the call sites. */
+  const files = execFileSync("git", ["grep", "-l", "checkout.sessions.create", "--", "src"], { cwd: ROOT, encoding: "utf8" })
+    .split("\n").filter(Boolean).filter((f) => f.trim() !== "src/lib/stripeCustomer.ts");
   assert.ok(files.length >= 9, files.join(", "));
   const bad = [];
   for (const f of files) {

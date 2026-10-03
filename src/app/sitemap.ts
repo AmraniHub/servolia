@@ -50,6 +50,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${base}/pricing`,                     lastModified: now, changeFrequency: "monthly", priority: 0.9 },
     { url: `${base}/hosting`,                     lastModified: now, changeFrequency: "monthly", priority: 0.8 },
     { url: `${base}/assistant`,                   lastModified: now, changeFrequency: "monthly", priority: 0.8 },
+    // French versions at the same path (each is its own canonical, paired by hreflang).
+    { url: `${base}/hosting?lang=fr`,             lastModified: now, changeFrequency: "monthly", priority: 0.8 },
+    { url: `${base}/assistant?lang=fr`,           lastModified: now, changeFrequency: "monthly", priority: 0.8 },
     { url: `${base}/hosting/terms`,               lastModified: now, changeFrequency: "monthly", priority: 0.5 },
     { url: `${base}/contact`,                     lastModified: now, changeFrequency: "monthly", priority: 0.9 },
     { url: `${base}/free-audit`,                  lastModified: now, changeFrequency: "monthly", priority: 0.9 },

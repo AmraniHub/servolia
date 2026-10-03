@@ -10,6 +10,14 @@ import { SETUP_PLAN, PLANS } from "@/lib/pricing";
 export const metadata: Metadata = {
   title: "AI Client System for Aesthetic Clinics",
   description: "Turn your aesthetic clinic website into a 24/7 booking and client acquisition system. AI receptionist, Botox & filler booking flows, CRM tracking — delivered in 7 days.",
+  alternates: {
+    canonical: "https://servolia.com/niches/aesthetic-clinics",
+    languages: {
+      "en-US": "https://servolia.com/niches/aesthetic-clinics",
+      "fr-FR": "https://servolia.com/fr/esthetique",
+      "x-default": "https://servolia.com/niches/aesthetic-clinics",
+    },
+  },
 };
 
 export default function AestheticClinicsPage() {

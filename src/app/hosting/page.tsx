@@ -80,6 +80,19 @@ export async function generateMetadata({
     robots: known || isAdd
       ? { index: false, follow: false }
       : { index: true, follow: true },
+    /* The public chooser exists in two languages at one path. Each version is
+       its own canonical, and both name the pair, so Google can send French
+       searchers to ?lang=fr. (It used to inherit the home page's canonical.) */
+    alternates: known || isAdd
+      ? { canonical: "https://servolia.com/hosting" }
+      : {
+          canonical: l === "fr" ? "https://servolia.com/hosting?lang=fr" : "https://servolia.com/hosting",
+          languages: {
+            "en-US": "https://servolia.com/hosting",
+            "fr-FR": "https://servolia.com/hosting?lang=fr",
+            "x-default": "https://servolia.com/hosting",
+          },
+        },
   };
 }
 

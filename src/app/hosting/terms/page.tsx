@@ -7,6 +7,7 @@ export const metadata: Metadata = {
   description:
     "What the Servolia hosting plan covers, what it costs, and how to take your site elsewhere.",
   robots: { index: true, follow: true },
+  alternates: { canonical: "https://servolia.com/hosting/terms" },
 };
 
 /**

@@ -28,6 +28,16 @@ export async function generateMetadata({
       ? "Un assistant qui répond à vos visiteurs jour et nuit, en arabe, en français et en anglais, et vous envoie chaque demande. Tapez votre domaine et voyez-le à vos couleurs."
       : "An assistant that answers your visitors day and night, in Arabic, French and English, and sends you every enquiry. Type your domain and see it in your colours.",
     robots: { index: true, follow: true },
+    /* One path, two languages: each version is its own canonical and both
+       name the pair (it used to inherit the home page's canonical). */
+    alternates: {
+      canonical: fr ? "https://servolia.com/assistant?lang=fr" : "https://servolia.com/assistant",
+      languages: {
+        "en-US": "https://servolia.com/assistant",
+        "fr-FR": "https://servolia.com/assistant?lang=fr",
+        "x-default": "https://servolia.com/assistant",
+      },
+    },
   };
 }
 

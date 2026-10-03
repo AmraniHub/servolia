@@ -6,6 +6,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Terms of Use",
   description: "Terms of use governing access to and use of the Servolia website and services.",
+  alternates: { canonical: "https://servolia.com/legal/terms" },
 };
 
 export default function TermsOfUsePage() {

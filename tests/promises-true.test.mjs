@@ -142,7 +142,7 @@ test("the EUR plan copy says what the checkout does: 7 days after payment, moves
   assert.ok(/const DELIVERY_TRIAL_DAYS = 7;/.test(route) && /trial_period_days: DELIVERY_TRIAL_DAYS/.test(route), "the fixed 7-day trial this copy describes");
   const pages = [
     "src/components/CarePlansSection.tsx", "src/app/pricing/page.tsx", "src/app/fr/tarifs/page.tsx", "src/app/how-it-works/page.tsx",
-    "src/app/fr/comment-ca-marche/page.tsx", "src/app/page.tsx", "src/components/FrenchHome.tsx", "src/app/legal/refund/page.tsx",
+    "src/app/fr/comment-ca-marche/page.tsx", "src/app/(home)/page.tsx", "src/components/FrenchHome.tsx", "src/app/legal/refund/page.tsx",
     "src/app/fr/legal/remboursement/page.tsx", "src/app/api/chat/route.ts", "src/lib/scopeDocument.ts", "src/app/api/checkout-subscription/route.ts",
   ];
   const claims = [/simply move you/i, /simplement passer/i, /passez simplement/i, /starts? (the day|when) you go live/i, /begins once the site is live/i,

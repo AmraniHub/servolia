@@ -6,6 +6,14 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Terms & Conditions (CGV)",
   description: "Servolia general terms and conditions of sale (CGV).",
+  alternates: {
+    canonical: "https://servolia.com/legal/cgv",
+    languages: {
+      "en-US": "https://servolia.com/legal/cgv",
+      "fr-FR": "https://servolia.com/fr/legal/cgv",
+      "x-default": "https://servolia.com/legal/cgv",
+    },
+  },
 };
 
 export default function CGVPage() {
