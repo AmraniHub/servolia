@@ -154,6 +154,20 @@ export const FEATURES: SystemFeature[] = [
     code: "src/app/api/chat/route.ts",
   },
   {
+    name: "French offer for French browsers (SEO-safe)",
+    summary: "An English page shows a small card, 'Cette page existe en français', to visitors whose browser is set to French; one click opens the SAME page in French. Shipped 2026-10-03.",
+    how: [
+      "The French twin is read from the page's own hreflang tag (fr-FR), so there is no second list of page pairs. /hosting and /assistant use ?lang=fr. Pages without a French twin show nothing.",
+      "Choosing French (card or FR button) is remembered in the browser: later English pages with a twin open in French. Choosing English (EN button, close, 'Stay in English') hides the card for good.",
+      "Nothing happens on the server: no redirect, no Accept-Language sniffing. Google sees exactly the same pages, and French searchers still reach /fr pages through hreflang.",
+      "The English menu's FR button now goes to the matching French page; both menus have the language switch on phones too.",
+    ],
+    use: ["Nothing to do. Do not turn this into a server redirect: Google advises against language redirects and it would risk the indexing of one version."],
+    cost: "Free.",
+    value: "French visitors who land on English (typed address, shared link) are one click from French, with zero SEO risk.",
+    code: "src/lib/langPref.ts · src/components/LanguageHint.tsx · Navbar.tsx · FrenchNav.tsx",
+  },
+  {
     name: "Scope document + e-signature",
     summary: "A written scope (what's included, price, deadline) the client accepts online before work starts.",
     how: [

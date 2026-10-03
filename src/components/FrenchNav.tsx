@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
+import { setLangPref } from "@/lib/langPref";
 
 const links = [
   { label: "Solutions", href: "/fr/solutions" },
@@ -70,6 +71,7 @@ export default function FrenchNav({ heroDark = false, enHref = "/" }: { heroDark
           <div className="hidden xl:flex items-center gap-3">
             <Link
               href={enHref}
+              onClick={() => setLangPref("en")}
               className={`text-xs font-bold transition-colors border rounded-lg px-2.5 py-1.5 ${
                 light
                   ? "text-[#52525B] hover:text-[#36671E] border-[#E8E6E0]"
@@ -157,6 +159,14 @@ export default function FrenchNav({ heroDark = false, enHref = "/" }: { heroDark
             className="text-sm font-medium text-[#52525B] hover:text-[#18181B] transition-colors py-2"
           >
             Audit gratuit
+          </Link>
+          <Link
+            href={enHref}
+            onClick={() => { setLangPref("en"); setOpen(false); }}
+            className="text-sm font-medium text-[#52525B] hover:text-[#18181B] transition-colors py-2"
+            lang="en"
+          >
+            English version (EN)
           </Link>
           <Link
             href="/fr/essai"

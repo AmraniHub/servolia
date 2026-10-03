@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
+import { alternatePath, setLangPref } from "@/lib/langPref";
 
 const links = [
   { label: "Solutions", href: "/solutions" },
@@ -20,6 +22,13 @@ const links = [
 export default function Navbar({ heroDark = false }: { heroDark?: boolean }) {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
+  /* FR goes to THIS page in French (its hreflang twin), not always /fr. */
+  const pathname = usePathname();
+  const [frHref, setFrHref] = useState("/fr");
+  useEffect(() => {
+    const t = window.setTimeout(() => setFrHref(alternatePath("fr") ?? "/fr"), 50);
+    return () => window.clearTimeout(t);
+  }, [pathname]);
 
   useEffect(() => {
     if (!heroDark) return; // no dark hero under the nav — chrome never needs to change
@@ -71,7 +80,8 @@ export default function Navbar({ heroDark = false }: { heroDark?: boolean }) {
           {/* Desktop CTA */}
           <div className="hidden xl:flex items-center gap-3">
             <Link
-              href="/fr"
+              href={frHref}
+              onClick={() => setLangPref("fr")}
               className={`text-xs font-bold transition-colors border rounded-lg px-2.5 py-1.5 ${
                 light
                   ? "text-[#52525B] hover:text-[#36671E] border-[#E8E6E0]"
@@ -127,6 +137,14 @@ export default function Navbar({ heroDark = false }: { heroDark?: boolean }) {
             className="text-sm font-medium text-[#52525B] hover:text-[#18181B] transition-colors py-2"
           >
             Client Login
+          </Link>
+          <Link
+            href={frHref}
+            onClick={() => { setLangPref("fr"); setOpen(false); }}
+            className="text-sm font-medium text-[#52525B] hover:text-[#18181B] transition-colors py-2"
+            lang="fr"
+          >
+            Version française (FR)
           </Link>
           <Link
             href="/free-audit"

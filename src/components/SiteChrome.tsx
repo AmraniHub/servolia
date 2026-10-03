@@ -10,6 +10,7 @@ import PageTracker from "@/components/PageTracker";
 const CookieBanner = dynamic(() => import("@/components/CookieBanner"));
 const ScrollToTop = dynamic(() => import("@/components/ScrollToTop"));
 const Analytics = dynamic(() => import("@/components/Analytics"));
+const LanguageHint = dynamic(() => import("@/components/LanguageHint"));
 
 /**
  * Servolia's own furniture — cookie banner, back-to-top, analytics — on every
@@ -53,6 +54,7 @@ export default function SiteChrome({ editorPaths = [] }: { editorPaths?: string[
   return (
     <>
       <CookieBanner />
+      <LanguageHint />
       <ScrollToTop />
       <Analytics />
       <PageTracker />
